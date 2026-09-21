@@ -3,20 +3,20 @@ const { LRUCache } = require('../utils/lru-cache.js');
  * semantic-clusterer.js
  * 基于 V21.1 黑盒V2 多元组架构设计
  * 用规则引擎实现"可训练N元组"——哪些字/概念经常一起出现
- * 替代 V21 的 P3 规则引擎，但用心虫自己的规则语言实现
+ * 替代 V21 的 P3 规则引擎，但用新愿自己的规则语言实现
  * 
  * 核心思想：
  * 1. 不是固定三元组，每个概念可以属于 K 个组（K 可训练）
  * 2. 组数 G 是超参，每组最多占 0.05V 个概念
  * 3. 模型自己学习"概念A+概念B=一组"
  * 
- * 心虫实现：
+ * 新愿实现：
  * - 用 Q-table 记录概念共现频率
  * - 用规则引擎动态聚类
  * - 用三层缓存（L1当前/L2近期/L3长期）加权融合
  * 
  * @version 1.0.0
- * @author HeartFlow
+ * @author Aspira
  * @date 2026-06-30
  */
 
@@ -38,7 +38,7 @@ class SemanticClusterer {
     this.l2Cache = new Map(); // 最近N个batch的EMA
     this.l3Stats = new Map(); // 长期统计（整个生命周期的概念频率）
     
-    // Q-table 集成（心虫自愈RL）
+    // Q-table 集成（新愿自愈RL）
     this.qTable = new Map(); // "conceptA+conceptB" -> Q-value
     this.epsilon = 0.1; // 探索率
     this.gamma = 0.9; // 折扣因子

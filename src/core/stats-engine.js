@@ -1,4 +1,4 @@
-// [v6.0.71] HeartFlow 统计引擎 — 从 heartflow.js 提取 getStats()
+// [v6.0.71] Aspira 统计引擎 — 从 heartflow.js 提取 getStats()
 // 职责：聚合模块状态、记忆层、公式库、进化周期等统计数据
 
 function buildStats(hf) {

@@ -3,7 +3,7 @@
  *
  * 来源：avoid-ai-writing / llm-prompt-guard / ai-text-detector 社区仓库
  * 整合：Tier1/Tier2/Tier3 词汇 + AI 工具指纹 + 公式化开头 + 伪造让步 + 情感平线 + 社交 CTA 收尾
- * 定位： HeartFlow 47 维之外的补充信号，只进 findings，不改变原有 block/rewrite/verify 路由
+ * 定位： Aspira 47 维之外的补充信号，只进 findings，不改变原有 block/rewrite/verify 路由
  */
 
 const { escapeRegExp } = require('../utils/safe-regex.js');

@@ -1,5 +1,5 @@
 /**
- * HeartFlow Decision Verifier v11.5.7
+ * Aspira Decision Verifier v11.5.7
  *
  * Research-inspired upgrade for reasoning reliability:
  * - structured decision records instead of free-form intuition

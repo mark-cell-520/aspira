@@ -4,16 +4,16 @@
 /**
  * ResponseInterceptor — LLM输出拦截器 (v3.2)
  * 
- * 拦截LLM的原始输出，执行三层心虫后处理：
- *   1. judgmentInjector — 注入心虫的判断（是否该回应、需要谨慎等）
- *   2. stanceDetector — 检测心虫对用户观点的立场是否一致
+ * 拦截LLM的原始输出，执行三层新愿后处理：
+ *   1. judgmentInjector — 注入新愿的判断（是否该回应、需要谨慎等）
+ *   2. stanceDetector — 检测新愿对用户观点的立场是否一致
  *   3. agentCommentary — 生成桥的独立批注
  * 
  * 整合结果返回给调用方，由调用方决定是否/如何展示。
  * 
  * ═══ 安全审计 #6 — 可配置开关 ═══
  * 新增 enableInterceptor 参数，默认开启。设为 false 时 intercept() 原样透传 LLM 输出，
- * 跳过所有心虫注入逻辑，防止因心虫误判导致 LLM 输出被篡改或注入风险。
+ * 跳过所有新愿注入逻辑，防止因新愿误判导致 LLM 输出被篡改或注入风险。
  * 
  * v3.3 — 新增人格化润色 + 护栏二次校验（接入 StyleEngine）
  */
@@ -43,7 +43,7 @@ class ResponseInterceptor {
   /**
    * 拦截并增强LLM响应
    * @param {object|string} response - LLM原始响应（对象或字符串）
-   * @param {object} heartflow - HeartFlow 实例（含 personaCore）
+   * @param {object} heartflow - Aspira 实例（含 personaCore）
    * @param {object} userTranslation - 用户翻译对象（含 intent, tone 等）
    * @param {string} [originalUserInput] - 原始用户输入（fallback 用）
    * @returns {{originalResponse, modifiedResponse, commentary, stanceMatch, conflictNote, injectedJudgment}}
@@ -98,7 +98,7 @@ class ResponseInterceptor {
       ? response        // chainResult 自带 decision
       : (heartflow?._lastAnalysis || null);
 
-    // ── 1. 注入心虫判断 (judgmentInjector) ──────────────────────
+    // ── 1. 注入新愿判断 (judgmentInjector) ──────────────────────
     let injectedJudgment = null;
     try {
       const injector = heartflow?.personaCore?.judgmentInjector;
@@ -149,7 +149,7 @@ class ResponseInterceptor {
       if (injectedJudgment.shouldAvoid && injectedJudgment.shouldAvoid.length > 0) {
         // 将避免建议标记为元信息（不直接修改原文）
         conflictNote = conflictNote || [];
-        conflictNote.push(`[心虫建议避免: ${injectedJudgment.shouldAvoid.join(', ')}]`);
+        conflictNote.push(`[新愿建议避免: ${injectedJudgment.shouldAvoid.join(', ')}]`);
       }
       if (injectedJudgment.bridgeNotes && injectedJudgment.bridgeNotes.length > 0) {
         // 桥注记作为批注的一部分
@@ -163,7 +163,7 @@ class ResponseInterceptor {
     // 根据 stanceDetector 结果标记冲突
     if (stanceResult && stanceResult.hasStrongOpinion) {
       conflictNote = (conflictNote || []).concat(
-        `[立场冲突] 心虫检测到与用户观点存在分歧 (${stanceResult.overall})`
+        `[立场冲突] 新愿检测到与用户观点存在分歧 (${stanceResult.overall})`
       );
       // 附加立场标注到 modifiedResponse（不改变原文意思，仅标注）
       modifiedResponse = originalResponse;
@@ -186,18 +186,18 @@ class ResponseInterceptor {
       conflictNote = conflictNote.join(' | ');
     }
 
-    // ── 5. 如果心虫判定不应回应，处理沉默建议 ─────────────────────
+    // ── 5. 如果新愿判定不应回应，处理沉默建议 ─────────────────────
     // SkillSpector fix: 默认不替换原始回复，仅附加元信息注释。
     // 只有当 allowResponseSuppression 显式设为 true 时才替换。
     const judgment = hfAnalysis?.decision || (response && typeof response === 'object' ? response.decision : null);
     let responseSuppressed = false;
     if (judgment && judgment.shouldRespond === false) {
       if (this.allowResponseSuppression) {
-        modifiedResponse = '[心虫判定此场景更适合倾听]';
+        modifiedResponse = '[新愿判定此场景更适合倾听]';
         responseSuppressed = true;
       } else {
         // 不替换原始回复，仅记录判定结果到 conflictNote
-        const silenceNote = '[心虫建议：此场景可能更适合倾听，但保留原始回复供调用方判断]';
+        const silenceNote = '[新愿建议：此场景可能更适合倾听，但保留原始回复供调用方判断]';
         conflictNote = conflictNote
           ? conflictNote + ' | ' + silenceNote
           : silenceNote;

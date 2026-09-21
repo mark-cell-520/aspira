@@ -1,5 +1,5 @@
 /**
- * formula-module.js — HeartFlow 公式模块
+ * formula-module.js — Aspira 公式模块
  * 真实接入 FormulaEngine，替换空壳 stub
  * 兼容旧调用：search('string') 和 search({keyword, limit})
  */

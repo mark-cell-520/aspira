@@ -1,5 +1,5 @@
 /**
- * HeartFlow — ReportGenerator（最小可用）
+ * Aspira — ReportGenerator（最小可用）
  *
  * 消除错误源：此前 cli.js / mcp-server-http.js / src/mcp-server.js 均
  * require('./src/report/report-generator.js') 的 ReportGenerator，但文件

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * engine-constructor — HeartFlow constructor extraction
+ * engine-constructor — Aspira constructor extraction
  * Extracts constructor logic into smaller methods (v6.0.1)
  */
 

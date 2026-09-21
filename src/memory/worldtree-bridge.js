@@ -1,5 +1,5 @@
 /**
- * WorldTreeBridge — 心虫调用外部 World Tree 记忆系统的适配层
+ * WorldTreeBridge — 新愿调用外部 World Tree 记忆系统的适配层
  * 
  * 提供 4 个 dispatch 路由：
  *   worldtree.search(query)       — 全文搜索
@@ -220,7 +220,7 @@ function status() {
   };
 }
 
-// ─── 路由导出（供心虫 dispatch 调用）───────────────────────────────────────────
+// ─── 路由导出（供新愿 dispatch 调用）───────────────────────────────────────────
 
 const ROUTES = {
   'worldtree.search': search,

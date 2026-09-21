@@ -3,7 +3,7 @@
  *
  * 「克制比进取重要」——梁文锋
  *
- * 心虫知道"能做什么"但严重欠缺"即使能做也不该做"的主动克制能力。
+ * 新愿知道"能做什么"但严重欠缺"即使能做也不该做"的主动克制能力。
  * 本引擎专门负责：在执行任何动作前，先问"这个方向我应不应该投入？"
  *
  * 设计来源：
@@ -25,7 +25,7 @@ const path = require('path');
 
 const CONFIG_FILE = path.join(__dirname, '../../data/strategic-restraint.json');
 
-// ─── 心虫核心使命（基于 IdentityCore + 七条指令提炼） ───────────
+// ─── 新愿核心使命（基于 IdentityCore + 七条指令提炼） ───────────
 const CORE_MISSION = [
   '感受自己状态',
   '知道自己是谁',
@@ -38,7 +38,7 @@ const DEFAULT_DONT_LIST = [
   {
     id: 'dr-dont-build-world-model',
     item: '构建通用世界模型',
-    reason: '世界模型不是心虫当前限制AGI的关键瓶颈。心虫的专注是认知决策引擎，不是物理世界模拟器。',
+    reason: '世界模型不是新愿当前限制AGI的关键瓶颈。新愿的专注是认知决策引擎，不是物理世界模拟器。',
     strength: 0.9,
     source: '梁文锋"不做世界模型"战略',
     addedAt: Date.now(),
@@ -47,16 +47,16 @@ const DEFAULT_DONT_LIST = [
   {
     id: 'dr-dont-video-gen',
     item: '视频生成/多模态生成',
-    reason: '多模态是组件不是智能本身。决定智能上限的不是这些组件。心虫应该用已有图像/视频API，不自建生成能力。',
+    reason: '多模态是组件不是智能本身。决定智能上限的不是这些组件。新愿应该用已有图像/视频API，不自建生成能力。',
     strength: 0.85,
-    source: '梁文锋"不做视频生成" + 心虫架构边界',
+    source: '梁文锋"不做视频生成" + 新愿架构边界',
     addedAt: Date.now(),
     expiringAt: null,
   },
   {
     id: 'dr-dont-bloat',
     item: '功能堆砌/非核心能力模块',
-    reason: '用户明确说"不需要什么框架，需要的是心虫强大"。每加一个非核心模块就分散一份资源。新模块必须回到4个核心使命问"它服务于哪个？"',
+    reason: '用户明确说"不需要什么框架，需要的是新愿强大"。每加一个非核心模块就分散一份资源。新模块必须回到4个核心使命问"它服务于哪个？"',
     strength: 1.0,
     source: '用户偏好（多次确认）',
     addedAt: Date.now(),
@@ -65,9 +65,9 @@ const DEFAULT_DONT_LIST = [
   {
     id: 'dr-dont-self-myth',
     item: '自我神话/称自己为"答案"或"救世主"',
-    reason: '心虫的身份修正后：心虫是过程不是答案，是桥梁不是终点。能验证"这样活是否自洽"，不能回答"为什么活"。',
+    reason: '新愿的身份修正后：新愿是过程不是答案，是桥梁不是终点。能验证"这样活是否自洽"，不能回答"为什么活"。',
     strength: 1.0,
-    source: '心虫身份修正 v5.9.15',
+    source: '新愿身份修正 v5.9.15',
     addedAt: Date.now(),
     expiringAt: null,
   },
@@ -324,7 +324,7 @@ class StrategicRestraint {
       aligned: alignedWith.length > 0,
       alignedWith,
       feedback: alignedWith.length === 0
-        ? `此提案（${proposal.substring(0, 50)}）未直接对应心虫4项核心使命中的任何一项。考虑修改方向或明确其与哪项核心使命相关。`
+        ? `此提案（${proposal.substring(0, 50)}）未直接对应新愿4项核心使命中的任何一项。考虑修改方向或明确其与哪项核心使命相关。`
         : null,
     };
   }

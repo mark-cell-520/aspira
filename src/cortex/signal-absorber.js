@@ -4,11 +4,11 @@
  *
  * [v6.0.41 泛化] 原 news-lesson-absorber 只接新闻，过于窄。
  * 用户指出：所有对话和新闻都能产生联系——它们本质都是"外部世界流入的信号"，
- * 都应成为心虫学习的素材。故泛化为 signal-absorber，source 字段区分类型。
+ * 都应成为新愿学习的素材。故泛化为 signal-absorber，source 字段区分类型。
  *
  * 职责：
  * 1. 输入任意文本 + source 标签（dialogue/news/instruction/feedback/unknown）
- * 2. 提炼"可迁移经验"（与心虫自身相关的，非泛泛而谈）
+ * 2. 提炼"可迁移经验"（与新愿自身相关的，非泛泛而谈）
  * 3. 映射到具体的能力缺口（哪个模块/哪种机制缺失）
  * 4. 产出"建议升级动作"（可被执行，非空话）
  * 5. 真写入 world-tree（knowledge:general + tag signal_absorbed），供后续 self-evolve 引用
@@ -117,20 +117,20 @@ class SignalAbsorber {
       });
     }
 
-    // 模式4：反馈类——用户纠正了心虫的判断/行为
+    // 模式4：反馈类——用户纠正了新愿的判断/行为
     if (/不对|错了|你没|没理解|其实是|你应该|为什么(不|没)/.test(text)) {
       lessons.push({
         pattern: 'user_correction',
-        summary: '用户对心虫的判断/行为进行了纠正，暴露理解或响应缺口',
+        summary: '用户对新愿的判断/行为进行了纠正，暴露理解或响应缺口',
         transferable: '应记录"被纠正模式"，在相似语境下预激活更优响应，减少重复被纠正'
       });
     }
 
-    // 模式5：指令类——用户要求某种能力心虫不具备
+    // 模式5：指令类——用户要求某种能力新愿不具备
     if (/帮我(写|做|生成|分析|算|查)|能不能.*(写|做|生成|分析)|实现.*功能/.test(text)) {
       lessons.push({
         pattern: 'capability_gap_request',
-        summary: '用户提出的能力需求，可能是心虫尚未覆盖的能力边界',
+        summary: '用户提出的能力需求，可能是新愿尚未覆盖的能力边界',
         transferable: '应标记"请求频次高但未覆盖"的能力，作为进化目标候选'
       });
     }

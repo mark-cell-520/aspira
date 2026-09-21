@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * HeartFlow Request/Response Interception Hooks
+ * Aspira Request/Response Interception Hooks
  *
  * Fires:
  *   request.normalize  — input sanitization/standardization

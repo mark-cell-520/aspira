@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  *  - Maintain the canonical list of subsystem names for registration
- *  - Register initialized instances into HeartFlow._modules
+ *  - Register initialized instances into Aspira._modules
  *  - Expose special-module factory helpers used by lazy dispatch
  */
 

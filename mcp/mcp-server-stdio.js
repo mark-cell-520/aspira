@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow 统一 MCP stdio 服务器
+ * Aspira 统一 MCP stdio 服务器
  *
  * 整合 claude-heartflow-skill (A) 和 mark-heartflow-skill (B) 的 MCP 工具：
  *   - B 的工具：think, think_fast, dream, memory_search, emotion,
@@ -24,15 +24,15 @@ const fs = require('fs');
 // ─── 路径 ─────────────────────────────────────────────
 const ROOT_DIR = path.resolve(__dirname, '..');
 
-// ─── 加载心虫引擎 ─────────────────────────────────────
+// ─── 加载新愿引擎 ─────────────────────────────────────
 let hf;
 try {
-  const { HeartFlow, createHeartFlow } = require(path.join(ROOT_DIR, 'src', 'core', 'heartflow.js'));
-  hf = createHeartFlow({ rootPath: ROOT_DIR });
+  const { Aspira, createAspira } = require(path.join(ROOT_DIR, 'src', 'core', 'heartflow.js'));
+  hf = createAspira({ rootPath: ROOT_DIR });
   hf.start();
-  console.error(`[HeartFlow MCP] 引擎已就绪 v${hf.version || '5.7.3'} (${Date.now() - hf._startTime}ms)`);
+  console.error(`[Aspira MCP] 引擎已就绪 v${hf.version || '5.7.3'} (${Date.now() - hf._startTime}ms)`);
 } catch (e) {
-  console.error(`[HeartFlow MCP] 引擎启动失败: ${e.message}`);
+  console.error(`[Aspira MCP] 引擎启动失败: ${e.message}`);
   process.exit(1);
 }
 
@@ -538,12 +538,12 @@ process.stdin.on('data', async (chunk) => {
 });
 
 process.stdin.on('end', () => {
-  console.error('[HeartFlow MCP] stdin 关闭，退出');
+  console.error('[Aspira MCP] stdin 关闭，退出');
   process.exit(0);
 });
 
 process.on('uncaughtException', (err) => {
-  console.error(`[HeartFlow MCP] 未捕获异常: ${err.message}`);
+  console.error(`[Aspira MCP] 未捕获异常: ${err.message}`);
   process.exit(1);
 });
 

@@ -1,5 +1,5 @@
 /**
- * desire-system - HeartFlow 模块
+ * desire-system - Aspira 模块
  * 自动生成的 stub 实现
  */
 

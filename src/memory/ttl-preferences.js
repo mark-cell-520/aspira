@@ -1,8 +1,8 @@
 /**
- * TTLPreferences - 心虫可调 TTL 临时偏好模块
+ * TTLPreferences - 新愿可调 TTL 临时偏好模块
  *
  * 背景：GitHub Issue #7 harshita713lab 问到 "Temporary Preferences"——
- * 心虫的 EPHEMERAL 层是 session 级、不可设时长，无法表达"这个偏好保留 2 小时"。
+ * 新愿的 EPHEMERAL 层是 session 级、不可设时长，无法表达"这个偏好保留 2 小时"。
  *
  * 本模块补上"带过期时间的临时偏好"，独立存储（不动底层 MeaningfulMemory 结构，零风险）：
  *  - set(key, value, ttlMs): 设置偏好 + 存活时长

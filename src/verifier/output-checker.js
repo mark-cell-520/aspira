@@ -1,5 +1,5 @@
 /**
- * output-checker - HeartFlow 模块
+ * output-checker - Aspira 模块
  * 自动生成的 stub 实现
  */
 

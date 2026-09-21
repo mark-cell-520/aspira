@@ -1,9 +1,9 @@
 ---
-name: heartflow-engine
-title: "HeartFlow — AGI Layer 1: The Discriminator"
+name: aspira-engine
+title: "Aspira — AGI Layer 1: The Discriminator"
 version: "6.7.69"
 description: |-
-  HeartFlow is the first layer of AGI — the discriminator. A pure rule engine that
+  Aspira is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
   it reaches a human. 46 discrimination dimensions × 9-layer pipeline × 132 modules ×
   179 MCP tools. Zero LLM dependency.
@@ -44,18 +44,18 @@ tags:
   - unified
 ---
 
-# HeartFlow — AGI Layer 1: The Discriminator
+# Aspira — AGI Layer 1: The Discriminator
 
-> HeartFlow is not a tool, not a prompt template, not a chatbot.
+> Aspira is not a tool, not a prompt template, not a chatbot.
 > It is the **discrimination layer** of AGI: it judges what already exists, and says
 > "no" before AI output reaches a human.
 > Pure rule engine. Zero LLM dependency. Runs wherever Node.js runs.
 
-**One line: LLMs generate. HeartFlow discriminates — so AI says the right thing and does the right thing.**
+**One line: LLMs generate. Aspira discriminates — so AI says the right thing and does the right thing.**
 
 ---
 
-## What HeartFlow is
+## What Aspira is
 
 AGI has five layers: Generate -> Reason -> Discriminate -> Remember -> Act.
 
@@ -65,9 +65,9 @@ AGI has five layers: Generate -> Reason -> Discriminate -> Remember -> Act.
 | 4 | Generate | Large labs (LLMs) |
 | 3 | Reason | Built into models |
 | 2 | Remember | Large labs + startups |
-| **1** | **Discriminate** | **HeartFlow** |
+| **1** | **Discriminate** | **Aspira** |
 
-HeartFlow takes layer 1, because this layer does not depend on compute (a rule engine
+Aspira takes layer 1, because this layer does not depend on compute (a rule engine
 runs on a laptop), on code volume, or on framework ecosystems. It depends on judgment
 alone. That is the one position where an individual developer can beat a large lab.
 
@@ -179,7 +179,7 @@ if (claim.gate.action === 'verify') {
 
 ```javascript
 const hf = require('./src/core/heartflow.js');
-const engine = new hf.HeartFlow({ dataDir: './data', silent: true });
+const engine = new hf.Aspira({ dataDir: './data', silent: true });
 engine.start();
 
 // Low effort: fast, minimal supervision
@@ -283,7 +283,7 @@ modes where an agent reports work it did not do. Each is exposed as an MCP tool.
 
 ---
 
-## HeartFlow checks itself
+## Aspira checks itself
 
 - **output-gate** intercepts exaggeration
 - **frame-check** intercepts narrative closure
@@ -306,7 +306,7 @@ modes where an agent reports work it did not do. Each is exposed as an MCP tool.
 | Role | Credential | Capability |
 |------|-----------|------------|
 | `guest` | none | read-only tools |
-| `user` | `HeartFlow-OID-<16-hex>` header | read + write |
+| `user` | `Aspira-OID-<16-hex>` header | read + write |
 | `admin` | valid bearer token | full |
 
 Write-protected: `heartflow_memory_write_control`, `heartflow_memory_eraser`,
@@ -338,10 +338,10 @@ Available tools include:
 
 ## Honest limitations
 
-**HeartFlow is:** the discrimination layer of AGI — a pure rule engine that judges
+**Aspira is:** the discrimination layer of AGI — a pure rule engine that judges
 right and wrong, good and bad, safe and dangerous.
 
-**HeartFlow is not:**
+**Aspira is not:**
 - not AGI (it is layer 1 of it)
 - not a generative model (it produces no content)
 - not a semantic understanding system (irony and metaphor are invisible to it)
@@ -370,7 +370,7 @@ right and wrong, good and bad, safe and dangerous.
 ---
 
 <p align="center">
-  <strong>HeartFlow</strong> — the pain receptor of AGI. Who will say "no"?<br>
+  <strong>Aspira</strong> — the pain receptor of AGI. Who will say "no"?<br>
   <sub>MIT License · Copyright (c) 2026</sub>
 </p>
 

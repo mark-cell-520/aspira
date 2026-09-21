@@ -1,11 +1,11 @@
 /**
- * src/shield/error-taxonomy.js — 心虫错误分类学（Error Taxonomy）
+ * src/shield/error-taxonomy.js — 新愿错误分类学（Error Taxonomy）
  *
  * 借鉴自 Hermes Agent FailoverReason 枚举（agent/error_classifier.py）：
  * 把 API/系统/认知错误细分为 25+ 类，每类映射明确的恢复策略，
  * 让"为什么失败"→"该怎么恢复"变成可判别的规则，而非笼统重试。
  *
- * 心虫身份对齐：AGI 第1层辨别者。错误分类是判别能力本身——
+ * 新愿身份对齐：AGI 第1层辨别者。错误分类是判别能力本身——
  * 把失败分对类，才能判别恢复动作。不生成，只判别。
  *
  * 结构：
@@ -17,7 +17,7 @@
 
 'use strict';
 
-// ─── 错误分类枚举（借鉴 Hermes FailoverReason，改造为心虫判别风格）───
+// ─── 错误分类枚举（借鉴 Hermes FailoverReason，改造为新愿判别风格）───
 
 const TAXONOMY = {
   // ── 认证/授权 ──────────────────────────────
@@ -178,7 +178,7 @@ const TAXONOMY = {
     patterns: ['invalid content', 'replay', '内容无效', 'corrupt', 'Unexpected token'],
   },
 
-  // ── 认知错误（心虫专属，借鉴自 error-memory.js CATEGORIES）───
+  // ── 认知错误（新愿专属，借鉴自 error-memory.js CATEGORIES）───
   overconfidence: {
     code: 'overconfidence',
     label: '过度自信',

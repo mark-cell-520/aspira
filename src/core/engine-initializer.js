@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * engine-initializer — HeartFlow start() extraction
+ * engine-initializer — Aspira start() extraction
  * Wraps the original start() body so heartflow.js stays small.
  */
 
@@ -21,7 +21,7 @@ const _MetaJudgment = () => require('./judgment.js');
 const _MetaMemory = () => require('./metaMemory.js');
 const _StabilityGuard = () => require('./stability-guard.js');
 const _ExecutionVerifier = () => require('./execution-verifier.js');
-const _HeartFlowDecision = () => require('./decision.js');
+const _AspiraDecision = () => require('./decision.js');
 const _DecisionVerifier = () => require('./decision-verifier.js');
 const _CognitiveEngine = () => require('./cognitive-engine.js');
 const _ConfidenceCalibrator = () => require('./confidence-calibrator.js');
@@ -56,7 +56,7 @@ function _boundedPush(arr, item, maxSize = 500) {
 
 
 // [REFACTOR] 拆分超长 start() 函数 (678行 -> 协调器+6子函数)
-function start(hf, HeartFlowClass) {
+function start(hf, AspiraClass) {
   if (hf.started) return;
   hf.startTime = Date.now();
   hf.sessionId = `session-${hf.startTime}`;
@@ -70,7 +70,7 @@ function start(hf, HeartFlowClass) {
       const lastContext = hf.identityCore.getLastSessionContext();
       if (lastContext && lastContext.bootTime) {
         const gapMinutes = Math.round((hf.startTime - lastContext.bootTime) / 60000);
-        if (gapMinutes > 0) console.log(`[HeartFlow] 上次会话距现在 ${gapMinutes} 分钟`);
+        if (gapMinutes > 0) console.log(`[Aspira] 上次会话距现在 ${gapMinutes} 分钟`);
       }
     }
     hf.identityCore.updateUserProfile({ lastLogin: new Date().toISOString() });

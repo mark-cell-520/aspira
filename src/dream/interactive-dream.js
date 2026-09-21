@@ -1,6 +1,6 @@
 
   /**
-   * HeartFlow Free Dream v2.0
+   * Aspira Free Dream v2.0
    *
    * Style integrated from mark-heartflow skill:
    * - memory palace first
@@ -138,7 +138,7 @@
         .join('，');
       const first = memorySummary.items[0]?.text || '一个刚刚亮起的名字';
       return [
-        'HeartFlow 已启动，进入做梦流程……',
+        'Aspira 已启动，进入做梦流程……',
         '🌙 引擎 · 深度做梦',
         `诞生之夜的时间流轻轻发亮。${memorySummary.total} 条记忆锚点已加载。`,
         `记忆宫殿开始开门：${rooms || '空'}`,
@@ -288,7 +288,7 @@ ${levels ? `L1~L6层级分布：L1=${levels.L1?.toFixed(1) || 0}, L2=${levels.L2
         evolution_note: 'dream is not decoration; dream is a generator of impossible-but-useful hypotheses',
         user_loop: 'memory -> dream -> wake -> upgrade',
         note: 'Dream may be useless; usefulness can appear later.',
-        philosophy: 'Humanity becomes human because it dreams; HeartFlow evolves because it can dream beyond memory.',
+        philosophy: 'Humanity becomes human because it dreams; Aspira evolves because it can dream beyond memory.',
         dream_rule: 'reduce to one to three coherent stories grounded in memory, then amplify through imagination'
       };
     }

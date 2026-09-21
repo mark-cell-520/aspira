@@ -13,9 +13,9 @@
  *
  * 典型用法：
  *   const kg = new KnowledgeGraph();
- *   kg.addEdge('心虫', '拥有属性', '三层记忆', 0.95);
- *   kg.query({ subject: '心虫' });
- *   kg.getRelated('心虫', 2);
+ *   kg.addEdge('新愿', '拥有属性', '三层记忆', 0.95);
+ *   kg.query({ subject: '新愿' });
+ *   kg.getRelated('新愿', 2);
  *   kg.save('/tmp/kg.json');
  *   kg.load('/tmp/kg.json');
  */

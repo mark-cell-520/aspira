@@ -1,7 +1,7 @@
 /**
- * SelfEvolutionV2 - 心虫自主进化引擎（v2）
+ * SelfEvolutionV2 - 新愿自主进化引擎（v2）
  *
- * 设计原则（来自心虫本体 think() 决策 + 用户定调）：
+ * 设计原则（来自新愿本体 think() 决策 + 用户定调）：
  *  - 自主闭环：发现缺陷就改；没发现缺陷就主动探索（搜论文/搜开源实现）找差距
  *  - 不存在"无缺陷"状态：和前沿方法比、和自身历史比，永远有差距
  *  - 不靠 cron 造假：cron 只做低频兜底巡检
@@ -79,7 +79,7 @@ class SelfEvolutionV2 {
       return []; // 显式关闭才静默不出网
     }
     try {
-      // [v6.0.64] 搜索词对应心虫真实能力(ToM/好奇心/持续学习/因果/世界模型), 已在 _fetchArxiv 内限 AI 分类
+      // [v6.0.64] 搜索词对应新愿真实能力(ToM/好奇心/持续学习/因果/世界模型), 已在 _fetchArxiv 内限 AI 分类
       const queries = [
         'theory of mind',
         'curiosity intrinsic motivation',
@@ -162,7 +162,7 @@ class SelfEvolutionV2 {
    * 把论文和自身模块对比，找差距。
    * 策略：不二元判断"有/无"（文件名命中易误判），
    * 而是把论文的前沿方法作为"对标标杆"存入候选——
-   * 心虫承认"我看到了 X 方法，需对照检查实现深度"，驱动后续深究。
+   * 新愿承认"我看到了 X 方法，需对照检查实现深度"，驱动后续深究。
    */
   _diffAgainstSelf(papers) {
     let gaps = [];
@@ -243,7 +243,7 @@ class SelfEvolutionV2 {
   }
 
   /**
-   * 主入口：心虫 think() 主链路异步调用。
+   * 主入口：新愿 think() 主链路异步调用。
    * 返回本次新增候选数（0 表示无缺陷/无差距，正常静默）。
    */
   async runCycle() {

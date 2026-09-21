@@ -11,7 +11,7 @@
 'use strict';
 const { chat } = require('./llm-client.js');
 
-// 心虫任务类型枚举（与 thought-chain 对齐）
+// 新愿任务类型枚举（与 thought-chain 对齐）
 const TASK_TYPES = ['general', 'calculation', 'judgment', 'creative', 'debate', 'reflection', 'emotion', 'memory'];
 
 /**

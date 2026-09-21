@@ -2,7 +2,7 @@
  * Formula Engine — 公式引擎主模块
  * 
  * 功能: 整合公式搜索、计算、推导功能
- * 集成: 可作为 HeartFlow 的认知模块使用
+ * 集成: 可作为 Aspira 的认知模块使用
  */
 
 const { FormulaSearch } = require('./formula-search.js');

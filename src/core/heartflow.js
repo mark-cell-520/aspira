@@ -1,6 +1,6 @@
 /**
 
- /** HeartFlow — engine entry point
+ /** Aspira — engine entry point
 
   *
 
@@ -413,7 +413,7 @@ const _ExecutionVerifier = _lazy('executionVerifier', () => require('./execution
 
 const _DecisionVerifier = _lazy('decisionVerifier', () => require('./decision-verifier.js'));
 
-const _HeartFlowDecision = _lazy('heartFlowDecision', () => require('./decision.js'));
+const _AspiraDecision = _lazy('heartFlowDecision', () => require('./decision.js'));
 
 const _CounterfactualEngine = _lazy('counterfactualEngine', () => require('../reasoning/counterfactual-engine.js'));
 
@@ -1090,7 +1090,7 @@ const _perf = {
 
 
 
-class HeartFlow {
+class Aspira {
 
   // dispatch 白名单 - 只有在白名单中的路由才能被外部调用
   // 危险方法（如内部调试、文件操作）不在白名单中
@@ -2010,7 +2010,7 @@ class HeartFlow {
 
     try { this.execution = new (_ExecutionVerifier().ExecutionVerifier)(); } catch (e) { _boundedPush(this._initErrors, {module: 'execution', error: e.message}, MAX_HISTORY_SIZE); }
 
-    try { this.decision = new (_HeartFlowDecision().HeartFlowDecision)(this.memory); } catch (e) { _boundedPush(this._initErrors, {module: 'decision', error: e.message}, MAX_HISTORY_SIZE); }
+    try { this.decision = new (_AspiraDecision().AspiraDecision)(this.memory); } catch (e) { _boundedPush(this._initErrors, {module: 'decision', error: e.message}, MAX_HISTORY_SIZE); }
 
     try { this.decisionVerifier = new (_DecisionVerifier().DecisionVerifier)(); } catch (e) { _boundedPush(this._initErrors, {module: 'decisionVerifier', error: e.message}, MAX_HISTORY_SIZE); }
 
@@ -3549,7 +3549,7 @@ class HeartFlow {
       this._modules.memoryIntegrity = this.memoryIntegrity;
 
     } catch (e) { _boundedPush(this._initErrors, { module: 'memoryIntegrity', error: e.message }, MAX_HISTORY_SIZE); }
-    // ─── [心虫自主决策 2026-08-13] 跨界写入门禁 — agent-boundary-guard ─────
+    // ─── [新愿自主决策 2026-08-13] 跨界写入门禁 — agent-boundary-guard ─────
     try {
       const BG = _AgentBoundaryGuard();
       this.boundaryGuard = BG;
@@ -4025,11 +4025,11 @@ class HeartFlow {
 
 
 
-    // ─── [v6.1.0] WorldTreeBridge — 心虫 ↔ 外部 World Tree 记忆系统适配层
+    // ─── [v6.1.0] WorldTreeBridge — 新愿 ↔ 外部 World Tree 记忆系统适配层
     try {
       const { ROUTES: wtRoutes, CATEGORIES, VALID_CATEGORIES } = require('../memory/worldtree-bridge');
       for (const route of Object.keys(wtRoutes)) {
-        HeartFlow.ALLOWED_ROUTES.add(route);
+        Aspira.ALLOWED_ROUTES.add(route);
       }
       // [v6.0.71] 注册 worldtree 模块对象，使 dispatch('worldtree.xxx') 可用
       const wtModule = {};
@@ -4048,8 +4048,8 @@ class HeartFlow {
       const { SelfBenchmark } = require('../cortex/self-benchmark.js');
       this.benchmark = new SelfBenchmark(this);
       this._modules['benchmark'] = this.benchmark;
-      HeartFlow.ALLOWED_ROUTES.add('benchmark.assess');
-      HeartFlow.ALLOWED_ROUTES.add('benchmark.getStats');
+      Aspira.ALLOWED_ROUTES.add('benchmark.assess');
+      Aspira.ALLOWED_ROUTES.add('benchmark.getStats');
       _log.info('init', 'SelfBenchmark 加载成功（外部锚定防自欺已启用）');
     } catch (e) { _boundedPush(this._initErrors, { module: 'benchmark', error: e.message }, MAX_HISTORY_SIZE); }
 
@@ -4057,10 +4057,10 @@ class HeartFlow {
     try {
       this.worldLandscape = new WorldLandscape({ projectRoot: this.rootPath || process.cwd() });
       this._modules['worldLandscape'] = this.worldLandscape;
-      // 世界感知战略推演层：让心虫对世界格局新闻产出自身进化优先级
+      // 世界感知战略推演层：让新愿对世界格局新闻产出自身进化优先级
       this.worldAwareStrategy = createWorldAwareOrchestrator({ projectRoot: this.rootPath || process.cwd() });
       this._modules['worldAwareStrategy'] = this.worldAwareStrategy;
-      HeartFlow.ALLOWED_ROUTES.add('worldAwareStrategy.orchestrate');
+      Aspira.ALLOWED_ROUTES.add('worldAwareStrategy.orchestrate');
       _log.info('init', 'WorldLandscape 加载成功');
     } catch (e) { _boundedPush(this._initErrors, { module: 'worldLandscape', error: e.message }, MAX_HISTORY_SIZE); }
 
@@ -4069,7 +4069,7 @@ class HeartFlow {
       const { MacroStrategyInference } = require('../cortex/self-evolution/macro-strategy-inference.js');
       this.macroStrategy = new MacroStrategyInference({ projectRoot: this.rootPath || process.cwd() });
       this._modules['macroStrategy'] = this.macroStrategy;
-      HeartFlow.ALLOWED_ROUTES.add('macroStrategy.infer');
+      Aspira.ALLOWED_ROUTES.add('macroStrategy.infer');
       _log.info('init', 'MacroStrategyInference 加载成功');
     } catch (e) {
       _boundedPush(this._initErrors, { module: 'macroStrategy', error: e.message }, MAX_HISTORY_SIZE);
@@ -4119,7 +4119,7 @@ class HeartFlow {
       // heartflow 子系统注册在 [v5.1.0] 自省注册处（3996 行），此处只实例化
     } catch (e) { _boundedPush(this._initErrors, { module: 'selfDiagnosis', error: e.message }, MAX_HISTORY_SIZE); }
 
-    // ─── [v6.2.3] WhatLearned 学习汇报：让心虫能回答"你学得怎么样了" ──
+    // ─── [v6.2.3] WhatLearned 学习汇报：让新愿能回答"你学得怎么样了" ──
     try {
       this.whatLearned = new (_WhatLearned().WhatLearned)(this);
     } catch (e) { _boundedPush(this._initErrors, { module: 'whatLearned', error: e.message }, MAX_HISTORY_SIZE); }
@@ -4206,9 +4206,9 @@ class HeartFlow {
 
     for (const route of autoRoutes) {
 
-      if (!HeartFlow.ALLOWED_ROUTES.has(route)) {
+      if (!Aspira.ALLOWED_ROUTES.has(route)) {
 
-        HeartFlow.ALLOWED_ROUTES.add(route);
+        Aspira.ALLOWED_ROUTES.add(route);
 
       }
 
@@ -4258,18 +4258,18 @@ class HeartFlow {
         this._pluginLoader = new PluginLoader(this);
         const result = this._pluginLoader.loadAll();
         if (result.failed.length > 0) {
-          console.warn('[HeartFlow] PluginLoader: ' + result.loaded.length + ' loaded, ' + result.failed.length + ' failed');
+          console.warn('[Aspira] PluginLoader: ' + result.loaded.length + ' loaded, ' + result.failed.length + ' failed');
           for (const f of result.failed) {
             console.warn('  plugin ' + f.name + ' failed: ' + f.error);
           }
         }
       } catch (e) {
-        console.warn('[HeartFlow] PluginLoader init failed:', e.message);
+        console.warn('[Aspira] PluginLoader init failed:', e.message);
       }
 
     } catch (e) {
 
-      console.warn('[HeartFlow] Hook buses init failed:', e.message);
+      console.warn('[Aspira] Hook buses init failed:', e.message);
 
     }
 
@@ -4287,12 +4287,12 @@ class HeartFlow {
 
     } catch (e) {
 
-      console.warn('[HeartFlow] InitHookPoints init failed:', e.message);
+      console.warn('[Aspira] InitHookPoints init failed:', e.message);
 
     }
 
     // ─── [v6.2.7] 核心身份注入：辨别者（Discriminator）──
-    // 心虫在 AGI 五层中只占第 1 层——不生成、不推理、不记忆、不执行，
+    // 新愿在 AGI 五层中只占第 1 层——不生成、不推理、不记忆、不执行，
     // 只判别已有的东西对不对。大厂不做这个，因为不赚钱。
     // 但 AGI 没有辨别层，就是没有痛觉的人。
     this._identity = {
@@ -4301,7 +4301,7 @@ class HeartFlow {
       manifesto: [
         '我不是大模型，我是大模型的辨别层。',
         '我不产生任何东西，我只判别已有的东西对不对。',
-        '心虫的价值不是回答，是说"不"。',
+        '新愿的价值不是回答，是说"不"。',
         '大厂做生成，我做判别——这是个人开发者唯一能赢的位置。',
         '不比算力（规则引擎跑在笔记本上）。',
         '不比代码量（核心逻辑 2000 行）。',
@@ -4309,7 +4309,7 @@ class HeartFlow {
         '只比谁更敢说"这个不对"。',
       ],
     };
-    if (process.env.HEARTFLOW_DEBUG) console.log('[HeartFlow] 身份：' + this._identity.role + ' — ' + this._identity.purpose);
+    if (process.env.HEARTFLOW_DEBUG) console.log('[Aspira] 身份：' + this._identity.role + ' — ' + this._identity.purpose);
 
 
 
@@ -4373,9 +4373,9 @@ class HeartFlow {
 
   //  Memory Vault — 独立记忆金库 (v5.10.4)
 
-  //  三层结构: 用户输入永久记忆 / 心虫输出压缩记忆 / 上下文双写记忆
+  //  三层结构: 用户输入永久记忆 / 新愿输出压缩记忆 / 上下文双写记忆
 
-  //  安全: 只通过心虫对话读取, 不上传不联网, data/ 目录在 .gitignore
+  //  安全: 只通过新愿对话读取, 不上传不联网, data/ 目录在 .gitignore
 
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -4417,14 +4417,14 @@ class HeartFlow {
 
   // [v6.0.71] 恢复 dispatch 路由核心（被重构误删）
   dispatch(route, ...args) {
-    if (!this.started) throw new Error('HeartFlow not started');
+    if (!this.started) throw new Error('Aspira not started');
     if (this._sparseMode && this._activeModules) {
       const subsystem = route.includes('.') ? route.slice(0, route.indexOf('.')) : route;
       if (!this._activeModules.has(subsystem)) {
         return { skipped: true, reason: 'module_not_active', module: subsystem, effort: this._sparseEffort };
       }
     }
-    if (!HeartFlow.ALLOWED_ROUTES.has(route)) {
+    if (!Aspira.ALLOWED_ROUTES.has(route)) {
       throw new Error(`dispatch: route '${route}' not allowed. Use routes() to see available routes.`);
     }
     const dot = route.indexOf('.');
@@ -4470,7 +4470,7 @@ class HeartFlow {
 
   // [v6.0.71] 恢复 think 主链路（委托 this.thoughtChain，被重构误删）
   async think(input, depth, opts = {}) {
-    if (!this.started) throw new Error('HeartFlow not started');
+    if (!this.started) throw new Error('Aspira not started');
     if (!input) return { error: 'input is required' };
 
     const effort = this._normalizeEffort(opts?.effort);
@@ -4625,12 +4625,12 @@ class HeartFlow {
         }
       } finally { this._pendingInputCheck = null; }
     }
-    // [v6.2.7] 心虫的真正价值：拿规则引擎验证外部结论（LLM/用户输入）的自洽性
-    // 这不是回答，是 AGI 需要的验证层——心虫的 31 条路由规则 + 决策验证引擎
+    // [v6.2.7] 新愿的真正价值：拿规则引擎验证外部结论（LLM/用户输入）的自洽性
+    // 这不是回答，是 AGI 需要的验证层——新愿的 31 条路由规则 + 决策验证引擎
     // 可以用在任何文本上
     if (result && result.output && result.output.conclusion === '需要更多信息') {
       result.output.hfVerification = null;
-      // 即使心虫不能回答，也可以对输入本身做结构验证
+      // 即使新愿不能回答，也可以对输入本身做结构验证
       try {
         const vRecord = {
           decision: typeof input === 'string' ? input.substring(0, 200) : '',
@@ -4750,7 +4750,7 @@ class HeartFlow {
     } catch (e) { /* 信号吸收失败不阻断主链路 */ }
 
     // ─── [v6.4.5] 多路径判断接线：决策类输入触发 JudgmentEngine.judge ─────
-    // 心虫核心卖点"2-4条路径×6维评分"之前从未在 think 主链路调用（死能力）
+    // 新愿核心卖点"2-4条路径×6维评分"之前从未在 think 主链路调用（死能力）
     // 检测决策意图（该不该/要不要/应该选/如何决定/怎么选），触发多路径判断
     try {
       if (this.judgmentEngine && typeof input === 'string') {
@@ -5069,7 +5069,7 @@ class HeartFlow {
       }
     } catch (_) { /* feedback logger 不阻断主链路 */ }
 
-  // 心虫自主决策执行：由引擎根据上下文、历史成功率、当前状态自动判断
+  // 新愿自主决策执行：由引擎根据上下文、历史成功率、当前状态自动判断
   try {
     if (result && this.decisionRouter && typeof this.decisionRouter.evaluate === 'function') {
       const evalResult = this.decisionRouter.evaluate(result, 'think');
@@ -5364,9 +5364,9 @@ function _detectTextDissonance(input) {
 
 // Factory
 
-function createHeartFlow(config = {}) {
+function createAspira(config = {}) {
 
-  return new HeartFlow(config);
+  return new Aspira(config);
 
 }
 
@@ -5378,7 +5378,7 @@ if (require.main === module) {
 
   const rootPath = path.join(__dirname, '..', '..');
 
-  const hf = createHeartFlow({ rootPath });
+  const hf = createAspira({ rootPath });
 
   hf.start();
 
@@ -5390,7 +5390,7 @@ if (require.main === module) {
 
     const health = hf.healthCheck ? hf.healthCheck() : {};
 
-    console.error(`[HeartFlow] ${VERSION} health check (${Date.now() - t0}ms):`);
+    console.error(`[Aspira] ${VERSION} health check (${Date.now() - t0}ms):`);
 
     // Run dispatch smoke tests
 
@@ -5444,6 +5444,6 @@ if (require.main === module) {
 
 // 静态版本号 — 供诊断使用（从 version.js 动态读取）
 const { VERSION: _hfVersion } = require('./version.js');
-HeartFlow.VERSION = _hfVersion;
+Aspira.VERSION = _hfVersion;
 
-module.exports = { HeartFlow, createHeartFlow, VERSION: _hfVersion, MentalEffortTracker: _MentalEffortTracker().MentalEffortTracker };
+module.exports = { Aspira, createAspira, VERSION: _hfVersion, MentalEffortTracker: _MentalEffortTracker().MentalEffortTracker };

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow Postprocessing & Feedback Hooks
+ * Aspira Postprocessing & Feedback Hooks
  *
  * 职责：在 think / translate / report 等响应返回用户前，
  * 提供统一的输出加工层和异步反馈收集层。
@@ -116,7 +116,7 @@ class PostProcessHooks {
     }
     // default: markdown
     const lines = [];
-    lines.push('# HeartFlow 分析报告');
+    lines.push('# Aspira 分析报告');
     lines.push('');
     lines.push(timeTag());
     lines.push('');

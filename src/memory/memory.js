@@ -9,7 +9,7 @@
  * Legacy references (SKILL.md, CHANGELOG.md) are informational only.
  * 
  * Original description:
- * HeartFlow Memory — Ebbinghaus + AES-256-GCM 三层记忆系统
+ * Aspira Memory — Ebbinghaus + AES-256-GCM 三层记忆系统
  * 整合来源（SKILL.md lines 348-540）：
  *   mark-StillWater/src/core/memory.js — Dirty Flag + Ebbinghaus + Atomic Write
  * 

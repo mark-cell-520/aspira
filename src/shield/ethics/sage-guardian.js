@@ -8,7 +8,7 @@ const path = require('path');
 const { safeWriteFileSync, safeAppendFileSync } = require('../../utils/safe-fs.js');
 
 const CONSTITUTION = `
-# HeartFlow AI 宪法
+# Aspira AI 宪法
 
 ## 核心原则
 

@@ -1,5 +1,5 @@
 /**
- * formula-safe.js — HeartFlow 公式库安全包装器
+ * formula-safe.js — Aspira 公式库安全包装器
  *
  * 原则：
  *  1. 只替换真正有增益的位置

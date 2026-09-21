@@ -1,6 +1,6 @@
 /**
 
- * HeartFlow Boot Check v1.1.0
+ * Aspira Boot Check v1.1.0
 
  * 启动自检：验证核心文件 + 版本一致 + 身份锚点 + 运行时健康评分 + 修复建议
 
@@ -178,7 +178,7 @@ const CORE_CHECKS = [
 
     path: path.join(ROOT, 'CORE_IDENTITY.md'),
 
-    verify: (c) => c.includes('HeartFlow') && c.includes('引擎'),
+    verify: (c) => c.includes('Aspira') && c.includes('引擎'),
 
     required: true,
 

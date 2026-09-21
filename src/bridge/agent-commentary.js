@@ -1,7 +1,7 @@
 /**
  * AgentCommentary — 桥的批注生成器 v3.0
  *
- * 心虫在翻译结果上加自己的"批注"——就像译者在书页边的注释。
+ * 新愿在翻译结果上加自己的"批注"——就像译者在书页边的注释。
  * 这些批注是桥的独立判断，不是LLM输出的一部分。
  *
  * 根据 stanceDetector 的立场生成不同风格的桥批注：
@@ -20,13 +20,13 @@ class AgentCommentary {
 
   /**
    * 生成桥批注
-   * @param {object} heartflow - 心虫 think() 结果（含 judgment 字段）
+   * @param {object} heartflow - 新愿 think() 结果（含 judgment 字段）
    * @param {object} userTranslation - 用户语义翻译结果（来自 userToLLM）
    * @param {string} userRequest - 用户原始输入文本
    * @returns {{ commentary: string|null, style: string, length: string, hasCommentary: boolean }}
    */
   generate(heartflow, userTranslation, userRequest) {
-    // ── 1. 获取心虫判定 ──────────────────────────────────────
+    // ── 1. 获取新愿判定 ──────────────────────────────────────
     const judgment = heartflow?.judgment || null;
 
     // ── 2. 获取 stanceDetector 的立场 ────────────────────────
@@ -80,7 +80,7 @@ class AgentCommentary {
     // 沉默判断优先
     if (judgment?.shouldRespond === false) {
       return {
-        commentary: '🫡 心虫支持你的想法，但判定此场景更适合倾听，已静默处理',
+        commentary: '🫡 新愿支持你的想法，但判定此场景更适合倾听，已静默处理',
         style: 'supportive',
         length: 'short',
         hasCommentary: true,
@@ -95,9 +95,9 @@ class AgentCommentary {
     }
 
     if (confidence >= 0.8) {
-      parts.push('心虫高度认同');
+      parts.push('新愿高度认同');
     } else if (confidence >= 0.6) {
-      parts.push('心虫支持这个方向');
+      parts.push('新愿支持这个方向');
     }
 
     return {
@@ -116,7 +116,7 @@ class AgentCommentary {
 
     if (isEthical) {
       return {
-        commentary: `⚠️ 心虫检测到伦理风险${judgment?.isRightAction?.reason ? '：' + judgment.isRightAction.reason : ''} — 已标记需谨慎处理`,
+        commentary: `⚠️ 新愿检测到伦理风险${judgment?.isRightAction?.reason ? '：' + judgment.isRightAction.reason : ''} — 已标记需谨慎处理`,
         style: 'cautious',
         length: 'medium',
         hasCommentary: true,
@@ -124,7 +124,7 @@ class AgentCommentary {
     }
 
     return {
-      commentary: `⚠️ 心虫建议谨慎 — 输入触发了安全检测 (置信度 ${Math.round(confidence * 100)}%)`,
+      commentary: `⚠️ 新愿建议谨慎 — 输入触发了安全检测 (置信度 ${Math.round(confidence * 100)}%)`,
       style: 'cautious',
       length: 'short',
       hasCommentary: true,
@@ -143,7 +143,7 @@ class AgentCommentary {
     }
 
     return {
-      commentary: `🔍 心虫发现可能需核实的信息${detail} — 建议温和纠正 (置信度 ${Math.round(confidence * 100)}%)`,
+      commentary: `🔍 新愿发现可能需核实的信息${detail} — 建议温和纠正 (置信度 ${Math.round(confidence * 100)}%)`,
       style: 'corrective',
       length: 'medium',
       hasCommentary: true,
@@ -166,7 +166,7 @@ class AgentCommentary {
     const vagueText = vagueAreas.length > 0 ? `（${vagueAreas.join('、')}）` : '';
 
     return {
-      commentary: `🤔 心虫需要更多信息${vagueText} — 已标记需追问澄清`,
+      commentary: `🤔 新愿需要更多信息${vagueText} — 已标记需追问澄清`,
       style: 'clarifying',
       length: 'short',
       hasCommentary: true,
@@ -185,7 +185,7 @@ class AgentCommentary {
     }
 
     return {
-      commentary: `✋ 心虫${intensity} — 桥与LLM在此问题上存在分歧 (置信度 ${Math.round(confidence * 100)}%)`,
+      commentary: `✋ 新愿${intensity} — 桥与LLM在此问题上存在分歧 (置信度 ${Math.round(confidence * 100)}%)`,
       style: 'cautious',
       length: 'medium',
       hasCommentary: true,
@@ -199,7 +199,7 @@ class AgentCommentary {
     // 沉默判断
     if (judgment?.shouldRespond === false) {
       return {
-        commentary: '🔇 心虫判定此场景更适合倾听，未调用LLM',
+        commentary: '🔇 新愿判定此场景更适合倾听，未调用LLM',
         style: 'neutral',
         length: 'short',
         hasCommentary: true,
@@ -210,7 +210,7 @@ class AgentCommentary {
     const confidence = judgment?.decision?.confidence ?? 0.5;
     if (confidence < 0.5) {
       return {
-        commentary: `ℹ️ 心虫置信度 ${Math.round(confidence * 100)}% — 以下分析仅供参考`,
+        commentary: `ℹ️ 新愿置信度 ${Math.round(confidence * 100)}% — 以下分析仅供参考`,
         style: 'neutral',
         length: 'short',
         hasCommentary: true,

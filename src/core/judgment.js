@@ -1,5 +1,5 @@
 /**
- * HeartFlow MetaJudgment v1.0.0
+ * Aspira MetaJudgment v1.0.0
  * 
  * The ability to judge the quality of its own judgments.
  * Assesses reasoning soundness, evidence quality, assumption validity,

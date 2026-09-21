@@ -1,5 +1,5 @@
 /**
- * inference-chain - HeartFlow 模块
+ * inference-chain - Aspira 模块
  * 自动生成的 stub 实现
  */
 

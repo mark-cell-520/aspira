@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * HeartFlow Config Change Hooks
+ * Aspira Config Change Hooks
  *
  * Provides lifecycle hooks for configuration mutations:
  *   config.validate   — before applying a change; can reject
@@ -23,16 +23,16 @@
  *   await hooks.set('features.dreamEngine', true);
  */
 
-const { HeartFlowConfig, DEFAULTS } = require('./config');
+const { AspiraConfig, DEFAULTS } = require('./config');
 
 class ConfigHooks {
   /**
-   * @param {HeartFlowConfig} configInstance
+   * @param {AspiraConfig} configInstance
    * @param {{ maxSnapshots?: number, enabled?: boolean }} options
    */
   constructor(configInstance, options = {}) {
-    if (!(configInstance instanceof HeartFlowConfig)) {
-      throw new TypeError('[ConfigHooks] expected HeartFlowConfig instance');
+    if (!(configInstance instanceof AspiraConfig)) {
+      throw new TypeError('[ConfigHooks] expected AspiraConfig instance');
     }
 
     this._config = configInstance;

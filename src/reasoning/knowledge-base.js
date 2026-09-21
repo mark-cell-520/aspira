@@ -1,5 +1,5 @@
 /**
- * knowledge-base - HeartFlow 模块
+ * knowledge-base - Aspira 模块
  * 自动生成的 stub 实现
  */
 

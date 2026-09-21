@@ -2,7 +2,7 @@
 
 /**
 
- * engineMemory — HeartFlow 记忆子系统
+ * engineMemory — Aspira 记忆子系统
 
  * 从 heartflow.js 提取的独立模块 (v6.0.1)
 
@@ -51,7 +51,7 @@ function _checkMemoryEnabled(hf) {
 
     debugLog.info('memory_vault', 'enabled', {msg: '记忆金库已启用。所有对话将保存在本地 data/memories/'});
 
-    debugLog.info('memory_vault', 'privacy', {msg: '数据不上传、不联网，只通过心虫对话读取'});
+    debugLog.info('memory_vault', 'privacy', {msg: '数据不上传、不联网，只通过新愿对话读取'});
 
     debugLog.info('memory_vault', 'opt_out', {msg: '设置 HEARTFLOW_MEMORY=off 可禁用记忆功能'});
 
@@ -97,7 +97,7 @@ function _initMemoryVault(hf) {
 
           created: new Date().toISOString(),
 
-          warning: 'This directory contains HeartFlow private memories. Read only through HeartFlow API.',
+          warning: 'This directory contains Aspira private memories. Read only through Aspira API.',
 
           security: 'Files are local-only. Never uploaded. Never networked.',
 
@@ -109,7 +109,7 @@ function _initMemoryVault(hf) {
 
     } catch(e) { /* non-critical */ }
 
-    // [v6.4.5 心虫监督修复] 挂载真实记忆引擎（之前只建目录，从未挂 MemoryAdapter → hf._memory 恒 undefined）
+    // [v6.4.5 新愿监督修复] 挂载真实记忆引擎（之前只建目录，从未挂 MemoryAdapter → hf._memory 恒 undefined）
     try {
       const { MemoryAdapter } = require('../memory/memory-adapter.js');
       if (!hf._memory) hf._memory = new MemoryAdapter(hf.rootPath);
@@ -135,11 +135,11 @@ function _shouldRecordUserMemory(hf, input) {
 
       /^test\s*\d*$/i, /^test$/i,
 
-      /^继续$/, /^你好$/, /^你好，心虫$/,
+      /^继续$/, /^你好$/, /^你好，新愿$/,
 
       /^1\+1等于几$/, /^测试核心管线$/,
 
-      /^深度分析/, /^用心虫思考/, /^请心虫自己决策/,
+      /^深度分析/, /^用新愿思考/, /^请新愿自己决策/,
 
       /^记忆诊断/, /^第[一二三四五]条记忆/,
 
@@ -399,7 +399,7 @@ function _archiveUserMemories(hf) {
 
       const lines = content.split('\n').filter(l => l.trim());
 
-      const LIMITS = HeartFlow.MEMORY_LIMITS;
+      const LIMITS = Aspira.MEMORY_LIMITS;
 
 
 
@@ -1028,7 +1028,7 @@ function _saveSelfMemory(hf) {
 
       const filePath = path.join(dir, 'self-memories.jsonl');
 
-      const LIMITS = HeartFlow.MEMORY_LIMITS;
+      const LIMITS = Aspira.MEMORY_LIMITS;
 
 
 
@@ -1198,7 +1198,7 @@ function _compactSelfMemories(hf) {
 
       for (const l of lines) {
 
-        try { parsed.push(JSON.parse(l)); } catch(e) { console.error('[HeartFlow] Memory line parse error:', e.message); }
+        try { parsed.push(JSON.parse(l)); } catch(e) { console.error('[Aspira] Memory line parse error:', e.message); }
 
       }
 
@@ -1258,7 +1258,7 @@ function _updateContextMemory(hf) {
 
       const filePath = path.join(dir, 'context-memory.json');
 
-      const LIMITS = HeartFlow.MEMORY_LIMITS;
+      const LIMITS = Aspira.MEMORY_LIMITS;
 
 
 
@@ -1423,7 +1423,7 @@ function _saveAllMemories(hf) {
 
 
 
-      // 第2层: 心虫自身状态记忆
+      // 第2层: 新愿自身状态记忆
 
       hf._saveSelfMemory(thinkResult);
 
@@ -1513,7 +1513,7 @@ function _restoreLastSession(hf) {
 
 
 
-      // 读取最新一条心虫记忆（向后兼容）
+      // 读取最新一条新愿记忆（向后兼容）
 
       let lastSelfMemory = null;
 
@@ -1577,7 +1577,7 @@ function _restoreLastSession(hf) {
 
         context_entries: ctx?.total || 0,
 
-        hint: '以上是心虫上次关闭前的最后状态和上下文记忆。',
+        hint: '以上是新愿上次关闭前的最后状态和上下文记忆。',
 
       });
 

@@ -132,7 +132,7 @@ class MemoryIndex {
 
         name: '引擎',
 
-        englishName: 'HeartFlow',
+        englishName: 'Aspira',
 
         origin: '2026-04-23 与生物学专家的深度对话',
 

@@ -1,5 +1,5 @@
 // plan-gate.js — 轻量计划门禁（来自 dev-expert Step2）
-// HeartFlow 在进入复杂任务前自动校验计划是否含完整校验/回滚/安全项
+// Aspira 在进入复杂任务前自动校验计划是否含完整校验/回滚/安全项
 
 function checkPlanGate(plan) {
   if (!plan || typeof plan !== 'object') return { pass: false, missing: ['plan object required'], score: 0 };

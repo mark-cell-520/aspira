@@ -1096,7 +1096,7 @@ class TrialityMemory {
 
     const scores = this.memories.map(mem => {
 
-      const content = String(mem.content || '').toLowerCase(); // [v6.4.5 心虫监督] 防御非字符串
+      const content = String(mem.content || '').toLowerCase(); // [v6.4.5 新愿监督] 防御非字符串
 
       let score = 0;
 

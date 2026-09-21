@@ -1,5 +1,5 @@
 /**
- * HeartFlow Memory Graph — 关系图谱 + 传播激活搜索
+ * Aspira Memory Graph — 关系图谱 + 传播激活搜索
  * 
  * 整合来源：
  *   - agentmemory graph relations

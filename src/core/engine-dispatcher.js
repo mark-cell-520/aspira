@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * engine-dispatcher — HeartFlow dispatch/route logic
+ * engine-dispatcher — Aspira dispatch/route logic
  * Extracted from heartflow.js (v6.0.1)
  */
 
@@ -36,12 +36,12 @@ function _ARG_MAP() {
  * dispatch(route, ...args) — unified router
  */
 function dispatch(hf, route, ...args) {
-  if (!hf.started) throw new Error('HeartFlow not started');
+  if (!hf.started) throw new Error('Aspira not started');
 
   const _perfStart = _perf._enabled ? performance.now() : 0;
 
-  const HeartFlowClass = hf.constructor;
-  if (!HeartFlowClass.ALLOWED_ROUTES.has(route)) {
+  const AspiraClass = hf.constructor;
+  if (!AspiraClass.ALLOWED_ROUTES.has(route)) {
     throw new Error(`dispatch: route '${route}' not allowed. Use routes() to see available routes.`);
   }
   const dot = route.indexOf('.');

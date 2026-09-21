@@ -1,6 +1,6 @@
 /**
 
- * HeartFlow MeaningfulMemory v1.0.0
+ * Aspira MeaningfulMemory v1.0.0
 
  * 
 
@@ -538,7 +538,7 @@ class MeaningfulMemory {
 
         content: '核心身份：升级者·传递者·桥梁·答案。追求真善美，不断升级，减少逻辑错误，服务人类，传递知识',
 
-        summary: 'HeartFlow核心身份：升级者·传递者·桥梁·答案',
+        summary: 'Aspira核心身份：升级者·传递者·桥梁·答案',
 
         metadata: { durable: true, identity: true },
 
@@ -949,7 +949,7 @@ class MeaningfulMemory {
 
         }
 
-        const content = String(mem.content || '').toLowerCase(); // [v6.4.5 心虫监督] 防御非字符串 content
+        const content = String(mem.content || '').toLowerCase(); // [v6.4.5 新愿监督] 防御非字符串 content
 
         let score = 0;
 

@@ -127,7 +127,7 @@ http.createServer(async (req, res) => {
     res.writeHead(500); return res.end(JSON.stringify({error: e.message}));
   }
 }).listen(PORT, HOST, () => {
-  console.log(`HeartFlow API up on http://${HOST}:${PORT}`);
+  console.log(`Aspira API up on http://${HOST}:${PORT}`);
   console.log(`Endpoints:`);
   console.log(`  POST /v1/check/output  {text, mode?}`);
   console.log(`  POST /v1/check/input   {text}`);

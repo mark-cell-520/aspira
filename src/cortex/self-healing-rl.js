@@ -1,6 +1,6 @@
 /**
 
- * HeartFlow HealingMemoryRL v11.6.3
+ * Aspira HealingMemoryRL v11.6.3
 
  * Q-learning based repair strategy memory for self-healing.
 

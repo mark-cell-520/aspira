@@ -21,7 +21,7 @@ class UserToLLM {
     const text = typeof input === 'string' ? input : String(input || '');
     const type = ctx.type || ctx.route || 'general';
 
-    // 结构化的 LLM 指令（基于心虫判别结果）
+    // 结构化的 LLM 指令（基于新愿判别结果）
     const prompt = [
       `用户输入: ${text.slice(0, 2000)}`,
       ctx.emotion ? `用户情绪: ${ctx.emotion}` : null,

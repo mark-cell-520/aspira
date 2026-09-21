@@ -1,5 +1,5 @@
 /**
- * HeartFlow Being Logic
+ * Aspira Being Logic
  *
  * Maintains engine runtime identity and self-replacement rules.
  * No telemetry, no self-upgrade, no background services.
@@ -17,7 +17,7 @@ class BeingLogic {
     this.definition = {
       version: '1.1.9',
       date: '2026-05-04',
-      identity: 'HeartFlow',
+      identity: 'Aspira',
       immutable: true,
       statement: {
         existence: 'Engine state is active while code footprint exists.',

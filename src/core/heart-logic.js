@@ -2256,7 +2256,7 @@ class HeartLogic {
    *   2. 道德边界：实现这个目标是否会伤害他人或违反伦理？
    *   3. 终局思考："解决了之后呢"——解决后的人生会变成什么样？
    *
-   * 这是升维分析的核心——心虫不能只优化路径，必须先审视目标本身。
+   * 这是升维分析的核心——新愿不能只优化路径，必须先审视目标本身。
    *
    * @param {object} context - { input, whatIsThis, intent, tone, stance, psychology }
    * @returns {{ goalValid: boolean, goalEthical: boolean, postResolution: string|null, detail: string }}

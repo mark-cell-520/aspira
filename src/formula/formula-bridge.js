@@ -1,9 +1,9 @@
 /**
- * Formula Bridge — 心虫认知公式桥接层
+ * Formula Bridge — 新愿认知公式桥接层
  *
- * 目的：把心虫公式库中"与认知目标真正匹配"的公式，在正确的认知环节真正运用起来。
+ * 目的：把新愿公式库中"与认知目标真正匹配"的公式，在正确的认知环节真正运用起来。
  * 不加载完整公式引擎（1979 条，~1.5s），仅实现与认知科学直接相关的少量核心公式。
- * 公式定义引自心虫公式库（formulas/formulas.json）：
+ * 公式定义引自新愿公式库（formulas/formulas.json）：
  *   - ebbinghaus_forgetting_curve:  R = exp(-t / S)
  *   - shannon_entropy:              H = -Σ p(x) * log2(p(x))
  *   - expected_utility:             EU = Σ p_i * u(x_i)
@@ -180,7 +180,7 @@ class FormulaBridge {
 
   // ============================================================
   // 认知公式原语集（供 FormulaRegistry 按认知环节注入业务模块）
-  // 所有公式引自心虫公式库（formula-engine 的 cognitive_science/psychology 分类）
+  // 所有公式引自新愿公式库（formula-engine 的 cognitive_science/psychology 分类）
   // ============================================================
 
    /**
@@ -326,7 +326,7 @@ class FormulaBridge {
    /**
     * 二值交叉熵（对数损失 / Log Loss）：CE = -(y·log(p) + (1-y)·log(1-p))
    * 用于置信度校准——量化"预测概率 p"与"真实标签 y∈{0,1}"的信息论差距。
-   * 公式引自心虫公式库 cross_entropy: H = -Σ p(x)·log q(x)
+   * 公式引自新愿公式库 cross_entropy: H = -Σ p(x)·log q(x)
    * 对过度自信（高 p 但 y=0）惩罚极重，比绝对差更敏感。
    * @param {number} predicted - 预测概率 p ∈ [0,1]
    * @param {number} actual - 真实标签 y ∈ {0,1}

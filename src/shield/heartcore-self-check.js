@@ -1,7 +1,7 @@
 /**
  * heartcore-self-check.js — 核心自检 (v1.0.0)
  *
- * 检查心虫核心模块的健康状态。
+ * 检查新愿核心模块的健康状态。
  * 接口（被 sleep-wake.js 调用）:
  *   selfCheck() → { ok, checks: [...], version }
  */

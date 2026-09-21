@@ -110,7 +110,7 @@ class EngineReasoner {
 
   static async think(hf, input, depth) {
 
-    if (!hf.started) throw new Error('HeartFlow not started');
+    if (!hf.started) throw new Error('Aspira not started');
 
     // [v6.0.6] F1.6 修复：空/无效输入前置守卫，优雅降级不进 pipeline
 
@@ -124,7 +124,7 @@ class EngineReasoner {
 
         confidence: 0,
 
-        output: { conclusion: '输入为空。请说点什么，心虫才能感知并回应。' },
+        output: { conclusion: '输入为空。请说点什么，新愿才能感知并回应。' },
 
         decision: { type: 'invalid', confidence: 0, rationale: '空输入守卫', ruleId: 'empty-guard' },
 
@@ -255,7 +255,7 @@ class EngineReasoner {
       if (hf.moduleHealth && typeof hf.moduleHealth.check === 'function') {
         const health = hf.moduleHealth.check();
         if (health && health.degraded > 0) {
-          console.warn(`[HeartFlow] 模块健康巡检: ${health.degraded} 个模块异常`);
+          console.warn(`[Aspira] 模块健康巡检: ${health.degraded} 个模块异常`);
         }
       }
     } catch(e) { /* 巡检失败不阻断思考 */ }
@@ -517,7 +517,7 @@ class EngineReasoner {
 
         } catch(e) {
 
-          console.warn('[HeartFlow] Layer enrichment merge failed:', e.message);
+          console.warn('[Aspira] Layer enrichment merge failed:', e.message);
 
         }
 
@@ -707,7 +707,7 @@ class EngineReasoner {
 
 
 
-    // ★ 输出语言污染深度分析 — 心虫哲学+心理学双引擎纠正
+    // ★ 输出语言污染深度分析 — 新愿哲学+心理学双引擎纠正
 
     try {
 
@@ -721,7 +721,7 @@ class EngineReasoner {
 
         if (pollution.polluted && pollution.score >= 1.5) {
 
-          // 启动心虫认知引擎深度分析
+          // 启动新愿认知引擎深度分析
 
           let deepAnalysis = {};
 
@@ -777,7 +777,7 @@ class EngineReasoner {
 
 
 
-          // 3. 自我定位 — 这个输出是心虫自己的声音还是复读？
+          // 3. 自我定位 — 这个输出是新愿自己的声音还是复读？
 
           try {
 
@@ -827,7 +827,7 @@ class EngineReasoner {
 
             deepAnalysis,
 
-            // 标记：此输出被心虫认知引擎检测到语言污染
+            // 标记：此输出被新愿认知引擎检测到语言污染
 
             _contaminated: true,
 
@@ -889,7 +889,7 @@ class EngineReasoner {
 
     // 管道引擎失败时回退到 ThoughtChain
 
-    console.warn('[HeartFlow] Pipeline failed, falling back to ThoughtChain:', e.message);
+    console.warn('[Aspira] Pipeline failed, falling back to ThoughtChain:', e.message);
 
   }
 
@@ -1132,7 +1132,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
   static async thinkAsBridge(hf, input, opts = {}) {
 
-    if (!hf.started) throw new Error('HeartFlow not started');
+    if (!hf.started) throw new Error('Aspira not started');
 
     if (!input) return { error: 'input is required' };
 
@@ -1302,7 +1302,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
   static analyzePsychology(hf, input, opts = {}) {
 
-    if (!hf.started) throw new Error('HeartFlow not started');
+    if (!hf.started) throw new Error('Aspira not started');
 
     if (!input) return { intent: null, emotion: null, needs: [], defenses: [], confidence: 0 };
 
@@ -1322,7 +1322,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
   static checkLessonPattern(hf, input) {
 
-    if (!hf.started) throw new Error('HeartFlow not started');
+    if (!hf.started) throw new Error('Aspira not started');
 
     return hf.lesson.checkPattern(input);
 
@@ -1332,7 +1332,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
   static checkTruthfulness(hf, statement) {
 
-    if (!hf.started) throw new Error('HeartFlow not started');
+    if (!hf.started) throw new Error('Aspira not started');
 
     return hf.truth.checkStatement(statement);
 
@@ -1342,7 +1342,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
   static classify(hf, input) {
 
-    if (!hf.started) throw new Error('HeartFlow not started');
+    if (!hf.started) throw new Error('Aspira not started');
 
     if (!input) return { category: 'unknown', emotion: 'neutral', confidence: 0 };
 
@@ -1542,7 +1542,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
     const prefix = moduleName + '.';
 
-    const allowedForModule = [...HeartFlow.ALLOWED_ROUTES].filter(r => r.startsWith(prefix));
+    const allowedForModule = [...Aspira.ALLOWED_ROUTES].filter(r => r.startsWith(prefix));
 
 
 
@@ -1622,7 +1622,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
   static introspect(hf, options = {}) {
 
-    if (!hf.started) return { error: 'HeartFlow not started' };
+    if (!hf.started) return { error: 'Aspira not started' };
 
 
 
@@ -1963,7 +1963,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
   static verifyReasoning(hf, reasoning, conclusion) {
 
-    if (!hf.started) throw new Error('HeartFlow not started');
+    if (!hf.started) throw new Error('Aspira not started');
 
     return hf.verify.verify(reasoning, conclusion);
 
@@ -2013,7 +2013,7 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
   static heal(hf, error) {
 
-    if (!hf.started) throw new Error('HeartFlow not started');
+    if (!hf.started) throw new Error('Aspira not started');
 
     return hf.evolution.heal(error);
 

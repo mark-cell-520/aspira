@@ -7,7 +7,7 @@
  *    核心：与其死磕"让AI全知全能"，不如教它学会说"我不确定"。元认知是破幻觉的全新解法。
  *  - 《The Two-Process Theory of Machine Self-Report》(arXiv)
  *    机器自我报告双过程：persona installation (B维) 与 attribution gating (A维)。
- *    本层只做"诚实标注"，不写 persona 内在生命感，符合心虫"不编造第一人称体验"边界。
+ *    本层只做"诚实标注"，不写 persona 内在生命感，符合新愿"不编造第一人称体验"边界。
  *
  * 职责：把 ConfidenceCalibrator 的内部校准结果，转成**调用方可读的诚实声明**：
  *  - 哪些结论置信度低

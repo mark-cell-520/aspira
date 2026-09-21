@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * HeartFlow Initialization Hook Points
+ * Aspira Initialization Hook Points
  *
  * Provides init.* handlers that run during engine boot:
  *   init.memory    — load ROM/RAM/Working defaults
@@ -98,7 +98,7 @@ class InitHookPoints {
     const state = ctx.state || {};
     state.defaults = state.defaults || {};
     state.defaults.decisionStrategy = state.defaults.decisionStrategy || 'balanced';
-    state.defaults.persona = state.defaults.persona || { name: 'HeartFlow', tone: 'neutral' };
+    state.defaults.persona = state.defaults.persona || { name: 'Aspira', tone: 'neutral' };
     ctx.state = state;
     return ctx;
   }

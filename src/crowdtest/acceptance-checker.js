@@ -1,6 +1,6 @@
 'use strict';
 /**
- * acceptance-checker.js — 六区块机械判定器（心虫判分的抓手）
+ * acceptance-checker.js — 六区块机械判定器（新愿判分的抓手）
  *
  * 设计前提（已实测，见 PROMPT模板.md 附录）：
  *   gate.checkOutput 单独用【分不出】好答案与弱答案（同为 pass/0.91）。

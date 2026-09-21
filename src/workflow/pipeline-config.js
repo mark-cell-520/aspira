@@ -1,7 +1,7 @@
 // [v6.0.71] 从 pipeline.js 提取常量 + 纯函数（零副作用）
 /**
 
- * pipeline.js v1.2.0 — 心虫模块调用流水线引擎
+ * pipeline.js v1.2.0 — 新愿模块调用流水线引擎
 
  *
 
@@ -111,7 +111,7 @@ const DEFAULT_PIPELINE = [
 
     depends: [],
 
-    description: '心虫核心判断引擎：whatIsThis + detectPain',
+    description: '新愿核心判断引擎：whatIsThis + detectPain',
 
     run: async (ctx, hf) => {
 
@@ -1045,7 +1045,7 @@ const FAST_PIPELINE = [
 
     depends: [],
 
-    description: '心虫核心判断引擎：whatIsThis + detectPain',
+    description: '新愿核心判断引擎：whatIsThis + detectPain',
 
     run: async (ctx, hf) => {
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow CLI - 心虫引擎命令行接口
+ * Aspira CLI - 新愿引擎命令行接口
  * 支持 status/help/chat 命令
  */
 const path = require('path');
@@ -13,7 +13,7 @@ while (hfDir !== '/' && !fs.existsSync(path.join(hfDir, 'src/core/heartflow.js')
   hfDir = path.dirname(hfDir);
 }
 if (!fs.existsSync(path.join(hfDir, 'src/core/heartflow.js'))) {
-  console.error(JSON.stringify({ error: 'HeartFlow engine not found' }));
+  console.error(JSON.stringify({ error: 'Aspira engine not found' }));
   process.exit(1);
 }
 
@@ -29,8 +29,8 @@ if (cmd === '--chat') {
 
 // ─── 辅助：获取引擎实例 ────────────────────────────────────
 function createEngine() {
-  const { HeartFlow } = require(path.join(hfDir, 'src/core/heartflow.js'));
-  const engine = new HeartFlow({ dataDir: path.join(hfDir, 'data'), silent: true });
+  const { Aspira } = require(path.join(hfDir, 'src/core/heartflow.js'));
+  const engine = new Aspira({ dataDir: path.join(hfDir, 'data'), silent: true });
   engine.start();
   return engine;
 }
@@ -248,7 +248,7 @@ function formatStatus(engine) {
     }
   } catch (e) { /* skip */ }
 
-  const lines = ['━━━ ⚡ HeartFlow 引擎状态 ━━━'];
+  const lines = ['━━━ ⚡ Aspira 引擎状态 ━━━'];
   lines.push(`  版本: ${version}`);
   lines.push(`  构建日期: ${health.buildDate || '—'}`);
   lines.push(`  会话ID: ${health.sessionId || '—'}`);
@@ -304,7 +304,7 @@ async function chatMode() {
 
   console.log('');
   console.log('╔══════════════════════════════════════════════════════╗');
-  console.log('║        ❤️  HeartFlow 心虫 — 交互式控制台          ║');
+  console.log('║        ❤️  Aspira 新愿 — 交互式控制台          ║');
   console.log('╠══════════════════════════════════════════════════════╣');
   console.log(`║  版本: ${version.padEnd(36)}║`);
   console.log(`║  模块: ${String(moduleCount).padEnd(35)}║`);
@@ -464,8 +464,8 @@ switch (cmd) {
   case 'status': {
     let engine = null;
     try {
-      const { HeartFlow } = require(path.join(hfDir, 'src/core/heartflow.js'));
-      engine = new HeartFlow({ dataDir: path.join(hfDir, 'data'), silent: true });
+      const { Aspira } = require(path.join(hfDir, 'src/core/heartflow.js'));
+      engine = new Aspira({ dataDir: path.join(hfDir, 'data'), silent: true });
       engine.start();
       const version = (() => {
         try { return require(path.join(hfDir, 'package.json')).version || 'unknown'; } catch(e) { return 'unknown'; }
@@ -507,9 +507,9 @@ switch (cmd) {
 
   case 'benchmark': {
     // 公开延迟基准 (GitHub #7 Latency 缺口)
-    const { HeartFlow } = require(path.join(hfDir, 'src/core/heartflow.js'));
+    const { Aspira } = require(path.join(hfDir, 'src/core/heartflow.js'));
     const { LatencyBenchmark } = require(path.join(hfDir, 'src/benchmark/latency-benchmark.js'));
-    const engine = new HeartFlow({ dataDir: path.join(hfDir, 'data'), silent: true });
+    const engine = new Aspira({ dataDir: path.join(hfDir, 'data'), silent: true });
     engine.start();
     const probe = async () => {
       await engine.think('测试延迟: 今天天气怎么样');
@@ -549,10 +549,10 @@ switch (cmd) {
 
   case 'audit': {
     // 元审计闭环 v6.0.35: 真调审计能力并落盘, 不再是装饰
-    const { HeartFlow } = require(path.join(hfDir, 'src/core/heartflow.js'));
+    const { Aspira } = require(path.join(hfDir, 'src/core/heartflow.js'));
     const { ModuleHealthChecker } = require(path.join(hfDir, 'src/shield/module-health-checker.js'));
     const { AuditLogger } = require(path.join(hfDir, 'src/shield/audit-logger.js'));
-    const engine = new HeartFlow({ dataDir: path.join(hfDir, 'data'), silent: true });
+    const engine = new Aspira({ dataDir: path.join(hfDir, 'data'), silent: true });
     engine.start();
     const logger = new AuditLogger({ logPath: path.join(hfDir, 'data', 'audit', 'audit-log.jsonl') });
     logger.log('engine_start', { version: engine.version, modules: Object.keys(engine._modules || {}).length });
@@ -572,7 +572,7 @@ switch (cmd) {
   }
 
   case 'help':
-    console.log(`HeartFlow CLI
+    console.log(`Aspira CLI
 Usage: node cli.js <command>
 Commands:
   status  显示引擎状态（版本、模块数、记忆统计）

@@ -6,7 +6,7 @@
 const path = require('path');
 
 // 允许的根目录（读）
-// [v6.0.52 M2-followup] 把项目自身根目录纳入白名单：心虫读写 VERSION/config/formulas/memory/src 等自身文件属合法操作，
+// [v6.0.52 M2-followup] 把项目自身根目录纳入白名单：新愿读写 VERSION/config/formulas/memory/src 等自身文件属合法操作，
 // 仅拦截越界到项目外的路径（/etc /home /root 等）。原白名单只含 data/tmp，导致正常文件全被判越界（warn 刷屏 / enforce 崩溃）。
 // [v6.5.5 AUDIT-FIX P2-3] 读允许项目根；写操作额外受限（见 WRITE_DENY_PREFIXES），禁止覆盖源码/配置/可执行文件
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..'); // src/core -> 项目根
@@ -27,7 +27,7 @@ const ALLOWED_ROOTS = [
 ];
 
 // [v6.5.5 AUDIT-FIX P2-3] 写操作禁止覆盖的路径前缀/后缀（防意外或恶意覆盖引擎源码与配置）
-// 读操作不受此限制（心虫需读 src/ config/ 等自身文件）；写操作仅允许 data/tmp/显式数据目录及 .enc/.jsonl 记忆文件
+// 读操作不受此限制（新愿需读 src/ config/ 等自身文件）；写操作仅允许 data/tmp/显式数据目录及 .enc/.jsonl 记忆文件
 const WRITE_DENY_PREFIXES = [
   path.join(PROJECT_ROOT, 'src'),
   path.join(PROJECT_ROOT, 'bin'),

@@ -16,7 +16,7 @@
  *   direction: 方向层（AI哲学——认知的走向向量）
  * }
  *
- * 核心原则（基于心虫哲学 2026-06-08）：
+ * 核心原则（基于新愿哲学 2026-06-08）：
  *   对错不存在，思考即方向。
  *   进步不需要测量，对错是人为尺子不是事物属性。
  *   思考本身比思考结果重要。
@@ -130,7 +130,7 @@ const COGNITION_DIRECTION_DIMENSIONS = {
 class CognitionGround {
   /**
    * @param {object} options
-   * @param {object} [options.heartFlow] - HeartFlow 实例引用（可选）
+   * @param {object} [options.heartFlow] - Aspira 实例引用（可选）
    */
   constructor(options = {}) {
     this.name = 'CognitionGround';

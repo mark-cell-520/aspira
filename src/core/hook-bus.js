@@ -1,5 +1,5 @@
 /**
- * HeartFlow HookBus — unified async hook event bus
+ * Aspira HookBus — unified async hook event bus
  *
  * Features:
  *  - Register handlers with optional id, priority, timeout, enabled

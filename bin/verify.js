@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow 安装验证脚本
+ * Aspira 安装验证脚本
  * 检查所有核心模块能否正常加载，输出清晰的成功/失败列表
  * 运行: node bin/verify.js 或 npm run verify
  */
@@ -35,7 +35,7 @@ function check(label, fn) {
 }
 
 console.log('');
-console.log('=== HeartFlow 安装验证 ===\n');
+console.log('=== Aspira 安装验证 ===\n');
 
 // Collect all async check results
 const checkResults = [];
@@ -66,15 +66,15 @@ check('package.json 存在', () => {
 
 // 3. 核心模块 require
 check('heartflow.js 模块可加载', () => {
-  const { HeartFlow } = require(path.join(HF_DIR, 'src/core/heartflow.js'));
-  if (typeof HeartFlow !== 'function') throw new Error('HeartFlow 不是构造函数');
+  const { Aspira } = require(path.join(HF_DIR, 'src/core/heartflow.js'));
+  if (typeof Aspira !== 'function') throw new Error('Aspira 不是构造函数');
 });
 
 // 4. 启动引擎
 let engine = null;
 check('引擎启动', () => {
-  const { HeartFlow } = require(path.join(HF_DIR, 'src/core/heartflow.js'));
-  engine = new HeartFlow();
+  const { Aspira } = require(path.join(HF_DIR, 'src/core/heartflow.js'));
+  engine = new Aspira();
   engine.start();
   if (!engine.started) throw new Error('engine.started 为 false');
 });
@@ -129,7 +129,7 @@ if (engine) {
 check('npm 必选依赖为空', () => {
   const pkg = require(path.join(HF_DIR, 'package.json'));
   const deps = Object.keys(pkg.dependencies || {}).length;
-  if (deps < 1) throw new Error('依赖声明为空，心虫至少需要 mathjs');
+  if (deps < 1) throw new Error('依赖声明为空，新愿至少需要 mathjs');
 });
 
 // 7. 明文记忆扫描：检查是否有新增的 .txt/.json 明文记忆落盘

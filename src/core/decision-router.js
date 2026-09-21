@@ -7,7 +7,7 @@ class DecisionRouter {
 
   /**
 
-   * @param {object} heartFlow - HeartFlow 主实例引用
+   * @param {object} heartFlow - Aspira 主实例引用
 
    * @param {object} [options]
 

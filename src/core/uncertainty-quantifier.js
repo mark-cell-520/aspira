@@ -1,5 +1,5 @@
 /**
- * HeartFlow 不确定性量化引擎 v11.14.0
+ * Aspira 不确定性量化引擎 v11.14.0
  * 
  * 基于 GitHub 研究:
  * - cvs-health/uqlm (UQLM, 1.1k星) - LLM不确定性量化

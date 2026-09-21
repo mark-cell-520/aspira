@@ -1,7 +1,7 @@
 /**
  * src/knowledge/classics-feedback.js
  *
- * 思想心虫古典规则反哺机制 v1
+ * 思想新愿古典规则反哺机制 v1
  * 从 search_guji.sh 命中原文中自动提取潜在新触发词，
  * 供规则维护者Review后手工加入 classics-rules.js。
  *

@@ -1,5 +1,5 @@
 /**
- * HeartFlow Dream Loop v2.1
+ * Aspira Dream Loop v2.1
  *
  * Purpose:
  * - Reorganize daytime memory fragments
@@ -408,7 +408,7 @@ function generateDream(memoryItems, options = {}) {
     if (!validation.valid) {
       state = DREAM_STATE.FAILED;
       return {
-        title: 'HeartFlow Dream Loop (Error)',
+        title: 'Aspira Dream Loop (Error)',
         state,
         error: DREAM_ERROR.EMPTY_INPUT,
         errors: validation.errors,
@@ -471,7 +471,7 @@ function generateDream(memoryItems, options = {}) {
           const dagResult = engine.dream(dreamId, fragments, { force: options.force });
 
           dreamResult = {
-            title: 'HeartFlow Dream Loop (DAG)',
+            title: 'Aspira Dream Loop (DAG)',
             state: DREAM_STATE.COMPLETE,
             dag_complete: dagResult.dag_complete,
             motifs: fragments.slice(0, 8).map(f => String(f.text).slice(0, 120)),
@@ -509,7 +509,7 @@ function generateDream(memoryItems, options = {}) {
       const motifs = fragments.map(f => _safeText(f).slice(0, 120));
 
       dreamResult = {
-        title: 'HeartFlow Dream Loop',
+        title: 'Aspira Dream Loop',
         state: DREAM_STATE.COMPLETE,
         motifs,
         fragments,
@@ -573,7 +573,7 @@ function generateDream(memoryItems, options = {}) {
 
     // 回退：尝试返回最简单的空结果
     return {
-      title: 'HeartFlow Dream Loop (Fallback)',
+      title: 'Aspira Dream Loop (Fallback)',
       state,
       error: DREAM_ERROR.DAG_FAILURE,
       errorMessage: error.message,
@@ -721,7 +721,7 @@ if (require.main === module) {
   // 自检模式
   const testCases = [
     { name: '正常输入', input: [
-      'user prefers HeartFlow to stay grounded in current target',
+      'user prefers Aspira to stay grounded in current target',
       'do not confuse historical version with current version',
       'dream should reorganize memory fragments into candidate upgrades',
       'runtime logic errors must be reduced',

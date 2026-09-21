@@ -1,5 +1,5 @@
 /**
- * think-pipeline.js — HeartFlow think() 后置处理检查块流水线
+ * think-pipeline.js — Aspira think() 后置处理检查块流水线
  *
  * 从 heartflow.js 的 think() 方法提取，保持原有 try/catch 逻辑不变，
  * 所有 this.xxx 已改为 engine.xxx（由调用者传入引擎实例）。
@@ -18,7 +18,7 @@ let _deepEmotionInstance = null;
  * 运行 think() 后置检查流水线
  * @param {object} result — think() 的输出结果（可变，会被增强）
  * @param {*} input — think() 的原始输入
- * @param {object} engine — HeartFlow 引擎实例（即原来的 this）
+ * @param {object} engine — Aspira 引擎实例（即原来的 this）
  * @returns {Promise<object>} 增强后的 result
  */
 async function runThinkPipeline(result, input, engine) {
@@ -317,7 +317,7 @@ async function runThinkPipeline(result, input, engine) {
     }
   } catch (_) { /* 非关键 */ }
 
-  // ─── [v6.3.5] OutputChecklist 输出前门禁——用心虫 6 维辨别器扫一遍 ──
+  // ─── [v6.3.5] OutputChecklist 输出前门禁——用新愿 6 维辨别器扫一遍 ──
   try {
     if (engine.outputChecklist && result?.output?.conclusion) {
       const clResult = engine.outputChecklist.runChecklist(input, result.output.conclusion, {});

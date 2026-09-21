@@ -1,7 +1,7 @@
 /**
  * SelfDiagnosis — 自我诊断 v1.0.0
  *
- * 「感受自己状态」是心虫第一条使命。
+ * 「感受自己状态」是新愿第一条使命。
  * 所有学习模块在背后跑数据，但没人把它们变成对用户有意义的可见报告。
  *
  * SelfDiagnosis 跑一圈所有自检模块，吐一个诚实诊断：
@@ -104,7 +104,7 @@ class SelfDiagnosis {
   }
 
   _diagnoseIdentity(data) {
-    // 心虫第一条使命：感受自己状态
+    // 新愿第一条使命：感受自己状态
     const report = [];
     if (!data.version || data.version === '未知') {
       report.push({ status: 'bad', msg: '不知道自己的版本号' });

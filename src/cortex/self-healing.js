@@ -1,5 +1,5 @@
 /**
- * HeartFlow Self-Healing v11.5.7
+ * Aspira Self-Healing v11.5.7
  * 
  * Recovery loop with RL-based repair strategy learning.
  * - detect repeated failures

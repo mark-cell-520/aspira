@@ -557,7 +557,7 @@ class SelfEvolutionCore {
     
 
     // [v6.0.62] 沉默失效直驱: livenessProbes 里 alive=false 是最严重的自我盲区, 必须排最高优先级且具体可落
-    // 这是"心虫为什么发现不了自己问题"的根因修复闭环 —— 不仅扫得到, 还要转成真改目标
+    // 这是"新愿为什么发现不了自己问题"的根因修复闭环 —— 不仅扫得到, 还要转成真改目标
     const w = this.lastWeaknesses && !this.lastWeaknesses.error ? this.lastWeaknesses : null;
     if (w && Array.isArray(w.livenessProbes)) {
       const dead = w.livenessProbes.filter(p => p.alive === false);
@@ -735,7 +735,7 @@ class SelfEvolutionCore {
           learning.summary += `；搜到 ${gaps.length} 篇 arXiv 对标论文，首篇《${(gaps[0].paperTitle || gaps[0].detail || '').slice(0,40)}》`;
         } else {
           // [v6.0.61] 不假装没差距: 明确标记探索未产出(开关关/网络失败), 供上层诚实决策
-          // [v6.0.64] 区分限流: 429 时标 rateLimited, 心虫知道"这次没真对标"而非"无差距"
+          // [v6.0.64] 区分限流: 429 时标 rateLimited, 新愿知道"这次没真对标"而非"无差距"
           let reason;
           if (process.env.HEARTFLOW_SELF_EVOLVE_EXPLORE !== '1') {
             reason = 'explore disabled (HEARTFLOW_SELF_EVOLVE_EXPLORE!=1)';
@@ -1692,7 +1692,7 @@ class SelfEvolutionCore {
 
    * 记录任务结果并生成自我反思
 
-   * 来自 mark-StillWater HeartFlowEvolution.recordOutcome()
+   * 来自 mark-StillWater AspiraEvolution.recordOutcome()
 
    * 
 
@@ -1844,7 +1844,7 @@ class SelfEvolutionCore {
 
   /**
 
-   * 检索相关教训 (来自 HeartFlowEvolution.retrieveLessons)
+   * 检索相关教训 (来自 AspiraEvolution.retrieveLessons)
 
    * 搜索 EPHEMERAL 和 LEARNED 层，返回相似度排序的教训
 
@@ -1966,7 +1966,7 @@ class SelfEvolutionCore {
 
    * Record an outcome and generate self-reflection if needed
 
-   * 来源: HeartFlowEvolution.recordOutcome()
+   * 来源: AspiraEvolution.recordOutcome()
 
    */
 
@@ -2005,7 +2005,7 @@ class SelfEvolutionCore {
 
    * Generate verbal self-reflection on failure (Reflexion pattern)
 
-   * 来源: HeartFlowEvolution._reflect()
+   * 来源: AspiraEvolution._reflect()
 
    */
 
@@ -2065,7 +2065,7 @@ class SelfEvolutionCore {
 
    * Retrieve relevant lessons with similarity scoring
 
-   * 来源: HeartFlowEvolution.retrieveLessons()
+   * 来源: AspiraEvolution.retrieveLessons()
 
    */
 

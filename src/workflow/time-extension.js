@@ -1,8 +1,8 @@
 /**
  * time-extension.js — 时间延伸分析层 v1.0.0
  *
- * 核心问题：心虫只分析"当前选择"的即时逻辑正确性，但缺乏时间维度延伸。
- * 谈雨玟案例暴露了：心虫分析到"赢了复仇"，但没分析"复仇之后她一生怎么过"。
+ * 核心问题：新愿只分析"当前选择"的即时逻辑正确性，但缺乏时间维度延伸。
+ * 谈雨玟案例暴露了：新愿分析到"赢了复仇"，但没分析"复仇之后她一生怎么过"。
  *
  * 这个模块解决：
  *   任何"怎么做"的建议之前，自动做四个时间维度的延伸分析。
@@ -240,7 +240,7 @@ class TimeDimensionAnalysis {
 
 class TimeExtensionEngine {
   /**
-   * @param {object} heartFlow - HeartFlow 主实例引用
+   * @param {object} heartFlow - Aspira 主实例引用
    */
   constructor(heartFlow) {
     this.name = 'TimeExtensionEngine';

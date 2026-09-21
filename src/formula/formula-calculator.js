@@ -24,8 +24,8 @@ function getMath() {
   });
   // 覆盖危险函数为安全抛出版
   math.import({
-    'import': function() { throw new Error('mathjs import disabled in HeartFlow'); },
-    'createUnit': function() { throw new Error('mathjs createUnit disabled in HeartFlow'); },
+    'import': function() { throw new Error('mathjs import disabled in Aspira'); },
+    'createUnit': function() { throw new Error('mathjs createUnit disabled in Aspira'); },
   }, { override: true });
   _mathInstance = math;
   return math;

@@ -7,7 +7,7 @@
  * 设计原则：
  * - 所有方法必须是安全的（try/catch 保护），失败时返回未修改的上下文
  * - 不依赖 decision-router 的具体实现，只消费其决策类型字符串
- * - 可独立测试，无需启动完整 HeartFlow
+ * - 可独立测试，无需启动完整 Aspira
  *
  * 决策类型与优先级的文档映射（与 decision-router.js 的 DECISION / DECISION_PRIORITY 一致）
  *   HEAL=100, TURN=90, PAUSE=80, REST=70, TRANSMIT=60, RESONATE=50, ACCELERATE=40, HOLD=30
@@ -71,11 +71,11 @@ const REST_DEPTH = 0;
 /**
  * DecisionExecutor — 决策指令执行器
  *
- * @param {object} heartFlow - HeartFlow 主实例引用（用于访问 selfHealing 等模块）
+ * @param {object} heartFlow - Aspira 主实例引用（用于访问 selfHealing 等模块）
  */
 class DecisionExecutor {
   constructor(heartFlow) {
-    /** @type {object} HeartFlow 实例引用 */
+    /** @type {object} Aspira 实例引用 */
     this.hf = heartFlow;
     this.name = 'DecisionExecutor';
   }

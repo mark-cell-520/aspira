@@ -21,7 +21,7 @@
  *    EF为执行层面，Metacognition为监控层面
  *    两者相互依存：EF实施认知行为，Metacognition监控和调节EF
  * 
- * 整合到 HeartFlow:
+ * 整合到 Aspira:
  * - 增强自我调节反馈系统 (self-regulation-feedback.js)
  * - 为认知评估 (cognitive-appraisal.js) 添加执行功能检测
  * - 为决策验证 (decision-verifier.js) 添加元认知监控

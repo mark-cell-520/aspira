@@ -61,7 +61,7 @@ class SelfBenchmark {
    * 修复"自欺进化"：原 score 100% 来自内部自陈指标（进化循环触发率 / lesson
    * 置信度 / 自愈成功率 / 模块覆盖率），无任何外部可验证事实。
    * 现改为：有外部锚时 score = 0.4*内部 + 0.6*外部；无外部锚时内部分打 0.7 折
-   * 并打标 verified:false，防止心虫拿"自评分高"自我激励。
+   * 并打标 verified:false，防止新愿拿"自评分高"自我激励。
    * @returns {Object} quantifiable report
    */
   assess() {

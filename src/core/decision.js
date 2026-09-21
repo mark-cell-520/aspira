@@ -1,5 +1,5 @@
 /**
- * HeartFlow Decision Engine v2.0.3 — Decision with consequence prediction
+ * Aspira Decision Engine v2.0.3 — Decision with consequence prediction
  * 
  * Features:
  *   - Multi-option evaluation with identity alignment
@@ -162,10 +162,10 @@ class ContextPassport {
 }
 
 // ============================================================================
-// HeartFlowDecision — Main Decision Engine
+// AspiraDecision — Main Decision Engine
 // ============================================================================
 
-class HeartFlowDecision {
+class AspiraDecision {
   constructor(memory) {
     this.memory = memory;
     this._history = [];
@@ -336,7 +336,7 @@ class HeartFlowDecision {
     const confidence = option.confidence || 0.7;
 
     // Composite: weighted average
-    // [v6.5.1] 风险权重 10%→25%：让心虫像人一样重视风险规避
+    // [v6.5.1] 风险权重 10%→25%：让新愿像人一样重视风险规避
     // （原 10% 导致高风险高回报选项总是压过低风险选项）
     const composite = (
       feasibility * 0.15 +
@@ -509,4 +509,4 @@ class HeartFlowDecision {
   }
 }
 
-module.exports = { HeartFlowDecision, ContextPassport };
+module.exports = { AspiraDecision, ContextPassport };

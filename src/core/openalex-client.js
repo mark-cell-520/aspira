@@ -92,7 +92,7 @@ const openalexClient = {
       const res = await safeFetch(url, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'HeartFlow/1.0',
+          'User-Agent': 'Aspira/1.0',
         },
         timeout: this.TIMEOUT,
       });

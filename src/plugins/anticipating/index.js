@@ -2,7 +2,7 @@
  * anticipating plugin — Agentic Context Management's 4th primitive (ACM 2607.21503)
  *
  * ACM 5 primitives: architecting, ingesting, scoping, anticipating, compacting
- * HeartFlow has: scoping (FocusOfAttention), compacting (MemoryCompressor)
+ * Aspira has: scoping (FocusOfAttention), compacting (MemoryCompressor)
  * Missing: anticipating — predict what context the user will need next
  *
  * This plugin adds lightweight anticipating:

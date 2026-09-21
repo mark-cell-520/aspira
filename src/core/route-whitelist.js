@@ -1,7 +1,7 @@
 /**
  * Route Whitelist — extracted from heartflow.js
  *
- * Replaces the static `HeartFlow.ALLOWED_ROUTES` Set, which was
+ * Replaces the static `Aspira.ALLOWED_ROUTES` Set, which was
  * effectively frozen at class-definition time and could not reliably
  * accept runtime additions from all code paths.
  *

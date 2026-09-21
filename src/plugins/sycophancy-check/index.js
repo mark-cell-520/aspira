@@ -4,7 +4,7 @@
  * 来源论文: Beyond Sycophancy (arXiv 2607.21558)
  * sycophancy 不是二值的——是三维的：距离/来源/联盟
  *
- * 心虫不做语义，只做结构模式匹配。
+ * 新愿不做语义，只做结构模式匹配。
  * 英语 sycophancy 比中文更隐性——不用"我同意"，用"That's a great question"开头。
  */
 

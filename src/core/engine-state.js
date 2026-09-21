@@ -2,7 +2,7 @@
 
 /**
 
- * engine-state — HeartFlow 状态/配置/快照/自改进健康检查模块
+ * engine-state — Aspira 状态/配置/快照/自改进健康检查模块
 
  * 从 heartflow.js 提取的独立模块 (v6.0.1)
 
@@ -360,7 +360,7 @@ function _runSelfImprovementHealthCheck(hf) {
 
 function getSelfImprovementHealth(hf) {
 
-    if (!hf.started) return { connected: false, modules: [], issues: ['HeartFlow not started'] };
+    if (!hf.started) return { connected: false, modules: [], issues: ['Aspira not started'] };
 
     if (!hf._siHealth) {
 

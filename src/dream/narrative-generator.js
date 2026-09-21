@@ -1,5 +1,5 @@
 /**
- * HeartFlow Narrative Generator — 叙事梦引擎
+ * Aspira Narrative Generator — 叙事梦引擎
  *
  * Reads story-prototypes.json, matches memory fragments to archetypes,
  * then generates literary prose (not template strings).

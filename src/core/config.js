@@ -6,7 +6,7 @@
 
 /**
 
- * HeartFlow Unified Config System
+ * Aspira Unified Config System
 
  *
 
@@ -172,7 +172,7 @@ const DEFAULTS = {
 
 
 
-class HeartFlowConfig {
+class AspiraConfig {
 
   constructor() {
 
@@ -194,7 +194,7 @@ class HeartFlowConfig {
 
    * @param {string} projectRoot - 项目根目录
 
-   * @returns {HeartFlowConfig} this
+   * @returns {AspiraConfig} this
 
    */
 
@@ -612,7 +612,7 @@ class HeartFlowConfig {
 
 // 单例（整个进程共享一份配置）
 
-const config = new HeartFlowConfig();
+const config = new AspiraConfig();
 
 
 
@@ -622,7 +622,7 @@ const config = new HeartFlowConfig();
 
  * @param {string} projectRoot
 
- * @returns {HeartFlowConfig}
+ * @returns {AspiraConfig}
 
  */
 
@@ -638,7 +638,7 @@ function load(projectRoot) {
 
  * 获取单例实例
 
- * @returns {HeartFlowConfig}
+ * @returns {AspiraConfig}
 
  */
 
@@ -652,7 +652,7 @@ function getInstance() {
 
 module.exports = {
 
-  HeartFlowConfig,
+  AspiraConfig,
 
   load,
 

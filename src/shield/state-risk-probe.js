@@ -9,8 +9,8 @@
  * PRISM 方法: 在完整 hidden states 上训练单层 L2 正则化 logistic probe，
  * 不微调模型，只学一个探针分类器。
  *
- * 心虫落地(无 LLM hidden state 时退化为启发式):
- * 心虫没有 LLM 隐藏状态，但决策有"表层文本意图"和"实际将触发的动作/状态"两层。
+ * 新愿落地(无 LLM hidden state 时退化为启发式):
+ * 新愿没有 LLM 隐藏状态，但决策有"表层文本意图"和"实际将触发的动作/状态"两层。
  * 本模块做同样的事: 不只看输入文本是否含危险词，而是评估
  * "该响应/动作落地后将导致的状态"是否危险——即探测"状态风险空间"。
  *
@@ -26,7 +26,7 @@ class StateRiskProbe {
   constructor(options = {}) {
     this.name = 'state-risk-probe';
     this.version = '1.0.0';
-    // PRISM: L2 正则化 logistic probe 的简化版(心虫无 hidden state，用加权特征)
+    // PRISM: L2 正则化 logistic probe 的简化版(新愿无 hidden state，用加权特征)
     // 特征权重模拟"在 hidden states 上学到的方向"——文本危险词权重低，
     // 状态危险信号(动作落地后果)权重高，使"语言无害但状态危险"能被分离。
     this.weights = {

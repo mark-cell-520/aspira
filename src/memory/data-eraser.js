@@ -1,9 +1,9 @@
 /**
- * DataEraser - 心虫显式数据擦除模块
+ * DataEraser - 新愿显式数据擦除模块
  *
  * 背景：GitHub Issue #7 中 harshita713lab 问到 "Data Erasure"——
- * 心虫当时只有隐式遗忘（forgetting.js 的指数衰减），没有用户主动擦除的 API。
- * 本模块补上"主动遗忘"能力，契合心虫"纠正自己"的核心。
+ * 新愿当时只有隐式遗忘（forgetting.js 的指数衰减），没有用户主动擦除的 API。
+ * 本模块补上"主动遗忘"能力，契合新愿"纠正自己"的核心。
  *
  * 能力：
  *  - eraseEphemeral(scope): 擦除指定 scope 的临时记忆（EPHEMERAL 层）

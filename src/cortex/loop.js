@@ -359,7 +359,7 @@ class EvolutionLoop {
         const coreResult = await this.core.evolve(input, context, options);
 
         // [v6.0.41 自我升级·信号驱动] 读取外部信号回流：
-        // 心虫从任意外部信号(对话/新闻/指令/反馈)吸收的经验(knowledge:general + tag signal_absorbed)在此被纳入本次进化洞察，
+        // 新愿从任意外部信号(对话/新闻/指令/反馈)吸收的经验(knowledge:general + tag signal_absorbed)在此被纳入本次进化洞察，
         // 让"世界经验→自身升级"闭环真正打通，而非只扫自身代码盲区。
         try {
           const { ROUTES: wtRaw } = require('../memory/worldtree-bridge');

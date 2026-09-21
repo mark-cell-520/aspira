@@ -1,6 +1,6 @@
 'use strict';
 /**
- * evaluate-answer.js — 众测题判分总入口（心虫三层分工的落地）
+ * evaluate-answer.js — 众测题判分总入口（新愿三层分工的落地）
  *
  * 分工（不可合并成一个总分）：
  *   Layer 1 形式分   acceptance-checker.js  六区块结构、四要素、弱动词、模糊词、自检自洽
@@ -92,7 +92,7 @@ function evaluate(answer, task = {}) {
     gateRedline: gateResult,
     hardFail: hardFail,
     needsHumanReview: {
-      semantic: '归因方向/方案优劣/话术效果——心虫判不了，必须人工或 LLM 陪审',
+      semantic: '归因方向/方案优劣/话术效果——新愿判不了，必须人工或 LLM 陪审',
       gateFalsePositive: 'gate findings 可能含术语误报（见 PROMPT模板.md 术语规避表），需人工确认是否真问题'
     },
     note: '形式分与 gate 分数分列，不可相加；verdict 仅代表形式层+红线是否过，不代表内容质量',

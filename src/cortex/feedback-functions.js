@@ -1,5 +1,5 @@
 /**
- * HeartFlow Feedback Functions v1.1.0
+ * Aspira Feedback Functions v1.1.0
  * 基于 v11.9.4 eval-engine.js 的 FeedbackFunctions 重写
  * TruLens RAG Triad + HHH 评估框架 + 多语言毒性检测
  *

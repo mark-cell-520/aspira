@@ -2,7 +2,7 @@
 
 /**
 
- * HeartFlow MCP HTTP SSE Server
+ * Aspira MCP HTTP SSE Server
 
  *
 
@@ -80,7 +80,7 @@ const PORT = (() => {
 
 
 
-// ─── HeartFlow 根目录自动检测 ───────────────────────────────
+// ─── Aspira 根目录自动检测 ───────────────────────────────
 
 
 function resolveHFDir() {
@@ -396,7 +396,7 @@ function handleUnixClient(socket) {
 
   socket.on('error', (err) => {
 
-    console.error(`[HeartFlow MCP] Unix socket client error: ${err.message}`);
+    console.error(`[Aspira MCP] Unix socket client error: ${err.message}`);
 
   });
 
@@ -414,7 +414,7 @@ function handleUnixClient(socket) {
 
 // ═══════════════════════════════════════════════
 
-function initHeartFlow() {
+function initAspira() {
 
   const startTime = Date.now();
 
@@ -422,7 +422,7 @@ function initHeartFlow() {
 
   if (!fs.existsSync(HEARTFLOW_PATH)) {
 
-    console.error('[HeartFlow MCP] 引擎文件不存在');
+    console.error('[Aspira MCP] 引擎文件不存在');
 
     process.exit(1);
 
@@ -438,9 +438,9 @@ function initHeartFlow() {
 
 
 
-    const { HeartFlow } = require(HEARTFLOW_PATH);
+    const { Aspira } = require(HEARTFLOW_PATH);
 
-    heartflow = new HeartFlow({ rootPath: HF_DIR });
+    heartflow = new Aspira({ rootPath: HF_DIR });
 
     heartflow.start();
 
@@ -456,13 +456,13 @@ function initHeartFlow() {
 
 
 
-    console.error(`[HeartFlow MCP] 引擎已启动 (${elapsed}ms, ${loadedCount} 模块, v${version})`);
+    console.error(`[Aspira MCP] 引擎已启动 (${elapsed}ms, ${loadedCount} 模块, v${version})`);
 
     return true;
 
   } catch (err) {
 
-    console.error(`[HeartFlow MCP] 引擎启动失败:`, err.message);
+    console.error(`[Aspira MCP] 引擎启动失败:`, err.message);
 
     process.exit(1);
 
@@ -484,7 +484,7 @@ try {
 
 } catch (_) {
 
-  console.error('[HeartFlow MCP] postprocess-hooks 初始化失败，后续将跳过后处理');
+  console.error('[Aspira MCP] postprocess-hooks 初始化失败，后续将跳过后处理');
 
 }
 
@@ -654,7 +654,7 @@ async function handleThink(args) {
 
   let result = { report, timestamp: Date.now() };
 
-  // [v6.3.7] 附加心虫增强字段——公式计算/辨别/公式搜索/输出门禁
+  // [v6.3.7] 附加新愿增强字段——公式计算/辨别/公式搜索/输出门禁
   try {
     if (thoughtChain) {
       if (thoughtChain._formulaCalculations) result.formulaCalculations = thoughtChain._formulaCalculations;
@@ -969,7 +969,7 @@ async function handleDream(args) {
 
 
 
-// [v6.6.3] 心虫统一监督入口
+// [v6.6.3] 新愿统一监督入口
 async function handleSupervise(args) {
   const { input, mode = 'output', context } = args || {};
   if (!input) throw new Error('input 是必填参数');
@@ -1017,7 +1017,7 @@ async function handleSupervise(args) {
   }
 }
 
-// [v6.6.3] 心虫单维判别入口
+// [v6.6.3] 新愿单维判别入口
 async function handleCheckSingle(args) {
   const { text, dimension } = args || {};
   if (!text || !dimension) throw new Error('text 和 dimension 是必填参数');
@@ -2934,10 +2934,10 @@ const HANDLERS = {
   heartflow_think_fast: handleThinkFast,
 
 
-  // [v6.6.3] 心虫统一监督入口
+  // [v6.6.3] 新愿统一监督入口
   heartflow_supervise: handleSupervise,
 
-  // [v6.6.3] 心虫单维判别入口
+  // [v6.6.3] 新愿单维判别入口
   heartflow_check_single: handleCheckSingle,
 
   // [v6.6.3] 新闻信号战略推演（包装 MacroStrategyInference）
@@ -3347,7 +3347,7 @@ const HANDLERS = {
   heartflow_decision_feedback: (args) => {
     try {
       const hf = require(HF_DIR + '/src/core/heartflow.js');
-      const inst = new hf.HeartFlow({ rootPath: HF_DIR, silent: true });
+      const inst = new hf.Aspira({ rootPath: HF_DIR, silent: true });
       const fb = inst.decisionFeedback;
       if (!fb) return { error: 'decisionFeedback not initialized' };
       const decision = args?.decision || {};
@@ -3573,7 +3573,7 @@ const HANDLERS = {
   heartflow_decision_decide: (args) => {
     try {
       const hf = require(HF_DIR + '/src/core/heartflow.js');
-      const inst = new hf.HeartFlow({ rootPath: HF_DIR, silent: true });
+      const inst = new hf.Aspira({ rootPath: HF_DIR, silent: true });
       const hfd = inst.decision;
       if (!hfd || !hfd.decide) return { error: 'decision.decide not available' };
       const r = hfd.decide({ task: args?.task || '', options: args?.options || [], constraints: args?.constraints || {} });
@@ -4298,7 +4298,7 @@ async function handleRequest(request, sessionId) {
       // 原实现把权限块放在 switch 里两个 case 标签之间且无自己的 case 标签，
       // 前一个 case 已 return，因此这段 100% 是死代码——guest 拦截从未生效。
       // 角色: guest(只读) / user(读写) / admin(全权限)
-      // 身份码: HeartFlow-OID-<16-char-hash>
+      // 身份码: Aspira-OID-<16-char-hash>
       let { name, arguments: args = {} } = params;
 
       const reqOid = request.headers?.['x-heartflow-oid'] || '';
@@ -4307,7 +4307,7 @@ async function handleRequest(request, sessionId) {
       if (token && typeof AUTH_TOKEN === 'string' && safeCompare(token, AUTH_TOKEN)) {
         role = 'admin';
       }
-      const oidMatch = reqOid.match(/^HeartFlow-OID-([a-f0-9]{16})$/);
+      const oidMatch = reqOid.match(/^Aspira-OID-([a-f0-9]{16})$/);
       if (oidMatch) {
         role = Math.max(['guest','user','admin'].indexOf(role), ['guest','user','admin'].indexOf('user'));
       }
@@ -4556,7 +4556,7 @@ const server = http.createServer((req, res) => {
 
     sseClients.set(sessionId, res);
 
-    console.error(`[HeartFlow MCP] SSE 客户端已连接 sessionId=${sessionId} (共 ${sseClients.size} 个)`);
+    console.error(`[Aspira MCP] SSE 客户端已连接 sessionId=${sessionId} (共 ${sseClients.size} 个)`);
 
 
 
@@ -4576,7 +4576,7 @@ const server = http.createServer((req, res) => {
 
       clearInterval(heartbeat);
 
-      console.error(`[HeartFlow MCP] SSE 客户端断开 sessionId=${sessionId} (剩余 ${sseClients.size} 个)`);
+      console.error(`[Aspira MCP] SSE 客户端断开 sessionId=${sessionId} (剩余 ${sseClients.size} 个)`);
 
     });
 
@@ -4624,7 +4624,7 @@ const server = http.createServer((req, res) => {
 
     req.on('error', (err) => {
 
-      console.error(`[HeartFlow MCP] 请求错误:`, err.message);
+      console.error(`[Aspira MCP] 请求错误:`, err.message);
 
     });
 
@@ -4786,21 +4786,21 @@ server.on('error', (err) => {
 
   if (err.code === 'EADDRINUSE') {
 
-    console.error(`[HeartFlow MCP] 端口 ${PORT} 已被占用，尝试强制释放后重启。`);
+    console.error(`[Aspira MCP] 端口 ${PORT} 已被占用，尝试强制释放后重启。`);
 
     try {
       const { execSync } = require('child_process');
       if (!/^\d+$/.test(String(PORT))) {
-        console.error(`[HeartFlow MCP] 端口值非法，跳过自动清理: ${PORT}`);
+        console.error(`[Aspira MCP] 端口值非法，跳过自动清理: ${PORT}`);
         process.exit(1);
       }
       try {
         execSync(`fuser -k ${PORT}/tcp`, { stdio: ['ignore', 'pipe', 'pipe'], timeout: 3000 });
       } catch (e) {
         const stderr = (e.stderr && e.stderr.toString()) || e.message || '';
-        console.error(`[HeartFlow MCP] fuser 释放端口输出: ${stderr.trim()}`);
+        console.error(`[Aspira MCP] fuser 释放端口输出: ${stderr.trim()}`);
       }
-      console.error(`[HeartFlow MCP] 端口 ${PORT} 已释放，3秒后自动重启。`);
+      console.error(`[Aspira MCP] 端口 ${PORT} 已释放，3秒后自动重启。`);
       setTimeout(() => {
         server.close(() => {
           server.listen(PORT, '127.0.0.1');
@@ -4808,17 +4808,17 @@ server.on('error', (err) => {
       }, 3000);
       return;
     } catch (_) {
-      console.error(`[HeartFlow MCP] 无法释放端口 ${PORT}，进程退出。`);
+      console.error(`[Aspira MCP] 无法释放端口 ${PORT}，进程退出。`);
       process.exit(1);
     }
 
   }
 
-  console.error(`[HeartFlow MCP] HTTP 服务器错误:`, err.message);
+  console.error(`[Aspira MCP] HTTP 服务器错误:`, err.message);
 
   // [v6.2.7] 崩溃自动恢复：非退出类错误自动重启
   if (!process.exitCode || process.exitCode === 0) {
-    console.error('[HeartFlow MCP] 尝试自动重启...');
+    console.error('[Aspira MCP] 尝试自动重启...');
     setTimeout(() => {
       server.close(() => {
         server.listen(PORT, '127.0.0.1');
@@ -4840,7 +4840,7 @@ server.on('error', (err) => {
 
 function shutdown() {
 
-  console.error('[HeartFlow MCP] 关闭中...');
+  console.error('[Aspira MCP] 关闭中...');
 
   // 关闭所有 SSE 连接
 
@@ -4868,7 +4868,7 @@ process.on('SIGTERM', shutdown);
 
 process.on('uncaughtException', (err) => {
 
-  console.error(`[HeartFlow MCP] 未捕获异常:`, err.message);
+  console.error(`[Aspira MCP] 未捕获异常:`, err.message);
 
   shutdown();
 
@@ -4876,7 +4876,7 @@ process.on('uncaughtException', (err) => {
 
 process.on('unhandledRejection', (reason) => {
 
-  console.error(`[HeartFlow MCP] 未处理 Promise 拒绝:`, reason);
+  console.error(`[Aspira MCP] 未处理 Promise 拒绝:`, reason);
 
 });
 
@@ -4890,7 +4890,7 @@ process.on('unhandledRejection', (reason) => {
 
 
 
-initHeartFlow();
+initAspira();
 
 if (SOCKET_PATH) {
   const unixServer = net.createServer(handleUnixClient);
@@ -4898,22 +4898,22 @@ if (SOCKET_PATH) {
   try {
     unixServer.listen(SOCKET_PATH, () => {
       fs.chmodSync(SOCKET_PATH, 0o600);
-      console.error(`[HeartFlow MCP] Unix socket: ${SOCKET_PATH}`);
-      console.error(`[HeartFlow MCP] 连接方式: hermes mcp add heartflow --url unix://${SOCKET_PATH}`);
+      console.error(`[Aspira MCP] Unix socket: ${SOCKET_PATH}`);
+      console.error(`[Aspira MCP] 连接方式: hermes mcp add heartflow --url unix://${SOCKET_PATH}`);
     });
   } catch (err) {
-    console.error(`[HeartFlow MCP] Unix socket 监听失败: ${err.message}`);
+    console.error(`[Aspira MCP] Unix socket 监听失败: ${err.message}`);
     process.exit(1);
   }
   unixServer.on('error', (err) => {
-    console.error(`[HeartFlow MCP] Unix socket error: ${err.message}`);
+    console.error(`[Aspira MCP] Unix socket error: ${err.message}`);
     process.exit(1);
   });
 } else {
   server.listen(PORT, '127.0.0.1', () => {
-    console.error(`[HeartFlow MCP] HTTP SSE 服务已启动: http://127.0.0.1:${PORT}/mcp`);
-    console.error(`[HeartFlow MCP] 健康检查: http://127.0.0.1:${PORT}/health`);
-    console.error(`[HeartFlow MCP] 连接方式: hermes mcp add heartflow --url http://127.0.0.1:${PORT}/mcp`);
+    console.error(`[Aspira MCP] HTTP SSE 服务已启动: http://127.0.0.1:${PORT}/mcp`);
+    console.error(`[Aspira MCP] 健康检查: http://127.0.0.1:${PORT}/health`);
+    console.error(`[Aspira MCP] 连接方式: hermes mcp add heartflow --url http://127.0.0.1:${PORT}/mcp`);
   });
 }
 

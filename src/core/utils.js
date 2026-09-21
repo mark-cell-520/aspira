@@ -1,5 +1,5 @@
 /**
- * HeartFlow Core Utilities — 吸收 agentmemory 核心工具函数
+ * Aspira Core Utilities — 吸收 agentmemory 核心工具函数
  * 
  * 整合来源：agentmemory 记忆系统核心工具
  * 
@@ -456,7 +456,7 @@ module.exports = {
         data = safe;
       }
       const ts = new Date().toISOString();
-      const prefix = `[HeartFlow ${ts}]`;
+      const prefix = `[Aspira ${ts}]`;
       if (level === 'error') console.error(prefix, msg, data || '');
       else if (level === 'warn') console.warn(prefix, msg, data || '');
       else console.log(prefix, msg, data || '');

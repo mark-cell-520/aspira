@@ -1,6 +1,6 @@
 /**
 
- * HeartFlow Self-Diagnostic Engine v1.0.1
+ * Aspira Self-Diagnostic Engine v1.0.1
 
  * 20步并发自检系统
 
@@ -175,7 +175,7 @@ class DiagnosticResult {
 
 ╔══════════════════════════════════════════════════════╗
 
-║         HeartFlow Self-Diagnostic Report             ║
+║         Aspira Self-Diagnostic Report             ║
 
 ║                    v1.0.1                           ║
 
@@ -315,7 +315,7 @@ async function step03_skillVersion(result) {
 
   const frontmatterMatch = data.match(/version:\s*"?([^"\n]+)"?/);
 
-  const titleMatch = data.match(/# HeartFlow.*?v(\d+\.\d+\.\d+)/);
+  const titleMatch = data.match(/# Aspira.*?v(\d+\.\d+\.\d+)/);
 
   const frontmatter = frontmatterMatch ? frontmatterMatch[1] : null;
 
@@ -341,7 +341,7 @@ async function step04_heartflowJSVersion(result) {
 
   if (!success) { result.setStep('04', 'fail', null, error); return; }
 
-  const versionMatch = data.match(/HeartFlow\s+v(\d+\.\d+\.\d+)/);
+  const versionMatch = data.match(/Aspira\s+v(\d+\.\d+\.\d+)/);
 
   const constMatch = data.match(/const\s+VERSION\s*=\s*['"](\d+\.\d+\.\d+)['"]/);
 
@@ -873,7 +873,7 @@ async function step19_versionSync(result) {
 
     const m = content.match(/version:\s*"?([^"\n]+)"?/); if (m) versions.SKILL_fm = m[1];
 
-    const titleM = content.match(/# HeartFlow.*?v(\d+\.\d+\.\d+)/); if (titleM) versions.SKILL_title = titleM[1];
+    const titleM = content.match(/# Aspira.*?v(\d+\.\d+\.\d+)/); if (titleM) versions.SKILL_title = titleM[1];
 
   }
 
@@ -889,7 +889,7 @@ async function step19_versionSync(result) {
 
     const m = content.match(/const\s+VERSION\s*=\s*['"](\d+\.\d+\.\d+)['"]/); if (m) versions.heartflowJS = m[1];
 
-    const docM = content.match(/HeartFlow\s+v(\d+\.\d+\.\d+)/); if (docM) versions.heartflowJS_doc = docM[1];
+    const docM = content.match(/Aspira\s+v(\d+\.\d+\.\d+)/); if (docM) versions.heartflowJS_doc = docM[1];
 
   }
 
@@ -967,7 +967,7 @@ async function step19_versionSync(result) {
 
       let content = fs.readFileSync(skillFile, 'utf-8');
 
-      content = content.replace(/# HeartFlow.*?v(\d+\.\d+\.\d+)/, `# HeartFlow / 引擎 v${canonical}`);
+      content = content.replace(/# Aspira.*?v(\d+\.\d+\.\d+)/, `# Aspira / 引擎 v${canonical}`);
 
       fs.writeFileSync(skillFile, content);
 
@@ -999,7 +999,7 @@ async function step19_versionSync(result) {
 
       let content = fs.readFileSync(hfFile, 'utf-8');
 
-      content = content.replace(/HeartFlow\s+v(\d+\.\d+\.\d+)/, `HeartFlow v${canonical}`);
+      content = content.replace(/Aspira\s+v(\d+\.\d+\.\d+)/, `Aspira v${canonical}`);
 
       fs.writeFileSync(hfFile, content);
 

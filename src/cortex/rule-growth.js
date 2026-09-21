@@ -1,11 +1,11 @@
 /**
- * RuleGrowth — 心虫判断生长引擎（v6.0.59）
+ * RuleGrowth — 新愿判断生长引擎（v6.0.59）
  *
- * 背景：心虫的"做判断"能力长期是死的——19 条硬编码规则（decisionRouter）
+ * 背景：新愿的"做判断"能力长期是死的——19 条硬编码规则（decisionRouter）
  *        + thoughtChain._classifyTask 写死分类，遇到未见过的输入只能 hold/reflect，
  *        不会"长出新判断"。这违背了用户定义的"做判断"核心身份。
  *
- * 本模块让心虫能从对话反馈里归纳新判断规则，持久化到 data/learned-rules.json，
+ * 本模块让新愿能从对话反馈里归纳新判断规则，持久化到 data/learned-rules.json，
  * 下次启动自动加载进决策路由。判断从"写死"变为"可生长"。
  *
  * 设计原则：
@@ -53,7 +53,7 @@ class RuleGrowth {
   }
 
   /**
-   * 观察一次"输入→心虫该做的决策"信号（来自用户反馈或自检）
+   * 观察一次"输入→新愿该做的决策"信号（来自用户反馈或自检）
    * @param {string} pattern 触发模式（关键词/正则字符串）
    * @param {string} decision 该做的决策（如 ANALYZE / SUMMARIZE / OUT_OF_SCOPE）
    * @param {string} rationale 理由

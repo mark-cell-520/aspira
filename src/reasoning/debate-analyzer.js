@@ -7,7 +7,7 @@
  *   💡 最值得注意的 — 最深刻的洞见/矛盾
  *
  * 并发执行三路分析，返回结构化结果。
- * 集成到 HeartFlow 引擎，通过 dispatch('debate.analyze', input) 调用。
+ * 集成到 Aspira 引擎，通过 dispatch('debate.analyze', input) 调用。
  */
 
 class DebateAnalyzer {

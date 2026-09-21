@@ -191,7 +191,7 @@ class ThoughtChain {
           }
         } catch(e) { /* 知识检索降级 */ }
 
-        // [思想心虫 v1] 古典规则检索：对古典/伦理/治理类命题做可运行规则判别
+        // [思想新愿 v1] 古典规则检索：对古典/伦理/治理类命题做可运行规则判别
         let classicalRuleResult = null;
         try {
           const { evaluateRules } = require('../knowledge/classics-rules.js');
@@ -253,7 +253,7 @@ class ThoughtChain {
           strategy,
           // [P2-T2-WF] 预取知识命中结果，供下游阶段复用
           knowledgeHits,
-          // [思想心虫 v1] 古典规则判别结果
+          // [思想新愿 v1] 古典规则判别结果
           classicalRuleResult,
           // 串联结果：心理分析 + 共情检测
           psychology: psychResult ? {
@@ -287,7 +287,7 @@ class ThoughtChain {
             } catch(e) { /* restraint 降级 */ }
             return { restrained: false, reason: null, matches: [] };
           })(),
-          // [v6.2.3] MissionCheck：输入是否对齐心虫核心使命
+          // [v6.2.3] MissionCheck：输入是否对齐新愿核心使命
           missionAlignment: (() => {
             try {
               if (hf && hf.strategicRestraint && typeof hf.strategicRestraint.checkMission === 'function') {
@@ -680,7 +680,7 @@ class ThoughtChain {
           }
         })();
 
-        // [思想心虫 v1] 古典规则综合：对古典/伦理/治理类命题做最终结论修正
+        // [思想新愿 v1] 古典规则综合：对古典/伦理/治理类命题做最终结论修正
         let classicalRuleIntegration = null;
         try {
           const classical = parse?.classicalRuleResult;
@@ -736,7 +736,7 @@ class ThoughtChain {
           personalityPolish,
           // [P2-T2-WF] 知识检索接入主路径
           knowledgeSummary,
-          // [思想心虫 v1] 古典规则综合结果
+          // [思想新愿 v1] 古典规则综合结果
           classicalRuleIntegration,
           // [v6.3.27] 伦理拒答 + 说前反思（来自CognitiveLoop.phaseAction）
           _ethicsCheck: (() => {
@@ -892,7 +892,7 @@ class ThoughtChain {
           agentPsychology: parse?.agentPsychology || null,
           // 【AgentPhilosophy v2.0.0】AI 哲学新增维度
           agentPhilosophy: synthesis?.agentPhilosophy || null,
-          // [思想心虫 v1] 古典规则判别结果进入最终输出
+          // [思想新愿 v1] 古典规则判别结果进入最终输出
           classicalRuleResult: parse?.classicalRuleResult || null,
           // [v5.17.19 S4] 偏差自审计 — language-honesty扫描回应草稿
           biasCheck: (() => {
@@ -1247,7 +1247,7 @@ class ThoughtChain {
    */
   async run(input) {
     if (!this.hf.started) {
-      throw new Error('HeartFlow not started');
+      throw new Error('Aspira not started');
     }
 
     this.context = {

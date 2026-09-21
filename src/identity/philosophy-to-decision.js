@@ -80,7 +80,7 @@ class DecisionInstruction {
 
 class PhilosophyToDecision {
   /**
-   * @param {object} heartFlow - HeartFlow 主实例引用
+   * @param {object} heartFlow - Aspira 主实例引用
    */
   constructor(heartFlow) {
     this.name = 'PhilosophyToDecision';

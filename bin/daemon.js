@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow Daemon Manager
+ * Aspira Daemon Manager
  *
  * 提供进程守护功能：
  *   node bin/daemon.js start    — 后台常驻（PM2 > nohup）
@@ -264,7 +264,7 @@ async function main() {
 
   switch (action) {
     case 'start': {
-      console.log(`[HeartFlow Daemon] 启动中... (${pm2Available ? 'PM2' : 'nohup'})`);
+      console.log(`[Aspira Daemon] 启动中... (${pm2Available ? 'PM2' : 'nohup'})`);
 
       try {
         let info;
@@ -274,36 +274,36 @@ async function main() {
           info = await nohupStart();
         }
 
-        console.log(`[HeartFlow Daemon] ✅ 已启动`);
+        console.log(`[Aspira Daemon] ✅ 已启动`);
         console.log(`  PID:     ${info.pid}`);
         console.log(`  方法:    ${info.method || 'pm2'}`);
         console.log(`  日志:    ${LOG_DIR}/`);
         console.log(`  管理:    node bin/daemon.js status`);
       } catch (err) {
-        console.error(`[HeartFlow Daemon] ❌ ${err.message}`);
+        console.error(`[Aspira Daemon] ❌ ${err.message}`);
         process.exit(1);
       }
       break;
     }
 
     case 'stop': {
-      console.log('[HeartFlow Daemon] 停止中...');
+      console.log('[Aspira Daemon] 停止中...');
       try {
         if (pm2Available) {
           await pm2Stop();
         } else {
           nohupStop();
         }
-        console.log('[HeartFlow Daemon] ✅ 已停止');
+        console.log('[Aspira Daemon] ✅ 已停止');
       } catch (err) {
-        console.error(`[HeartFlow Daemon] ❌ ${err.message}`);
+        console.error(`[Aspira Daemon] ❌ ${err.message}`);
         process.exit(1);
       }
       break;
     }
 
     case 'restart': {
-      console.log('[HeartFlow Daemon] 重启中...');
+      console.log('[Aspira Daemon] 重启中...');
       try {
         if (pm2Available) {
           await new Promise((resolve, reject) => {
@@ -318,9 +318,9 @@ async function main() {
           await new Promise(r => setTimeout(r, 1000));
           await nohupStart();
         }
-        console.log('[HeartFlow Daemon] ✅ 已重启');
+        console.log('[Aspira Daemon] ✅ 已重启');
       } catch (err) {
-        console.error(`[HeartFlow Daemon] ❌ ${err.message}`);
+        console.error(`[Aspira Daemon] ❌ ${err.message}`);
         process.exit(1);
       }
       break;
@@ -337,12 +337,12 @@ async function main() {
       }
 
       if (!info) {
-        console.log('[HeartFlow Daemon] 未运行');
+        console.log('[Aspira Daemon] 未运行');
         console.log('  启动: node bin/daemon.js start');
         process.exit(0);
       }
 
-      console.log('[HeartFlow Daemon] 运行中');
+      console.log('[Aspira Daemon] 运行中');
       console.log(`  PID:    ${info.pid}`);
       console.log(`  状态:   ${info.status || 'running'}`);
       if (info.uptime) {
@@ -356,7 +356,7 @@ async function main() {
     }
 
     default:
-      console.log(`HeartFlow Daemon Manager
+      console.log(`Aspira Daemon Manager
 Usage: node bin/daemon.js <command>
 Commands:
   start     启动后台守护进程 (PM2 > nohup)
@@ -373,6 +373,6 @@ Commands:
 }
 
 main().catch(err => {
-  console.error(`[HeartFlow Daemon] 错误:`, err.message);
+  console.error(`[Aspira Daemon] 错误:`, err.message);
   process.exit(1);
 });

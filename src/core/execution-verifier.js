@@ -1,5 +1,5 @@
 /**
- * HeartFlow Execution Verifier v11.1.0
+ * Aspira Execution Verifier v11.1.0
  *
  * Runtime reliability loop for task execution:
  * plan -> execute -> verify -> classify -> retry recommendation

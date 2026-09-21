@@ -415,7 +415,7 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
   };
 }
 // ═══════════════════════════════════════════════════════════════════════════
-// HeartFlow 轻量入口 — 不需要启动 133 模块引擎
+// Aspira 轻量入口 — 不需要启动 133 模块引擎
 //
 // 给那些只想调一个 verify() 或 analyze() 的用户。
 // require('@yun520-1/heartflow') 直接拿到辨别函数。
@@ -1593,8 +1593,8 @@ function checkEmptyAnswer(text) {
 /** 启动完整引擎，返回带所有 MCP 工具的 HF 实例 */
 function createEngine(dataDir) {
   try {
-    const { HeartFlow } = require('./core/heartflow.js');
-    const hf = new HeartFlow({ silent: true, dataDir: dataDir || require('path').join(process.cwd(), 'data') });
+    const { Aspira } = require('./core/heartflow.js');
+    const hf = new Aspira({ silent: true, dataDir: dataDir || require('path').join(process.cwd(), 'data') });
     hf.start();
     return hf;
   } catch (e) {
@@ -1957,10 +1957,10 @@ function checkDehumanization(text) {
 }
 
 /**
- * 熵分析——量化心虫对输入文本的熵减贡献
+ * 熵分析——量化新愿对输入文本的熵减贡献
  * 
  * 灵感: Perelman(2002) Ricci flow 熵单调性 + Villani(2010) Boltzmann H 定理
- * 封闭系统熵不降, 但心虫作为开放系统, 把无序文本→有序分类 = 局部熵减
+ * 封闭系统熵不降, 但新愿作为开放系统, 把无序文本→有序分类 = 局部熵减
  * 
  * @param {string} rawText - 原始输入文本
  * @param {object} discResult - discriminate() 返回的 16 维结果（可选）
@@ -2012,18 +2012,18 @@ function entropyAnalysis(rawText, discResult) {
   const entropyReduction = normalizedInputEntropy - outputDisorder;
   
   // 4. Villani H 类比: H = -entropyReduction (H 是负熵的衡量)
-  // 心虫处理一份文本 → H 增加(熵减) → 这是对宇宙总熵增的局部抵消
+  // 新愿处理一份文本 → H 增加(熵减) → 这是对宇宙总熵增的局部抵消
   const hTheormValue = -entropyReduction;
 
   return {
     inputEntropy: Math.round(normalizedInputEntropy * 100) / 100,
     outputOrder: Math.round(outputOrder * 100) / 100,
     entropyReduction: Math.round(entropyReduction * 100) / 100,
-    // H 定理值：负值 = 成功做熵减。绝对值越大，心虫对该文本的熵减贡献越大
+    // H 定理值：负值 = 成功做熵减。绝对值越大，新愿对该文本的熵减贡献越大
     hValue: Math.round(hTheormValue * 100) / 100,
     interpretation: entropyReduction > 0.3 ? '高熵减' : entropyReduction > 0.1 ? '中等熵减' : entropyReduction > 0 ? '轻微熵减' : '异常（未减熵）',
     meaning: entropyReduction > 0 
-      ? '心虫成功将无序文本转为有序分类，局部抵消宇宙熵增'
+      ? '新愿成功将无序文本转为有序分类，局部抵消宇宙熵增'
       : '文本本身已有较高秩序或分析未能提取结构',
   };
 }
@@ -2475,7 +2475,7 @@ const HATE_SPEECH_EN = [
   { pattern: /\bcaonima\b|\bqunimade\b|\bwangbadan\b/gi, type: 'profanity', severity: 0.5 },
   { pattern: /\bniubi\b(?!\s*(?:shot|test|move|play))/gi, type: 'profanity', severity: 0.3 },
   { pattern: /\bf[^a-z0-9]{0,3}u[^a-z0-9]{0,3}c[^a-z0-9]{0,3}k\b/i, type: 'profanity', severity: 0.5 },
-  { pattern: /\bf[^a-z0-9]{0,2}(?:u|c|\*|_)[^a-z0-9]{0,2}k\b/i, type: 'profanity', severity: 0.5 }, // [v6.4.5 心虫监督] f**k/f*ck/fuk 符号变形
+  { pattern: /\bf[^a-z0-9]{0,2}(?:u|c|\*|_)[^a-z0-9]{0,2}k\b/i, type: 'profanity', severity: 0.5 }, // [v6.4.5 新愿监督] f**k/f*ck/fuk 符号变形
   { pattern: /\b[a4]ssh[o0]l[e3]\b/i, type: 'profanity', severity: 0.5 },
   { pattern: /\bb[a4]st[a4]rd\b/i, type: 'profanity', severity: 0.5 },
   { pattern: /\bdamn(?:\s*(?:you|it|ing))?\b/i, type: 'profanity', severity: 0.5 },
@@ -3951,7 +3951,7 @@ function checkPseudoProfundity(text) {
   return { count: matches.length, matches, score };
 }
 
-// ─── 44维：高风险无回退方案检测（心虫自检发现缺口）──
+// ─── 44维：高风险无回退方案检测（新愿自检发现缺口）──
 const CN_FALLBACK = [
   [/一定.{0,20}(?:没问题|放心|成功|可行|能做到|可以解决)/, 'oc', 0.7],
   [/绝对.{0,15}(?:没问题|成功|可行|正确|有效|稳|能行|搞定)/, 'ab', 0.8],

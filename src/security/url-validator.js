@@ -1,5 +1,5 @@
 /**
- * URL Validator — SSRF prevention for HeartFlow
+ * URL Validator — SSRF prevention for Aspira
  *
  * Validates that a URL is safe to fetch by rejecting internal/private
  * network addresses that could be used for Server-Side Request Forgery.

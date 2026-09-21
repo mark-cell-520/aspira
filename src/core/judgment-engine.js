@@ -1,6 +1,6 @@
 /**
 
- * judgment-engine.js v1.0.0 — 心虫真正的判断与决策引擎
+ * judgment-engine.js v1.0.0 — 新愿真正的判断与决策引擎
 
  *
 
@@ -1435,7 +1435,7 @@ class JudgmentEngine {
 
   _buildAction(chosen, input, context) {
 
-    // ─── 心虫用路径数据自己做决策，不再用模板 ─────
+    // ─── 新愿用路径数据自己做决策，不再用模板 ─────
 
     const direction = chosen.direction;
 

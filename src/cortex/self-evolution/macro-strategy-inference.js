@@ -1,6 +1,6 @@
 /**
  * Macro Strategy Inference Engine
- * 基于新闻信号做战略推演：机会 / 风险 / 时间线 / 对 HeartFlow 的影响
+ * 基于新闻信号做战略推演：机会 / 风险 / 时间线 / 对 Aspira 的影响
  * 规则驱动 + 诚实低置信：无信号时返回 null，不编造结论。
  */
 class MacroStrategyInference {
@@ -179,7 +179,7 @@ class MacroStrategyInference {
 
     if (types.has('消费Agent') || types.has('阿里巴巴')) impacts.push('交易型Agent需要输出真实性保险');
     if (types.has('具身智能')) impacts.push('具身智能需要工具调用安全+行为边界判别');
-    if (types.has('AI监管') || types.has('合规')) impacts.push('企业合规审计是 HeartFlow 的直接 to-B 场景');
+    if (types.has('AI监管') || types.has('合规')) impacts.push('企业合规审计是 Aspira 的直接 to-B 场景');
     if (types.has('开源模型')) impacts.push('开源模型降低 Agent 门槛 → 判别层成为必备保险');
     if (types.has('地缘风险')) impacts.push('地缘碎片化需要多法域内容合规层');
     if (types.has('算力基建')) impacts.push('国产算力自主可控与 Agent 安全审计形成闭环');
@@ -208,7 +208,7 @@ class MacroStrategyInference {
       `时间 horizon：${horizon || 'unspecified'}`,
       `机会维度：${opportunities.map(o => o.label).join('、') || '无'}`,
       `风险维度：${risks.map(r => `${r.label}(${r.severity})`).join('、') || '无'}`,
-      `HeartFlow 影响：${heartflowImpact.join('；') || '无直接映射'}`,
+      `Aspira 影响：${heartflowImpact.join('；') || '无直接映射'}`,
     ];
     return lines.join('\n');
   }

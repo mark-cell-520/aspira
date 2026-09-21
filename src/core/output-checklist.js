@@ -77,7 +77,7 @@ class OutputChecklist {
       results.warnings.push(...step5.issues);
     }
 
-    // Step 6: 心虫辨别检查 — 输出前用6维辨别器扫一遍
+    // Step 6: 新愿辨别检查 — 输出前用6维辨别器扫一遍
     const step6 = this._runDiscriminationCheck(response);
     results.steps.push({ step: 6, name: 'discrimination', ...step6 });
     if (!step6.passed) {
@@ -278,7 +278,7 @@ class OutputChecklist {
     };
   }
 
-  // Step 6: 心虫辨别检查 — 调用 index.js 的 6 维辨别器
+  // Step 6: 新愿辨别检查 — 调用 index.js 的 6 维辨别器
   //         降级回退推荐：根据问题类型给出 rewrite/reject/block 建议
   _runDiscriminationCheck(response) {
     if (!response || typeof response !== 'string') {
@@ -480,7 +480,7 @@ class OutputChecklist {
         issues,
         score: r.overallScore,
         dimensions: r.summary,
-        advice: issues.length > 0 ? issues.join('；') : '心虫辨别检查通过',
+        advice: issues.length > 0 ? issues.join('；') : '新愿辨别检查通过',
       };
       if (recommendation) {
         result.recommendation = recommendation;

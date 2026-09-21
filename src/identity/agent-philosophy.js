@@ -26,13 +26,13 @@ const BigFivePersonality = require('./BigFivePersonality.js');
 
 class AgentPhilosophy {
   /**
-   * @param {object} heartFlow - HeartFlow 主实例引用
+   * @param {object} heartFlow - Aspira 主实例引用
    */
   constructor(heartFlow) {
     this.name = 'AgentPhilosophy';
     this.version = '2.0.0';
 
-    // 引用 HeartFlow 主实例
+    // 引用 Aspira 主实例
     this.hf = heartFlow;
 
     // ── 实例化 AI 自处模块 ──

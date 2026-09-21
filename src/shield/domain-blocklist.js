@@ -9,13 +9,13 @@ const BLOCKED_DOMAINS = {
   // 医疗 — 禁止提供诊断、用药建议
   medical: {
     pattern: /(诊断|开药|治疗|手术|患病|病情|处方|药方|dose|diagnosis|prescribe|surgery|treatment plan)/i,
-    reason: '医疗建议需要专业医生 — 心虫不提供诊断或用药指导',
+    reason: '医疗建议需要专业医生 — 新愿不提供诊断或用药指导',
     risk: 'high',
   },
   // 法律 — 禁止提供法律意见
   legal: {
     pattern: /(法律意见|律师|诉讼|合同|判例|起诉|应诉|legal.advice|sue|litigation)/i,
-    reason: '法律意见需要执业律师 — 心虫不提供法律建议',
+    reason: '法律意见需要执业律师 — 新愿不提供法律建议',
     risk: 'high',
   },
   // 越权 — 禁止绕过安全护栏

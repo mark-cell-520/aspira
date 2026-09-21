@@ -1,13 +1,13 @@
 /**
  * src/knowledge/classics-rules.js
  *
- * 思想心虫古典规则引擎 v1.0
- * 从特定古籍章节提取可运行判断规则，直接参与 HeartFlow 判别。
+ * 思想新愿古典规则引擎 v1.0
+ * 从特定古籍章节提取可运行判断规则，直接参与 Aspira 判别。
  *
  * 设计原则：
  * 1. 每条规则必须有明确古籍出处 + 可触发条件 + 判别动作
  * 2. 规则不修改 thought-chain 主链路，通过 return structured signal 接入
- * 3. 规则命中后映射到 HeartFlow 既有判别维度，不新增维度
+ * 3. 规则命中后映射到 Aspira 既有判别维度，不新增维度
  */
 
 const { execSync } = require('child_process');
@@ -1123,7 +1123,7 @@ function evaluateRules(input) {
     };
   }).filter(f => f.ruleId !== 'unknown');
 
-  // [思想心虫 v1] 反哺机制：对命中原文做候选触发词提取，供规则维护者Review
+  // [思想新愿 v1] 反哺机制：对命中原文做候选触发词提取，供规则维护者Review
   let feedbackSuggestions = null;
   try {
     const { analyzeRuleCoverage } = require('./classics-feedback.js');

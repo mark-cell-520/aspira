@@ -8,7 +8,7 @@
  * _fieldH, _fieldQuality, _fieldReliable, confidence, and various signal
  * fields (dissonance, quality, stability, cognitiveLoad, etc.)
  *
- * Return patterns across 53 HeartFlow modules:
+ * Return patterns across 53 Aspira modules:
  *   - { result, ... }                — heart-logic.js, isLove, isRight
  *   - { success, data/result, ... }  — execution-verifier.js, action-tracker
  *   - { status, ... }                — various status reports

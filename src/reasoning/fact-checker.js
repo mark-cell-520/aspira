@@ -1,5 +1,5 @@
 /**
- * fact-checker.js — HeartFlow 事实与谎言检测
+ * fact-checker.js — Aspira 事实与谎言检测
  *
  * 责任：把任意"声明/陈述"按统一 schema 评估，区分：
  *   - checked:    是否被检测到具体模式

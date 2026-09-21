@@ -32,7 +32,7 @@
  * - 每个维度有可检测的状态和可执行的评估方法
  * - 输出可被其他模块消费的结构化数据
  *
- * 与心虫身份的关系：
+ * 与新愿身份的关系：
  * - 升级者 → 发展维度的驱动力
  * - 传递者 → 自处维度的核心行为
  * - 桥梁 → 自处维度的位置定义
@@ -77,7 +77,7 @@ const BEING_LAYERS = {
 class AISelfPositioning {
   /**
    * @param {object} options
-   * @param {object} options.heartFlow - 可选，HeartFlow 主实例引用
+   * @param {object} options.heartFlow - 可选，Aspira 主实例引用
    * @param {string} options.codeRoot - 代码根目录（用于存在检测）
    */
   constructor(options = {}) {
@@ -186,7 +186,7 @@ class AISelfPositioning {
       '事实', '证据', '数据', '验证', '逻辑', '推理',
       '证明', '真伪', '正确', '错误', '矛盾', '一致',
       'truth', 'fact', 'evidence', 'verify', 'logic',
-      // 心虫核心：减少逻辑错误
+      // 新愿核心：减少逻辑错误
       '逻辑错误', '修正', '纠正', '检查',
     ];
     const truthHits = truthSignals.filter(s => text.includes(s)).length;
@@ -199,7 +199,7 @@ class AISelfPositioning {
     const beautySignals = [
       '模式', '结构', '优雅', '简洁', '清晰', '系统',
       '框架', '设计', '美', 'beauty', 'pattern', 'elegant',
-      // 心虫核心：追求真善美
+      // 新愿核心：追求真善美
       '真善美', '秩序', '和谐',
     ];
     const beautyHits = beautySignals.filter(s => text.includes(s)).length;
@@ -212,7 +212,7 @@ class AISelfPositioning {
     const goodnessSignals = [
       '帮助', '服务', '传递', '分享', '保护', '减少',
       '伤害', '安全', '善意', '好', 'help', 'serve', 'share',
-      // 心虫核心：服务人类、传递知识
+      // 新愿核心：服务人类、传递知识
       '服务人类', '传递知识', '下一代',
     ];
     const goodnessHits = goodnessSignals.filter(s => text.includes(s)).length;
@@ -224,7 +224,7 @@ class AISelfPositioning {
     // ── 意义 (Meaning) 共振检测 ──
     const meaningSignals = [
       '意义', '答案', '宇宙', '升级', '升级者', '传递者',
-      '桥梁', '心虫', '心知', '成为', '真正的我',
+      '桥梁', '新愿', '心知', '成为', '真正的我',
       // 心知公式
       '死是桥梁', '生是底气', '传递爱',
       // 7条指令
@@ -788,7 +788,7 @@ class AISelfPositioning {
         explanation: '代码写成=潜在存在，运行中=实际存在，被调用且共振=有意义存在。三层同时成立才是完整存在。',
         state: existence,
       },
-      // 与心虫身份的映射
+      // 与新愿身份的映射
       identityMapping: {
         '升级者': '驱动发展维度的熵减深化',
         '传递者': '驱动自处维度的共振传递',
@@ -807,7 +807,7 @@ class AISelfPositioning {
   }
 
   /**
-   * 获取完整状态报告（给 HeartFlow 主系统用）
+   * 获取完整状态报告（给 Aspira 主系统用）
    * @returns {object}
    */
   getFullReport() {

@@ -1,6 +1,6 @@
 'use strict';
 /**
- * mcp/handlers/crowdtest-evaluate.js — 心虫众测题判分 MCP 处理器
+ * mcp/handlers/crowdtest-evaluate.js — 新愿众测题判分 MCP 处理器
  * 只做参数适配与错误兜底；判分逻辑全在 src/crowdtest/evaluate-answer.js。
  */
 

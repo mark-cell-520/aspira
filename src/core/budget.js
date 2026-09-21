@@ -1,5 +1,5 @@
 /**
- * HeartFlow Budget Manager — Token计数、思考预算管理、动态再平衡与溢出保护
+ * Aspira Budget Manager — Token计数、思考预算管理、动态再平衡与溢出保护
  * 
  * 吸收来源：hindsight Budget+token计数逻辑
  * 

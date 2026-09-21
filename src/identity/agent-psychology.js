@@ -24,13 +24,13 @@
 
 class AgentPsychology {
   /**
-   * @param {object} heartFlow - HeartFlow 主实例引用
+   * @param {object} heartFlow - Aspira 主实例引用
    */
   constructor(heartFlow) {
     this.name = 'AgentPsychology';
     this.version = '2.1.0';
 
-    // 引用 HeartFlow 主实例
+    // 引用 Aspira 主实例
     this.hf = heartFlow;
 
     // 认知负荷追踪

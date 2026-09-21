@@ -1,5 +1,5 @@
 /**
- * src/auto-rules.js — 心虫自主规则生成
+ * src/auto-rules.js — 新愿自主规则生成
  *
  * 当 error-memory 检测到同类错误反复发生（3+次），
  * 自动生成新的检查规则，追加到 data/auto-rules.json。

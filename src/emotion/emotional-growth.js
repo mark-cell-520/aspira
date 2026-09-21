@@ -1,5 +1,5 @@
 /**
- * emotional-growth - HeartFlow 模块
+ * emotional-growth - Aspira 模块
  * 自动生成的 stub 实现
  */
 

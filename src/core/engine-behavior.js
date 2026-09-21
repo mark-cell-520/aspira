@@ -2,7 +2,7 @@
 
 /**
 
- * engine-behavior — HeartFlow behavior subsystem
+ * engine-behavior — Aspira behavior subsystem
 
  * Extracted from heartflow.js (v6.0.1)
 

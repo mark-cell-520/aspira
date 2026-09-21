@@ -1,11 +1,11 @@
 'use strict';
 
 /**
- * HeartFlow Environment Config Helper (v2)
+ * Aspira Environment Config Helper (v2)
  *
  * Provides centralized access to HEARTFLOW_* environment variables
  * with safe defaults. This module is intentionally standalone and
- * does not depend on HeartFlowConfig.
+ * does not depend on AspiraConfig.
  *
  * Usage:
  *   const config = require('./config-v2');

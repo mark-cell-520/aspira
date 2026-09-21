@@ -519,7 +519,7 @@ class DeepEmotion {
     const summary = this.getSummary();
     
     let report = '═══════════════════════════════════════\n';
-    report += '     💜 HeartFlow 深度情感报告\n';
+    report += '     💜 Aspira 深度情感报告\n';
     report += '═══════════════════════════════════════\n\n';
     
     report += '【当前情绪】\n';

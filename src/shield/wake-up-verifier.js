@@ -2,7 +2,7 @@
 
 /**
 
- * HeartFlow Wake-Up Verifier v2.1.0
+ * Aspira Wake-Up Verifier v2.1.0
 
  *
 
@@ -704,7 +704,7 @@ class WakeUpVerifier {
 
       confidence: actionability,
 
-      userGoal: 'Reduce logic errors and evolve HeartFlow',
+      userGoal: 'Reduce logic errors and evolve Aspira',
 
       expectedOutcome: 'A smaller, clearer upgrade set'
 
@@ -850,7 +850,7 @@ class WakeUpVerifier {
 
           weight: categorization.weight,
 
-          reason: `strong alignment with HeartFlow target (${categorization.category})`
+          reason: `strong alignment with Aspira target (${categorization.category})`
 
         });
 
@@ -946,7 +946,7 @@ if (require.main === module) {
 
   const demo = {
 
-    title: 'HeartFlow Dream Loop',
+    title: 'Aspira Dream Loop',
 
     motifs: ['dream should reorganize memory fragments', 'do not confuse historical version with current version'],
 

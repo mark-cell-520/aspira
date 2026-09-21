@@ -33,7 +33,7 @@ class AgentCard {
   /** 基于能力清单计算确定性 identityCode */
   _computeIdentityCode(capManifest) {
     const raw = JSON.stringify({
-      name: 'HeartFlow',
+      name: 'Aspira',
       version: this._getVersion(),
       caps: capManifest.map(c => c.id),
       protocols: ['mcp', 'http'],
@@ -117,12 +117,12 @@ class AgentCard {
     const base = {
       '@context': 'https://www.sac.gov.cn/standards/agent-interconnect/v1',
       'id': `agent:heartflow:${identityCode}`,
-      'name': 'HeartFlow',
-      'codename': '心虫',
+      'name': 'Aspira',
+      'codename': '新愿',
       'version': this._getVersion(),
       'identityCode': identityCode,
       'issuedAt': new Date().toISOString(),
-      'issuer': 'HeartFlow Self',
+      'issuer': 'Aspira Self',
       'capabilities': caps,
       'toolSchema': this._buildToolSchema(),
       'protocols': ['mcp', 'http', 'stdio'],

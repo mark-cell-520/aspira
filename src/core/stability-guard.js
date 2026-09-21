@@ -1,5 +1,5 @@
 /**
- * HeartFlow Stability Guard
+ * Aspira Stability Guard
  *
  * Verifies the runtime stays within a safe execution envelope.
  * Acts as a lightweight gate before and after upgrades.

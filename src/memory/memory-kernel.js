@@ -1,6 +1,6 @@
 /**
 
- * MemoryKernel — 心虫记忆核心组件（v6.0.0，补齐 R1-R8）
+ * MemoryKernel — 新愿记忆核心组件（v6.0.0，补齐 R1-R8）
 
  *
 
@@ -1007,7 +1007,7 @@ class MemoryKernel {
 
     else if (len >= 200) score += 0.1;
 
-    const keywords = ['心虫', 'HeartFlow', '记忆', '认知', '升级', '公式', '思考', '决策', '情感', '分析'];
+    const keywords = ['新愿', 'Aspira', '记忆', '认知', '升级', '公式', '思考', '决策', '情感', '分析'];
 
     const hits = keywords.filter((k) => content.includes(k)).length;
 
@@ -1061,7 +1061,7 @@ class MemoryKernel {
 
       /^你好$/,
 
-      /^你好，心虫$/,
+      /^你好，新愿$/,
 
       /^1\+1等于几$/,
 
@@ -1069,13 +1069,13 @@ class MemoryKernel {
 
       /^深度分析：评估认知引擎的元认知状态和漂移趋势$/,
 
-      /^用心虫思考决策/,
+      /^用新愿思考决策/,
 
-      /^请心虫自己决策/,
+      /^请新愿自己决策/,
 
       /^记忆诊断/,
 
-      /^用心虫思考/,
+      /^用新愿思考/,
 
     ];
 

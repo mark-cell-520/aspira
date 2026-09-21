@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * HeartFlow Event Lifecycle Hooks
+ * Aspira Event Lifecycle Hooks
  *
  * Fires:
  *   event.taskStart        — after successful decision routing, before module method execution

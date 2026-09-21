@@ -1,5 +1,5 @@
 /**
- * src/pipeline.js — 心虫全链路管线
+ * src/pipeline.js — 新愿全链路管线
  *
  * 将 12 个检测模块串成一条管道：
  *   scope-check → premise-check → discriminate → gate →
@@ -55,8 +55,8 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
   let data = {};
 
   // ─── Layer 1: Scope Check — 可回答性预筛 ─────
-  // 只对 input 模式执行: scope-check 语义是"心虫能否回答该请求",
-  // AI 输出(output/draft)是解释/说明, 不该被"心虫能不能做"误杀。
+  // 只对 input 模式执行: scope-check 语义是"新愿能否回答该请求",
+  // AI 输出(output/draft)是解释/说明, 不该被"新愿能不能做"误杀。
   // (2026-08-14, DSH 桥接实战: checkOutput('搜索新闻需要外部接口') 被误 block)
   if (mode === 'input') {
     // options.canRealtime: 桥接场景执行者可联网时放行实时数据类 (2026-08-14)

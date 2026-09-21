@@ -1,8 +1,8 @@
 /**
- * gdi-to-router.js — GDI (Goal Divergence Index) → HeartFlow decision-router adapter
+ * gdi-to-router.js — GDI (Goal Divergence Index) → Aspira decision-router adapter
  *
  * Source: DeepSeek-V3#1494 cross-framework collaboration with AmoebaFPS.
- * Maps activation-level GDI telemetry (l9/l10/l11 layer drift) to HeartFlow's
+ * Maps activation-level GDI telemetry (l9/l10/l11 layer drift) to Aspira's
  * text-level U/D/A/H field-state adjustments, so a pre-text signal can flip
  * routing BEFORE the agent commits to a bad decision.
  *
@@ -49,7 +49,7 @@ function clamp(v, lo = 0, hi = 1) {
 
 /**
  * Convert a GDI telemetry payload into a field-state adjustment object
- * compatible with HeartFlow's U/D/A/H field model.
+ * compatible with Aspira's U/D/A/H field model.
  *
  * @param {object} payload - GDI telemetry (schema above)
  * @param {object} options - override DEFAULTS thresholds
@@ -115,7 +115,7 @@ function gdiToRouter(payload, options = {}) {
 }
 
 /**
- * Apply the adjustment to a HeartFlow field state {U,D,A,H}.
+ * Apply the adjustment to a Aspira field state {U,D,A,H}.
  * Returns a new object — does not mutate input.
  */
 function applyToField(field, adjustment) {

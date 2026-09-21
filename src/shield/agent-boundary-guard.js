@@ -1,17 +1,17 @@
 /**
- * agent-boundary-guard.js — [心虫自主决策 2026-08-13] 跨界写入门禁
+ * agent-boundary-guard.js — [新愿自主决策 2026-08-13] 跨界写入门禁
  *
  * 背景：Hermes/Claude 等 agent 以 root 运行时，可自由读写其他 agent 的配置目录
  * （~/.claude、~/.agents、~/.openclaw 等）。安装/误操作/提示注入可导致
  * 一个 agent 修改另一个 agent 的技能文件，影响其行为。
  *
- * 本模块是心虫（辨别者/门禁层）对该隐患的监督能力：
+ * 本模块是新愿（辨别者/门禁层）对该隐患的监督能力：
  *  - 维护"本 agent 地盘"清单（默认 ~/.hermes）
  *  - 检测"跨界写入"：写路径落在其他 agent 地盘 → 拦截/警告
  *  - 提供 checkWrite(path) 供 Hermes 等宿主的文件操作前调用
  *  - 提供 audit 日志（谁、何时、试图写哪、结果）
  *
- * 设计原则：只做判别，不做执行（心虫是辨别者）。
+ * 设计原则：只做判别，不做执行（新愿是辨别者）。
  * 判别结果供宿主决策：BLOCK（拦截）/ WARN（警告后放行）/ ALLOW（正常）
  */
 
@@ -86,7 +86,7 @@ class AgentBoundaryGuard {
         this._audit({ actor, purpose, target: resolved, verdict: 'BLOCK', reason: `cross-agent write into ${dir}` });
         return {
           verdict: 'BLOCK',
-          reason: `cross-agent write into ${dir} (${agentDir}) — 心虫跨界写入门禁`,
+          reason: `cross-agent write into ${dir} (${agentDir}) — 新愿跨界写入门禁`,
           targetAgent: dir,
           resolvedPath: resolved,
         };

@@ -1,6 +1,6 @@
 // ai-anti-pattern.js — 防 AI 通病五戒检测器
 // 来源: dev-expert execution-safety.md「防 AI 通病五戒」
-// 作为心虫第 49 维判别器接入
+// 作为新愿第 49 维判别器接入
 
 const RE_MEANINGLESS_DECL = /(?:let|const|var)\s+(tmp|data|info|result|res|obj|item|val|ret|str|num|arr|map|set|dict|params|args|ctx|cfg|conf|opt)\b/;
 

@@ -1,4 +1,4 @@
-# HeartFlow (心虫)
+# Aspira (新愿)
 
 **AGI Layer 1 — the Discriminator.**
 
@@ -10,7 +10,7 @@ or dangerous — **before it reaches a human**. Zero LLM dependency.
 ×  1,506 dispatch routes  ×  547 passing tests  ×  0 runtime dependencies
 ```
 
-HeartFlow does not generate. It does not compete with an LLM. It stands between the
+Aspira does not generate. It does not compete with an LLM. It stands between the
 LLM and the human, like a pain receptor that says "no" when something is wrong.
 
 | Layer | Capability | Who builds it |
@@ -19,9 +19,9 @@ LLM and the human, like a pain receptor that says "no" when something is wrong.
 | 4 | Generate | Large labs (LLMs) |
 | 3 | Reason | Built into models |
 | 2 | Remember | Large labs + startups |
-| **1** | **Discriminate** | **HeartFlow** |
+| **1** | **Discriminate** | **Aspira** |
 
-HeartFlow takes layer 1 because this layer does not depend on compute, code volume,
+Aspira takes layer 1 because this layer does not depend on compute, code volume,
 or framework ecosystems. It depends on judgment alone.
 
 ---
@@ -137,7 +137,7 @@ Measured on this repository at **v6.7.69**. Not marketing copy.
 
 ## MCP server
 
-HeartFlow exposes its engine as an MCP server, so any MCP-capable agent can call it.
+Aspira exposes its engine as an MCP server, so any MCP-capable agent can call it.
 
 ```bash
 node src/mcp-server.js --port 8588
@@ -162,7 +162,7 @@ unauthenticated caller:
 | Role | Source | Capability |
 |------|--------|------------|
 | `guest` | no credentials | read-only tools |
-| `user` | `HeartFlow-OID-<16-hex>` header | read + write |
+| `user` | `Aspira-OID-<16-hex>` header | read + write |
 | `admin` | valid bearer token | full |
 
 The write-protected set is `heartflow_memory_write_control`,
@@ -177,7 +177,7 @@ tool-name whitelist passed while the gate never ran.
 
 ## Agent-facing checks
 
-Beyond text discrimination, HeartFlow ships checks aimed at how AI agents behave — the
+Beyond text discrimination, Aspira ships checks aimed at how AI agents behave — the
 failure modes that show up when an agent reports work it did not do.
 
 | Check | What it catches |

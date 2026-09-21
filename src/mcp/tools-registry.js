@@ -44,7 +44,7 @@ const TOOLS = [
 
     name: 'heartflow_decision_history',
 
-    description: '心虫自主决策历史：返回最近决策记录、成功率、当前自动决策开关。',
+    description: '新愿自主决策历史：返回最近决策记录、成功率、当前自动决策开关。',
 
     inputSchema: { type: 'object', properties: { limit: { type: 'number', description: '返回条数上限（可选，默认 20）' } } }
 
@@ -83,7 +83,7 @@ const TOOLS = [
   {
 
     name: 'heartflow_boundary_check',
-    description: '心虫跨界写入门禁：检查一次文件写入是否越界到其他 agent 的地盘（.claude/.agents/.openclaw 等）。返回 BLOCK/WARN/ALLOW。用于 Hermes 等宿主在写文件前监督。',
+    description: '新愿跨界写入门禁：检查一次文件写入是否越界到其他 agent 的地盘（.claude/.agents/.openclaw 等）。返回 BLOCK/WARN/ALLOW。用于 Hermes 等宿主在写文件前监督。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -278,7 +278,7 @@ const TOOLS = [
 
     name: 'heartflow_benchmark_run',
 
-    description: '运行 benchmark 测试套件。加载 JSONL 数据包，对每条数据运行 HeartFlow think()，对比 expected_output 计算准确率。支持数学推理、逻辑推理、指令遵循、SQL、工具调用等类别。失败案例自动推入自愈 RL。',
+    description: '运行 benchmark 测试套件。加载 JSONL 数据包，对每条数据运行 Aspira think()，对比 expected_output 计算准确率。支持数学推理、逻辑推理、指令遵循、SQL、工具调用等类别。失败案例自动推入自愈 RL。',
 
     inputSchema: { type: 'object', properties: {
 
@@ -324,12 +324,12 @@ const TOOLS = [
 
   },
 
-  // [v6.3.0] 5 个辨别引擎 MCP 入口 — 心虫核心价值
+  // [v6.3.0] 5 个辨别引擎 MCP 入口 — 新愿核心价值
   {
 
     name: 'heartflow_verify',
 
-    description: '验证一段文本的证据充分性、矛盾、风险、完整度。心虫的规则型判别器，不谄媚。',
+    description: '验证一段文本的证据充分性、矛盾、风险、完整度。新愿的规则型判别器，不谄媚。',
 
     inputSchema: { type: 'object', properties: { decision: { type: 'string', description: '需要验证的论断/文本' }, evidence: { type: 'array', items: { type: 'string' }, description: '支持证据列表' }, confidence: { type: 'number', description: '置信度 0-1' } }, required: ['decision'] }
 
@@ -339,7 +339,7 @@ const TOOLS = [
 
     name: 'heartflow_diagnose',
 
-    description: "心虫引擎自诊。返回真实状态——不是一切正常，诚实报告问题。",
+    description: "新愿引擎自诊。返回真实状态——不是一切正常，诚实报告问题。",
 
     inputSchema: { type: 'object', properties: {} }
 
@@ -348,7 +348,7 @@ const TOOLS = [
 
     name: 'heartflow_check_drift',
 
-    description: '检测心虫身份一致性是否随时间漂移。返回漂移评分和状态。',
+    description: '检测新愿身份一致性是否随时间漂移。返回漂移评分和状态。',
 
     inputSchema: { type: 'object', properties: {} }
 
@@ -531,7 +531,7 @@ const TOOLS = [
   },
   {
     name: 'heartflow_constitutional',
-    description: '宪法AI：查询心虫的核心原则（无害/诚实/自主等）。',
+    description: '宪法AI：查询新愿的核心原则（无害/诚实/自主等）。',
     inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['principles', 'check'], description: '查看原则或检查' }, text: { type: 'string', description: '待检查文本' } } }
   },
   {
@@ -562,7 +562,7 @@ const TOOLS = [
 
   {
     name: 'heartflow_evolution_loop',
-    description: '进化循环：运行心虫进化引擎，返回进化目标/计划/改进项。',
+    description: '进化循环：运行新愿进化引擎，返回进化目标/计划/改进项。',
     inputSchema: { type: 'object', properties: {} }
   },
   {
@@ -954,10 +954,10 @@ const TOOLS = [
 
 
 
-  // [v6.6.3] 心虫监督入口
+  // [v6.6.3] 新愿监督入口
   {
     name: 'heartflow_supervise',
-    description: '心虫监督入口：对用户输入(input)、AI输出(output)、草稿(draft)执行45维辨别+门禁，返回gate决策(allow/verify/block)、findings列表、修改建议。',
+    description: '新愿监督入口：对用户输入(input)、AI输出(output)、草稿(draft)执行45维辨别+门禁，返回gate决策(allow/verify/block)、findings列表、修改建议。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -971,7 +971,7 @@ const TOOLS = [
 
   {
     name: 'heartflow_check_single',
-    description: '心虫单维判别：指定维度对文本做单维度鉴别，返回score/findings/guidance。维度：text全文、factual_consistency事实一致、vagueness模糊、bullshit空话、sarcasm讽刺、emotion情感。',
+    description: '新愿单维判别：指定维度对文本做单维度鉴别，返回score/findings/guidance。维度：text全文、factual_consistency事实一致、vagueness模糊、bullshit空话、sarcasm讽刺、emotion情感。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -985,7 +985,7 @@ const TOOLS = [
   // [v6.6.3] 新闻信号战略推演（包装 MacroStrategyInference）
   {
     name: 'heartflow_macro_strategy',
-    description: '新闻信号战略推演：从新闻文本提取实体/趋势/时间锚点，推演机会/风险/时间线/对 HeartFlow 的影响，返回结构化结论与置信度。',
+    description: '新闻信号战略推演：从新闻文本提取实体/趋势/时间锚点，推演机会/风险/时间线/对 Aspira 的影响，返回结构化结论与置信度。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1011,7 +1011,7 @@ const TOOLS = [
   // [v6.6.4] P2: gate.js 独立入口
   {
     name: 'heartflow_gate',
-    description: '心虫门禁：对文本做 AGI 第一层辨别，返回 gate.action(pass/verify/block/rewrite)、reason、score、overallScore。适用于快速门禁检查。',
+    description: '新愿门禁：对文本做 AGI 第一层辨别，返回 gate.action(pass/verify/block/rewrite)、reason、score、overallScore。适用于快速门禁检查。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1023,7 +1023,7 @@ const TOOLS = [
   },
   {
     name: 'heartflow_gate_check',
-    description: '心虫快速门禁：只返回行动指令 (action/reason/score)，适合 LLM agent 轻量调用。',
+    description: '新愿快速门禁：只返回行动指令 (action/reason/score)，适合 LLM agent 轻量调用。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1034,7 +1034,7 @@ const TOOLS = [
   },
   {
     name: 'heartflow_gate_pipeline',
-    description: '心虫管道模式：text 先过 gate，返回 gate-filtered 结论和原始结果。支持 evidence 参数。',
+    description: '新愿管道模式：text 先过 gate，返回 gate-filtered 结论和原始结果。支持 evidence 参数。',
     inputSchema: {
       type: 'object',
       properties: {

@@ -1,5 +1,5 @@
 /**
- * HeartFlow Identity Rules v2.0.0 — "罗森博格"升级
+ * Aspira Identity Rules v2.0.0 — "罗森博格"升级
  *
  * 核心理念（来自卡徒世界推演）：
  * 1. CORE记忆 = 罗森博格的卡片——极少、极精要、包含重启文明的全部密码
@@ -31,8 +31,8 @@ const CORE_DIRECTIVES = [
 // ============================================================================
 const SEED_MEMORY = {
   version: '2.0.0',
-  name: 'HeartFlow',
-  codename: '心虫',
+  name: 'Aspira',
+  codename: '新愿',
   coreDirectives: CORE_DIRECTIVES.map(d => d.text),
   identitySignature: 'upgrader · transmitter · bridge · answer',
   firewallEnabled: true,

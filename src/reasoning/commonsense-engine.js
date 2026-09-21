@@ -1,5 +1,5 @@
 /**
- * commonsense-engine - HeartFlow 模块
+ * commonsense-engine - Aspira 模块
  * 自动生成的 stub 实现
  */
 

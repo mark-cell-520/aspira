@@ -1,5 +1,5 @@
 /**
- * HeartFlow Priority Guardian v11.8.0
+ * Aspira Priority Guardian v11.8.0
  * 
  * 存在论核心：人类进步是不可动摇的守护对象。
  * 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * engine-lifecycle — HeartFlow 生命周期管理
+ * engine-lifecycle — Aspira 生命周期管理
  * 从 heartflow.js 提取的独立模块 (v6.0.1)
  */
 
