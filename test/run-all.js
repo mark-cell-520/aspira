@@ -168,9 +168,15 @@ async function runAllTests() {
   // 汇总
   console.log('\n' + '='.repeat(50));
   console.log(`\n测试结果: ${passed} 通过, ${failed} 失败, 共 ${passed + failed} 个`);
-  if (failures.length > 0) {
+  // 判定必须基于 failed 计数，不能用 failures.length：后者只收集带 ✗ 前缀的用例，
+  // 子测试若用其他格式报告失败（FAIL:/AssertionError/汇总行前移），会出现
+  // "failed>0 但 failures 为空"——那时会打印"全部通过"且 exitCode=0，把回归洗成绿灯。
+  if (failed > 0) {
     console.log('\n失败的测试:');
     for (const f of failures) console.log(`  - ${f.name} ${f.error}`);
+    if (failures.length === 0) {
+      console.log(`  （有 ${failed} 个失败，但未能从输出定位到具体用例——上方 keep 行应有线索，请上查原始输出）`);
+    }
     process.exitCode = 1;
   } else {
     console.log('\n全部通过。');

@@ -1,3 +1,42 @@
+## [1.0.0] - 2026-09-21
+
+架构解耦 + 品牌升级，版本号重置为 1.0.0（不再延续 HeartFlow 的 6.7.x 序列）。
+功能基线等价于心虫 v6.7.69，全部历史能力原样保留。
+
+### Changed
+- **品牌**：HeartFlow（心虫）→ Aspira（新愿）。仅动展示层——`src/core/heartflow.js`
+  文件名、`heartflow` 变量/方法名、`HEARTFLOW_*` 环境变量是运行时契约，刻意保留
+  （完整清单见 `docs/DECOUPLING.md` 兼容层表）
+- **权威源**：`~/aspira` 单点，`.claude/skills/aspira`、`.hermes/skills/aspira`、
+  `.hermes/src` 三处符号链接指向它；launchd label 改为 `com.aspira.mcp`
+- **版本号**：重置为 1.0.0。`VERSION` 文件仍为唯一真相源，
+  `scripts/sync-version.js` 继续同步 package.json / SKILL.md / BUILD_DATE
+- **repo-audit.js**：审计器自身版本改为从 VERSION 动态读取（原硬编码 v6.7.13，
+  已随每次发版腐化）
+
+### Fixed
+- `src/mcp-server.js` 服务启动逻辑误置于模块顶层：任何 require 它的进程都会启动
+  常驻服务，端口冲突时走「强制释放」分支杀掉占用者——跑一次测试即杀死生产 MCP
+  服务，随后陷入自噬循环。改为 `startServer()` + `require.main === module` 守卫，
+  并补充 `ASPIRA_NO_AUTOSTART=1` 逃生门；npm bin 入口行为不变
+- `src/mcp-server.js` 速率限制清理 `setInterval` 补 `.unref()`：纯清理任务不应
+  替宿主进程决定何时退出
+- `src/knowledge/classics-rules.js` `searchClassicsBatch` 透传底层检索降级原因：
+  缺语料库时此前返回空 hits 且无 error，调用方无法区分「确无相关文献」与
+  「检索器未安装」
+- `src/premature-termination.js` T4 正则允许结尾句点，样本
+  "Done. You can refer to the above." 不再漏判
+- `src/memory/meaningful-memory.js` `searchByAssociation` 补 read-time 签名验证，
+  与 `searchByKeywords` 一致
+- `src/shield/audit-logger.js` 补 JSONL 追加式 API（`log`/`readRecent`/
+  `verifyChain`/`getStats`/`close` + `logPath` 构造选项 + 12 位 sha256 哈希链），
+  修复 `bin/cli.js audit` 命令此前调用不存在方法直接崩溃的问题
+- `src/benchmark/latency-benchmark.js` 恢复被误删的公开延迟基准模块
+  （`bin/cli.js benchmark` 的真实调用方）
+
+### Tests
+- 全量测试 547 通过 / 0 失败
+
 ## [6.7.69] - 2026-09-18
 
 ### Added
