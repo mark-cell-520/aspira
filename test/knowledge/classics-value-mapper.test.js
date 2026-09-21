@@ -40,8 +40,8 @@ module.exports = function({ test }) {
       if (out.keywords.length < 2) throw new Error('keywords length');
     }],
     ['parseHit parses file:line:raw', () => {
-      const p = parseHit('/root/.hermes/skills/daizhigev20/儒藏/四书/论语集解义疏.txt:60:子曰');
-      if (p.file !== '/root/.hermes/skills/daizhigev20/儒藏/四书/论语集解义疏.txt') throw new Error('file');
+      const p = parseHit('/data/daizhigev20/儒藏/四书/论语集解义疏.txt:60:子曰');
+      if (p.file !== '/data/daizhigev20/儒藏/四书/论语集解义疏.txt') throw new Error('file');
       if (p.line !== 60) throw new Error('line');
       if (!p.raw.startsWith('子曰')) throw new Error('raw');
     }],

@@ -1,7 +1,7 @@
 /**
  * frame-check.test.js — 叙事框架检查测试
  */
-const { check } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/frame-check.js');
+const { check } = require('../src/frame-check.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
 

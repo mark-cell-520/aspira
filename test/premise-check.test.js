@@ -1,4 +1,4 @@
-const { checkPremises } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/premise-check.js');
+const { checkPremises } = require('../src/premise-check.js');
 
 module.exports = ({ test, assertTrue, assertEqual, assertDefined }) => {
   test('checkPremises returns results', () => {

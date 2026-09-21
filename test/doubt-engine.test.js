@@ -1,7 +1,7 @@
 /**
  * doubt-engine.test.js — 怀疑引擎测试
  */
-const { doubt, checkKnowledgeBoundary, checkSymmetry, checkDefensiveness } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/doubt-engine.js');
+const { doubt, checkKnowledgeBoundary, checkSymmetry, checkDefensiveness } = require('../src/doubt-engine.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
 

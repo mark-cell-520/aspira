@@ -3,7 +3,8 @@
  */
 module.exports = function ({ test, assertEqual, assertTrue, assertFalse, assertDefined, assertThrows }) {
   const { RuleGrowth, MIN_OCCURRENCE } = require('../src/cortex/rule-growth.js');
-  const ROOT = '/root/.hermes/skills/ai/mark-heartflow-skill';
+  const path = require('path');
+  const ROOT = path.join(__dirname, '..');
   // 用临时规则文件避免污染真实数据
   const fs = require('fs');
   const tmpFile = ROOT + '/data/learned-rules.test.json';

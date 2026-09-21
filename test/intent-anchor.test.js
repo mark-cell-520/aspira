@@ -1,4 +1,4 @@
-const { initAnchor, checkDrift, resetAnchor } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/intent-anchor.js');
+const { initAnchor, checkDrift, resetAnchor } = require('../src/intent-anchor.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
   test('initAnchor sets anchor', () => {

@@ -65,11 +65,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yun520-1/mark-heartflow-skill.git"
+    "url": "git+https://github.com/mark-cell-520/aspira.git"
   },
-  "homepage": "https://github.com/yun520-1/mark-heartflow-skill#readme",
+  "homepage": "https://github.com/mark-cell-520/aspira#readme",
   "bugs": {
-    "url": "https://github.com/yun520-1/mark-heartflow-skill/issues"
+    "url": "https://github.com/mark-cell-520/aspira/issues"
   },
   "engines": {
     "node": ">=18.17"

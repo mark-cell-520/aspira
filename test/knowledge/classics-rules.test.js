@@ -138,8 +138,8 @@ test('searchClassicsBatch 多关键词合并且去重', () => {
 });
 
 test('parseHit 正确解析 file:line:raw', () => {
-  const parsed = parseHit('/root/.hermes/skills/daizhigev20/儒藏/四书/论语集解义疏.txt:60:子曰弟子入则孝出则悌');
-  assert(parsed.file === '/root/.hermes/skills/daizhigev20/儒藏/四书/论语集解义疏.txt', 'file');
+  const parsed = parseHit('/data/daizhigev20/儒藏/四书/论语集解义疏.txt:60:子曰弟子入则孝出则悌');
+  assert(parsed.file === '/data/daizhigev20/儒藏/四书/论语集解义疏.txt', 'file');
   assert(parsed.line === 60, 'line');
   assert(parsed.raw.startsWith('子曰'), 'raw prefix');
 });

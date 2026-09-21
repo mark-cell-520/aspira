@@ -1,4 +1,4 @@
-const auto = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/auto-rules.js');
+const auto = require('../src/auto-rules.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
 

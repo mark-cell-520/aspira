@@ -4797,10 +4797,14 @@ server.on('error', (err) => {
         process.exit(1);
       }
       try {
-        execSync(`fuser -k ${PORT}/tcp`, { stdio: ['ignore', 'pipe', 'pipe'], timeout: 3000 });
+        // 跨平台释放端口：Linux 用 fuser，macOS 的 fuser 不支持 -k，改用 lsof
+        const releaseCmd = process.platform === 'darwin'
+          ? `lsof -ti tcp:${PORT} -sTCP:LISTEN | xargs kill`
+          : `fuser -k ${PORT}/tcp`;
+        execSync(releaseCmd, { stdio: ['ignore', 'pipe', 'pipe'], timeout: 3000 });
       } catch (e) {
         const stderr = (e.stderr && e.stderr.toString()) || e.message || '';
-        console.error(`[Aspira MCP] fuser 释放端口输出: ${stderr.trim()}`);
+        console.error(`[Aspira MCP] 释放端口输出: ${stderr.trim()}`);
       }
       console.error(`[Aspira MCP] 端口 ${PORT} 已释放，3秒后自动重启。`);
       setTimeout(() => {

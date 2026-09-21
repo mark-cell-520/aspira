@@ -1,7 +1,7 @@
 /**
  * verifier.test.js — 证据引擎测试
  */
-const { verify, extractClaims } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/verifier.js');
+const { verify, extractClaims } = require('../src/verifier.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
 

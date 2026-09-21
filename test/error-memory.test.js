@@ -1,4 +1,4 @@
-const em = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/error-memory.js');
+const em = require('../src/error-memory.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
   test('logCorrection returns success', () => {

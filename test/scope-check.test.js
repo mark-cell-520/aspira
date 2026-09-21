@@ -1,4 +1,4 @@
-const { checkScope } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/scope-check.js');
+const { checkScope } = require('../src/scope-check.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
   test('checkScope returns pass/fail', () => {

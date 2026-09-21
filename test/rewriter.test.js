@@ -1,8 +1,8 @@
 /**
  * rewriter.test.js — 改写引擎测试
  */
-const { discriminate } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/index.js');
-const { rewrite } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/rewriter.js');
+const { discriminate } = require('../src/index.js');
+const { rewrite } = require('../src/rewriter.js');
 
 module.exports = ({ test, assertEqual, assertTrue }) => {
 

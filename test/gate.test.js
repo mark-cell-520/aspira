@@ -2,7 +2,7 @@
  * gate.test.js — AGI 第 1 层门禁测试
  * 测试 4 种行动指令的正确分发
  */
-const { gate, check, pipeline } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/gate.js');
+const { gate, check, pipeline } = require('../src/gate.js');
 
 module.exports = ({ test, assertEqual, assertDefined }) => {
 

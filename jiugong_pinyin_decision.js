@@ -3,7 +3,7 @@
  * jiugong_pinyin_decision.js
  * 九宫数码拼音输入法 — 新愿决策分析
  */
-const { Aspira } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/core/heartflow.js');
+const { Aspira } = require('./src/core/heartflow.js');
 const fs = require('fs');
 
 function showHeader() {
@@ -40,7 +40,7 @@ async function main() {
   showHeader();
   showSchemes();
 
-  const hf = new Aspira({ dataDir: '/root/.hermes/skills/ai/mark-heartflow-skill/data', silent: true });
+  const hf = new Aspira({ dataDir: './data', silent: true });
   hf.start();
 
   const task = `

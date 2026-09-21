@@ -1,7 +1,7 @@
 /**
  * output-gate.test.js — 输出门禁测试
  */
-const { screen, findSelfContradiction, checkUncertaintyGap } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/output-gate.js');
+const { screen, findSelfContradiction, checkUncertaintyGap } = require('../src/output-gate.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
 

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const path = '/root/.hermes/skills/ai/mark-heartflow-skill/src/knowledge/classics-rules.js';
+const path = '../src/knowledge/classics-rules.js';
 let text = fs.readFileSync(path, 'utf-8');
 
 // 1) liji-yueji: allow comma variants between 乐者/礼者 and 天地之和/天地之序

@@ -25,7 +25,7 @@ Aspira is a **rule-based discrimination engine** (AGI Layer 1 discriminator). It
 ### Independent verification
 
 - **VirusTotal**: 64/64 vendors report **clean** (0 detections)
-- **Source**: Fully open-source at [github.com/yun520-1/mark-heartflow-skill](https://github.com/yun520-1/mark-heartflow-skill)
+- **Source**: Fully open-source at [github.com/mark-cell-520/aspira](https://github.com/mark-cell-520/aspira)
 - **Dependencies**: Only `mathjs` (for formula computation) — no suspicious packages
 
 All "dangerous" patterns flagged are **security infrastructure protecting the user**, not attack vectors.

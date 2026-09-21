@@ -19,6 +19,7 @@
 *.swp
 *.tgz
 *.tmp
+tmp/          # 一次性升级/运维临时脚本，不入库
 *~
 .DS_Store
 .claude

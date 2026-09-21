@@ -1,4 +1,4 @@
-const { runPipeline, checkInput, checkDraft, checkOutput } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/pipeline.js');
+const { runPipeline, checkInput, checkDraft, checkOutput } = require('../src/pipeline.js');
 
 module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
 

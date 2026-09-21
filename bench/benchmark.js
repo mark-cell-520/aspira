@@ -5,7 +5,7 @@
  * 输出召回率、误报率、F1。
  */
 
-const { checkInput } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/pipeline.js');
+const { checkInput } = require('../src/pipeline.js');
 
 // ============================================================
 // 基准数据集

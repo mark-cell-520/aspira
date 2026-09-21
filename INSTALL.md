@@ -4,7 +4,7 @@
 
 ```bash
 # 1. 克隆仓库（仅核心文件）
-git clone --depth 1 --filter=blob:none --sparse https://github.com/yun520-1/mark-heartflow-skill.git heartflow
+git clone --depth 1 --filter=blob:none --sparse https://github.com/mark-cell-520/aspira.git heartflow
 cd heartflow
 git sparse-checkout set src/core mcp bin VERSION package.json config.json
 
