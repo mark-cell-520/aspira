@@ -16,14 +16,106 @@ class AuditLogger {
     this.logDir = options.logDir || path.join(process.cwd(), 'data', 'audit');
     this.maxEntries = options.maxEntries || 10000;
     this.entries = [];
+    // [v6.7.70] JSONL 追加式日志：logPath 显式指定单文件路径（审计基础设施诚信化改造）
+    this.logPath = options.logPath || null;
+    this.silent = options.silent !== false;
+    this._lastHash = null;
     this._init();
   }
 
   _init() {
     try {
-      if (!fs.existsSync(this.logDir)) fs.mkdirSync(this.logDir, { recursive: true });
+      if (this.logPath) {
+        const dir = path.dirname(this.logPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        // 恢复哈希链尾值，保证重启后续写仍能校验
+        this._lastHash = this._tailHash();
+      } else if (!fs.existsSync(this.logDir)) {
+        fs.mkdirSync(this.logDir, { recursive: true });
+      }
     } catch (e) { /* dir init silent */ }
   }
+
+  /** 读取日志文件最后一条的哈希，作为新条目的链接前值 */
+  _tailHash() {
+    try {
+      if (!this.logPath || !fs.existsSync(this.logPath)) return null;
+      const lines = fs.readFileSync(this.logPath, 'utf8').split('\n').filter(Boolean);
+      if (!lines.length) return null;
+      const last = JSON.parse(lines[lines.length - 1]);
+      return last && typeof last.h === 'string' ? last.h : null;
+    } catch (e) { return null; }
+  }
+
+  /**
+   * 追加一条审计事件到 JSONL 日志（带防篡改哈希链）
+   * @param {string} event - 事件类型，如 security_event / engine_start / evolution_cycle
+   * @param {Object} payload - 事件明细
+   * @returns {string} 本条哈希
+   */
+  log(event, payload = {}) {
+    const core = {
+      ts: new Date().toISOString(),
+      e: String(event),
+      d: payload && typeof payload === 'object' ? payload : { value: payload },
+    };
+    // 哈希链：本条目哈希 = sha256(上一条哈希 + 本条明文)，任一条被改都会断链
+    const h = crypto.createHash('sha256')
+      .update((this._lastHash || 'genesis') + JSON.stringify(core))
+      .digest('hex')
+      .slice(0, 12);
+    const line = { ...core, h };
+
+    if (this.logPath) {
+      try {
+        fs.appendFileSync(this.logPath, JSON.stringify(line) + '\n');
+        this._lastHash = h;
+      } catch (e) { /* persist silent */ }
+    }
+    return h;
+  }
+
+  /** 从磁盘读取最近 n 条审计事件 */
+  readRecent(n = 50) {
+    try {
+      if (!this.logPath || !fs.existsSync(this.logPath)) return [];
+      const lines = fs.readFileSync(this.logPath, 'utf8').split('\n').filter(Boolean);
+      return lines.slice(-Math.max(1, n)).map(l => {
+        try { return JSON.parse(l); } catch (e) { return { e: 'parse_error', raw: l.slice(0, 80) }; }
+      });
+    } catch (e) { return []; }
+  }
+
+  /** 校验哈希链完整性，返回 { valid, brokenAt } */
+  verifyChain() {
+    const all = this.readRecent(Number.MAX_SAFE_INTEGER);
+    let prev = 'genesis';
+    for (let i = 0; i < all.length; i++) {
+      const { h, ...core } = all[i];
+      const expect = crypto.createHash('sha256')
+        .update(prev + JSON.stringify(core))
+        .digest('hex')
+        .slice(0, 12);
+      if (h !== expect) return { valid: false, brokenAt: i, total: all.length };
+      prev = h;
+    }
+    return { valid: true, total: all.length };
+  }
+
+  /** 报告审计基础设施自身状态 */
+  getStats() {
+    return {
+      persisted: !!(this.logPath && fs.existsSync(this.logPath)),
+      logPath: this.logPath || null,
+      logDir: this.logDir,
+      memoryEntries: this.entries.length,
+      totalEntries: this.entries.length,
+      chain: this.verifyChain(),
+    };
+  }
+
+  /** 同步写入无需 flush，保留 close 供调用方显式收尾 */
+  close() { /* appendFileSync 已同步落盘，无需额外操作 */ }
 
   /**
    * 记录授权决策

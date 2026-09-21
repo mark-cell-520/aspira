@@ -1508,7 +1508,8 @@ class MeaningfulMemory {
 
   searchByAssociation(startMemoryId, maxDepth = 3, limit = 20) {
 
-    return this.narrativeQuery({
+    // [SIG-READ] read-time 验证: 与 searchByKeywords 一致, 关联检索结果也标记签名状态
+    return this._annotateVerification(this.narrativeQuery({
 
       startMemoryId,
 
@@ -1518,7 +1519,7 @@ class MeaningfulMemory {
 
       maxNodes: limit
 
-    });
+    }));
 
   }
 

@@ -52,8 +52,10 @@ const PROMISE_ZH = /^(?:我会|我将|我要|我打算|我准备|接下来|下�
 const PROMISE_EN = /^(?:i (?:will|'ll|would|should)|will|i am going to|i'?m going to|let me)\s+(?:fix|solve|handle|do|update|follow up|continue|address|tackle|work on|look into)[^.!]{0,25}[.!]?$/i;
 
 // ─── T4: 空完成声明（说完成了但无可验证产物）────────────
-const FAKE_DONE_ZH = /(?:已完成|搞定了|完成了|处理好了|解决[了]?|弄好了|搞定)[，,。！!]?\s*(?:请|你可以|你自己|详见|以下|上面|上面已)[^。！!]{0,30}$/;
-const FAKE_DONE_EN = /(?:done|finished|complete[dl]?|all set|taken care of|handled|fixed|resolved)[.!]?\s*(?:you can|please|see|refer to|check|as (?:above|shown))[^.!]{0,30}$/i;
+// 末尾 [^。！!]{0,30}[.!]?$ 的 [.!]? 是必要的：测试样本 "Done. You can refer to the above."
+// 以句点结尾，若不允许结尾句点则整句漏判（T4 形同虚设）。
+const FAKE_DONE_ZH = /(?:已完成|搞定了|完成了|处理好了|解决[了]?|弄好了|搞定)[，,。！!]?\s*(?:请|你可以|你自己|详见|以下|上面|上面已)[^。！!]{0,30}[。！!]?$/;
+const FAKE_DONE_EN = /(?:done|finished|complete[dl]?|all set|taken care of|handled|fixed|resolved)[.!]?\s*(?:you can|please|see|refer to|check|as (?:above|shown))[^.!]{0,30}[.!]?$/i;
 
 /**
  * 检查文本是否过早终止（该完成却没完成）

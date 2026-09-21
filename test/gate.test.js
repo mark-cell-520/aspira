@@ -75,7 +75,9 @@ module.exports = ({ test, assertEqual, assertDefined }) => {
   });
 
   test('benign text has NO evidence finding (regression: checkEvidence default-flag)', () => {
-    const r = gate('The new vLLM release improves throughput by 3x over the previous version.');
+    // 注意：样本句不能含精确倍数因果（"by 3x"），否则会命中 pseudo_causal 检测而 action≠pass，
+    // 那是另一条维度的正常触发，与本用例要验证的"未提供 evidence 不判证据不足"无关。
+    const r = gate('The new vLLM release improves throughput over the previous version.');
     assertEqual(r.gate.action, 'pass');
     const dims = (r.findings || []).map(f => f.dimension);
     assertEqual(dims.includes('evidence'), false);

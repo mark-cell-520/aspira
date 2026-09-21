@@ -1006,8 +1006,12 @@ function searchClassicsBatch(keywords, scope) {
   }
   const combined = [];
   const seen = new Set();
+  // 收集底层检索的降级原因：缺语料库/缺脚本时 searchClassics 返回 error，
+  // 必须透传给调用方，否则"检索器未安装"会被误读成"确无相关文献"。
+  const errors = [];
   for (const kw of keywords) {
     const result = searchClassics(kw, scope);
+    if (result.error) errors.push(result.error);
     for (const hit of result.hits || []) {
       const key = hit.raw?.slice(0, 64);
       if (key && !seen.has(key)) {
@@ -1016,7 +1020,11 @@ function searchClassicsBatch(keywords, scope) {
       }
     }
   }
-  return { hits: combined.slice(0, 40), scope: scope || 'all', keywords };
+  const out = { hits: combined.slice(0, 40), scope: scope || 'all', keywords };
+  // 仅当所有关键词的检索都降级（无任何命中）时才上报 error：
+  // 部分命中说明检索器可用，个别 error 不构成整体降级。
+  if (combined.length === 0 && errors.length > 0) out.error = errors[0];
+  return out;
 }
 
 function parseHit(raw) {

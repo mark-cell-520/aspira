@@ -340,7 +340,11 @@ setInterval(() => {
 
   }
 
-}, 120000);
+// [FIX 2026-09-21] unref()：这是纯清理任务，不该替宿主进程决定何时退出。
+// 未 unref 时，任何 require('../src/mcp-server.js') 的进程（测试、其他模块）
+// 都会被这个 2 分钟定时器永久挂住，导致 execSync 调用方等到超时。
+
+}, 120000).unref();
 
 
 
@@ -4898,28 +4902,47 @@ process.on('unhandledRejection', (reason) => {
 
 initAspira();
 
-if (SOCKET_PATH) {
-  const unixServer = net.createServer(handleUnixClient);
-  try { fs.unlinkSync(SOCKET_PATH); } catch (_) {}
-  try {
-    unixServer.listen(SOCKET_PATH, () => {
-      fs.chmodSync(SOCKET_PATH, 0o600);
-      console.error(`[Aspira MCP] Unix socket: ${SOCKET_PATH}`);
-      console.error(`[Aspira MCP] 连接方式: hermes mcp add heartflow --url unix://${SOCKET_PATH}`);
+/**
+ * 启动常驻服务（HTTP SSE 或 Unix socket）。
+ *
+ * [FIX 2026-09-21] 抽出为函数并加 require.main 守卫：此前这段监听逻辑写在
+ * 模块顶层无条件执行，任何 require('../src/mcp-server.js') 的调用方（测试、
+ * 其他模块）都会连带启动一个真的服务器，进而触发端口冲突时的"强制释放"
+ * 分支——那个分支会杀死占用该端口的进程，被 require 时杀掉的往往是上一轮
+ * 自己的服务，形成"释放→3秒后重启→再释放"的自噬循环，且调用方永不退出。
+ * 现在只有本文件作为入口直接执行（node src/mcp-server.js / npm bin heartflow）
+ * 才启动服务；被 require 时仅加载 HANDLERS/TOOLS 等导出，无副作用。
+ */
+function startServer() {
+  if (SOCKET_PATH) {
+    const unixServer = net.createServer(handleUnixClient);
+    try { fs.unlinkSync(SOCKET_PATH); } catch (_) {}
+    try {
+      unixServer.listen(SOCKET_PATH, () => {
+        fs.chmodSync(SOCKET_PATH, 0o600);
+        console.error(`[Aspira MCP] Unix socket: ${SOCKET_PATH}`);
+        console.error(`[Aspira MCP] 连接方式: hermes mcp add heartflow --url unix://${SOCKET_PATH}`);
+      });
+    } catch (err) {
+      console.error(`[Aspira MCP] Unix socket 监听失败: ${err.message}`);
+      process.exit(1);
+    }
+    unixServer.on('error', (err) => {
+      console.error(`[Aspira MCP] Unix socket error: ${err.message}`);
+      process.exit(1);
     });
-  } catch (err) {
-    console.error(`[Aspira MCP] Unix socket 监听失败: ${err.message}`);
-    process.exit(1);
+  } else {
+    server.listen(PORT, '127.0.0.1', () => {
+      console.error(`[Aspira MCP] HTTP SSE 服务已启动: http://127.0.0.1:${PORT}/mcp`);
+      console.error(`[Aspira MCP] 健康检查: http://127.0.0.1:${PORT}/health`);
+      console.error(`[Aspira MCP] 连接方式: hermes mcp add heartflow --url http://127.0.0.1:${PORT}/mcp`);
+    });
   }
-  unixServer.on('error', (err) => {
-    console.error(`[Aspira MCP] Unix socket error: ${err.message}`);
-    process.exit(1);
-  });
-} else {
-  server.listen(PORT, '127.0.0.1', () => {
-    console.error(`[Aspira MCP] HTTP SSE 服务已启动: http://127.0.0.1:${PORT}/mcp`);
-    console.error(`[Aspira MCP] 健康检查: http://127.0.0.1:${PORT}/health`);
-    console.error(`[Aspira MCP] 连接方式: hermes mcp add heartflow --url http://127.0.0.1:${PORT}/mcp`);
-  });
+}
+
+// 仅作为入口直接执行时启动常驻服务；被 require 时保持无副作用。
+// ASPIRA_NO_AUTOSTART=1 可作为逃生门，供调试/测试时连入口执行也不起服务。
+if (require.main === module && process.env.ASPIRA_NO_AUTOSTART !== '1') {
+  startServer();
 }
 

@@ -134,7 +134,16 @@ test('searchClassicsBatch 多关键词合并且去重', () => {
   const out = searchClassicsBatch(['仁政', '孝悌'], '儒藏/四书');
   assert(Array.isArray(out.hits), 'hits array');
   assert(out.keywords.length >= 2, 'keywords length');
-  assert(out.hits.length > 0, 'should have hits');
+  // 检索依赖外部语料库 daizhigev20 + search_guji.sh，未安装时合法降级为空结果。
+  // 此时必须给出明确 error（而非静默空数组），且不得抛异常。
+  if (out.hits.length === 0) {
+    assert(typeof out.error === 'string' && out.error.length > 0,
+      '无语料库时必须返回明确 error，不能静默返回空结果');
+    return;
+  }
+  // 有语料库时：合并多关键词结果且按 raw 前缀去重
+  const keys = out.hits.map(h => h.raw?.slice(0, 64));
+  assert(new Set(keys).size === keys.length, 'hits should be deduplicated');
 });
 
 test('parseHit 正确解析 file:line:raw', () => {
