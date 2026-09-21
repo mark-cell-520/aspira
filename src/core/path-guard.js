@@ -20,6 +20,10 @@ const ALLOWED_ROOTS = [
   path.resolve(process.cwd(), 'data'),
   path.resolve(process.cwd(), 'tmp'),
   path.resolve('/tmp'),
+  // [v6.7.70 解耦修复] macOS 的 os.tmpdir() 落在 /var/folders/.../T，不在 /tmp 白名单内，
+  // 导致 reflection-memory / kv-cache 的临时缓存路径每次都被误判越界（warn 刷屏）。
+  // 系统临时目录本身即合法运行时位置，纳入白名单消除平台差异噪音。
+  path.resolve(_os.tmpdir()),
 ];
 
 // [v6.5.5 AUDIT-FIX P2-3] 写操作禁止覆盖的路径前缀/后缀（防意外或恶意覆盖引擎源码与配置）

@@ -83,6 +83,7 @@ meaningful-ephemeral.json
 meaningful-learned.json
 memory/*.json
 memory/*.jsonl
+memory/*.enc
 memory/*.md
 memory/*.txt
 memory/.aes-key
