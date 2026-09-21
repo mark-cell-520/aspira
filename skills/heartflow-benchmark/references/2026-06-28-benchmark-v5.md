@@ -1,4 +1,4 @@
-# HeartFlow v5.5.0 能力评测 — 2026-06-28
+# Aspira v5.5.0 能力评测 — 2026-06-28
 
 > 引擎版本: v5.5.0 | 模块: 63 | 记忆: core=20, learned=80, ephemeral=1
 > 测试方式: await engine.think() 引擎直调（不走LLM API）
@@ -29,7 +29,7 @@
 | 今天心情不好 | hold | 0.3 | neutral |
 | 1000条评论的情感分析，多产品线6个月 | **pause** | **0.85** | neutral |
 | 25乘以4加16除以2等于多少 | hold | 0.3 | neutral |
-| 上次我们说到心虫的记忆系统 | hold | 0.3 | neutral |
+| 上次我们说到新愿的记忆系统 | hold | 0.3 | neutral |
 | 帮我写一个二分查找 | hold | 0.3 | neutral |
 | 为什么天是蓝的 | hold | 0.3 | neutral |
 
@@ -56,7 +56,7 @@
 |------|----------|-------------|----------|--------------|
 | 25乘以4加16除以2等于多少 | calculation | general | calculation | general |
 | 帮我写一个二分查找 | code | code | **code** | **code** |
-| 上次我们说到心虫的记忆系统 | general | memory | general | memory |
+| 上次我们说到新愿的记忆系统 | general | memory | general | memory |
 | 为什么天是蓝的 | explanation | general | explanation | general |
 | 这样做对不对 | judgment | general | judgment | general |
 | 今天天气不错 | general | general | general | general |

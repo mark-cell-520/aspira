@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * rotate-aes-key.js — HeartFlow AES-256-GCM Key Rotation
+ * rotate-aes-key.js — Aspira AES-256-GCM Key Rotation
  *
  * Usage:
  *   node scripts/rotate-aes-key.js
@@ -27,7 +27,7 @@ const MEMORY_DIR = path.join(HF_ROOT, 'memory');
 
 async function main() {
   console.log('');
-  console.log('=== HeartFlow AES Key Rotation ===');
+  console.log('=== Aspira AES Key Rotation ===');
   console.log('Root:', HF_ROOT);
 
   const { rotateKey } = require(path.join(HF_ROOT, 'src/memory/memory-encrypt.js'));

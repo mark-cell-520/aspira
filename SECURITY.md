@@ -1,8 +1,8 @@
-# Security Advisory — HeartFlow / 心虫
+# Security Advisory — Aspira / 新愿
 
 ## Static Analysis False Positives
 
-HeartFlow is a **rule-based discrimination engine** (AGI Layer 1 discriminator). It does not generate, does not execute user code, and has no code sandbox. It analyzes text input/output and returns gate actions (pass/verify/rewrite/block).
+Aspira is a **rule-based discrimination engine** (AGI Layer 1 discriminator). It does not generate, does not execute user code, and has no code sandbox. It analyzes text input/output and returns gate actions (pass/verify/rewrite/block).
 
 ### What gets flagged and why
 
@@ -14,7 +14,7 @@ HeartFlow is a **rule-based discrimination engine** (AGI Layer 1 discriminator).
 | `eval(...)` regex | Part of `code-verifier.js`'s **security audit** — detects and blocks `eval()` in user-submitted code. The regex is split (`'e'+'val'`) to avoid triggering scanners, but some advanced scanners still detect the intent. |
 | `process.env` access | Reads optional config env vars (`HEARTFLOW_API_KEY`). Never sends env data over the network. No telemetry, no phoning home. |
 
-### What HeartFlow does NOT do
+### What Aspira does NOT do
 
 - ❌ No network requests by default (engine runs fully offline; outbound traffic only occurs when optional features are explicitly enabled — networked self-upgrade, LLM fallback, or OpenAlex lookup — all gated behind SSRF protection in `fetch-safe.js`)
 - ❌ No telemetry, analytics, or data collection

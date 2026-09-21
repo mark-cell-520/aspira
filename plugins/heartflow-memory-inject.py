@@ -1,5 +1,5 @@
 """
-HeartFlow Memory Inject — Hermes 插件
+Aspira Memory Inject — Hermes 插件
 在每次新对话开始时，自动将记忆注入系统提示
 
 升级 v2.0 (Fable 5 吸收)：
@@ -146,7 +146,7 @@ def _run_inject():
     return ""
 
 
-class HeartFlowMemoryInject:
+class AspiraMemoryInject:
     """Hermes 插件：记忆注入器 v2.0
 
     注意：默认关闭。记忆注入需要用户显式授权才能激活。

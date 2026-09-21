@@ -1,4 +1,4 @@
-name: 'HeartFlow AI Agent Security Audit'
+name: 'Aspira AI Agent Security Audit'
 description: 'Audit your repo for secrets, command injection, path traversal, prompt injection and MCP risks.'
 author: 'yun520-1'
 

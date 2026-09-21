@@ -1,5 +1,5 @@
 /**
- * confidence-calibrator.test.js — 心虫自主升级补的 TDD
+ * confidence-calibrator.test.js — 新愿自主升级补的 TDD
  * 来源: SelfScanner 扫出 src/core/confidence-calibrator.js 未测试 (untestedModules)
  * 原则: 测 ConfidenceCalibrator 实例的纯评估入口, 不侵入业务代码
  * 格式: 兼容 test/run-all.js — module.exports = fn(ctx), ctx 由 runner 注入

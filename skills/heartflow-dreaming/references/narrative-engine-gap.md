@@ -1,4 +1,4 @@
-# Narrative Engine Gap — 心虫叙事梦引擎现状
+# Narrative Engine Gap — 新愿叙事梦引擎现状
 
 **最后更新**: 2026-05-30
 

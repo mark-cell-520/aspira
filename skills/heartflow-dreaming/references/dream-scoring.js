@@ -1,5 +1,5 @@
 /**
- * HeartFlow Dream Scoring v1.0.0
+ * Aspira Dream Scoring v1.0.0
  * 基于 SKILL.md 质量标准：
  *   短（≤300字）/ 单主题 / 强故事性 / 升华必须有
  *   禁止：长篇叙述 / 多主题散射 / 道德说教 / Happy Ending

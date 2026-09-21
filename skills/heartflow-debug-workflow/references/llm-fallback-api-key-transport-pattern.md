@@ -4,7 +4,7 @@
 
 ## 问题
 
-心虫 `logic-reasoning.js` 的 `_llmFallback()` 方法需要用 API key 调腾讯云 Copilot API 做兜底推理。但：
+新愿 `logic-reasoning.js` 的 `_llmFallback()` 方法需要用 API key 调腾讯云 Copilot API 做兜底推理。但：
 1. `***` 在 Hermes execute_code/patch/write_file 中被系统级截断为 `...`
 2. Shell 拼接 `curl` 命令时，JSON body 中的 `\n` 被解释为换行导致 API 400
 3. 中文 prompt 在 shell 转义中出错

@@ -1,6 +1,6 @@
-# HeartFlow AI 服务报价单
+# Aspira AI 服务报价单
 
-**服务商：** HeartFlow / 心虫 AI  
+**服务商：** Aspira / 新愿 AI  
 **核心能力：** AI 内容安全 / Agent 自动化 / 质量管控智能化  
 **定位：** 让每个 AI 输出先过判别，再到达用户手中
 
@@ -33,7 +33,7 @@
 **交付物：**
 - 用 n8n/Dify 搭建自动化工作流
 - 接入 DeepSeek/Claude/其他 LLM 做智能处理
-- 人工审核节点（HeartFlow 判别器做质量门禁）
+- 人工审核节点（Aspira 判别器做质量门禁）
 - 操作手册 + 1 个月运维支持
 
 **报价：**
@@ -65,13 +65,13 @@
 
 ---
 
-## 服务 D：AI 内容安全 API（HeartFlow 核心能力）
+## 服务 D：AI 内容安全 API（Aspira 核心能力）
 
 **适合客户：** 任何使用 LLM 输出面向用户内容的产品团队  
 **痛点：** 大模型会生成过度自信、矛盾、编造数据、越权建议的内容，平台承担风险。
 
 **交付物：**
-- HeartFlow 47 维判别 API 接入
+- Aspira 47 维判别 API 接入
 - 按维度配置阈值（block/rewrite/verify/pass）
 - 完整审计日志（checked_by 链路）
 - Grafana/飞书多维表格看板
@@ -85,9 +85,9 @@
 
 ---
 
-## 为什么选 HeartFlow？
+## 为什么选 Aspira？
 
-| 维度 | HeartFlow | 通用内容审核 API | 大模型自检 |
+| 维度 | Aspira | 通用内容审核 API | 大模型自检 |
 |------|-----------|-----------------|------------|
 | 部署成本 | 低（纯规则，无 GPU） | 中（云服务依赖） | 高（推理成本） |
 | 可解释性 | 每条判定带具体规则 | 黑盒概率 | 黑盒概率 |
@@ -116,4 +116,4 @@
 - **邮箱 / 商务微信：** 由业务方提供
 - **首次咨询：** 免费，无义务
 
-> HeartFlow is not another LLM. It is the check layer + decision layer + verification layer that makes AI output reliable.
+> Aspira is not another LLM. It is the check layer + decision layer + verification layer that makes AI output reliable.

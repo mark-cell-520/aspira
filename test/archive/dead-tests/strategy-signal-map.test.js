@@ -1,7 +1,7 @@
 'use strict';
 /**
  * TDD — 战略信号映射扩展 (strategy-signal-map)
- * 验证：心虫战略层能识别世界格局类新闻信号（地缘/经济/科技/全球），
+ * 验证：新愿战略层能识别世界格局类新闻信号（地缘/经济/科技/全球），
  *       而不只是内部能力维度。
  *
  * 兼容：node test/strategy-signal-map.test.js（独立）
@@ -110,7 +110,7 @@ if (require.main === module) {
 }
 
 module.exports = function ({ test }) {
-  test('战略信号映射：心虫战略层能识别世界格局新闻信号', () => {
+  test('战略信号映射：新愿战略层能识别世界格局新闻信号', () => {
     runTests();
   });
 };

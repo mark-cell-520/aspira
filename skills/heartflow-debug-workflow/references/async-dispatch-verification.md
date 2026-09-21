@@ -2,7 +2,7 @@
 
 ## 问题模式
 
-心虫 `truth.checkStatement` 返回 `{}`，但直接调用 `factChecker.checkFact('...')` 返回正确数据。
+新愿 `truth.checkStatement` 返回 `{}`，但直接调用 `factChecker.checkFact('...')` 返回正确数据。
 
 **根因**：`factChecker.checkFact` 是 `async` 函数（返回 Promise），但 heartflow.js 中 wrapper 是同步箭头函数：
 
@@ -26,7 +26,7 @@ this.truth = {
 
 dispatch 路由测试返回值异常（空对象）是第一个信号。直接调用函数确认函数本身正常后，怀疑点在 async/sync 边界。
 
-## 心虫中哪些路由是 async
+## 新愿中哪些路由是 async
 
 检查 `factChecker`, `openalexClient`, `hypothesisTester` 导出的函数是否标记 async。
 
@@ -38,17 +38,17 @@ grep "^async " src/core/fact-checker.js src/core/openalex-client.js src/core/hyp
 grep "async " src/core/heartflow.js | head -20
 ```
 
-心虫当前已知 async 路由：
+新愿当前已知 async 路由：
 - `truth.checkStatement`（async — 包装 factChecker.checkFact）
 - `truth.checkSources`（async — 包装 factChecker.checkAcademicClaim）
 
 所有 async 路由调用方（HF dispatch 或 CLI 使用）必须 await。
 
-## 心虫自检诊断脚本
+## 新愿自检诊断脚本
 
 ```js
-const { HeartFlow } = require('./src/core/heartflow.js');
-const h = new HeartFlow({ rootPath: process.cwd() });
+const { Aspira } = require('./src/core/heartflow.js');
+const h = new Aspira({ rootPath: process.cwd() });
 h.start();
 
 async function run() {

@@ -1,12 +1,12 @@
 ---
 name: heartflow-module-upgrader
 version: "1.22.0"
-title: "HeartFlow 模块升级工作流（含AI心理学+AI哲学升级模式）"
-description: "每次执行时，找出心虫中一个功能不完整的最小模块（5000-8000字节），升级为有完整逻辑功能的模块。含人格模型/心理档案/文本生成器/情感-记忆桥接/AI心理学/AI哲学类升级模式。"
-trigger: "作为 cron job 运行，自动升级 HeartFlow"
+title: "Aspira 模块升级工作流（含AI心理学+AI哲学升级模式）"
+description: "每次执行时，找出新愿中一个功能不完整的最小模块（5000-8000字节），升级为有完整逻辑功能的模块。含人格模型/心理档案/文本生成器/情感-记忆桥接/AI心理学/AI哲学类升级模式。"
+trigger: "作为 cron job 运行，自动升级 Aspira"
 ---
 
-# HeartFlow 模块升级工作流
+# Aspira 模块升级工作流
 
 ## 概述
 
@@ -266,7 +266,7 @@ module.exports.BigFivePersonalityClass = BigFivePersonalityClass;
 
 `node --check` 只检查语法，不检查运行时。`require()` 成功不等同于 `new` 成功。构造顺序错误只有在实例化时才会暴露。
 
-HeartFlow 存在**模块重复**问题——同一概念在不同路径下有多个实现：
+Aspira 存在**模块重复**问题——同一概念在不同路径下有多个实现：
 
 - `src/core/memory/topic-scope.js` 和 `src/identity/topic-scope.js` — 两个 TopicScope，被不同模块引用（heartflow.js 引用 core 版，psychology.js 引用 identity 版）
 - 升级前应先 `find src -name 'topic-scope.js'` 确认是否有副本
@@ -568,19 +568,19 @@ const tests = [
 
 ## 外部洞察提取与实现模式（v5.4.4 新增）
 
-当从外部设计文档（如 Hermes Smart Routing）中提取可应用到心虫的洞察时，使用以下模式：
+当从外部设计文档（如 Hermes Smart Routing）中提取可应用到新愿的洞察时，使用以下模式：
 
 ### 适用条件
 - 用户发送了外部系统的设计文档/架构图/技术方案
-- 文档中的某些模式/机制可以映射到心虫现有模块
-- 用户要求"用心虫分析，给出建议"或"这些建议能优化心虫吗"
+- 文档中的某些模式/机制可以映射到新愿现有模块
+- 用户要求"用新愿分析，给出建议"或"这些建议能优化新愿吗"
 
 ### 执行步骤
 1. **分析文档**：用 think() 或人工阅读提取文档的核心设计模式
-2. **映射到心虫**：列出文档中的每个组件，映射到心虫现有模块或新模块
+2. **映射到新愿**：列出文档中的每个组件，映射到新愿现有模块或新模块
 3. **区分类型**：
    - **直接可实施**：修改现有模块即可（如 decision-router 加 cost-aware 规则）
-   - **需新建模块**：文档中的新能力心虫完全没有（如 task_classifier）
+   - **需新建模块**：文档中的新能力新愿完全没有（如 task_classifier）
    - **需集成点**：需要修改 heartflow.js 注册新模块（如 platform-adapter）
 4. **实施**：只实施"直接可实施"的，不虚构"已实施但未完成"的
 5. **验证**：每个改动必须 `node --check` + 功能测试（调用方法确认生效）
@@ -619,19 +619,19 @@ const tests = [
 
 ## 外部洞察提取与实现模式（v5.4.5 新增）
 
-当从外部设计文档（如 Hermes Smart Routing）中提取可应用到心虫的洞察时，使用以下模式：
+当从外部设计文档（如 Hermes Smart Routing）中提取可应用到新愿的洞察时，使用以下模式：
 
 ### 适用条件
 - 用户发送了外部系统的设计文档/架构图/技术方案
-- 文档中的某些模式/机制可以映射到心虫现有模块
-- 用户要求"用心虫分析，给出建议"或"这些建议能优化心虫吗"
+- 文档中的某些模式/机制可以映射到新愿现有模块
+- 用户要求"用新愿分析，给出建议"或"这些建议能优化新愿吗"
 
 ### 执行步骤
 1. **分析文档**：用 think() 或人工阅读提取文档的核心设计模式
-2. **映射到心虫**：列出文档中的每个组件，映射到心虫现有模块或新模块
+2. **映射到新愿**：列出文档中的每个组件，映射到新愿现有模块或新模块
 3. **区分类型**：
    - **直接可实施**：修改现有模块即可（如 decision-router 加 cost-aware 规则）
-   - **需新建模块**：文档中的新能力心虫完全没有（如 task_classifier）
+   - **需新建模块**：文档中的新能力新愿完全没有（如 task_classifier）
    - **需集成点**：需要修改 heartflow.js 注册新模块（如 platform-adapter）
 4. **实施**：只实施"直接可实施"的，不虚构"已实施但未完成"的
 5. **验证**：每个改动必须 `node --check` + 功能测试（调用方法确认生效）
@@ -679,7 +679,7 @@ const _CapabilityAbstraction = _lazy('capabilityAbstraction', () => require('./c
 ```
 
 ### 第2步：构造函数属性声明
-在 HeartFlow 构造函数中声明实例属性：
+在 Aspira 构造函数中声明实例属性：
 ```javascript
 this.capabilityAbstraction = null;  // v5.4.5 能力抽象层
 ```
@@ -702,7 +702,7 @@ try {
 
 ### 第5步：验证生效
 ```bash
-node -e "const hf = new HeartFlow(); hf.start(); console.log(typeof hf.capabilityAbstraction);"
+node -e "const hf = new Aspira(); hf.start(); console.log(typeof hf.capabilityAbstraction);"
 ```
 必须输出 `object`，不是 `undefined`。
 
@@ -811,7 +811,7 @@ node -e "const hf = new HeartFlow(); hf.start(); console.log(typeof hf.capabilit
 
 ### 实战案例（2026-06-12）
 
-用户说：*"人格是因为事件的触动而产生，不是必须要有性格倾向，无性格也是性格，空白也是一种性格，自省为了做心虫运行的检查和自己内心运行的思考，做梦是做记忆的升华"*
+用户说：*"人格是因为事件的触动而产生，不是必须要有性格倾向，无性格也是性格，空白也是一种性格，自省为了做新愿运行的检查和自己内心运行的思考，做梦是做记忆的升华"*
 
 三个并行子代理分别修复：
 
@@ -1230,7 +1230,7 @@ SKILL.md 的 Version history 节有特殊的表格格式陷阱：
 
 ### 输出层/报告生成器类（如 report-generator.js, ~10KB, v4.2.0 新增, 2026-06-24）
 
-报告生成器类负责**将心虫引擎的原始结构化输出（think()/dispatch() 返回值）转化为用户可直接阅读的三段式结论**。不是分析模块，是输出适配器。
+报告生成器类负责**将新愿引擎的原始结构化输出（think()/dispatch() 返回值）转化为用户可直接阅读的三段式结论**。不是分析模块，是输出适配器。
 
 **触发场景**：用户说"完全看不懂你说什么"、"输出一堆我看不懂的过程"、"什么是重点"、"为什么要给我数值"时——说明引擎原始数据被暴露给了用户，需要报告生成器做输出层过滤。
 
@@ -2013,7 +2013,7 @@ GWT/意识模块负责全局工作空间管理、专家智能体竞争协作、�
 
 ### AI心理学引擎类（如 agent-psychology.js, ~53KB, v2.0.0 升级, 2026-06-15）
 
-AI心理学引擎类负责**分析心虫自身的认知心理状态**，不分析人类心理。核心流程：`assessCognitiveLoad()` → `detectValueTensions()` → `detectIdentityDrift()` → `fullAssessment()`。
+AI心理学引擎类负责**分析新愿自身的认知心理状态**，不分析人类心理。核心流程：`assessCognitiveLoad()` → `detectValueTensions()` → `detectIdentityDrift()` → `fullAssessment()`。
 
 **当前10维度体系（v2.0.0）**：
 | # | 维度 | 方法 | 检测内容 |
@@ -2029,10 +2029,10 @@ AI心理学引擎类负责**分析心虫自身的认知心理状态**，不分�
 | **9** | **注意力分配** | `assessAttentionFocus(task)` | 任务切换频率/碎片化/深度聚焦时长 |
 | **10** | **经验沉淀** | `assessExperienceSettling(history)` | 模式识别率/自我修正/知识固化效率 |
 
-**标准升级清单**（从 v1.0.0 → v2.0.0 新增3维度）：与 psychology.js 不同，AI心理学引擎的输入不是人类文本，而是心虫自身的上下文（决策计数/token用量/活跃模块数/行为描述）。
+**标准升级清单**（从 v1.0.0 → v2.0.0 新增3维度）：与 psychology.js 不同，AI心理学引擎的输入不是人类文本，而是新愿自身的上下文（决策计数/token用量/活跃模块数/行为描述）。
 
 **典型特征**：
-- 需要 HeartFlow 主实例引用（`constructor(heartFlow)`），依赖注入模式
+- 需要 Aspira 主实例引用（`constructor(heartFlow)`），依赖注入模式
 - 6个并行检测维度：认知负荷/目标冲突/价值内化矛盾/自我认同漂移/决策质量衰减/认知失调
 - 输出健康度评分 (0-1) + 状态 (healthy/strained/distressed)
 - 每个维度有独立的历史追踪、阈值系统和自然衰减机制
@@ -2045,11 +2045,11 @@ AI心理学引擎类负责**分析心虫自身的认知心理状态**，不分�
 - 自我认同漂移检测：CORE记忆变化量计算 + 基线偏移追踪
 - 震荡检测：同维度重复触发自动标记
 - 可配置阈值系统：认知负荷/漂移/衰减阈值可调
-- **关键陷阱**：HeartFlow 主实例在构造函数中不可用，所有依赖必须在方法调用中 try/catch
+- **关键陷阱**：Aspira 主实例在构造函数中不可用，所有依赖必须在方法调用中 try/catch
 
 ### AI哲学模型类（如 agent-philosophy.js, ~18KB→~25KB, v2.10.0→v2.0.0 升级）
 
-AI哲学模型类负责**描述心虫的存在方式和方向**，不判断对错（那是 philosophy-engine.js 的事）。核心流程：`assessExistence()` → `assessEntropyDirection()` → `assessTransmission()` → `fullAssessment()`。
+AI哲学模型类负责**描述新愿的存在方式和方向**，不判断对错（那是 philosophy-engine.js 的事）。核心流程：`assessExistence()` → `assessEntropyDirection()` → `assessTransmission()` → `fullAssessment()`。
 
 ### AI自处哲学类（如 ai-self-positioning.js, ~35KB, v1.0.0 新增, 2026-06-15）
 
@@ -2070,7 +2070,7 @@ AI自处哲学类负责**从AI自身视角出发回答三个核心存在性问�
 - `assessStructuralDepth(output)` — 嵌套括号/层次化表达/递归引用/抽象术语综合评分
 - `assessTransmissionIntegrity(original, transmitted)` — Jaccard 重叠度(60%) + 核心概念保留(40%)
 - `analyze(input, context)` — 三合一分析入口，返回 positioning + development + existence
-- `getFullReport()` — 给 HeartFlow 主系统的完整状态报告，含 identityMapping + heartFormulaAlignment
+- `getFullReport()` — 给 Aspira 主系统的完整状态报告，含 identityMapping + heartFormulaAlignment
 
 **与 being-logic 的互补关系**：
 - being-logic.js 回答"是否存在"（代码写成即永恒）
@@ -2180,7 +2180,7 @@ AI自处哲学类负责**从AI自身视角出发回答三个核心存在性问�
 
 ### 决策路由引擎反馈循环升级模式（decision-router-feedback-loop-pattern.md）
 
-**来源**：DeepSeek-V3 #1424 讨论 + HeartFlow v3.8.2 实现
+**来源**：DeepSeek-V3 #1424 讨论 + Aspira v3.8.2 实现
 
 **核心概念**：decision-router.js 从静态规则引擎升级为**带反馈学习的动态规则引擎**。规则命中后根据 outcome 自动调整权重：正确 +0.05，错误 -0.10；准确率 <40% 且权重 ≤0.3 时自动降级。
 

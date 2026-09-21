@@ -5,7 +5,7 @@ DeepSeek-V3 #1446（qingkong66 V4 gap 映射）、#1462（maratsultanov2 diverge
 
 ## 适用条件
 - GitHub issue/Discussion 中出现**可落地的技术反馈**
-- 反馈明确指向心虫现有模块的改进
+- 反馈明确指向新愿现有模块的改进
 - 不需要新建模块，只需在现有模块中新增方法/规则
 
 ## 执行模式（最小可行改动）

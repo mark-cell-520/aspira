@@ -106,7 +106,7 @@ function runJestStyleTest(name, relPath, timeout = CHILD_TIMEOUT) {
 
 // === MAIN ===
 async function runAllTests() {
-  console.log('\n=== HeartFlow module tests ===\n');
+  console.log('\n=== Aspira module tests ===\n');
 
   // 1-4. 已清理模块，保留占位说明历史
   console.log('CodeWriter / CodeGenerator / HeartLogic / DesireCognition — 模块已清理');

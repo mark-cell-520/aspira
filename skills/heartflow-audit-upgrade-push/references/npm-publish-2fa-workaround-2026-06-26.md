@@ -2,7 +2,7 @@
 
 ## 背景
 
-心虫 v5.0.2 需要发布到 npmjs.com。账号 yun520-1 未开启 2FA，npmjs 强制所有 publish 要求 2FA。
+新愿 v5.0.2 需要发布到 npmjs.com。账号 yun520-1 未开启 2FA，npmjs 强制所有 publish 要求 2FA。
 
 ## 尝试路径
 

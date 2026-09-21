@@ -9,7 +9,7 @@ This file captures the incremental expansion history and source-acquisition patt
 - Pivoted to "human evolution"主线：BCI / CRISPR / Longevity / Space / Quantum / AGI / Transhumanism
 
 ### v0.2.0 → v0.3.0 (2026-09-15)
-- Added HeartFlow full-text gate supervision + per-chapter probing
+- Added Aspira full-text gate supervision + per-chapter probing
 - Established false-positive taxonomy: dehumanization / ai_writing_tell / moral_foundations / reasoning_coherence
 
 ### v0.3.0 → v0.4.0 (2026-09-15)
@@ -37,7 +37,7 @@ This file captures the incremental expansion history and source-acquisition patt
 
 ### Integration Rules
 - Only integrate sources with **specific dates / dollar amounts / trial IDs** (avoid vague claims)
-- Each new section must pass HeartFlow gate probing (even if full-text gate is noisy)
+- Each new section must pass Aspira gate probing (even if full-text gate is noisy)
 - When a search returns < 2KB fragmented results, retry with broader query before abandoning
 - Patch order: references document first (content) → SKILL.md second (metadata) → git commit together
 
@@ -47,7 +47,7 @@ This file captures the incremental expansion history and source-acquisition patt
 - Judgment: retain original text, annotate gate results for user reference
 
 ## Known Limitations (next version targets)
-- Full-text gate still dominated by technical-term false positives → consider domain-specific lexicon relaxation in future HeartFlow versions
+- Full-text gate still dominated by technical-term false positives → consider domain-specific lexicon relaxation in future Aspira versions
 - Social psychology / public opinion section still underdeveloped (only 10+ sources) → needs polling data / longitudinal surveys
 - Economic modeling thin: mostly macro capex numbers, missing sectoral employment impact estimates
 - China-specific sources underweighted (most Chinese-language sources not captured by English queries)

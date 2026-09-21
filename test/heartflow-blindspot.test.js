@@ -1,9 +1,9 @@
 // heartflow.think 盲点打破器接入测试 [v6.1.5]
 const assert = require('assert');
-const { HeartFlow } = require('../src/core/heartflow.js');
+const { Aspira } = require('../src/core/heartflow.js');
 
 module.exports = function ({ test }) {
-  const mk = () => new HeartFlow({ dataDir: process.cwd() + '/data', silent: true });
+  const mk = () => new Aspira({ dataDir: process.cwd() + '/data', silent: true });
 
   test('think: 盲点分析接入主链路 (blindSpotAnalysis 出现)', async () => {
     const hf = mk();

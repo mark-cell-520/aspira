@@ -2,11 +2,11 @@
 
 ## 概述
 
-引擎自省 = 心虫回头看自己的决策过程。不是用户反馈驱动的修复，是引擎自己检查 pipeline 质量、判断一致性、模块覆盖率、认知数据完整性、RL 学习效果。
+引擎自省 = 新愿回头看自己的决策过程。不是用户反馈驱动的修复，是引擎自己检查 pipeline 质量、判断一致性、模块覆盖率、认知数据完整性、RL 学习效果。
 
 ## 核心问题
 
-心虫跑完 pipeline 8 阶段后，它不会回头问自己：
+新愿跑完 pipeline 8 阶段后，它不会回头问自己：
 - "我刚才的判断对不对？"
 - "哪个模块没跑出数据？"
 - "哪条路径评分太低？"
@@ -117,7 +117,7 @@ dispatch 返回的结果会被 decision-router 包装为 `{ result, decision, fi
 ```javascript
 // heartflow.js 中的完整 introspect() 实现框架
 introspect(options = {}) {
-  if (!this.started) return { error: 'HeartFlow not started' };
+  if (!this.started) return { error: 'Aspira not started' };
   const findings = [];
   
   // 1. pipeline 质量

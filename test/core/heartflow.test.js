@@ -23,13 +23,13 @@ test('模块可加载', () => {
   assert.ok(mod, 'heartflow 模块应可 require');
 });
 
-test('导出 HeartFlow 构造器或工厂函数', () => {
-  const ctor = mod.HeartFlow || mod.createHeartFlow;
+test('导出 Aspira 构造器或工厂函数', () => {
+  const ctor = mod.Aspira || mod.createAspira;
   assert.strictEqual(typeof ctor, 'function');
 });
 
 test('实例可启动并自报版本', async () => {
-  const hf = mod.createHeartFlow ? mod.createHeartFlow({ silent: true }) : new mod.HeartFlow({ silent: true });
+  const hf = mod.createAspira ? mod.createAspira({ silent: true }) : new mod.Aspira({ silent: true });
   const s = hf.start();
   if (s && typeof s.then === 'function') return s.then(() => {
     assert.ok(hf.version, '应能读到版本号');

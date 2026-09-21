@@ -1,4 +1,4 @@
-# HeartFlow Hook 系统扩展分阶段规划
+# Aspira Hook 系统扩展分阶段规划
 
 > 基线：v6.0.2
 > 原则：消除错误源，不建管理系统；每 phase 独立可验证；向后兼容，无 hook 时零回归。
@@ -317,7 +317,7 @@ hf._hookBus.on('hook.slow', ({ event, handlerId, elapsed }) => {
 1. node --check src/core/hook-bus.js src/memory/memory-hook-points.js
 2. npm test                        # 179/179 不能降
 3. node bin/verify.js              # 14/14 不能降
-4. node -e "const h=require('./src/core/heartflow.js'); const hf=new h.HeartFlow(); hf.start(); hf.think('test').then(r=>console.log('think ok')).catch(e=>process.exit(1))"
+4. node -e "const h=require('./src/core/heartflow.js'); const hf=new h.Aspira(); hf.start(); hf.think('test').then(r=>console.log('think ok')).catch(e=>process.exit(1))"
 5. git add -A && git commit -m "feat(v6.X.0): ..."
 ```
 
@@ -338,6 +338,6 @@ Phase 6（v6.6.0）：Audit + perf hooks                       ← 只读监控�
 
 ## 结论
 
-本规划将 HeartFlow 的 hook 能力从**分散的 4+4 事件**升级为**统一的 12+ 事件总线**，覆盖 think pipeline、memory write、decision、config、postprocess、audit 六大域。
+本规划将 Aspira 的 hook 能力从**分散的 4+4 事件**升级为**统一的 12+ 事件总线**，覆盖 think pipeline、memory write、decision、config、postprocess、audit 六大域。
 
-每个 phase 都是独立可交付的最小改动，无 hook 时性能与行为零回归。实施后，心虫的核心能力边界从“固定管线”扩展为“可插拔认知管道”。
+每个 phase 都是独立可交付的最小改动，无 hook 时性能与行为零回归。实施后，新愿的核心能力边界从“固定管线”扩展为“可插拔认知管道”。

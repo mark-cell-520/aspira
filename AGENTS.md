@@ -1,15 +1,15 @@
-# HeartFlow — agent integration guide
+# Aspira — agent integration guide
 
 This file is written for AI agents that operate on or through this repository.
 
-## What HeartFlow is
+## What Aspira is
 
-HeartFlow (心虫) is the **first layer of AGI — the discriminator**. A rule-based engine
+Aspira (新愿) is the **first layer of AGI — the discriminator**. A rule-based engine
 that judges what AI says before it reaches a human, and says "no" when something is
 wrong.
 
 **Core value:** LLMs are great at generating but weak at knowing what they don't know.
-HeartFlow adds the discrimination layer, so your agent doesn't just *say* things — it
+Aspira adds the discrimination layer, so your agent doesn't just *say* things — it
 says things that are *right*.
 
 **Zero LLM dependency.** 46 dimensions, 132 modules, 179 MCP tools, 1,506 dispatch
@@ -133,7 +133,7 @@ node src/mcp-server.js --socket /tmp/heartflow.sock
 `tools/call` enforces a three-tier write permission model. `guest` (no credentials) can
 call read-only tools; the four state-mutating tools — `heartflow_memory_write_control`,
 `heartflow_memory_eraser`, `heartflow_decision_decide`, `heartflow_self_heal` — require
-a `HeartFlow-OID-<16-hex>` header (`user`) or a valid bearer token (`admin`).
+a `Aspira-OID-<16-hex>` header (`user`) or a valid bearer token (`admin`).
 
 If you change this permission set, change it in **three** places or the test will fail:
 the `needsWrite` array in `handleRequest`, `test/mcp-guest-permission.test.js`
@@ -169,7 +169,7 @@ These are the rules this codebase actually follows. Follow them when changing it
 1. **Discriminator-first** — the first of AGI's five layers. It does not generate.
 2. **Zero dependencies** — a pure rule engine, instant install.
 3. **Auditable** — every decision preserves its full reasoning chain in `checked_by`.
-4. **Self-checking** — HeartFlow's own output passes through its own gates.
+4. **Self-checking** — Aspira's own output passes through its own gates.
 5. **Honest numbers** — documentation must state what the code actually does. If a
    metric is claimed, it must be measurable.
 

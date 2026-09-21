@@ -95,7 +95,7 @@ const BUILTIN = [
   { id:'fresnel_equations', name:'菲涅耳方程', formula:'R_s = |(n₁cosθ₁-n₂cosθ₂)/(n₁cosθ₁+n₂cosθ₂)|²', category:'physics', subcategory:'optics' },
   { id:'brewsers_angle', name:'布儒斯特角', formula:'tan θ_B = n₂/n₁', category:'physics', subcategory:'optics' },
 
-  // ── 认知科学公式（与心虫直接相关） ──
+  // ── 认知科学公式（与新愿直接相关） ──
   { id:'ebbinghaus_forgetting_curve', name:'艾宾浩斯遗忘曲线', formula:'R(t) = e^{-t/S}', category:'cognitive_science', subcategory:'memory' },
   { id:'pad_emotion_model', name:'PAD 情绪空间模型', formula:'(P,A,D) = f(stimulus, context)', category:'cognitive_science', subcategory:'emotion' },
   { id:'flow_channel_model', name:'心流通道模型', formula:'Flow = f(challenge, skill)', category:'cognitive_science', subcategory:'flow' },

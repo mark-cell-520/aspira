@@ -17,8 +17,8 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
   // 测试用直接 require heartflow.js 来获取引擎实例。
 
   test('MCP heartflow_verify returns structured verdict', () => {
-    const { HeartFlow } = require('../src/core/heartflow.js');
-    const hf = new HeartFlow({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
+    const { Aspira } = require('../src/core/heartflow.js');
+    const hf = new Aspira({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
     hf.start();
 
     const dv = hf.decisionVerifier;
@@ -41,8 +41,8 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
   });
 
   test('MCP heartflow_diagnose returns honest self-report', () => {
-    const { HeartFlow } = require('../src/core/heartflow.js');
-    const hf = new HeartFlow({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
+    const { Aspira } = require('../src/core/heartflow.js');
+    const hf = new Aspira({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
     hf.start();
 
     const sd = hf.selfDiagnosis;
@@ -55,7 +55,7 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
 
     // 诚实性检查：报告至少知道自己的问题（不会说"一切正常"）
     const diagnosisText = JSON.stringify(result);
-    // 心虫自诊必须包含具体问题，不能全是"完美"
+    // 新愿自诊必须包含具体问题，不能全是"完美"
     const issues = result.summary.issues || [];
     assertTrue(issues.length >= 0, 'can have 0 issues'); // 至少不崩溃
 
@@ -63,8 +63,8 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
   });
 
   test('MCP heartflow_check_drift runs without error', () => {
-    const { HeartFlow } = require('../src/core/heartflow.js');
-    const hf = new HeartFlow({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
+    const { Aspira } = require('../src/core/heartflow.js');
+    const hf = new Aspira({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
     hf.start();
 
     const sdd = hf.sustainedDriftDetector;
@@ -81,8 +81,8 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
   test('MCP heartflow_error_store and query work end-to-end', () => {
     // [v6.6.0] NODE_ENV=test: error-memory 写 test 隔离文件，不污染生产记忆
     process.env.NODE_ENV = 'test';
-    const { HeartFlow } = require('../src/core/heartflow.js');
-    const hf = new HeartFlow({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
+    const { Aspira } = require('../src/core/heartflow.js');
+    const hf = new Aspira({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
     hf.start();
 
     const em = hf._modules?.errorMemory;

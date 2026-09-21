@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow 记忆读写工具 — 安装引擎后自动获得此能力
+ * Aspira 记忆读写工具 — 安装引擎后自动获得此能力
  *
  * 用法:
  *   node heartflow-memory-tool.js list        — 列出所有记忆（分三层）
@@ -18,7 +18,7 @@
  */
 
 const path = require('path');
-const { HeartFlowMemory } = require('../src/memory/heartflow-memory.js');
+const { AspiraMemory } = require('../src/memory/heartflow-memory.js');
 const { atomicWrite } = require('../src/utils/atomic-write.js');
 
 // 引擎 skill 根目录（脚本所在目录的上级）
@@ -30,7 +30,7 @@ async function main() {
 
   if (!cmd || cmd === '--help' || cmd === '-h') {
     console.log(`
-HeartFlow 记忆读写工具 — 安装引擎后自动获得
+Aspira 记忆读写工具 — 安装引擎后自动获得
 
 用法:
   node heartflow-memory-tool.js list           列出所有记忆
@@ -45,7 +45,7 @@ HeartFlow 记忆读写工具 — 安装引擎后自动获得
     return;
   }
 
-  const hfm = new HeartFlowMemory(SKILL_ROOT);
+  const hfm = new AspiraMemory(SKILL_ROOT);
 
   switch (cmd) {
     case 'list':
@@ -164,7 +164,7 @@ async function cmdExport(hfm) {
   console.log('    请确保导出文件存储在安全位置，不要发送给不可信方。');
   console.log('');
 
-  lines.push('# HeartFlow 记忆导出');
+  lines.push('# Aspira 记忆导出');
   lines.push('⚠️ 安全警告：此导出包含 CORE 层永久身份数据，不要随意分享');
   lines.push(`导出时间: ${new Date().toLocaleString('zh-CN')}`);
   lines.push(`总计: CORE ${all.stats.core} / LEARNED ${all.stats.learned} / EPHEMERAL ${all.stats.ephemeral}`);
@@ -207,7 +207,7 @@ async function cmdExport(hfm) {
 
 function cmdStats(hfm) {
   const all = hfm.getAllMemory();
-  console.log('HeartFlow 记忆统计:');
+  console.log('Aspira 记忆统计:');
   console.log(`  CORE 层:     ${all.stats.core} 条`);
   console.log(`  LEARNED 层:  ${all.stats.learned} 条`);
   console.log(`  EPHEMERAL 层: ${all.stats.ephemeral} 条`);

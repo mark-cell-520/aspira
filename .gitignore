@@ -37,7 +37,7 @@ __pycache__/
 assets/
 benchmark/
 bigbench_50.json
-data/          # 包含 data/memories/ 心虫记忆金库
+data/          # 包含 data/memories/ 新愿记忆金库
 data/**/*.json
 data/*.json
 data/.gitkeep

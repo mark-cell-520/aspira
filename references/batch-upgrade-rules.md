@@ -1,4 +1,4 @@
-# HeartFlow Batch Upgrade Rules
+# Aspira Batch Upgrade Rules
 
 ## Batch Size Rule (用户明确要求)
 - **默认批量大小：120-240 个项目**（不是 8-16 个）

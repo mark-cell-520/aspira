@@ -1,8 +1,8 @@
-# HeartFlow SKILL.md 审计快照（2026-06-10）
+# Aspira SKILL.md 审计快照（2026-06-10）
 
 ## 发现摘要
 
-心虫 `~/.hermes/skills/mark-heartflow` 存在严重的 SKILL.md 与实际代码脱节问题。
+新愿 `~/.hermes/skills/mark-heartflow` 存在严重的 SKILL.md 与实际代码脱节问题。
 
 ## 问题 1：5个引擎版本共存
 

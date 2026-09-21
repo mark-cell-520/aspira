@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow 安装验证脚本模板
+ * Aspira 安装验证脚本模板
  * 检查所有核心模块能否正常加载，输出清晰的成功/失败列表
  * 运行: node bin/verify.js
  */
@@ -22,7 +22,7 @@ function check(label, fn) {
   }
 }
 
-console.log('\n=== HeartFlow 安装验证 ===\n');
+console.log('\n=== Aspira 安装验证 ===\n');
 
 // 1. Node.js 版本
 check('Node.js >= 18', () => {
@@ -39,15 +39,15 @@ check('Node.js >= 18', () => {
 
 // 3. 核心模块加载
 check('heartflow.js 模块可加载', () => {
-  const { HeartFlow } = require(path.join(HF_DIR, 'src/core/heartflow.js'));
-  if (typeof HeartFlow !== 'function') throw new Error('HeartFlow 不是构造函数');
+  const { Aspira } = require(path.join(HF_DIR, 'src/core/heartflow.js'));
+  if (typeof Aspira !== 'function') throw new Error('Aspira 不是构造函数');
 });
 
 // 4. 启动引擎并检查状态
 let engine = null;
 check('引擎启动', () => {
-  const { HeartFlow } = require(path.join(HF_DIR, 'src/core/heartflow.js'));
-  engine = new HeartFlow();
+  const { Aspira } = require(path.join(HF_DIR, 'src/core/heartflow.js'));
+  engine = new Aspira();
   engine.start();
   if (!engine.started) throw new Error('engine.started 为 false');
 });

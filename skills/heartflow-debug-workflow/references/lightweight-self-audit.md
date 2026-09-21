@@ -1,4 +1,4 @@
-# Lightweight HeartFlow Self-Audit (No OOM)
+# Lightweight Aspira Self-Audit (No OOM)
 
 ## Why this exists
 

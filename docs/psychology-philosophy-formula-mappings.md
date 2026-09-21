@@ -1,6 +1,6 @@
-# Psychology & Philosophy Foundations → HeartFlow Cognitive Module Mappings
+# Psychology & Philosophy Foundations → Aspira Cognitive Module Mappings
 
-> Research document: Quantifiable formulas from major psychology/philosophy traditions mapped to HeartFlow v5.17.11 cognitive engine modules.
+> Research document: Quantifiable formulas from major psychology/philosophy traditions mapped to Aspira v5.17.11 cognitive engine modules.
 > Date: 2026-07-13
 
 ---
@@ -29,9 +29,9 @@ Weighted sum of archetypal energies; the Self archetype `Se` acts as the centeri
 Type = {E/I, S/N, T/F, J/P} → 16 cognitive preference profiles
 ```
 
-### HeartFlow Module Mapping
+### Aspira Module Mapping
 
-| Jungian Concept | HeartFlow Module | Formula/Mechanism |
+| Jungian Concept | Aspira Module | Formula/Mechanism |
 |---|---|---|
 | Shadow integration | `identity-core.js` + `self-model.js` | `cognitiveDissonance(beliefs, actions)` — shadow = dissonance between self-model and behavior |
 | Individuation (wholeness) | `meaning-purpose-engine.js` + `character-cultivation.js` | `metacognitiveConfidence(probs)` — higher consistency = greater integration |
@@ -65,9 +65,9 @@ M_type = D-need if Σ(deficiency_scores) < threshold else B-need
 D-need = max(0, 1 - current_satisfaction)
 ```
 
-### HeartFlow Module Mapping
+### Aspira Module Mapping
 
-| Maslow Concept | HeartFlow Module | Formula/Mechanism |
+| Maslow Concept | Aspira Module | Formula/Mechanism |
 |---|---|---|
 | Hierarchy of needs | `desire-engine.js` | Desires already model curiosity/competence/connection/autonomy/meaning — directly maps to hierarchy |
 | Self-actualization | `identity-core.js` + `self-model.js` | `irtRasch(theta, b)` — theta = actualization level, b = environmental difficulty |
@@ -100,9 +100,9 @@ EV = 1 - MFI  // when EV > 0.7, existential vacuum detected
 N = |M_current - M_ideal|  // productive tension drives meaning-seeking
 ```
 
-### HeartFlow Module Mapping
+### Aspira Module Mapping
 
-| Frankl Concept | HeartFlow Module | Formula/Mechanism |
+| Frankl Concept | Aspira Module | Formula/Mechanism |
 |---|---|---|
 | Will to meaning | `meaning-purpose-engine.js` | Already has `suffering_transcendence` source explicitly from Frankl |
 | Meaning through suffering | `suffering-resilience.js` + `post-traumatic-growth.js` | `prospectValue(x)` — losses reframed as meaning |
@@ -141,9 +141,9 @@ The chain propagates conditional probabilities; breaking any link (especially ig
 NAI = 1 - (Δsuffering / Δloss)  // resilience to loss
 ```
 
-### HeartFlow Module Mapping
+### Aspira Module Mapping
 
-| Buddhist Concept | HeartFlow Module | Formula/Mechanism |
+| Buddhist Concept | Aspira Module | Formula/Mechanism |
 |---|---|---|
 | Four Noble Truths | `meaning-purpose-engine.js` (end_suffering source) | Already has Buddhist framework; `shannonEntropy(probs)` for ignorance measurement |
 | Eightfold Path | `virtue-ethics-foundation.js` + `moral-development.js` | `irt2PL(theta, a, b)` — theta = ethical development, each path factor is an item |
@@ -182,9 +182,9 @@ When anticipated impact > actual impact, PM was effective.
 AF = acceptance_ratio = (accepted_outcomes) / (total_outcomes)
 ```
 
-### HeartFlow Module Mapping
+### Aspira Module Mapping
 
-| Stoic Concept | HeartFlow Module | Formula/Mechanism |
+| Stoic Concept | Aspira Module | Formula/Mechanism |
 |---|---|---|
 | Dichotomy of control | `virtue-ethics-foundation.js` (stoicism tradition) | Already has `dichotomyOfControl` concept; `precisionWeight(sigma)` for controllable precision |
 | Negative visualization | `counterfactual-verifier.js` + `stability-guard.js` | `counterfactualEngine` simulates worst cases; `predictiveCodingFreeEnergy(s, mu, sigma)` |
@@ -222,9 +222,9 @@ Time_pressure = 1 / (expected_remaining_decisions)
 EF = perceived_options / actual_options  // freedom awareness
 ```
 
-### HeartFlow Module Mapping
+### Aspira Module Mapping
 
-| Existentialist Concept | HeartFlow Module | Formula/Mechanism |
+| Existentialist Concept | Aspira Module | Formula/Mechanism |
 |---|---|---|
 | Authenticity | `self-model.js` + `self-verifier.js` | `cognitiveDissonance(beliefs, actions)` — low dissonance = authenticity |
 | Thrownness (Geworfenheit) | `identity-core.js` (boot-time identity) | Boot state as "thrown" condition; `shannonEntropy(probs)` = existential uncertainty |
@@ -261,9 +261,9 @@ Secure attachment → coherent IWMs; insecure → incoherent (divergent self/oth
 Exploration = base_rate · (1 + secure_base_strength) · (1 - threat_level)
 ```
 
-### HeartFlow Module Mapping
+### Aspira Module Mapping
 
-| Attachment Concept | HeartFlow Module | Formula/Mechanism |
+| Attachment Concept | Aspira Module | Formula/Mechanism |
 |---|---|---|
 | Internal working models | `self-model.js` + `user-model.js` | `klDivergence(p, q)` — divergence between self/other models |
 | Secure base | `human-relation.js` + `identity-core.js` | `stabilityGuard` — secure base = high stability |
@@ -280,7 +280,7 @@ Exploration = base_rate · (1 + secure_base_strength) · (1 - threat_level)
 Flow is optimal experience — complete absorption in an activity where challenge and skill are balanced at a high level. Characterized by: clear goals, immediate feedback, merging of action and awareness, loss of self-consciousness, distorted time perception, autotelic experience.
 
 ### Quantifiable Formula/Model
-**Flow State Equation (already in HeartFlow):**
+**Flow State Equation (already in Aspira):**
 ```
 Flow = 1 - |log2(challenge/skill)| / max_bits
 ```
@@ -309,9 +309,9 @@ AEQ = intrinsic_motivation / (intrinsic + extrinsic_motivation)
 FFI = flow_episodes / total_activity_episodes
 ```
 
-### HeartFlow Module Mapping
+### Aspira Module Mapping
 
-| Flow Concept | HeartFlow Module | Formula/Mechanism |
+| Flow Concept | Aspira Module | Formula/Mechanism |
 |---|---|---|
 | Challenge-skill balance | `formula-bridge.js` — `flowChannel(challenge, skill, maxBits)` | Already implemented! Direct formula |
 | Optimal challenge | `formula-bridge.js` — `flowOptimal(skill, ratio)` | Already implemented! |
@@ -326,7 +326,7 @@ FFI = flow_episodes / total_activity_episodes
 
 ## Summary: Formula-Ready Cross-Reference Matrix
 
-| Theory | Core Formula | HeartFlow Implementation | Module(s) |
+| Theory | Core Formula | Aspira Implementation | Module(s) |
 |---|---|---|---|
 | Jung — Shadow Integration | `SII = 1 - |self_ideal - self_actual| / max` | `cognitiveDissonance(beliefs, actions)` | `identity-core`, `self-model` |
 | Maslow — SAQ | `SAQ = (peaks/total) · mean(autonomy, creativity, acceptance)` | `irtRasch(theta, b)` + desire satisfaction | `desire-engine`, `identity-core` |

@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文件记录新增一个「分析层模块」到 HeartFlow 的完整模式。以 `time-extension.js`（时间延伸分析层 v1.0.0）为实战案例。
+本文件记录新增一个「分析层模块」到 Aspira 的完整模式。以 `time-extension.js`（时间延伸分析层 v1.0.0）为实战案例。
 
 ## 模块的类级别归属
 
@@ -19,7 +19,7 @@
 
 `src/core/time-extension.js`
 
-**导出模式**：与 HeartFlow 其他模块一致：
+**导出模式**：与 Aspira 其他模块一致：
 
 ```javascript
 module.exports = {
@@ -192,7 +192,7 @@ report.toRouterInput() → {
 
 ## 版本号管理
 
-新增模块使用 `VERSION` 常量（与 HeartFlow 主版本独立）：
+新增模块使用 `VERSION` 常量（与 Aspira 主版本独立）：
 
 ```javascript
 const VERSION = '1.0.0';

@@ -12,4 +12,4 @@ logical-fallacy
 emotion-analysis
 aithenticity
 heartflow
-心虫
+新愿

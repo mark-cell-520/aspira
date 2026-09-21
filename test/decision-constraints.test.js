@@ -1,14 +1,14 @@
 /**
  * decision-constraints.test.js — v6.7.11 decision upgrade TDD
- * 覆盖 HeartFlowDecision.decide() 的约束过滤/排序/抗风险行为
+ * 覆盖 AspiraDecision.decide() 的约束过滤/排序/抗风险行为
  */
 'use strict';
 const assert = require('assert');
-const { HeartFlowDecision } = require('../src/core/decision.js');
+const { AspiraDecision } = require('../src/core/decision.js');
 
 module.exports = function ({ test }) {
   test('决策: minFeasibility 过滤掉不可行选项', () => {
-    const d = new HeartFlowDecision(null);
+    const d = new AspiraDecision(null);
     const r = d.decide({
       task: '选方案',
       options: [
@@ -21,7 +21,7 @@ module.exports = function ({ test }) {
   });
 
   test('决策: maxRisk 过滤掉高风险选项', () => {
-    const d = new HeartFlowDecision(null);
+    const d = new AspiraDecision(null);
     const r = d.decide({
       task: '选方案',
       options: [
@@ -34,7 +34,7 @@ module.exports = function ({ test }) {
   });
 
   test('决策: 组合约束选择可行且风险可接受的中间路径', () => {
-    const d = new HeartFlowDecision(null);
+    const d = new AspiraDecision(null);
     const r = d.decide({
       task: '选方案',
       options: [
@@ -48,7 +48,7 @@ module.exports = function ({ test }) {
   });
 
   test('决策: 全部不满足约束时应拒绝选择', () => {
-    const d = new HeartFlowDecision(null);
+    const d = new AspiraDecision(null);
     const r = d.decide({
       task: '选方案',
       options: [

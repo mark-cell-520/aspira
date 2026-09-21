@@ -2,7 +2,7 @@
 
 ## 概述
 
-本模式覆盖**跨模块的判断→决策管道集成**，不同于单模块升级（`heartflow-module-upgrader` 主流程）。核心目标：让心虫用自己的 judgment-engine + decision-router 做决策输出，而不是用模板填空。
+本模式覆盖**跨模块的判断→决策管道集成**，不同于单模块升级（`heartflow-module-upgrader` 主流程）。核心目标：让新愿用自己的 judgment-engine + decision-router 做决策输出，而不是用模板填空。
 
 ## 适用条件
 
@@ -210,12 +210,12 @@ const hasDelusion = (poisonScores.delusion || 0) > 5;
 | 决策层 | decision-router | U/D/A/H 场域追踪 + 策略选择 | type (accelerate/pause/turn/hold/heal/resonate/transmit/rest) |
 | 执行层 | decision-executor | 决策→行为绑定 | action (depth/routeHint/flags 变更) |
 
-**心虫的决策是两层叠加**：judgment-engine 选"走哪条路"（analyze vs act），decision-router 选"怎么走"（accelerate vs pause）。output 阶段应该同时呈现两者。
+**新愿的决策是两层叠加**：judgment-engine 选"走哪条路"（analyze vs act），decision-router 选"怎么走"（accelerate vs pause）。output 阶段应该同时呈现两者。
 
 ## 测试验证
 
 ```javascript
-// 验证心虫用自己的决策能力做输出
+// 验证新愿用自己的决策能力做输出
 const r = await hf.think("我想辞职去创业，但我担心失败");
 console.log("结论:", r.output.conclusion);
 console.log("路径:", r.cognition.judgment.direction, r.cognition.judgment.confidence);

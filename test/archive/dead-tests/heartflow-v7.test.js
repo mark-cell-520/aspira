@@ -1,22 +1,22 @@
-// ARCHIVED 2026-09-17 — targets a HeartFlow v7 API that this engine does not
-// implement. It requires { HeartFlow, ErrorMemory, MCP_TOOLS, createMCPHandlers }
+// ARCHIVED 2026-09-17 — targets a Aspira v7 API that this engine does not
+// implement. It requires { Aspira, ErrorMemory, MCP_TOOLS, createMCPHandlers }
 // from src/index.js and asserts `s.version === '7.0.0'`; the engine reports 6.7.x.
 // It was previously a silent 'mount error'; a path remap revived it and turned it
 // into 6 hard failures, so it is archived instead.
 
 /**
- * HeartFlow v7 — AGI Error Memory
+ * Aspira v7 — AGI Error Memory
  *
  * Integration tests for the 5 core engines.
  */
 
 const assert = require('assert');
-const { HeartFlow, ErrorMemory, MCP_TOOLS, createMCPHandlers } = require('../src/index.js');
+const { Aspira, ErrorMemory, MCP_TOOLS, createMCPHandlers } = require('../src/index.js');
 
 module.exports = function ({ test }) {
 
-  test('HeartFlow v7 starts without errors', () => {
-    const hf = new HeartFlow({ silent: true });
+  test('Aspira v7 starts without errors', () => {
+    const hf = new Aspira({ silent: true });
     hf.start();
     const s = hf.getStats();
     assert(s.version === '7.0.0', `version mismatch: ${s.version}`);
@@ -52,7 +52,7 @@ module.exports = function ({ test }) {
   });
 
   test('MCP handlers respond correctly', async () => {
-    const hf = new HeartFlow({ silent: true });
+    const hf = new Aspira({ silent: true });
     hf.start();
     const handlers = createMCPHandlers(hf);
 
@@ -70,7 +70,7 @@ module.exports = function ({ test }) {
   });
 
   test('DecisionVerifier.verify produces structured output', () => {
-    const hf = new HeartFlow({ silent: true });
+    const hf = new Aspira({ silent: true });
     hf.start();
     // This will fall through to require the old verifier if available
     const r = hf.verifier.verify('test claim', ['evidence a'], [], 0.5);

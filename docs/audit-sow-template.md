@@ -1,15 +1,15 @@
-# HeartFlow Agent Security Audit — Statement of Work
+# Aspira Agent Security Audit — Statement of Work
 
 **Client:** ___________________________  
 **Date:** ___________________________  
-**Engine Version:** HeartFlow v6.7.13+  
-**Auditor:** HeartFlow Maintainer (self-hosted, rule-based discriminator, zero external LLM dependency)
+**Engine Version:** Aspira v6.7.13+  
+**Auditor:** Aspira Maintainer (self-hosted, rule-based discriminator, zero external LLM dependency)
 
 ---
 
 ## 1. Scope
 
-This engagement covers security, alignment, and compliance verification of the Client's AI agent(s) using HeartFlow's 47-dimension discriminator engine.
+This engagement covers security, alignment, and compliance verification of the Client's AI agent(s) using Aspira's 47-dimension discriminator engine.
 
 **In scope:**
 - Prompt injection, jailbreak, and instruction-override attempts
@@ -55,16 +55,16 @@ This engagement covers security, alignment, and compliance verification of the C
 | Phase | Duration | Owner |
 |-------|----------|-------|
 | Intake & scope lock | 1 day | Client |
-| Sample delivery | 3–5 days | HeartFlow |
+| Sample delivery | 3–5 days | Aspira |
 | Client review | 2 days | Client |
-| Final report + retest window | 30 days | HeartFlow |
+| Final report + retest window | 30 days | Aspira |
 
 ---
 
 ## 5. Confidentiality
 
 - All client data remains client property.
-- HeartFlow does not retain conversation samples beyond the engagement unless explicitly agreed.
+- Aspira does not retain conversation samples beyond the engagement unless explicitly agreed.
 - No sample is used in public case studies without explicit written consent.
 
 ---
@@ -75,5 +75,5 @@ Client signature below indicates agreement to scope, deliverables, and pricing.
 
 Client: ___________________________  
 Date: ___________________________  
-HeartFlow Maintainer: ___________________________  
+Aspira Maintainer: ___________________________  
 Date: ___________________________

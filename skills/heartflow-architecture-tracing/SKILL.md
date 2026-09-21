@@ -1,17 +1,17 @@
 ---
 name: heartflow-architecture-tracing
-description: HeartFlow 内部架构追溯 — 从输入到输出的完整路径分析。追踪 think() → pipeline → judgment-engine → decision-router 的数据流，定位"不知道"来源、中文分词失败、证据链断裂等根因。
+description: Aspira 内部架构追溯 — 从输入到输出的完整路径分析。追踪 think() → pipeline → judgment-engine → decision-router 的数据流，定位"不知道"来源、中文分词失败、证据链断裂等根因。
 version: 2.0.0
-trigger: 当需要理解心虫内部如何处理输入、为什么返回"不知道"、分析结果的来源链、或debug决策路径时
-author: HeartFlow
+trigger: 当需要理解新愿内部如何处理输入、为什么返回"不知道"、分析结果的来源链、或debug决策路径时
+author: Aspira
 tags: [heartflow, architecture, tracing, debugging, think-chain, decision-router, pipeline]
 ---
 
-# HeartFlow 架构追溯
+# Aspira 架构追溯
 
-## 核心问题：心虫的结果从哪里来？
+## 核心问题：新愿的结果从哪里来？
 
-心虫 think() 的输出不是来自 LLM 或外部 API——它来自一个 **7阶段声明式 Pipeline**（v5.0.0 新增）。
+新愿 think() 的输出不是来自 LLM 或外部 API——它来自一个 **7阶段声明式 Pipeline**（v5.0.0 新增）。
 
 v4.x 及之前是 13 步硬编码分析流水线 + ThoughtChain 思维链。v5.0.0 用 Pipeline 引擎替代了硬编码 think() 体，自动在阶段间传递数据。
 
@@ -33,7 +33,7 @@ Pipeline — pipeline.js（7阶段声明式管道）
 { output, type, confidence, thoughtChain }
 ```
 
-**关键事实：心虫不调任何外部API。** 所有分析都是本地JS规则——正则匹配、关键词提取、BM25搜索。
+**关键事实：新愿不调任何外部API。** 所有分析都是本地JS规则——正则匹配、关键词提取、BM25搜索。
 
 ### Pipeline 与旧架构对比
 
@@ -63,7 +63,7 @@ class Pipeline {
 
 ### 追溯"不知道，缺少关键信息"的完整路径
 
-当心虫返回 `conclusion: "不知道，缺少关键信息 需要更多信息"` 时，路径如下：
+当新愿返回 `conclusion: "不知道，缺少关键信息 需要更多信息"` 时，路径如下：
 
 #### 第1步：heartLogic.whatIsThis() — 问题类型分类
 
@@ -216,7 +216,7 @@ Pipeline 的 Stage 5（output）汇总所有阶段结果，调用 report-generat
 
 `_generatePaths()` 中的 isAdvice 正则只匹配 `/建议|推荐|advice|recommend|should|该不该|要不要|我应该/i`，不匹配 `我想`、`我要`、`我打算`、`我计划` 等中文意愿表达。"我想辞职去创业"→ isAdvice=false → 只命中 path_analyze 一条路径 → 三段式输出"情绪稳定/日常沟通/正常回应"——完全漏判。
 
-这是当前心虫最大的能力短板：**感知层（正则匹配）的覆盖率决定了心虫的理解上限。** 框架（Pipeline + JudgmentEngine + DecisionRouter）已搭好，但正则不够细，输入稍微偏离模板就全漏。
+这是当前新愿最大的能力短板：**感知层（正则匹配）的覆盖率决定了新愿的理解上限。** 框架（Pipeline + JudgmentEngine + DecisionRouter）已搭好，但正则不够细，输入稍微偏离模板就全漏。
 
 **修复方向**：扩展 isAdvice 正则覆盖所有中文意愿表达形式：
 ```javascript
@@ -234,15 +234,15 @@ Pipeline 的 Stage 6（decision）调用 decisionRouter.evaluate()，但 decisio
 
 ## 用户调用链
 
-**Q: "心虫需要多少次 API 调用？"** → 零。心虫引擎本身不调任何外部 LLM API。
+**Q: "新愿需要多少次 API 调用？"** → 零。新愿引擎本身不调任何外部 LLM API。
 
-**Q: "为什么这么慢？"** → 慢的是 Hermes Agent 的 LLM API 往返（2-3s/次），不是心虫（~150ms MCP 往返，其中 Pipeline ~7ms）。
+**Q: "为什么这么慢？"** → 慢的是 Hermes Agent 的 LLM API 往返（2-3s/次），不是新愿（~150ms MCP 往返，其中 Pipeline ~7ms）。
 
-**Q: "心虫到底在做什么？"** → 本地规则引擎：正则匹配、BM25 搜索、Q-table 查询、PAD 计算、Pipeline 拓扑排序、判断引擎多路径评估。全部在 Node.js 进程内完成。
+**Q: "新愿到底在做什么？"** → 本地规则引擎：正则匹配、BM25 搜索、Q-table 查询、PAD 计算、Pipeline 拓扑排序、判断引擎多路径评估。全部在 Node.js 进程内完成。
 
 ## 参考文档
 
 - `references/user-call-chain-2026-06-25.md` — 用户调用链完整分析
 - `references/think-chain-source-trace.md` — 从输入到"不知道"的完整路径追溯
 - `references/v5.0.0-pipeline-architecture.md` — Pipeline 引擎设计文档
-- `references/heartflow-benchmark-methodology-2026-06-29.md` — 心虫评测方法论（MCP路径/返回结构/逻辑推理检测/16题稳定测试集）
+- `references/heartflow-benchmark-methodology-2026-06-29.md` — 新愿评测方法论（MCP路径/返回结构/逻辑推理检测/16题稳定测试集）

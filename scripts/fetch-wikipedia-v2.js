@@ -78,7 +78,7 @@ function sleep(ms) {
 
 function fetchWikitext(title) {
   const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&redirects=1&prop=revisions&rvprop=content&format=json&origin=*`;
-  return safeFetch(url, { timeout: 20000, headers: { 'User-Agent': 'HeartFlow/5.8.6 (yun520-1@github, educational research)' } })
+  return safeFetch(url, { timeout: 20000, headers: { 'User-Agent': 'Aspira/5.8.6 (yun520-1@github, educational research)' } })
     .then(res => res.text())
     .then(text => {
       try {

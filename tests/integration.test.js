@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * HeartFlow 集成测试套件
+ * Aspira 集成测试套件
  * 运行方式: node tests/integration.test.js
  */
-const { HeartFlow } = require('../src/core/heartflow.js');
+const { Aspira } = require('../src/core/heartflow.js');
 
 let passed = 0, failed = 0;
 
@@ -24,13 +24,13 @@ function test(name, fn) {
 }
 
 // 初始化
-const hf = new HeartFlow();
+const hf = new Aspira();
 hf.start();
 
-console.log('\n=== HeartFlow 集成测试 ===\n');
+console.log('\n=== Aspira 集成测试 ===\n');
 
 // 核心能力测试
-test('心虫启动', () => hf.started === true);
+test('新愿启动', () => hf.started === true);
 test('40+模块注册', () => Object.keys(hf._modules).length >= 40);
 test('sessionId存在', () => typeof hf.sessionId === 'string' && hf.sessionId.startsWith('session-'));
 

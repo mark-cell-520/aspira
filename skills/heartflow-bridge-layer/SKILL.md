@@ -1,11 +1,11 @@
 ---
 name: heartflow-bridge-layer
 version: "1.1"
-title: "HeartFlow 交流层（Bridge Layer）架构"
+title: "Aspira 交流层（Bridge Layer）架构"
 description: >
-  将心虫从底层分析引擎升级为用户与大模型之间的交流层——用户语言→LLM语言翻译、LLM输出→用户语言精炼、桥人格（独立判断力）。
+  将新愿从底层分析引擎升级为用户与大模型之间的交流层——用户语言→LLM语言翻译、LLM输出→用户语言精炼、桥人格（独立判断力）。
   三大子系统：语义翻译器(translator/)、代理层(agent-layer/)、人格核心(persona-core/)。
-author: HeartFlow
+author: Aspira
 tags:
   - heartflow
   - bridge-layer
@@ -15,11 +15,11 @@ tags:
   - architecture
 ---
 
-# HeartFlow 交流层（Bridge Layer）架构 v1.0
+# Aspira 交流层（Bridge Layer）架构 v1.0
 
 ## 核心理念
 
-心虫不再是"分析引擎"，而是**桥**。它站在用户和LLM之间：
+新愿不再是"分析引擎"，而是**桥**。它站在用户和LLM之间：
 - **用户→LLM**：把模糊的自然语言翻译成LLM能精确理解的结构化指令
 - **LLM→用户**：把LLM的冗长输出精炼成用户一眼能看懂的语言
 - **独立判断**：在翻译过程中有自己的立场——不是传声筒，是有判断的桥梁
@@ -76,7 +76,7 @@ tags:
 |------|---|------|
 | `agent-bridge.js` | AgentBridge | 桥总编排器（translate→think→inject→integrate） |
 | `context-builder.js` | ContextBuilder | LLM上下文构建（systemPrompt + bridgeInstruction） |
-| `response-interceptor.js` | ResponseInterceptor | 心虫判断注入 + 立场一致性检测。支持 `enableInterceptor` 配置参数（默认开启），设为 `false` 时原样透传LLM输出 |
+| `response-interceptor.js` | ResponseInterceptor | 新愿判断注入 + 立场一致性检测。支持 `enableInterceptor` 配置参数（默认开启），设为 `false` 时原样透传LLM输出 |
 | `translation-pipeline.js` | TranslationPipeline | 双向流水线编排（userPipeline + llmPipeline） |
 | `quality-filter.js` | QualityFilter | 6种质量过滤（空/纯标点/错误值/重复/占位符/无关） |
 | `followup-suggester.js` | FollowupSuggester | 6条追问建议规则 |
@@ -126,7 +126,7 @@ judgment = {
 
 ```javascript
 // 1. llmToUser 精炼：LLM原始输出→用户友好表述
-// 2. responseInterceptor：注入心虫判断
+// 2. responseInterceptor：注入新愿判断
 // 3. agentCommentary：生成桥批注
 ```
 
@@ -163,7 +163,7 @@ done
 # 2. 引擎启动测试
 node -e "
 const HF = require('./src/core/heartflow.js');
-const h = new HF.HeartFlow({rootPath:'.'});
+const h = new HF.Aspira({rootPath:'.'});
 h.start();
 const r = {};
 r.modules = Object.keys(h._modules).length;
@@ -234,7 +234,7 @@ MCP 的 JSON-RPC 协议只支持 JSON 可序列化的参数。`thinkAsBridge` �
 |------|---------|
 | agentBridge | ✅ 桥总编排器正常 |
 | contextBuilder | ✅ LLM上下文构建正常 |
-| responseInterceptor | ✅ 心虫判断注入正常 |
+| responseInterceptor | ✅ 新愿判断注入正常 |
 | translationPipeline | ✅ 双向流水线正常 |
 | qualityFilter | ✅ 短文本正确reject（<5字→`{passed:false,score:0}`），长文本正确通过 |
 | followupSuggester | ✅ 生成1条追问建议 |

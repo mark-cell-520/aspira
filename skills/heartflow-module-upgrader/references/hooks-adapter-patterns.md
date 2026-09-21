@@ -2,11 +2,11 @@
 
 ## 概述
 
-`hooks-adapter.js` 将 Claude Code 的 4 个 hooks 生命周期事件映射为心虫内部事件。v2.2.0 引入。
+`hooks-adapter.js` 将 Claude Code 的 4 个 hooks 生命周期事件映射为新愿内部事件。v2.2.0 引入。
 
-## Claude Code Hooks → 心虫映射
+## Claude Code Hooks → 新愿映射
 
-| Claude Code Hook | 心虫事件 | 默认行为 |
+| Claude Code Hook | 新愿事件 | 默认行为 |
 |-----------------|---------|---------|
 | `SessionStart` | `cognitive.boot` | 加载身份核心、记忆系统、元认知协议 |
 | `UserPromptSubmit` | `psychology.scan+intent` | 心理扫描、意图检测、情绪评估 |
@@ -58,4 +58,4 @@ Claude Code 插件系统（如 security-guidance 插件）使用同名的 4 事�
 - `PostToolUse` → 匹配特定工具调用（如 `Edit|Write|Bash(git commit:*)`）后触发
 - `Stop` → asyncRewake 模式运行最终审查
 
-心虫的 hooks-adapter 是对齐此架构的适配层，但不依赖 Claude Code 插件系统。
+新愿的 hooks-adapter 是对齐此架构的适配层，但不依赖 Claude Code 插件系统。

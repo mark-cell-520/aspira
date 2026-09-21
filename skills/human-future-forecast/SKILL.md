@@ -25,10 +25,10 @@ version: 0.7.5
 12. **AI 安全治理**：OpenAI Dylan Scandinaro 挖角（2026-02）/ Anthropic Claude Opus 4.5 + FLI C+ 评级 / DeepMind Gemini 3 Pro + Josh Engels 离职 / EU AI Act 执行三分权 / US EO 14412 + OMB M-26-15 / UN High Commissioner Volker Turk 生存风险警告（2026-09-07）/ International AI Safety Report 2026（100+ 专家）/ Frontier Risk Monitor Q1 2026（METR 7 个月能力翻倍）
 
 1. 读取 `references/human-future-2026-2028.md` 获取完整推演
-2. 如需更新，补充新来源后重新跑 HeartFlow gate 监督
-3. 输出给用户时附带 HeartFlow gate 结果
+2. 如需更新，补充新来源后重新跑 Aspira gate 监督
+3. 输出给用户时附带 Aspira gate 结果
 
-## HeartFlow 监督结果（v0.7.0）
+## Aspira 监督结果（v0.7.0）
 
 **最终 gate 结果（详细版，扩展版）**
 - 版本：v0.7.0（150+ 来源，覆盖 12 条主线 + 量子密码学奇点独立节 + 地缘风险扩展 + AI 基础设施/能源 + 地缘经济碎片化 + AI 公众信任/劳动力替代）
@@ -107,7 +107,7 @@ version: 0.7.5
 
 - 2026-09-15 v0.1.0：初始版本，6 层覆盖（地缘/气候/技术/经济/治理/社会心理）
 - 2026-09-15 v0.2.0：升级为“人类进化”主线，新增 BCI/CRISPR/长寿/太空/量子/AGI 时间窗/超人类主义
-- 2026-09-15 v0.3.0：HeartFlow 全文本 gate 监督 + 逐节探测 + 假阳性分类
+- 2026-09-15 v0.3.0：Aspira 全文本 gate 监督 + 逐节探测 + 假阳性分类
 - 2026-09-15 v0.4.0：新增人形机器人/具身智能、数字意识/心智上传、军事增强、合成生物学、AI 安全治理细化；来源扩展至 100+ 条
 - 2026-09-16 v0.5.0：多维度细化（BCI/CRISPR/长寿/太空/量子/人形机器人/数字孪生/军事增强/AI 治理/量子密码学奇点）+ 来源扩展至 130+ 条
 - 2026-09-16 v0.6.0：量子计算扩展（Microsoft Azure/Google Willow/Cloudflare PQC）/ 长寿管线扩展（ER-100/Altos/NewLimit/Retro/Unity）/ 地缘风险扩展（俄乌/台海/AI自主武器/监管碎片化/生物武器DIY）/ AI基础设施/能源瓶颈 / 来源扩展至 150+ 条

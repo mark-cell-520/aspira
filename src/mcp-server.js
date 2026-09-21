@@ -117,9 +117,11 @@ function resolveHFDir() {
 
   const fallbacks = [
 
-    path.join(process.env.HOME, '.hermes', 'skills', 'mark-heartflow-skill'),
+    path.join(process.env.HOME, 'aspira'),
 
-    path.join(process.env.HOME, '.hermes', 'skills', 'heartflow'),
+    path.join(process.env.HOME, '.hermes', 'skills', 'aspira'),
+
+    path.join(process.env.HOME, '.claude', 'skills', 'aspira'),
 
     path.join(process.env.HOME, 'Documents', 'ClaudeCode'),
 
@@ -133,9 +135,9 @@ function resolveHFDir() {
 
   }
 
-  // 最后兜底：返回 mark-heartflow-skill 路径（即使不存在，调用方会报错）
+  // 最后兜底：返回解耦后的权威源路径（即使不存在，调用方会报错）
 
-  return path.join(process.env.HOME, '.hermes', 'skills', 'mark-heartflow-skill');
+  return path.join(process.env.HOME, 'aspira');
 
 }
 

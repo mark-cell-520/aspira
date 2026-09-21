@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow Benchmark Runner
+ * Aspira Benchmark Runner
  *
  * 运行 test_data/benchmarks/ 下的评测集与回归基线。
  * 用法：
@@ -23,8 +23,8 @@ function loadJson(relativePath) {
 }
 
 function createEngine() {
-  const { HeartFlow } = require(path.join(ROOT, 'src/core/heartflow.js'));
-  const hf = new HeartFlow();
+  const { Aspira } = require(path.join(ROOT, 'src/core/heartflow.js'));
+  const hf = new Aspira();
   hf.start();
   return hf;
 }
@@ -145,7 +145,7 @@ async function main() {
   const onlyBenchmark = args.includes('--benchmark-only');
   const onlyBaseline = args.includes('--baseline-only');
 
-  console.log('\n🚀 HeartFlow Benchmark Runner v5.17.25');
+  console.log('\n🚀 Aspira Benchmark Runner v5.17.25');
   const startTime = Date.now();
 
   const benchmarkData = loadJson('test_data/benchmarks/heartflow-core-benchmark.json');

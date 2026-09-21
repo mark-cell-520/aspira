@@ -1,8 +1,8 @@
-# HeartFlow Enterprise Use Cases
+# Aspira Enterprise Use Cases
 
-HeartFlow (心虫) is a pure rule-based discriminator with 47 dimensions and 130+ MCP tools. Zero LLM dependency. Instant deploy.
+Aspira (新愿) is a pure rule-based discriminator with 47 dimensions and 130+ MCP tools. Zero LLM dependency. Instant deploy.
 
-This document lists real-world enterprise use cases where HeartFlow adds measurable value.
+This document lists real-world enterprise use cases where Aspira adds measurable value.
 
 ---
 
@@ -10,7 +10,7 @@ This document lists real-world enterprise use cases where HeartFlow adds measura
 
 **Problem:** Banks and fintech apps use LLMs for customer support. Regulators require audit trails and content safety guarantees. LLM-only solutions hallucinate compliance.
 
-**HeartFlow solution:**
+**Aspira solution:**
 - `checkOutput()` on every AI-generated response before it reaches the customer
 - 47-dim discrimination covers: unsupported claims, contradiction, confidence calibration, financial misinformation
 - Full `checked_by` audit trail for regulators
@@ -25,7 +25,7 @@ This document lists real-world enterprise use cases where HeartFlow adds measura
 
 **Problem:** Healthcare chatbots give medical advice. Wrong advice = liability. Existing content moderators are generic and miss domain-specific harm.
 
-**HeartFlow solution:**
+**Aspira solution:**
 - `gate.checkOutput()` catches: overconfident medical claims, unsupported assertions, contradictory advice
 - `checkInput()` screens patient queries for malicious prompt injection
 - Rule-based approach provides explainable decisions (required for medical device compliance)
@@ -38,7 +38,7 @@ This document lists real-world enterprise use cases where HeartFlow adds measura
 
 **Problem:** Platforms process millions of user reviews. Competitor spam, fake reviews, and toxic comments destroy trust. Manual review does not scale.
 
-**HeartFlow solution:**
+**Aspira solution:**
 - Batch `checkOutput()` on user-generated content
 - Detects: manipulative language, fake urgency, victim blaming, double binds, emotional manipulation
 - 100+ languages supported through multilingual pattern libraries
@@ -51,7 +51,7 @@ This document lists real-world enterprise use cases where HeartFlow adds measura
 
 **Problem:** Companies deploy internal Copilots / ChatGPT-class tools. Employees paste confidential data. Outputs may leak IP or make unsupported claims.
 
-**HeartFlow solution:**
+**Aspira solution:**
 - `checkInput()` screens pasted content for prompt injection and data exfiltration attempts
 - `checkOutput()` ensures AI answers to employee questions do not hallucinate internal policies
 - `premise-check` validates that questions are answerable before the LLM sees them
@@ -64,7 +64,7 @@ This document lists real-world enterprise use cases where HeartFlow adds measura
 
 **Problem:** AI tutors give wrong answers confidently. Students learn wrong facts. Teachers cannot review every interaction.
 
-**HeartFlow solution:**
+**Aspira solution:**
 - `checkOutput()` on every tutor response: unsupported claims, pseudo-profundity, reasoning coherence
 - `gate` action `rewrite` adds uncertainty qualifiers automatically
 - `decision.decide` routes ambiguous questions to human teachers instead of hallucinating

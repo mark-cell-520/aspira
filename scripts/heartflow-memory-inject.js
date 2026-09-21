@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow 记忆注入器 — 自动将引擎记忆注入 Hermes 系统提示
+ * Aspira 记忆注入器 — 自动将引擎记忆注入 Hermes 系统提示
  *
  * 用法：
  *   在 AGENTS.md / CLAUDE.md 或 Hermes config 中引用此脚本的输出
@@ -15,7 +15,7 @@
  */
 
 const path = require('path');
-const { HeartFlowMemory } = require('../src/memory/heartflow-memory.js');
+const { AspiraMemory } = require('../src/memory/heartflow-memory.js');
 const { atomicWrite } = require('../src/utils/atomic-write.js');
 
 const SKILL_ROOT = path.resolve(__dirname, '..');
@@ -39,7 +39,7 @@ function filterSensitive(text) {
 }
 
 function main() {
-  const hfm = new HeartFlowMemory(SKILL_ROOT);
+  const hfm = new AspiraMemory(SKILL_ROOT);
   const lines = [];
   const now = Date.now();
   const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;

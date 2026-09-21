@@ -27,12 +27,12 @@
 - **Regulatory**: China BCI standards push (40+ by 2028, 80+ by 2030); first commercial BCI implant July 2026
 - **Market**: Neuralink 21+ implants; Paradromics Connexus personal computing expansion; Precision $93M Series B
 
-## 2. HeartFlow Supervision Strategy
+## 2. Aspira Supervision Strategy
 
 ### 2.1 Section-Level Gate Only
 - **Why**: Full-text gate on technical forecasts triggers dehumanization/ai_writing_tell/moral_foundations false positives on terminology ("BCI", "CRISPR", "quantum", "AGI", "He-3")
 - **Method**: Run gate.checkOutput only on newly written sections; do not re-run on stable sections
-- **Known false positives**: Document in SKILL.md "HeartFlow监督结果" section; never rewrite原文 to bypass false positives
+- **Known false positives**: Document in SKILL.md "Aspira监督结果" section; never rewrite原文 to bypass false positives
 
 ### 2.2 Source Triangulation Rule
 - Every claim must have at least 2 independent sources (academic + industry OR news + academic)

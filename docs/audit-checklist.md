@@ -1,4 +1,4 @@
-# HeartFlow Audit Methodology
+# Aspira Audit Methodology
 
 This document describes the static checks performed by `scripts/repo-audit.js` for AI agent / MCP security audits.
 

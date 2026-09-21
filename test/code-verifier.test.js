@@ -1,5 +1,5 @@
 /**
- * code-verifier.test.js — 心虫自主升级补的 TDD
+ * code-verifier.test.js — 新愿自主升级补的 TDD
  * 来源: SelfScanner 扫出 src/core/code-verifier.js 未测试 (untestedModules)
  *        evolve() 决策 testing:high (补 TDD 覆盖核心决策路径)
  * 原则: 只测纯函数 verifyJSContent 的核心契约, 不侵入业务代码

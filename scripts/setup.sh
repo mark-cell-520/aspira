@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HeartFlow 一键安装脚本
+# Aspira 一键安装脚本
 # 用法: bash scripts/setup.sh [--port 8588]
 
 set -e
@@ -8,7 +8,7 @@ PORT="${2:-8588}"
 HF_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "=============================="
-echo " HeartFlow (心虫) — 安装脚本"
+echo " Aspira (新愿) — 安装脚本"
 echo "=============================="
 echo ""
 

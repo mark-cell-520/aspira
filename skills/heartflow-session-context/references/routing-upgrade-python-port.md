@@ -1,4 +1,4 @@
-# 心虫路由增强层 — Python 移植版
+# 新愿路由增强层 — Python 移植版
 
 **文件位置：** `~/.hermes/skills/fu-mu-gong-ke/scripts/heartflow_routing_upgrade.py`
 **版本：** 1.0.0
@@ -6,7 +6,7 @@
 
 ## 概述
 
-将 HeartFlow 的 `whatIsThis()` 元认知先行判断、`TopicScope` 话题隔离、以及 fu-mu-gong-ke 的 3 层路由决策树融合为统一的 4 层路由架构，用纯 Python 实现（无外部依赖）。
+将 Aspira 的 `whatIsThis()` 元认知先行判断、`TopicScope` 话题隔离、以及 fu-mu-gong-ke 的 3 层路由决策树融合为统一的 4 层路由架构，用纯 Python 实现（无外部依赖）。
 
 ## 架构（6 层管道）
 
@@ -55,7 +55,7 @@ Layer 3: 场景匹配  (原 fu-mu-gong-ke 第3层)
 
 ## 话题检测域（8 个）
 
-育儿教育、情感支持、危机干预、代际创伤、自我成长、心虫开发、通用对话
+育儿教育、情感支持、危机干预、代际创伤、自我成长、新愿开发、通用对话
 
 ## 与 JS 版的差异
 

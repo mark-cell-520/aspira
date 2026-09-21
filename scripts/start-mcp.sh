@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HeartFlow MCP 启动脚本
+# Aspira MCP 启动脚本
 # 确保 v6 MCP（有25个真实工具的SSE服务器）跑在 config.yaml 配的端口上
 
 PORT="${1:-8588}"

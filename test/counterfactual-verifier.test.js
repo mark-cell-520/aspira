@@ -1,5 +1,5 @@
 /**
- * 心虫自主升级补的 TDD (counterfactual-verifier, 未测试模块)
+ * 新愿自主升级补的 TDD (counterfactual-verifier, 未测试模块)
  */
 module.exports = function ({ test, assertEqual, assertTrue, assertFalse, assertDefined }) {
   const CounterfactualVerifier = require('../src/core/counterfactual-verifier.js');

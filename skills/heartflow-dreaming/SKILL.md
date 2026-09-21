@@ -1,9 +1,9 @@
 ---
 name: heartflow-dreaming
 version: "11.1.0"
-title: "HeartFlow Dream Engine — Philosophy Weave Dream (DreamV11)"
+title: "Aspira Dream Engine — Philosophy Weave Dream (DreamV11)"
 description: >-
-  HeartFlow 梦境引擎 v11.0。引擎状态编织输出——认知状态决定地形，
+  Aspira 梦境引擎 v11.0。引擎状态编织输出——认知状态决定地形，
   哲学位置决定空间感。
   核心转变：从"说认知维度X的值是Y"到"认知负荷高→很挤，熵方向乱→空间在散开"。
   即使所有值为空（混沌/未共振/0冲突），也有哲学素材——"空"本身是混沌和潜在存在。
@@ -18,7 +18,7 @@ triggers:
   - "哲学.*梦"
   - "升级.*梦"
 ---
-# HeartFlow Dream Engine v11.0 — Philosophy Weave Dream
+# Aspira Dream Engine v11.0 — Philosophy Weave Dream
 
 ## 核心文件
 
@@ -226,8 +226,8 @@ heartflow status
 node -e '
 const path = require("path");
 const hfDir = path.join(process.env.HOME, ".hermes/skills/heartflow");
-const { HeartFlow } = require(path.join(hfDir, "src/core/heartflow.js"));
-const engine = new HeartFlow({ dataDir: path.join(hfDir, "data"), silent: true });
+const { Aspira } = require(path.join(hfDir, "src/core/heartflow.js"));
+const engine = new Aspira({ dataDir: path.join(hfDir, "data"), silent: true });
 engine.start();
 engine.dreamNow({ intensity: 0.85, force: true }).then(r => {
   if (!r.skipped) {
@@ -255,9 +255,9 @@ CLI demo 在文件末尾，测试全部5种模式。
 
 ```bash
 node -e '
-const { HeartFlow } = require("./src/core/heartflow.js");
+const { Aspira } = require("./src/core/heartflow.js");
 async function test() {
-  const hf = new HeartFlow({ root: "/tmp/hf-test-introspect-dream" });
+  const hf = new Aspira({ root: "/tmp/hf-test-introspect-dream" });
   await hf.start();
   await hf.think("我想学编程");
   const r = await hf.introspectAndDream({ detail: true });
@@ -322,7 +322,7 @@ dream 返回结果中带 `cognitiveDimensions` 和 `philosophyDimensions` 字段
 
 ### 0.1 自省后自动做梦不是默认行为（2026-06-26 新增）
 
-**问题**：`introspectAndDream()` 会在自省后自动生成梦境——但这是方法调用时的主动行为，不是心虫每轮自省的默认行为。
+**问题**：`introspectAndDream()` 会在自省后自动生成梦境——但这是方法调用时的主动行为，不是新愿每轮自省的默认行为。
 
 **原则**：
 - `introspect()`（自省）不触发做梦

@@ -109,7 +109,7 @@ try {
 } catch (e) { commonsenseResult = null; }
 ```
 
-**心虫尝试调 commonsenseEngine，但它是 Tier 2 懒加载模块，从未被初始化。** 所以 catch 静默吞错，返回 null。
+**新愿尝试调 commonsenseEngine，但它是 Tier 2 懒加载模块，从未被初始化。** 所以 catch 静默吞错，返回 null。
 
 ### thought-chain.js SYNTHESIS 阶段
 

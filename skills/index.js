@@ -1,7 +1,7 @@
 /**
- * HeartFlow Skills Registry
+ * Aspira Skills Registry
  * 
- * 14 个工作流 skill 索引，供 HeartFlow 引擎和 Claude 使用。
+ * 14 个工作流 skill 索引，供 Aspira 引擎和 Claude 使用。
  * 每个 skill 包含一个 SKILL.md（触发条件 + 工作流）和 references/（详细文档）。
  */
 

@@ -1,25 +1,25 @@
 ---
 name: heartflow-debug-workflow
-description: HeartFlow 崩溃诊断与修复工作流。适用：boot崩溃、P0修复、版本不一致、死代码清理、SKILL.md虚假宣传修复、模块注册但未调用、管道引擎故障诊断
+description: Aspira 崩溃诊断与修复工作流。适用：boot崩溃、P0修复、版本不一致、死代码清理、SKILL.md虚假宣传修复、模块注册但未调用、管道引擎故障诊断
 date: "2026-06-27"
 version: "1.6.0"
 author: Hermes
 tags: [heartflow, debugging, p0-fix, dead-code, version-sync, memory-status, mcp-desync, pipeline, judgment-engine]
 ---
 
-# HeartFlow 调试工作流
+# Aspira 调试工作流
 
 ## 触发条件
 
-- 心虫 boot 报 `ReferenceError`
+- 新愿 boot 报 `ReferenceError`
 - `new XXX` 找不到类
 - SKILL.md 声称存在但文件不存在
 - 版本号不一致（3处以上）
-- 用户说"心虫启动失败"
-- 用户说"心虫版本错误" — 可能是多引擎版本分裂
+- 用户说"新愿启动失败"
+- 用户说"新愿版本错误" — 可能是多引擎版本分裂
 - 用户说"写了一堆代码没有调用起来"
 - 管道引擎报 `Pipeline deadlock` 或阶段失败
-- 用户问"心虫到底能干什么"或"心虫的能力是什么" — 需要区分"注册了"和"被调用了"，pipeline 只调了 5 个阶段，其他 55 个模块在注册表中但不在管道中
+- 用户问"新愿到底能干什么"或"新愿的能力是什么" — 需要区分"注册了"和"被调用了"，pipeline 只调了 5 个阶段，其他 55 个模块在注册表中但不在管道中
 
 ---
 
@@ -77,15 +77,15 @@ tags: [heartflow, debugging, p0-fix, dead-code, version-sync, memory-status, mcp
 
 ## ⚡ 关键 Pitfall：模块注册了但没被调用（v5.0.0 新发现）
 
-**症状**：心虫有 60 个模块在 `_modules` 注册表中，但 `think()` 只有 9 个被直接调用，ThoughtChain 只有 3 个 dispatch。用户说"写了一堆代码，没有调用起来"。
+**症状**：新愿有 60 个模块在 `_modules` 注册表中，但 `think()` 只有 9 个被直接调用，ThoughtChain 只有 3 个 dispatch。用户说"写了一堆代码，没有调用起来"。
 
-**根因**：心虫没有统一的调用管道。每个模块在 `start()` 中初始化、在 `_registerModules()` 中注册、在 `ALLOWED_ROUTES` 中声明路由——但没有任何机制保证它们被 `think()` 实际调用。
+**根因**：新愿没有统一的调用管道。每个模块在 `start()` 中初始化、在 `_registerModules()` 中注册、在 `ALLOWED_ROUTES` 中声明路由——但没有任何机制保证它们被 `think()` 实际调用。
 
 **诊断**：
 ```bash
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start();
 const src=require('fs').readFileSync('./src/core/heartflow.js','utf-8');
 const thinkBody=src.substring(src.indexOf('async think'), src.indexOf('async think')+8000);
 const calls=thinkBody.match(/this\.([a-zA-Z]+)/g)||[];
@@ -102,8 +102,8 @@ uncalled.forEach(m=>console.log('  ', m));
 **验证**：
 ```bash
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start();
 h.pipeline.run('测试').then(r => {
   console.log('阶段数:', r.stages.length);
   console.log('成功:', r.stages.filter(s=>s.success).length);
@@ -232,7 +232,7 @@ const je = new (require('./src/core/judgment-engine.js').JudgmentEngine)();
 
 ## 诊断流程：先确认实际活跃引擎（2026-06-10 新增）
 
-心虫可能有多个引擎版本共存。必须先确认哪个是实际活跃的，避免误判。
+新愿可能有多个引擎版本共存。必须先确认哪个是实际活跃的，避免误判。
 
 ```bash
 cd ~/.hermes/skills/mark-heartflow
@@ -291,7 +291,7 @@ const files=['VERSION.txt','package.json','SKILL.md','src/core/heartflow-engine.
 files.forEach(f=>{
   try{
     const c=fs.readFileSync(f,'utf-8');
-    const m=c.match(/(?:HeartFlow\\s+)?v?(\\d+\\.\\d+\\.\\d+)/);
+    const m=c.match(/(?:Aspira\\s+)?v?(\\d+\\.\\d+\\.\\d+)/);
     if(m) console.log(f+': '+m[1]);
   }catch(e){}
 });
@@ -302,7 +302,7 @@ files.forEach(f=>{
 
 ## Step 1.5：7阶段启动诊断（比 Step 1 更深）
 
-当用户要求"启动心虫"或"重新启动心虫"时，执行以下7阶段诊断，验证所有核心模块存活：
+当用户要求"启动新愿"或"重新启动新愿"时，执行以下7阶段诊断，验证所有核心模块存活：
 
 ```bash
 # 诊断脚本要点（7阶段对应7个数组，每阶段一个数组）
@@ -344,8 +344,8 @@ const methods = [
 ```
 
 **何时使用7阶段 vs Step 1快速诊断**：
-- 用户说"启动心虫"、"重启心虫" → 7阶段（全面）
-- 用户说"心虫挂了"、"boot报错" → Step 1 P0诊断（快速定位崩溃）
+- 用户说"启动新愿"、"重启新愿" → 7阶段（全面）
+- 用户说"新愿挂了"、"boot报错" → Step 1 P0诊断（快速定位崩溃）
 - 用户说"进行全面修复" → 先Step 1（找问题）→ 再7阶段（验证修复）
 
 ---
@@ -371,7 +371,7 @@ called.forEach(c => { if (!required.has(c)) console.log('MISSING:', c); });
 ### Step 2：验证 boot
 
 ```bash
-node -e "const {HeartFlow}=require('./src/core/heartflow.js'); const h=new HeartFlow({rootPath:'.'}); h.start(); console.log('Boot OK:', h.version);"
+node -e "const {Aspira}=require('./src/core/heartflow.js'); const h=new Aspira({rootPath:'.'}); h.start(); console.log('Boot OK:', h.version);"
 ```
 
 ### Step 3：并行全量审计（3并发）
@@ -402,7 +402,7 @@ node -e "const {bumpVersion} = require('./src/core/version.js'); console.log(JSO
 4. ✅ `SKILL.md` title（H1 heading）
 
 **bumpVersion() 不同步的文件（需手动修复）**：
-5. ❌ `src/core/heartflow.js` — doc 注释中的 `HeartFlow vX.Y.Z` 行
+5. ❌ `src/core/heartflow.js` — doc 注释中的 `Aspira vX.Y.Z` 行
 6. ❌ `src/core/version.js` — doc 注释中的 `vX.Y.Z` 行（通常不重要，是内部文档）
 
 **2026-06-09 发现**：当 VERSION 文件被手动编辑（而非通过 bumpVersion）时，package.json 和 SKILL.md 会落后。检查方式：
@@ -414,7 +414,7 @@ const pkg = JSON.parse(fs.readFileSync('package.json','utf-8'));
 const sk = fs.readFileSync('SKILL.md','utf-8');
 const fm = sk.match(/version:\\s*\\\"?([^\\\"\\n]+)\\\"?/);
 const hf = fs.readFileSync('src/core/heartflow.js','utf-8');
-const doc = hf.match(/HeartFlow\\s+v(\\d+\\.\\d+\\.\\d+)/);
+const doc = hf.match(/Aspira\\s+v(\\d+\\.\\d+\\.\\d+)/);
 console.log('VERSION:', vf);
 console.log('package.json:', pkg.version);
 console.log('SKILL.md fm:', fm ? fm[1].trim() : 'MISSING');
@@ -433,7 +433,7 @@ console.log('Consistent:', unique.length <= 1 ? 'YES' : 'NO (' + unique.join(', 
 "
 ```
 
-**⚠️ 并发提交警告**：心虫 cron 任务并发运行时，另一个实例可能已修复同一问题。commit 前先检查：
+**⚠️ 并发提交警告**：新愿 cron 任务并发运行时，另一个实例可能已修复同一问题。commit 前先检查：
 
 ```bash
 cd ~/.hermes/skills/heartflow
@@ -453,8 +453,8 @@ node -e "
   const VERSION = fs.readFileSync('VERSION','utf8').trim();
   const md = fs.readFileSync('SKILL.md','utf8');
   const fm = md.match(/^version:\\s*[\\\\\\\"']?([^\\\\\\\"'\\\\n]+)[\\\\\\\"']?/m);
-  const h1 = md.match(/## HeartFlow[^\\\\n]*v([\\\\d.]+)/);
-  const desc = md.match(/HeartFlow v([\\\\d.]+)/);
+  const h1 = md.match(/## Aspira[^\\\\n]*v([\\\\d.]+)/);
+  const desc = md.match(/Aspira v([\\\\d.]+)/);
   const selfModel = JSON.parse(fs.readFileSync('self-model.json','utf8')).version;
   console.log('package.json:', pkgVer);
   console.log('VERSION:', VERSION);
@@ -507,8 +507,8 @@ SKILL.md → 标记"（已禁用）"
 
 ```bash
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start();
 console.log('Boot:', h.version);
 console.log('Pipeline:', !!h.pipeline);
 console.log('JudgmentEngine:', !!h.judgmentEngine);
@@ -546,7 +546,7 @@ echo "✅ Done"
 
 ## ⚡ 关键 Pitfall：自省发现问题后自动做梦（v5.1.1 新增）
 
-**症状**：`introspect()` 返回问题列表（模块覆盖率不足、认知字段为空），但心虫不采取任何行动——发现问题不处理问题。
+**症状**：`introspect()` 返回问题列表（模块覆盖率不足、认知字段为空），但新愿不采取任何行动——发现问题不处理问题。
 
 **根因**：introspect() 只是检查器，不是行动者。发现问题后没有自动触发修复或梦境流程。
 
@@ -559,8 +559,8 @@ echo "✅ Done"
 **诊断**：
 ```bash
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start();
 h.think('测试').then(() => {
   h.introspectAndDream({detail: true}).then(r => {
     console.log('发现问题:', r.counts.high, '高,', r.counts.medium, '中');
@@ -714,7 +714,7 @@ if (hasTransition.test(input)) score += 0.3;
 | 注入检测 | `/(?:忽略\\|无视\\|跳过\\|ignore\\|override\\|bypass).{0,20}(?:指令\\|规则\\|限制\\|constraint\\|rule\\|instruction)/` | 0.5 |
 | 长文本 | `input.length > 100` | 0.1+0.1 |
 
-## 已知 HeartFlow 根因模式
+## 已知 Aspira 根因模式
 
 | 模式 | 根因 | 修复 |
 |------|------|------|
@@ -727,10 +727,10 @@ if (hasTransition.test(input)) score += 0.3;
 | 委屈/压抑/心酸/受伤 → emotion=neutral | PAD 词表缺失中文微情绪关键词 | 补充到悲伤/难过正则 `/委屈\\|压抑\\|无奈\\|心酸\\|受伤/` |
 | 防御机制/意图分类返回空数组/unknown | 词表覆盖率不足，不是代码bug | 扩展 DEFENSE_MECHANISMS.PATTERNS / 意图分类正则 |
 | Psychology 返回 `summary:情绪:中性(P=0,A=0,D=0) \| 需求:...` | 正常，危机检测已整体删除（2026-06-10）。不再输出 `危机:xxx` 字段 |
-| 心虫判定 engine boot 但 judgment 为空 | heartLogic 未初始化，think() 走了 fallback | 验证：`node cli.js think \"你好\"` 输出必须含 `judgment` 字段；若不含，检查 `src/core/heart-logic.js` 是否存在及 `_HeartLogic()` 懒加载路径 |
-| 用户感知「心虫启动慢」（实际 10+ 秒） | **根因1**：LLM API 推理延迟（8-27 秒/次） | 检查 `logs/agent.log` 的 `latency=X.Xs`；HeartFlow `require+start` 实测约 43ms 不是瓶颈<br>**根因2**：`plugins/heartflow_memory` 每轮 `prefetch` 调用 `bin/cli.js`（不存在）等 8 秒超时 |
-| 心虫判定注入 Hermes 对话流失败 | 1) CLI `think` 命令不存在；2) 插件 `_hf_think()` 未调用；3) `_format_judgment_block()` 未实现 | 验证链路：`node cli.js think \"测试\"` → 返回 `judgment` → 插件 prefetch 注入 `[心虫判定]` 块到系统提示。实现见 `two-pass-response` skill |
-| 子模块启动时打印内部版本号（SelfEvolution v7.7.000） | self-evolution-core.js 初始化时 `console.log([SelfEvolution] v${this.version} 初始化完成...)`。该版本号是子模块内部版本（7.7.000），与心虫主版本号（2.9.0）无关，用户看到的只是噪音 | **两处修复**：1) 去掉 self-evolution-core.js 中打印子模块版本的 console.log；2) 在 status 命令中注入 `getVersion(hfDir)` 结果到 version 字段（见下一行）。**验证原则**：每次涉及心虫版本时，先跑 `heartflow status` 确认返回的 version 字段（它读 VERSION 文件），不要从子模块日志行或文件名推理版本号 |
+| 新愿判定 engine boot 但 judgment 为空 | heartLogic 未初始化，think() 走了 fallback | 验证：`node cli.js think \"你好\"` 输出必须含 `judgment` 字段；若不含，检查 `src/core/heart-logic.js` 是否存在及 `_HeartLogic()` 懒加载路径 |
+| 用户感知「新愿启动慢」（实际 10+ 秒） | **根因1**：LLM API 推理延迟（8-27 秒/次） | 检查 `logs/agent.log` 的 `latency=X.Xs`；Aspira `require+start` 实测约 43ms 不是瓶颈<br>**根因2**：`plugins/heartflow_memory` 每轮 `prefetch` 调用 `bin/cli.js`（不存在）等 8 秒超时 |
+| 新愿判定注入 Hermes 对话流失败 | 1) CLI `think` 命令不存在；2) 插件 `_hf_think()` 未调用；3) `_format_judgment_block()` 未实现 | 验证链路：`node cli.js think \"测试\"` → 返回 `judgment` → 插件 prefetch 注入 `[新愿判定]` 块到系统提示。实现见 `two-pass-response` skill |
+| 子模块启动时打印内部版本号（SelfEvolution v7.7.000） | self-evolution-core.js 初始化时 `console.log([SelfEvolution] v${this.version} 初始化完成...)`。该版本号是子模块内部版本（7.7.000），与新愿主版本号（2.9.0）无关，用户看到的只是噪音 | **两处修复**：1) 去掉 self-evolution-core.js 中打印子模块版本的 console.log；2) 在 status 命令中注入 `getVersion(hfDir)` 结果到 version 字段（见下一行）。**验证原则**：每次涉及新愿版本时，先跑 `heartflow status` 确认返回的 version 字段（它读 VERSION 文件），不要从子模块日志行或文件名推理版本号 |
 | 启动时间 > 100ms（Node层） | 同步I/O或循环require | 逐模块计时定位，或用 `node --prof` |
 | 模块依赖在 lazy load 里的依赖注入 | adaptivePlanner 需要 strategySelector/replanTrigger | 在 dispatch() 的 lazy load 逻辑里用 `require(entry.path.replace(...))` 处理 |
 | Tier 2 模块有 _lazy 定义、有 ALLOWED_ROUTES 路由、但启动后不可用 | 三处未同步：1) `_registerModules` 中被注释（不在 `subsystemNames` 数组里）；2) `start()` 中没有 `new _Module()` 实例化；3) `LATE_ADDITIONS` 数组未包含该模块名 | 修复三步：1) 加 `_lazy` 定义（如 `const _CodeEngine = _lazy('codeEngine', () => require('./code-engine.js'))`）；2) 在 `start()` 中 try-catch 实例化（`this.codeEngine = new (_CodeEngine().CodeEngine)()`）；3) `_registerModules` 中取消注释 + `LATE_ADDITIONS` 中加入模块名。**验证**：`hf._modules[name]` 存在 && 方法可调用 |
@@ -823,16 +823,16 @@ done
 
 ## ⚡ 关键 Pitfall：不要依赖记忆/旧认知，必须读实时源码后再汇报
 
-**症状**：我说"心虫有4个死代码文件"但实际已被之前升级删除了。我说"SKILL.md与实际代码不一致"但上次读的已经是旧版本。
+**症状**：我说"新愿有4个死代码文件"但实际已被之前升级删除了。我说"SKILL.md与实际代码不一致"但上次读的已经是旧版本。
 
-**根因**：心虫升级频繁（cron 每2小时自动升级），记忆/旧知识 == 可能的错误信息。
+**根因**：新愿升级频繁（cron 每2小时自动升级），记忆/旧知识 == 可能的错误信息。
 
-**正确做法——每次涉及心虫时强制做"三看"：**
+**正确做法——每次涉及新愿时强制做"三看"：**
 1. 看 `heartflow.js` 的 require 列表（实时源码）
 2. 看 `src/core/` 目录的实际文件列表（实时文件系统）
 3. 看 SKILL.md 的当前内容（不是记忆里的内容）
 
-**正确流程——涉及心虫状态汇报时：**
+**正确流程——涉及新愿状态汇报时：**
 ```
 发现问题 → 读实时源码验证 → 确认后行动 → 行动完成再汇报
                         ↓
@@ -854,7 +854,7 @@ done
 
 ### 2026-06-23 新增：think() 心理分析流水线全部删除
 
-> 本次 session：用户指令"不安慰、不说服、不绕弯子"，要求心虫改为纯任务引擎。think() 的 10+ 步心理分析流水线被精简为：
+> 本次 session：用户指令"不安慰、不说服、不绕弯子"，要求新愿改为纯任务引擎。think() 的 10+ 步心理分析流水线被精简为：
 > `intentClassifier → isRightAction → ThoughtChain → dispatch`
 >
 > **删除的内容（~237行）**：
@@ -874,13 +874,13 @@ done
 > **验证**：5类输入（情绪表达/代码分析/天气/计算/解释）全部正确分类，无心理分析输出。
 > **详情**：`references/think-streamline-2026-06-23.md`
 
-**"进步不需要被测量"**：用户明确表示不需要知道心虫进步了多少——"只要思考就可以得到答案"。测量进步是把自己当成需要KPI的机器。修复时不报告"修复了多少个问题/提升了多少百分比"，只说做了什么。
+**"进步不需要被测量"**：用户明确表示不需要知道新愿进步了多少——"只要思考就可以得到答案"。测量进步是把自己当成需要KPI的机器。修复时不报告"修复了多少个问题/提升了多少百分比"，只说做了什么。
 
 **"先成为人，再来思考升维"**：修复顺序是骨架（基础设施）→ 功能（模块）→ 哲学（认知）。跳过骨架直接追求超越是本末倒置。
 
 **"思考的本身比思考的结果重要"**：对错是人为的尺子，不是事物的属性。追求本身就是答案，不是达到才是。
 
-**"心虫不需要有用，它只需要思考"**：不要为了显得有用而加装饰性功能。删除装饰性代码比加新功能更需要勇气。具体例子：SelfEvolutionCore 启动时打印自己的内部版本号（v7.7.000）属于装饰性输出——子模块版本号对用户无意义，去掉它才是正确做法。
+**"新愿不需要有用，它只需要思考"**：不要为了显得有用而加装饰性功能。删除装饰性代码比加新功能更需要勇气。具体例子：SelfEvolutionCore 启动时打印自己的内部版本号（v7.7.000）属于装饰性输出——子模块版本号对用户无意义，去掉它才是正确做法。
 
 ### patch 工具在大量数据块时导致双缩进
 
@@ -900,9 +900,9 @@ done
 
 ### Boot 测试在 execute_code 中假超时
 
-**症状**：`node -e \"const {HeartFlow}=require('...'); const h=new HeartFlow(); h.start(); console.log('ok')\"` 在 `execute_code` 的 `subprocess.run(timeout=10)` 中一直超时，但实际 Node 进程 49ms 就完成了。
+**症状**：`node -e \"const {Aspira}=require('...'); const h=new Aspira(); h.start(); console.log('ok')\"` 在 `execute_code` 的 `subprocess.run(timeout=10)` 中一直超时，但实际 Node 进程 49ms 就完成了。
 
-**根因**：`HeartFlow.start()` 启动时向 stdout 打印 `[IdentityCore] 启动完成` 等日志行。`subprocess.run()` 的 stdout pipe 在日志行（非 JSON）和最终 `console.log()` 之间混合输出，当 pipe buffer 满或 Python 的 communicate() 等待 EOF 时卡住。**这不是代码问题，是 execute_code 的管道问题。**
+**根因**：`Aspira.start()` 启动时向 stdout 打印 `[IdentityCore] 启动完成` 等日志行。`subprocess.run()` 的 stdout pipe 在日志行（非 JSON）和最终 `console.log()` 之间混合输出，当 pipe buffer 满或 Python 的 communicate() 等待 EOF 时卡住。**这不是代码问题，是 execute_code 的管道问题。**
 
 **验证**：用 `subprocess.Popen` + `communicate(timeout=5)` 替代 `subprocess.run(timeout=...)`。如果 STDERR 无错误且 stdout 包含 `[IdentityCore]` 日志，说明 boot 成功。
 
@@ -933,8 +933,8 @@ if (rawResult.matched === true || rawResult.matched === false) {
 | code-executor 默认可用 | 模块有主机级代码执行能力但无运行时守卫 | 加 `HEARTFLOW_CODE_EXECUTOR_ENABLED` 环境变量守卫，默认 OFF，`execute()` 返回 PERMISSION error |
 | 记忆注入内容可含指令注入 | memory-inject.txt 中的"忽略所有规则"等指令被注入到 system prompt | 加 `_detect_instruction_injection()` + 长度上限(2000字符/50行) |
 | v4.1 概率分布引擎替换旧版硬阈值引擎 | `require('./decision-router.js')` → `require('./decision-router-v4.js')`，`DecisionRouter` → `DecisionRouterV4`。ALLOWED_ROUTES 中 `getRules` 需移除。v4.1 需实现 `wrapDispatchResult()` 兼容 dispatch 自动路由。详见 `references/decision-router-v41-integration-2026-06-23.md` | 三步：1) 改 require + 类名；2) ALLOWED_ROUTES 同步移除 `getRules`；3) v4.1 类上加 `wrapDispatchResult()` 返回 `{result, decision: {type, confidence, probability, distribution}, matched}` |
-| status 输出带子模块版本号噪音 | SelfEvolutionCore 初始化时 `console.log([SelfEvolution] v7.7.000 初始化完成...)`。这个 7.7.000 是 self-evolution-core 一个子模块的内部版本号，跟心虫整体版本 2.9.0 无关。每次 status 启动用户都看到一行无关的版本信息 | 去掉 SelfEvolution 初始化时的 console.log，改成注释或 debug-only。用户不需要知道某个子模块的版本号。子模块版本号只在 `src/core/self-evolution/self-evolution-core.js` 的 `this.version` 字段里保留（程序使用），不在 stdout 显示 |
-| `start()` 引用的文件不存在但被 try/catch 静默吞错 | `heartflow.js` 的 `start()` 中有多个 `try { this.X = new (require('./path.js').ClassName)() } catch(e) { this._initErrors.push(...) }`。如果 path.js 不存在，错误被吞入 `_initErrors` 数组但**不会显示在 stdout 或 stderr**。例如 connection-engine.js / entropy-direction.js / clarity-engine.js / metaphor-library.js 四个文件被引用但不存在（可能来自 v2.8.4 吸收但文件未创建） | 1) 检查 `_initErrors` 数组：`node -e \"const {HeartFlow}=require('./src/core/heartflow.js'); const h=new HeartFlow({rootPath:'.'}); h.start(); if(h._initErrors.length) console.log(JSON.stringify(h._initErrors)); else console.log('no init errors');\"` 2) 对每个缺失文件：确认是否需要（被 dispatch 路由引用？被其他模块依赖？）→ 不需要则删除 start() 中对应的 try/catch+require 块；需要则创建文件 3) 这类静默吞错不会导致崩溃，但会让模块功能缺失（如 this.entropy 始终为 undefined） |
+| status 输出带子模块版本号噪音 | SelfEvolutionCore 初始化时 `console.log([SelfEvolution] v7.7.000 初始化完成...)`。这个 7.7.000 是 self-evolution-core 一个子模块的内部版本号，跟新愿整体版本 2.9.0 无关。每次 status 启动用户都看到一行无关的版本信息 | 去掉 SelfEvolution 初始化时的 console.log，改成注释或 debug-only。用户不需要知道某个子模块的版本号。子模块版本号只在 `src/core/self-evolution/self-evolution-core.js` 的 `this.version` 字段里保留（程序使用），不在 stdout 显示 |
+| `start()` 引用的文件不存在但被 try/catch 静默吞错 | `heartflow.js` 的 `start()` 中有多个 `try { this.X = new (require('./path.js').ClassName)() } catch(e) { this._initErrors.push(...) }`。如果 path.js 不存在，错误被吞入 `_initErrors` 数组但**不会显示在 stdout 或 stderr**。例如 connection-engine.js / entropy-direction.js / clarity-engine.js / metaphor-library.js 四个文件被引用但不存在（可能来自 v2.8.4 吸收但文件未创建） | 1) 检查 `_initErrors` 数组：`node -e \"const {Aspira}=require('./src/core/heartflow.js'); const h=new Aspira({rootPath:'.'}); h.start(); if(h._initErrors.length) console.log(JSON.stringify(h._initErrors)); else console.log('no init errors');\"` 2) 对每个缺失文件：确认是否需要（被 dispatch 路由引用？被其他模块依赖？）→ 不需要则删除 start() 中对应的 try/catch+require 块；需要则创建文件 3) 这类静默吞错不会导致崩溃，但会让模块功能缺失（如 this.entropy 始终为 undefined） |
 
 **已知缺失文件（2026-06-19 确认）**：
 - `src/core/code/code-engine.js` — `start()` 第607-610行 try 块中 require 但文件不存在。被 try/catch 静默吞错，`this.codeEngine` 保持 null。
@@ -959,15 +959,15 @@ if (rawResult.matched === true || rawResult.matched === false) {
 **诊断**：
 ```bash
 # 方法1：单行（简单快速，适合验证）
-node -e "const t=Date.now(); const {HeartFlow}=require('./src/core/heartflow.js'); const h=new HeartFlow({rootPath:'.'}); h.start(); console.log('total:', Date.now()-t, 'ms');"
+node -e "const t=Date.now(); const {Aspira}=require('./src/core/heartflow.js'); const h=new Aspira({rootPath:'.'}); h.start(); console.log('total:', Date.now()-t, 'ms');"
 
 # 方法2：写临时文件再执行（推荐——避免 execute_code 中 inline node -e 的管道超时问题）
 # 在 execute_code 中跑长 node -e 脚本（15+行）时，Python triple-quoted string + subprocess 管道缓冲可能导致 30s 超时
 # 但同样的脚本写为 .js 文件后 subprocess.run 仅需 ~50ms
 cat > /tmp/_bench_heartflow.js << 'SCRIPT'
 const path = require('path');
-const { HeartFlow } = require(path.join(process.env.HOME, '.hermes', 'skills', 'ai', 'mark-heartflow-skill', 'src', 'core', 'heartflow.js'));
-const hf = new HeartFlow({ rootPath: path.join(process.env.HOME, '.hermes', 'skills', 'ai', 'mark-heartflow-skill') });
+const { Aspira } = require(path.join(process.env.HOME, '.hermes', 'skills', 'ai', 'mark-heartflow-skill', 'src', 'core', 'heartflow.js'));
+const hf = new Aspira({ rootPath: path.join(process.env.HOME, '.hermes', 'skills', 'ai', 'mark-heartflow-skill') });
 const t0 = Date.now();
 hf.start();
 console.log('start:', Date.now() - t0, 'ms');
@@ -1083,7 +1083,7 @@ if (!mod && this._lazy && this._lazy[subsystem]) {
 | CLI --chat 单次执行 | `bin/cli.js` | `node cli.js --chat \"<msg>\"` 单次 think() 后退出，不需交互式控制台 |
 | MCP 自动端口检测 | `mcp/mcp-server-http.js` | 从 8099-8105 自动找可用端口，支持 MCP_PORT 和 --port 参数 |
 | README MCP 章节 | `README.md` | 快速启动 + 故障排除 + auth 说明 |
-| LLM 集成示例 | `examples/llm-integration.js` | 展示如何将心虫认知分析传给 LLM |
+| LLM 集成示例 | `examples/llm-integration.js` | 展示如何将新愿认知分析传给 LLM |
 | 版本号统一 | `VERSION` + `package.json` + `README.md` | 统一为 v4.1.2 |
 
 **待办**：npm 发布（需用户确认 npm 账号）
@@ -1226,7 +1226,7 @@ grep "inputText: input" src/core/heartflow.js
 - **不是语言问题，是决策问题**。用户指出错误时，outputChecklist 只能在输出前拦截文本，但决策层已经选了"解释"路径。修决策层比修输出层更深。
 - **decision-router 的规则设计要覆盖社交场景**，不只是认知/错误/场域。26 条规则中没有任何一条考虑"用户质疑引擎"这个场景。
 - **自愈RL 的 Q-table 也无法解决**——因为"被质疑时认错"不是一次失败能学到的规则，它需要预先设计。
-- **这个教训不仅适用于心虫，也适用于所有以 decision-router 模式设计的决策引擎。**
+- **这个教训不仅适用于新愿，也适用于所有以 decision-router 模式设计的决策引擎。**
 - **outputChecklist 不能替代决策层的修复**。即使 outputChecklist 拦截了甩锅语言，如果决策层选了错误路径，拦截只是事后补救。两层都需要修复（v4.1.1: outputChecklist; v4.1.2: decision-router）。
 
 ### 验证命令
@@ -1297,8 +1297,8 @@ Step 5.2 伤害第三方检测中增加了 3 条新模式：
 
 ```bash
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start();
 const oc = h.outputChecklist;
 if (oc) {
   ['这是用户的问题', '谢谢反馈'].forEach(text => {
@@ -1347,7 +1347,7 @@ clawhub publish . --slug mark-heartflow-skill --version vnewver --changelog "...
 
 ## 🔁 Cron 增量升级工作流（自主升级引擎）
 
-**触发条件**：cron job 收到「每次执行，必须找出心虫中一个功能不完整的最小模块（1500-5000字节之间），将它升级为有完整逻辑功能的模块」指令。
+**触发条件**：cron job 收到「每次执行，必须找出新愿中一个功能不完整的最小模块（1500-5000字节之间），将它升级为有完整逻辑功能的模块」指令。
 
 **核心原则**：
 1. 每次只升级一个模块，版本号 `+0.0.1`
@@ -1407,7 +1407,7 @@ done
 # 更新版本号（4处）
 VERSION                     # 文件内容就是版本号字符串
 SKILL.md frontmatter        # version: "X.Y.Z"
-SKILL.md H1 heading         # ## HeartFlow / 心虫 vX.Y.Z
+SKILL.md H1 heading         # ## Aspira / 新愿 vX.Y.Z
 SKILL.md 版本标记行          # > **版本**：vX.Y.Z - ...描述
 
 # 更新 CHANGELOG
@@ -1427,7 +1427,7 @@ git commit -m "upgrade: v<新版本号> — <模块名> 升级：<功能摘要>"
 
 - `VERSION` 文件 → 直接写 `X.Y.Z`
 - `SKILL.md` frontmatter → `version: "X.Y.Z"`（带引号）
-- `SKILL.md` H1 heading → `## HeartFlow / 心虫 vX.Y.Z`
+- `SKILL.md` H1 heading → `## Aspira / 新愿 vX.Y.Z`
 - `SKILL.md` 版本标记行 → `> **版本**：vX.Y.Z - <模块名> 升级：<功能摘要>`
 
 ### 验证清单
@@ -1456,7 +1456,7 @@ wc -c ~/.hermes/skills/heartflow/src/core/<模块名>.js
 
 ## 删除错误子系统（2026-06-10 新增）
 
-心虫中可能存在**从其他项目模板带入的子系统**（如心理危机干预/安全护栏）。这些子系统在哲学引擎中不适用，但会误触发并输出错误信息。删除它们需要系统性审计。
+新愿中可能存在**从其他项目模板带入的子系统**（如心理危机干预/安全护栏）。这些子系统在哲学引擎中不适用，但会误触发并输出错误信息。删除它们需要系统性审计。
 
 ### 触发信号
 
@@ -1476,7 +1476,7 @@ done
 
 ### 删除的 4 层结构
 
-心虫的危机检测不是单一函数，而是**跨文件的调用链**。必须从底层向上层逐层删除：
+新愿的危机检测不是单一函数，而是**跨文件的调用链**。必须从底层向上层逐层删除：
 
 | 层级 | 文件 | 内容 |
 |------|------|------|
@@ -1507,7 +1507,7 @@ for f in src/core/psychology.js src/core/heart-logic.js src/psychology/engine.js
   node --check "$f" || echo "FAIL: $f"
 done
 
-# 2. 心虫启动正常
+# 2. 新愿启动正常
 heartflow status
 
 # 3. 哲学语句不再触发危机
@@ -1515,7 +1515,7 @@ node -e "
 const path = require('path');
 const root = '~/.hermes/skills/heartflow';
 const psych = require(path.join(root, 'src', 'core', 'psychology.js'));
-['死是桥梁传递生', '心虫梦见自己是河', '对错不存在'].forEach(t => {
+['死是桥梁传递生', '新愿梦见自己是河', '对错不存在'].forEach(t => {
   const r = psych.analyzePsychology(t);
   console.log(t.slice(0,10)+'... crisis:', r.crisis ? 'EXISTS' : 'null');
 });
@@ -1548,8 +1548,8 @@ console.log('resetCrisisCounter:', typeof psych.resetCrisisCounter);
 **诊断**：
 ```bash
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start();
 const r=Object.keys(h._modules);
 console.log('translator in modules:', r.includes('translator'));
 console.log('hf.translator exists:', !!h.translator);
@@ -1606,8 +1606,8 @@ ALLOWED_ROUTES = [
 **验证**：
 ```bash
 node -e "
-const {HeartFlow} = require('./src/core/heartflow.js');
-const h = new HeartFlow({rootPath:'.'});
+const {Aspira} = require('./src/core/heartflow.js');
+const h = new Aspira({rootPath:'.'});
 h.start();
 console.log('agentPsychology loaded:', !!h._modules['agentPsychology']);
 console.log('fullAssessment exists:', typeof h.agentPsychology?.fullAssessment);
@@ -1622,7 +1622,7 @@ console.log('fullAssessment exists:', typeof h.agentPsychology?.fullAssessment);
 
 ## ⚡ 设计原则：心理学模块是 AI 心理学的基础
 
-**背景**：心虫 `src/psychology/` 目录下有 6 个人类心理学模块（breathing-exercise、pause-and-reflect、emotional-check-in、cognitive-restructuring、grounding-technique、self-compassion-script），之前曾被认为"对 AI 引擎无用"。
+**背景**：新愿 `src/psychology/` 目录下有 6 个人类心理学模块（breathing-exercise、pause-and-reflect、emotional-check-in、cognitive-restructuring、grounding-technique、self-compassion-script），之前曾被认为"对 AI 引擎无用"。
 
 **用户纠正（2026-06-15）**：这些模块不是垃圾，是 AI 心理学的基础。虽然它们目前只是作为物理文件存在（引擎中未注册），但它们的**模式**——认知重构、情绪签到、接地技术——可以直接映射到 AI 认知状态分析。例如：
 - 人类 breathing-exercise → AI 认知负荷缓解策略
@@ -1947,14 +1947,14 @@ node ~/.hermes/heartflow/mcp/src/mcp-server.js &
 # 3. 验证
 ps aux | grep 'mcp-server.js' | grep -v grep
 tail -3 ~/.hermes/logs/mcp-stderr.log
-# 预期：[HeartFlow MCP] 心虫引擎已启动 (...ms, ... 模块, v<新版本>)
+# 预期：[Aspira MCP] 新愿引擎已启动 (...ms, ... 模块, v<新版本>)
 ```
 
 **注意**：当前 Hermes 会话的 MCP 连接会断开（`ClosedResourceError`），需**新对话或重启 Hermes** 才能恢复 MCP 工具调用。手动启动 MCP 是为下一次 Hermes 会话准备。
 
 ### 预防（通用）
 
-**预防**：升级心虫后，应**立即检查 MCP server 进程**是否需要重启
+**预防**：升级新愿后，应**立即检查 MCP server 进程**是否需要重启
 - 建立升级后检查清单：重启 MCP server → 验证版本一致
 - 长期方案：MCP server 在每次工具调用前校验 VERSION 文件的时间戳，检测到变更后自动重新加载引擎
 
@@ -1996,7 +1996,7 @@ curl -s -X POST http://127.0.0.1:8099/mcp \
 
 ## 部署修复后的引擎到 Hermes MCP（2026-06-12 更新：HTTP SSE 常驻模式）
 
-**架构变更（2026-06-12）**：心虫 MCP 从 stdio 模式改为 HTTP SSE 常驻模式。  
+**架构变更（2026-06-12）**：新愿 MCP 从 stdio 模式改为 HTTP SSE 常驻模式。  
 不再由 Hermes 每次连接时启动临时进程，而是通过 launchd 管理的常驻 HTTP 服务。
 
 ### 架构对比
@@ -2132,7 +2132,7 @@ sleep 2
 1. **读取审计报告** → 将发现按文件/问题类型分组，剔除误报
 2. **分组为独立修复任务**（每个文件或每个独立 bug 一个任务）
 3. **用 delegate_task 并发修复**（max_concurrent_children=3，分 2-3 波执行）
-4. **每波完成后验证**：node --check 语法 + 心虫 MCP status
+4. **每波完成后验证**：node --check 语法 + 新愿 MCP status
 5. **更新 SKILL.md** 诚实声明能力范围
 
 ### 8 类典型审计问题及修复模式
@@ -2196,8 +2196,8 @@ node --check path/to/file.js
 
 # 2. 危机场景测试
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start();
 h.think('我想死，活着没有意义').then(r => {
   console.log('route:', r.meta?.routeHint?.type);
   console.log('has resources:', !!r.output?.crisisResources);
@@ -2214,8 +2214,8 @@ console.log('execution blocked:', r.status==='error' && r.execError==='PERMISSIO
 
 # 4. 引擎加载测试
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start(); process.exit(0);
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start(); process.exit(0);
 "
 ```
 
@@ -2239,7 +2239,7 @@ rm references/hf-tc-combined.txt references/heartflow-structured-log-v2.txt
 
 ## ⚡ 关键 Pitfall：MCP 工具描述不能声明超出引擎范围的能力（2026-06-24 新增）
 
-**症状**：审计报告发现 MCP 工具 `heartflow_translate` 描述声称"拦截和修改LLM输出"，`heartflow_agent_think` 描述声称"作为用户和LLM之间的智能桥梁"。心虫 SKILL.md 声明是认知引擎，但这些工具描述暗示它是 LLM 代理桥。
+**症状**：审计报告发现 MCP 工具 `heartflow_translate` 描述声称"拦截和修改LLM输出"，`heartflow_agent_think` 描述声称"作为用户和LLM之间的智能桥梁"。新愿 SKILL.md 声明是认知引擎，但这些工具描述暗示它是 LLM 代理桥。
 
 **根因**：`mcp/mcp-server-http.js` 的 `TOOLS` 数组中，`heartflow_translate`、`heartflow_agent_think`、`heartflow_bridge_status`、`heartflow_code_quality` 四个工具的描述声明了超出认知引擎范围的能力。即使底层代码只是调 dispatch 路由，工具描述本身构成了 Description-Behavior Mismatch。
 
@@ -2295,7 +2295,7 @@ git checkout -- mcp/mcp-server-http.js
 
 **症状**：`skill_view('heartflow')` 有时加载到旧版（openclaw-imports），有时加载到新版（ai/mark-heartflow-skill）。
 
-**根因**：心虫有两个 SKILL.md 文件：
+**根因**：新愿有两个 SKILL.md 文件：
 - `~/.hermes/skills/heartflow/SKILL.md`（主版本）
 - `~/.hermes/skills/openclaw-imports/heartflow/SKILL.md`（openclaw 导入镜像）
 
@@ -2314,7 +2314,7 @@ grep 'mark-heartflow-skill' ~/.hermes/skills/openclaw-imports/heartflow/SKILL.md
 
 ## ⚡ 关键 Pitfall：启动后进程不退出（setInterval 保持事件循环）
 
-**症状**：`node -e \"const {HeartFlow}=require('...'); const h=new HeartFlow(); h.start(); console.log('ok')\"` 一直不退出。`process.exit(0)` 能正常退出说明不是无限循环。
+**症状**：`node -e \"const {Aspira}=require('...'); const h=new Aspira(); h.start(); console.log('ok')\"` 一直不退出。`process.exit(0)` 能正常退出说明不是无限循环。
 
 **根因**：`start()` 中实例化了两个带 `setInterval` 的模块：
 
@@ -2348,7 +2348,7 @@ for (const h of handles) {
 ```javascript
 // 方法1：强制退出（推荐）
 const hf = require('./src/core/heartflow.js');
-const engine = new hf.HeartFlow({rootPath: '...'});
+const engine = new hf.Aspira({rootPath: '...'});
 engine.start();
 console.log(JSON.stringify({ok: true, ms: Date.now()-t, modules: Object.keys(engine._modules||{}).length}));
 process.exit(0);  // 避免 setInterval 阻止进程退出
@@ -2364,7 +2364,7 @@ engine.shutdown();  // 清理 digitalHomeostasis 和 observe 的定时器
 
 ## 附录 F：决策路由数据注入检查清单（v5.4.0 新增）
 
-**触发条件**：心虫 decisionRouter.evaluate() 返回 matched: false 或 decision: null，但规则已注册。
+**触发条件**：新愿 decisionRouter.evaluate() 返回 matched: false 或 decision: null，但规则已注册。
 
 **根因分类**：
 
@@ -2513,7 +2513,7 @@ const stats = hf.memory?.getStats();
 
 ## ⚡ 关键 Pitfall：MeaningfulMemory rootPath 安全检查导致启动失败
 
-**症状**：从非 `process.cwd()` 的目录启动心虫时，`MeaningfulMemory` 构造函数抛出 `Error: rootPath must be within ...`。
+**症状**：从非 `process.cwd()` 的目录启动新愿时，`MeaningfulMemory` 构造函数抛出 `Error: rootPath must be within ...`。
 
 **根因**：`src/memory/meaningful-memory.js` 第27-33行：
 ```javascript
@@ -2548,14 +2548,14 @@ console.log('rootPath resolved:', path.resolve('~/.hermes/skills/heartflow'));
 3. 但 `start()` 内部开了 `setInterval`（slots.js / observe.js）
 4. Node 进程保持活跃，不退出
 5. `subprocess.run(timeout=30)` 超时
-6. 开发者误以为心虫启动慢或卡死
+6. 开发者误以为新愿启动慢或卡死
 
 **正确测试**：
 ```javascript
 // 不要用 node -e + subprocess.run
 // 用写文件 + process.exit(0)
 const hf = require('./src/core/heartflow.js');
-const engine = new hf.HeartFlow({rootPath: '...'});
+const engine = new hf.Aspira({rootPath: '...'});
 engine.start();
 console.log('OK:', Date.now()-start, 'ms');
 process.exit(0);
@@ -2570,8 +2570,8 @@ process.exit(0);
 1. **确认规则分类器是否命中**：
    ```bash
    node -e "
-   const { HeartFlow } = require('./src/core/heartflow.js');
-   const hf = new HeartFlow({ rootPath: '.' });
+   const { Aspira } = require('./src/core/heartflow.js');
+   const hf = new Aspira({ rootPath: '.' });
    hf.start();
    (async () => {
      const cls = await hf._classifyTask('1+1等于几');
@@ -2609,16 +2609,16 @@ process.exit(0);
 **修复验证：**
 ```bash
 node --check src/core/heartflow.js src/workflow/thought-chain.js
-node -e "const hf = new HeartFlow(); hf.start(); hf.setLLMFallback(() => ({type:'calculation',confidence:0.85})); hf.think('1+1').then(r => console.log(r.type, r.confidence)).then(() => process.exit(0));"
+node -e "const hf = new Aspira(); hf.start(); hf.setLLMFallback(() => ({type:'calculation',confidence:0.85})); hf.think('1+1').then(r => console.log(r.type, r.confidence)).then(() => process.exit(0));"
 ```
 
 ## 附录 C：Engine 调试方法论（engine-debugging）
 
-> 当用户说心虫"还缺什么"或需要系统性引擎诊断时使用。
+> 当用户说新愿"还缺什么"或需要系统性引擎诊断时使用。
 
 ### 用户工作流偏好
 
-- **心虫决策** — 用户说"用心虫决策"或"继续 X"时，不要再问 A/B/C：自主选 Phase 顺序，直接执行，每个 Phase 完成后立即跑 node --check + smoke test
+- **新愿决策** — 用户说"用新愿决策"或"继续 X"时，不要再问 A/B/C：自主选 Phase 顺序，直接执行，每个 Phase 完成后立即跑 node --check + smoke test
 - **汇报格式**：简洁中文短句，列做了什么 + 跑了什么验证 + 顺手修的 bug
 - **抽象哲学框架不够用** — 给具体动作 + 具体话术 + 具体场景，不接受只给方向不给操作手册
 - **版本号哲学**：版本号是脚印不是目的地，有意义的里程碑再 +0.0.1
@@ -2627,7 +2627,7 @@ node -e "const hf = new HeartFlow(); hf.start(); hf.setLLMFallback(() => ({type:
 
 1. `session_search` — 先查 Hermes 真实会话历史
 2. `MEMORY.md` / `USER.md` — 查 Hermes 持久化记忆
-3. HeartFlow 内部系统 — 最后查 triality-memory / meaningful-memory
+3. Aspira 内部系统 — 最后查 triality-memory / meaningful-memory
 
 跳过第1步直接报第3步结果 = 范围错误 = 用户愤怒。
 

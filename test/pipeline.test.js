@@ -43,7 +43,7 @@ module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
   });
 
   test('pipe with anchor', () => {
-    const r = runPipeline({ input: '继续加伪深度检测', mode: 'input', anchor: '升级心虫辨别能力' });
+    const r = runPipeline({ input: '继续加伪深度检测', mode: 'input', anchor: '升级新愿辨别能力' });
     assertDefined(r.checked_by);
     assertTrue(r.checked_by.length >= 6);
   });

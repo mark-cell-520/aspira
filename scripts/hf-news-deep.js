@@ -1,14 +1,14 @@
-const { HeartFlow } = require('../src/core/heartflow.js');
+const { Aspira } = require('../src/core/heartflow.js');
 const gate = require('../src/gate.js');
 const { readFileSync } = require('fs');
 const brief = JSON.parse(readFileSync('/tmp/hf-news-brief.json', 'utf8'));
 
 (async () => {
-  const hf = new HeartFlow({ dataDir: './data', silent: true });
+  const hf = new Aspira({ dataDir: './data', silent: true });
   hf.start();
   await new Promise(r => setTimeout(r, 3500));
 
-  // Build a concise analysis brief for HeartFlow
+  // Build a concise analysis brief for Aspira
   const text = [
     `主题：${brief.topic}`,
     '',
@@ -27,7 +27,7 @@ const brief = JSON.parse(readFileSync('/tmp/hf-news-brief.json', 'utf8'));
     '五、当前市场共识',
     brief.current_consensus,
     '',
-    '请心虫做三件事：',
+    '请新愿做三件事：',
     '1. 评估上述四组信号的真可靠度与因果链是否成立；',
     '2. 判断“二选一”式尾部风险定价是否过度简化；',
     '3. 给出对材料后续走势的三种情景与触发条件。'

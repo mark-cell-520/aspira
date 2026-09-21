@@ -57,8 +57,8 @@ module.exports = function ({ test }) {
   });
 
   test('llm-fallback: heartflow._llmFallback 已接线（无 key 时静默降级）', async () => {
-    const { HeartFlow } = require('../src/core/heartflow.js');
-    const hf = new HeartFlow({ dataDir: path.join(ROOT, 'data'), silent: true });
+    const { Aspira } = require('../src/core/heartflow.js');
+    const hf = new Aspira({ dataDir: path.join(ROOT, 'data'), silent: true });
     hf.start();
     await new Promise(r => setTimeout(r, 2500));
     // 有配置：_llmFallback 是函数；无配置：保持 null（纯规则）

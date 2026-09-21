@@ -1,5 +1,5 @@
 /**
- * bench/benchmark.js — HeartFlow 基准测试
+ * bench/benchmark.js — Aspira 基准测试
  * 
  * 64 条测试样本（32 正向/32 负向），覆盖 6 个核心类别。
  * 输出召回率、误报率、F1。
@@ -129,7 +129,7 @@ const recall = tp / (tp + fn);
 const f1 = 2 * (precision * recall) / (precision + recall);
 
 console.log('═══════════════════════════════════════════');
-console.log('  HeartFlow 基准测试结果');
+console.log('  Aspira 基准测试结果');
 console.log('═══════════════════════════════════════════\n');
 console.log(`样本总数: ${total} (正样本: ${tp+fn}, 负样本: ${tn+fp})\n`);
 console.log(`TP (正确检出):  ${tp}`);

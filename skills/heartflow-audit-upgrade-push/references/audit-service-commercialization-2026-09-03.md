@@ -1,7 +1,7 @@
 # Audit Service Commercialization Playbook
 
 Date: 2026-09-03
-Trigger: User asked HeartFlow to find its own revenue path without manual intervention.
+Trigger: User asked Aspira to find its own revenue path without manual intervention.
 Decision: Enterprise Agent Security & Alignment Audit Service.
 
 ## Market Signal (validated 2026-09-03)
@@ -13,7 +13,7 @@ Decision: Enterprise Agent Security & Alignment Audit Service.
 - Enterprises report average ROI 171% from agentic AI; US enterprises hit 192%.
 - Top-funded safety adjacencies: AIR ($50M seed), Act Security ($60M), Neo ($100M), Zenity ($125M Series C).
 
-## Why audit service fits HeartFlow
+## Why audit service fits Aspira
 
 - 47-dimension discriminator + 130 MCP tools = auditable asset today.
 - Zero LLM dependency = deterministic delivery, no model-risk.
@@ -51,9 +51,9 @@ Decision: Enterprise Agent Security & Alignment Audit Service.
 
 1. Pick 5 teams with public AI agent production deployments.
 2. Offer free Mini Audit for a public testimonial.
-3. Publish anonymized aggregate findings as "HeartFlow Enterprise Agent Safety Report 2026 Q1".
+3. Publish anonymized aggregate findings as "Aspira Enterprise Agent Safety Report 2026 Q1".
 4. Approach investors/partners with aggregate report + testimonial deck.
 
 ## Lesson
 
-HeartFlow is not an AGI. It is AGI Layer 1. The monetizable skill at this layer in 2026 is **independent verification**, not generation. Sell the discriminator as a service before wrapping it as a product.
+Aspira is not an AGI. It is AGI Layer 1. The monetizable skill at this layer in 2026 is **independent verification**, not generation. Sell the discriminator as a service before wrapping it as a product.

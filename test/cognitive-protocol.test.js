@@ -1,5 +1,5 @@
 /**
- * 心虫自主升级补的 TDD (cognitive-protocol, 未测试模块)
+ * 新愿自主升级补的 TDD (cognitive-protocol, 未测试模块)
  */
 module.exports = function ({ test, assertEqual, assertTrue, assertFalse, assertDefined }) {
   const { CognitiveProtocol } = require('../src/core/cognitive-protocol.js');

@@ -109,6 +109,6 @@ version: 3.0.2, modules: 53, running
 
 1. **"有深度"的正确做法是调用真实模块，不是写更华丽的文字**。用户对 DreamV9 说"简陋"，对 DreamV10 说"可以"——差别是梦的内容里出现了"认知负荷0.6"、"防御机制8种"这些引擎真实数据。
 
-2. **bindModules() 模式**是 HeartFlow 中模块间通信的正确方式：构造函数只传基本状态，复杂依赖通过 bindModules() 注入。避免了构造函数参数膨胀和循环依赖。
+2. **bindModules() 模式**是 Aspira 中模块间通信的正确方式：构造函数只传基本状态，复杂依赖通过 bindModules() 注入。避免了构造函数参数膨胀和循环依赖。
 
 3. **[object Object] bug 的教训**：当 `_pickRandom()` 返回对象数组时，`${a}` 会输出 `[object Object]`。必须用 `a.name`。这是 JavaScript 模板字符串的常见陷阱，在重构时特别容易漏掉。

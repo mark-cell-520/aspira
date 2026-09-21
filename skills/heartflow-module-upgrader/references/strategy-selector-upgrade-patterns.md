@@ -527,7 +527,7 @@ const result = await this.executeStrategy(strategy, safe, context);
 
 ### 4. 版本号管理
 
-元学习模块有自己的内部版本号（如 `7.6.000`），和心虫整体版本号（如 `2.3.0`）是独立的。
+元学习模块有自己的内部版本号（如 `7.6.000`），和新愿整体版本号（如 `2.3.0`）是独立的。
 
 - 整体版本升级使用 `bumpVersion('patch')`（来自 `version.js`）
 - 内部版本号在模块顶部注释中手动更新

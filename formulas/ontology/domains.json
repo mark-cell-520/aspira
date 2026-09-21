@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "HeartFlow 领域本体一级域定义（≥12域），包含层级结构、典型类比关系与因果骨架。",
+  "description": "Aspira 领域本体一级域定义（≥12域），包含层级结构、典型类比关系与因果骨架。",
   "topLevelDomains": [
     {
       "id": "mathematics",

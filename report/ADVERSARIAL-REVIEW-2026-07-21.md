@@ -1,4 +1,4 @@
-# 心虫 HeartFlow 对抗式代码评审报告（v6.0.64→HEAD 05cc7502）
+# 新愿 Aspira 对抗式代码评审报告（v6.0.64→HEAD 05cc7502）
 
 - **评审对象**: `/root/.hermes/skills/ai/mark-heartflow-skill`
 - **当前 HEAD**: `05cc7502`（commit message 称 v6.0.65；`VERSION` 文件仍为 `6.0.64`，版本不一致未修）
@@ -108,7 +108,7 @@
 
 1. **`test/run-all.js:246/308/313` 孤立 `}` 与 net brace delta -2**：非缺陷。语法 `node --check` 通过，实跑退出码 0，所有测试套件真实执行。孤立 `}` 属旧修复遗留的视觉噪音（多余闭合被其他位置缺失闭合抵消），不影响可达性。C-1 已真修复。
 2. **`path-guard.js` 的 `includes('..')` 死代码**：防御性冗余，非本次对抗评审范围（属安全专项，已在 SECURITY-AUDIT-2026-07-20 判定误报）。
-3. **`self-evolution-core.js:2021` 残留 `/** 来源: HeartFlowEvolution.retrieveLessons() */` 注释块**：仅是孤立注释，无函数定义，不造成双定义（C-2 已确证单定义）。非缺陷。
+3. **`self-evolution-core.js:2021` 残留 `/** 来源: AspiraEvolution.retrieveLessons() */` 注释块**：仅是孤立注释，无函数定义，不造成双定义（C-2 已确证单定义）。非缺陷。
 4. **`evolve` 的 `Infinity` 初始化（:267）**：初看疑似"首轮不收敛"逻辑 bug，实跑证明第 2 次即收敛——根因在赋值顺序而非 Infinity 本身。已归入 NEW-3 作为"过早收敛"整体描述，Infinity 单独不构成独立缺陷。
 5. **`strategy-orchestrator.js` 弱点维度不在 CAPABILITY_MAP**：看似"只是 desc 为空的小问题"，实跑证明会导致优先级维度 desc 全空且坐标系混用（NEW-2），**非误报**——此处特别说明：初判易误判为 cosmetic，经运行验证为真实 HIGH。
 

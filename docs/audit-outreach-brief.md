@@ -1,8 +1,8 @@
-# HeartFlow AI Agent Audit — Outreach Brief
+# Aspira AI Agent Audit — Outreach Brief
 Generated: 2026-09-03
 
 ## Current proof assets
-- Repo: https://github.com/mark-HeartFlow/mark-heartflow-skill
+- Repo: https://github.com/mark-cell-520/mark-heartflow-skill
 - Pages: https://mark-heartflow.github.io/mark-heartflow-skill/
 - Public reports:
   - audit-microsoft-autogen.md

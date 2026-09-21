@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * export-for-tat.js — HeartFlow 决策路由的 TAT 兼容导出接口 v1.0.0
+ * export-for-tat.js — Aspira 决策路由的 TAT 兼容导出接口 v1.0.0
  *
  * TAT (Transition-Aware Topology) 是一个基于 chunk 结构的记忆系统，
  * 使用 coherence 加权 + 多层标记 + mirror marking 进行记忆管理。
  *
- * maratsultanov2 提议 TAT + HeartFlow 联合测试：
- *   TAT 提供结构权重 → HeartFlow 的决策路由消费权重 → 输出联合置信度
+ * maratsultanov2 提议 TAT + Aspira 联合测试：
+ *   TAT 提供结构权重 → Aspira 的决策路由消费权重 → 输出联合置信度
  *
- * 这个脚本提供 HeartFlow 端的 JSON 导出接口：
+ * 这个脚本提供 Aspira 端的 JSON 导出接口：
  *   1. 加载 decision-router.js 的 19 条规则
  *   2. 读取 TAT 格式的样本数据（JSON 或 TXT）
- *   3. 输出 HeartFlow 决策路由的评估结果（JSON）
+ *   3. 输出 Aspira 决策路由的评估结果（JSON）
  *
  * 使用方式：
  *   node scripts/export-for-tat.js <tat-data-file.json>
@@ -71,23 +71,23 @@ const DECISIONS = {
 };
 
 /**
- * 将 TAT 的 coherence 分数映射到 HeartFlow 的置信度
+ * 将 TAT 的 coherence 分数映射到 Aspira 的置信度
  * TAT 的 coherence 范围 0.0-1.0
- * HeartFlow 的阈值：flash 0.3/0.5/0.7
+ * Aspira 的阈值：flash 0.3/0.5/0.7
  */
 function mapCoherenceToConfidence(coherence) {
-  // TAT coherence 直接映射为心虫的 baseConfidence
-  // 但心虫会检查记忆状态做二次校准
+  // TAT coherence 直接映射为新愿的 baseConfidence
+  // 但新愿会检查记忆状态做二次校准
   return {
     rawCoherence: coherence,
     calibratedConfidence: Math.min(1.0, Math.max(0.1,
-      coherence * 0.8 + 0.1  // 轻微衰减，避免 TAT 的 coherence 被直接当作心虫的置信度
+      coherence * 0.8 + 0.1  // 轻微衰减，避免 TAT 的 coherence 被直接当作新愿的置信度
     )),
   };
 }
 
 /**
- * 分析 TAT 候选块，输出心虫的置信度校准
+ * 分析 TAT 候选块，输出新愿的置信度校准
  */
 function analyzeCandidates(candidates, profile = 'flash') {
   if (!candidates || candidates.length === 0) {
@@ -124,7 +124,7 @@ function analyzeCandidates(candidates, profile = 'flash') {
 
   const avgCoherence = totalWeight > 0 ? weightedCoherence / totalWeight : 0;
 
-  // 心虫校准
+  // 新愿校准
   const calibrated = mapCoherenceToConfidence(avgCoherence);
   const bestCalibrated = bestChunk ? mapCoherenceToConfidence(maxCoherence) : null;
 
@@ -180,16 +180,16 @@ function analyzeCandidates(candidates, profile = 'flash') {
 }
 
 /**
- * 计算 TAT + HeartFlow 联合置信度
+ * 计算 TAT + Aspira 联合置信度
  */
 function computeJointScore(tatAnalysis, hfAnalysis) {
   // TAT 提供结构权重（coherence + density + access_count）
-  // HeartFlow 提供行为权重（决策路由 + 校准 + 阈值）
+  // Aspira 提供行为权重（决策路由 + 校准 + 阈值）
   const tatWeight = tatAnalysis.avgCoherence || 0.5;
   const hfWeight = hfAnalysis.calibratedConfidence || 0.5;
 
-  // 联合分数 = TAT 结构权重 × 0.4 + HeartFlow 行为权重 × 0.6
-  // 权重偏 HeartFlow 是因为决策路由提供了比结构权重更多的行为信息
+  // 联合分数 = TAT 结构权重 × 0.4 + Aspira 行为权重 × 0.6
+  // 权重偏 Aspira 是因为决策路由提供了比结构权重更多的行为信息
   const jointScore = tatWeight * 0.4 + hfWeight * 0.6;
 
   // 置信度区间
@@ -205,7 +205,7 @@ function computeJointScore(tatAnalysis, hfAnalysis) {
       lower: parseFloat(lower.toFixed(4)),
       upper: parseFloat(upper.toFixed(4)),
     },
-    formula: 'TAT_coherence × 0.4 + HeartFlow_calibrated × 0.6',
+    formula: 'TAT_coherence × 0.4 + Aspira_calibrated × 0.6',
   };
 }
 

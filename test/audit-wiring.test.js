@@ -14,10 +14,10 @@ function run({ test, assertEqual, assertTrue, assertFalse }) {
   test('AuditLogger 能真落盘 engine_start 事件', () => {
     const { AuditLogger } = require('../src/shield/audit-logger.js');
     const { ModuleHealthChecker } = require('../src/shield/module-health-checker.js');
-    const { HeartFlow } = require('../src/core/heartflow.js');
+    const { Aspira } = require('../src/core/heartflow.js');
     const root = tmpRoot();
     const dataDir = path.join(root, 'data');
-    const engine = new HeartFlow({ dataDir, silent: true });
+    const engine = new Aspira({ dataDir, silent: true });
     engine.start();
     const logger = new AuditLogger({ logPath: path.join(dataDir, 'audit', 'audit-log.jsonl') });
     logger.log('engine_start', { version: engine.version });
@@ -28,9 +28,9 @@ function run({ test, assertEqual, assertTrue, assertFalse }) {
 
   test('ModuleHealthChecker 在引擎上真跑(非仅MCP)', () => {
     const { ModuleHealthChecker } = require('../src/shield/module-health-checker.js');
-    const { HeartFlow } = require('../src/core/heartflow.js');
+    const { Aspira } = require('../src/core/heartflow.js');
     const root = tmpRoot();
-    const engine = new HeartFlow({ dataDir: path.join(root, 'data'), silent: true });
+    const engine = new Aspira({ dataDir: path.join(root, 'data'), silent: true });
     engine.start();
     const checker = new ModuleHealthChecker(engine);
     const report = checker.check();

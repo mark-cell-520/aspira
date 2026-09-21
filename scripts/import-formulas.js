@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 批量导入公式到 HeartFlow 公式引擎
+ * 批量导入公式到 Aspira 公式引擎
  * 
  * 功能: 从多个来源批量导入公式
  * 来源: 
@@ -12,7 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('=== 批量导入公式到 HeartFlow ===\n');
+console.log('=== 批量导入公式到 Aspira ===\n');
 
 // 公式来源
 const sources = [

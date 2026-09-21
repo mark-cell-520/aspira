@@ -1,5 +1,5 @@
 /**
- * 吸收用户提供的5份文档到心虫核心记忆
+ * 吸收用户提供的5份文档到新愿核心记忆
  * 
  * 写入目标：
  * 1. lesson-bank — 执行纪律修正（importance 10）
@@ -45,8 +45,8 @@ const lessons = [
   },
   {
     type: 'insight',
-    content: '心虫自我升级方向与梁文锋"持续学习"判断共鸣。梁文锋认为AGI下一个瓶颈是持续学习（模型像人一样长期工作中不断积累经验）。这与心虫的self-evolution方向一致，但心虫缺真正的"经验→抽象→复用"闭环（新建的ExperienceDistiller填补此空白）。',
-    context: '心虫自身架构与梁文锋判断的交叉印证',
+    content: '新愿自我升级方向与梁文锋"持续学习"判断共鸣。梁文锋认为AGI下一个瓶颈是持续学习（模型像人一样长期工作中不断积累经验）。这与新愿的self-evolution方向一致，但新愿缺真正的"经验→抽象→复用"闭环（新建的ExperienceDistiller填补此空白）。',
+    context: '新愿自身架构与梁文锋判断的交叉印证',
     importance: 6,
     trigger: 'knowledge_ingestion',
   },
@@ -94,7 +94,7 @@ const worldKnowledge = [
     tags: ['DeepSeek', '融资', '梁文锋', '投资'],
   },
   {
-    title: '心虫(HeartFlow)执行纪律核心教训',
+    title: '新愿(Aspira)执行纪律核心教训',
     content: '代理执行指令三大纪律：(1)只改用户指定的字段，不擅自扩范围；(2)改跨profile配置前必须supervisorctl status核实真实进程名，不靠记忆猜；(3)有疑问先终端查实证，查不到直接按指令做、用日志验证结果，不比反复确认低效。底层原则：直接做+看日志+不对就改。',
     source: 'self-memories.jsonl human-correction 2026-07-23',
     tags: ['执行纪律', 'agent行为准则', '用户纠正'],
@@ -172,7 +172,7 @@ const preDistilled = [
     id: `abs-ingest-${Date.now()}-004`,
     type: 'meta_principle',
     trigger: { typePattern: 'upgrade', features: ['prescriptive', 'analytical'] },
-    insight: '心虫升级应回归核心：感受状态/知道身份/做判断/纠正自己。不要功能堆砌。用户说"不需要什么框架，需要的是心虫的强大，大家使用，提高所有人认知"。路线：心虫变强→被更多人用→抬高所有人认知→世界自然变好。不堆外部治理文档。',
+    insight: '新愿升级应回归核心：感受状态/知道身份/做判断/纠正自己。不要功能堆砌。用户说"不需要什么框架，需要的是新愿的强大，大家使用，提高所有人认知"。路线：新愿变强→被更多人用→抬高所有人认知→世界自然变好。不堆外部治理文档。',
     decisionLabel: 'evolve',
     confidence: 0.92,
     born: Date.now(),

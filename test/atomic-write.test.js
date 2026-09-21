@@ -51,9 +51,9 @@ function run({ test, assertEqual, assertTrue, assertFalse }) {
 
   test('atomicWriteJson 往返解析一致', async () => {
     const f = path.join(os.tmpdir(), 'aw-json-' + Date.now() + '.json');
-    await aw.atomicWriteJson(f, { name: '心虫', n: 42 });
+    await aw.atomicWriteJson(f, { name: '新愿', n: 42 });
     const back = JSON.parse(fs.readFileSync(f, 'utf8'));
-    assertEqual(back.name, '心虫');
+    assertEqual(back.name, '新愿');
     assertEqual(back.n, 42);
     fs.unlinkSync(f);
   });

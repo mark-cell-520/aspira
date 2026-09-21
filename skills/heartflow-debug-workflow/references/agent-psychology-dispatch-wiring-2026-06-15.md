@@ -41,8 +41,8 @@ dispatch 的 `safeDispatch(route)` 解析流程：
 
 ```bash
 node -e "
-const {HeartFlow} = require('./src/core/heartflow.js');
-const h = new HeartFlow({rootPath:'.'});
+const {Aspira} = require('./src/core/heartflow.js');
+const h = new Aspira({rootPath:'.'});
 h.start();
 console.log('loaded:', !!h._modules['agentPsychology']);
 console.log('fullAssessment:', typeof h.agentPsychology?.fullAssessment);

@@ -1,5 +1,5 @@
 /**
- * self-evolution-explore.test.js — 心虫自主升级补的 TDD
+ * self-evolution-explore.test.js — 新愿自主升级补的 TDD
  * 验证联网探索层接口契约(同步可测部分):
  *  1) getExploreStatus 返回含 rateLimited 的状态对象
  *  2) _fetchArxiv 走可注入的 this._safeFetch(便于 mock 429 路径, 见 commit 说明)

@@ -100,7 +100,7 @@ _textSimilarity(a, b) {
 | numeric_discrepancy | 两个statistical声明的数值差 > 50% (ratio=0.5) → medium, > 90% → high | medium/high |
 | date_discrepancy | 两个temporal声明的年份差 > 50年 | medium |
 
-**O(n²) 的遍历**：对少于 20 个声明的场景（心虫通常处理段落级别文本）足够快。如果以后需要处理全文，需要优化。
+**O(n²) 的遍历**：对少于 20 个声明的场景（新愿通常处理段落级别文本）足够快。如果以后需要处理全文，需要优化。
 
 ### 7. 声明重要性评分 — `assessClaimImportance()`
 

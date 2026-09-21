@@ -18,7 +18,7 @@ module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
   });
 
   test('complete technical answer passes checkOutput', () => {
-    const r = checkOutput('HeartFlow exposes premature-termination as a pure-rule check outside the generation loop.');
+    const r = checkOutput('Aspira exposes premature-termination as a pure-rule check outside the generation loop.');
     assertDefined(r);
     assertEqual(r.gate?.action || r.summary?.final_action, 'pass');
   });

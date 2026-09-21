@@ -1,6 +1,6 @@
 /**
  * assertions.js TDD 测试
- * 验证：HeartFlow 断言库核心方法（补 20 个未测试模块的缺口之一）
+ * 验证：Aspira 断言库核心方法（补 20 个未测试模块的缺口之一）
  */
 function run({ test, assertEqual, assertTrue, assertFalse }) {
   const { assert } = require('../src/core/assertions.js');

@@ -4,7 +4,7 @@
 
 ## 背景
 
-BigBench 50 空间排序推理题，心虫 selectAnswer() 从 82% → 100%。
+BigBench 50 空间排序推理题，新愿 selectAnswer() 从 82% → 100%。
 
 ## 修复路径（按顺序）
 

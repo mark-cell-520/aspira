@@ -95,8 +95,8 @@ heartflow status
 ### 4. 连续做梦验证（每次输出不同）
 ```bash
 node -e '
-const {HeartFlow} = require("...");
-const e = new HeartFlow({...}).start();
+const {Aspira} = require("...");
+const e = new Aspira({...}).start();
 (async () => {
   for (let i = 0; i < 3; i++) {
     const r = await e.dreamNow({intensity:0.8, force:true});

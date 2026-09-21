@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a native-PPTX 'formula matching matrix' slide for HeartFlow.
+"""Generate a native-PPTX 'formula matching matrix' slide for Aspira.
 
 Reads src/formula/formula-triggers.json and builds a native table
 (signal class | synonyms/keywords | matched formula refs). No images,

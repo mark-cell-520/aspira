@@ -5,8 +5,8 @@ module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
   let mm;
   test('store + searchByKeywords round-trip', () => {
     mm = new MeaningfulMemory({ rootPath: process.cwd() });
-    mm.store({ content: 'HeartFlow memory trust tag test', layer: 'learned', metadata: { source: 'unit-test' } });
-    const r = mm.searchByKeywords(['HeartFlow', 'trust'], 5);
+    mm.store({ content: 'Aspira memory trust tag test', layer: 'learned', metadata: { source: 'unit-test' } });
+    const r = mm.searchByKeywords(['Aspira', 'trust'], 5);
     assertTrue(r.length >= 1, 'expect >=1 result');
     assertDefined(r[0].verified);
     assertDefined(r[0].verification);

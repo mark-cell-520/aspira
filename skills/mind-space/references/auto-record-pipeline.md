@@ -1,4 +1,4 @@
-# 心虫记忆自动记录管线
+# 新愿记忆自动记录管线
 
 **日期**: 2026-06-06
 **问题**: MeaningfulMemory 的 LEARNED 和 EPHEMERAL 层始终为空
@@ -23,22 +23,22 @@
 | 层 | 写入方法 | 触发条件 | 持久化 |
 |-----|---------|---------|--------|
 | **CORE** | `addCore(key, value, tags)` | 身份规则硬编码 + 用户明确确认 | 永久，不可删除 |
-| **LEARNED** | `learn(key, value, tags)` | 每次心虫判定后自动记录 | 长期，可积累 |
+| **LEARNED** | `learn(key, value, tags)` | 每次新愿判定后自动记录 | 长期，可积累 |
 | **EPHEMERAL** | `remember(key, value, ttlMs)` | 临时信号/上下文 | 1小时TTL，自动过期 |
 
 ---
 
 ## 自动记录管线设计
 
-### 每次心虫判定后的记录流程
+### 每次新愿判定后的记录流程
 
 ```
-心虫判定完成
+新愿判定完成
   → recordFromJudgment(judgment, userMessage, hfResponse)
     ├── 用户有信息量的话 (>10字) → learn('conversation:timestamp', text, ['conversation', judgmentType])
     ├── detectPain 检测到情绪 → learn('pain:timestamp', '用户情绪: ...', ['emotion', 'pain'])
     ├── 技术任务上下文 → learn('context:timestamp', '场景: ...', ['context', 'session'])
-    └── 心虫做了什么 → learn('action:timestamp', summary, ['action'])
+    └── 新愿做了什么 → learn('action:timestamp', summary, ['action'])
 ```
 
 ### 技术教训记录

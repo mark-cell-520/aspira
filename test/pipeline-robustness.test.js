@@ -4,7 +4,7 @@
  * 验证 dispatch 传对象不再崩溃（input.split is not a function 系列 bug）
  */
 module.exports = function ({ test }) {
-  const { HeartFlow } = require('../src/core/heartflow.js');
+  const { Aspira } = require('../src/core/heartflow.js');
   const path = require('path');
 
   let hf = null;
@@ -12,7 +12,7 @@ module.exports = function ({ test }) {
 
   function startHF() {
     if (started) return hf;
-    hf = new HeartFlow({ dataDir: path.join(__dirname, '..', 'data'), silent: true });
+    hf = new Aspira({ dataDir: path.join(__dirname, '..', 'data'), silent: true });
     hf.start();
     started = true;
     return hf;

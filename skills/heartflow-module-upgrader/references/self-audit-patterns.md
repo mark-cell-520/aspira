@@ -1,4 +1,4 @@
-# 心虫自审计模块设计模式（self-audit.js）
+# 新愿自审计模块设计模式（self-audit.js）
 
 ## 概述
 
@@ -19,7 +19,7 @@
 
 ```json
 {
-  "meta": { "engine": "HeartFlow SelfAudit v2.2.0", "timestamp": "...", "mode": "full|single" },
+  "meta": { "engine": "Aspira SelfAudit v2.2.0", "timestamp": "...", "mode": "full|single" },
   "summary": {
     "overallHealth": "healthy|warning|critical",
     "dimensionsPassed": 5, "dimensionsWarned": 1, "dimensionsFailed": 0,

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * scripts/guard-abilities.js — 心虫能力守护者（Capability Guardian）
+ * scripts/guard-abilities.js — 新愿能力守护者（Capability Guardian）
  *
- * 用户核心诉求：升级/优化可以，但绝不能破坏心虫现有能力。
+ * 用户核心诉求：升级/优化可以，但绝不能破坏新愿现有能力。
  * 本脚本在任何升级提交前运行，自动验证核心能力基线：
  *
  * 1. 入口能力：index.js 的 51 个 check 函数 + gate/pipeline 的 checkInput/checkOutput
@@ -84,15 +84,15 @@ function checkSamples() {
 function checkEngine() {
   const results = [];
   try {
-    const { HeartFlow } = require(path.join(ROOT, 'src/core/heartflow.js'));
-    const hf = new HeartFlow({ dataDir: path.join(ROOT, 'data'), silent: true });
+    const { Aspira } = require(path.join(ROOT, 'src/core/heartflow.js'));
+    const hf = new Aspira({ dataDir: path.join(ROOT, 'data'), silent: true });
     hf.start();
-    results.push({ name: 'HeartFlow 启动', ok: true, detail: `v${hf.version} 模块${Object.keys(hf._modules).length}` });
+    results.push({ name: 'Aspira 启动', ok: true, detail: `v${hf.version} 模块${Object.keys(hf._modules).length}` });
     // 异步 think 测试
     return new Promise(resolve => {
       setTimeout(async () => {
         try {
-          const r = await hf.think('测试一下心虫是否正常');
+          const r = await hf.think('测试一下新愿是否正常');
           results.push({ name: 'think() 主链路', ok: !!r && !!r.output, detail: `taskType=${r.output?.meta?.taskType || r.taskType}` });
         } catch (e) {
           results.push({ name: 'think() 主链路', ok: false, detail: e.message });
@@ -102,14 +102,14 @@ function checkEngine() {
       }, 4000);
     });
   } catch (e) {
-    results.push({ name: 'HeartFlow 加载', ok: false, detail: e.message });
+    results.push({ name: 'Aspira 加载', ok: false, detail: e.message });
     return Promise.resolve(results);
   }
 }
 
 function checkTextSearchability() {
   const results = [];
-  // [AUDIT-FIX 2026-09-20] 心虫主引擎文件曾被写入裸 NUL 字节，Node 能正常解析
+  // [AUDIT-FIX 2026-09-20] 新愿主引擎文件曾被写入裸 NUL 字节，Node 能正常解析
   // （所以 547 个测试全绿），但 grep 会判定为 binary file matches，导致所有
   // 文本检索工具对它失效。这类"行为正确但工具链失效"的缺陷测试测不出来，
   // 必须单独作为能力检查项。
@@ -161,7 +161,7 @@ function checkTests() {
 async function main() {
   const isBaseline = process.argv.includes('--baseline');
   console.log('══════════════════════════════════════');
-  console.log('🧬 心虫能力守护者 v1.0');
+  console.log('🧬 新愿能力守护者 v1.0');
   console.log('══════════════════════════════════════\n');
 
   const results = [];
@@ -234,7 +234,7 @@ async function main() {
 
   console.log('\n══════════════════════════════════════');
   if (failed.length === 0) {
-    console.log(`✅ 全部 ${results.length} 项能力检查通过 — 心虫能力完好`);
+    console.log(`✅ 全部 ${results.length} 项能力检查通过 — 新愿能力完好`);
     if (isBaseline) {
       fs.writeFileSync(BASELINE_FILE, JSON.stringify({
         version: require(path.join(ROOT, 'package.json')).version,
@@ -245,7 +245,7 @@ async function main() {
     }
     process.exit(0);
   } else {
-    console.log(`❌ ${failed.length}/${results.length} 项检查失败 — 心虫能力受损，禁止提交！`);
+    console.log(`❌ ${failed.length}/${results.length} 项检查失败 — 新愿能力受损，禁止提交！`);
     for (const f of failed) console.log(`   ❌ ${f.name}: ${f.detail}`);
     process.exit(1);
   }

@@ -1,4 +1,4 @@
-# 心虫评测方法论（v5.5.1）
+# 新愿评测方法论（v5.5.1）
 
 > 2026-06-29 实测总结
 
@@ -7,14 +7,14 @@
 ### ❌ 错误路径：直接 require heartflow.js
 
 ```javascript
-const HeartFlow = require('~/.hermes/skills/heartflow/src/core/heartflow.js');
-const engine = new HeartFlow.HeartFlow(hfDir, { silent: true, minimal: true });
+const Aspira = require('~/.hermes/skills/heartflow/src/core/heartflow.js');
+const engine = new Aspira.Aspira(hfDir, { silent: true, minimal: true });
 engine.start();
 const r = engine.think("test");
 ```
 
 **问题**：
-- `module.exports = { HeartFlow, createHeartFlow, VERSION }` — 需要 `.HeartFlow` 解构
+- `module.exports = { Aspira, createAspira, VERSION }` — 需要 `.Aspira` 解构
 - think() 是 async 函数，不 await 返回 `{}`（Promise 被 JSON.stringify）
 - think() 会超时（30s+）因为 await 内部可能死锁
 - require 缓存：改代码后需重启进程
@@ -109,7 +109,7 @@ result (think_fast) 或 report (think)
 
 ## 情绪检测细节
 
-心虫有两层情绪检测：
+新愿有两层情绪检测：
 
 1. **whatIsThis.emotion** — 基于 `_emotionKeywords` 信号列表（`emotionSignals`）
 2. **psychology.emotion** — PAD 模型分析

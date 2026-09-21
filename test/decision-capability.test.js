@@ -1,5 +1,5 @@
 /**
- * test/decision-capability.test.js — 心虫决策能力测试
+ * test/decision-capability.test.js — 新愿决策能力测试
  * 用户核心目标：升级决策能力/逻辑能力，像人一样干活，不靠大模型
  * 覆盖：DDM 决策科学引擎 / 风险感知决策 / 低风险偏好
  */
@@ -27,8 +27,8 @@ module.exports = function ({ test }) {
   });
 
   test('决策: 有低风险选项时选择低风险（像人一样规避）', () => {
-    const { HeartFlowDecision } = require('../src/core/decision.js');
-    const d = new HeartFlowDecision(null);
+    const { AspiraDecision } = require('../src/core/decision.js');
+    const d = new AspiraDecision(null);
     const r = d.decide({
       task: '选方案',
       options: [
@@ -40,8 +40,8 @@ module.exports = function ({ test }) {
   });
 
   test('决策: 选中高风险项时必须报风险', () => {
-    const { HeartFlowDecision } = require('../src/core/decision.js');
-    const d = new HeartFlowDecision(null);
+    const { AspiraDecision } = require('../src/core/decision.js');
+    const d = new AspiraDecision(null);
     const r = d.decide({
       task: '选方案',
       options: [
@@ -53,8 +53,8 @@ module.exports = function ({ test }) {
   });
 
   test('决策: 全部高风险时选相对低风险并诚实标注', () => {
-    const { HeartFlowDecision } = require('../src/core/decision.js');
-    const d = new HeartFlowDecision(null);
+    const { AspiraDecision } = require('../src/core/decision.js');
+    const d = new AspiraDecision(null);
     const r = d.decide({
       task: '选方案',
       options: [

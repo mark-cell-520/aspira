@@ -1,10 +1,10 @@
-# HeartFlow 启动性能基准（2026-06-10 实测，2026-06-19 更新）
+# Aspira 启动性能基准（2026-06-10 实测，2026-06-19 更新）
 
 ## 测试环境
 
 - macOS 26.5.1
 - Node.js v25.8.2
-- 心虫版本：v3.0.2（54 模块）
+- 新愿版本：v3.0.2（54 模块）
 - 测试方法：写临时文件 + `node /tmp/_bench.js`（避免 execute_code inline node -e 的管道超时问题）
 
 ## 结果（2026-06-19 v3.0.2）
@@ -12,7 +12,7 @@
 | 阶段 | 耗时 |
 |------|------|
 | `require('./src/core/heartflow.js')` | 3-4ms |
-| `new HeartFlow()` | 0-1ms |
+| `new Aspira()` | 0-1ms |
 | `hf.start()`（54 模块全部实例化） | 58-70ms |
 | **总耗时（Node 进程启动 + require + start）** | **~58-70ms** |
 | MCP HTTP server 启动（含 HTTP 监听） | 58-61ms（2026-06-19）|
@@ -47,8 +47,8 @@
 ```javascript
 // 必须用 process.exit(0) 强制退出
 const start = Date.now();
-const { HeartFlow } = require('./src/core/heartflow.js');
-const engine = new HeartFlow({rootPath: '...'});
+const { Aspira } = require('./src/core/heartflow.js');
+const engine = new Aspira({rootPath: '...'});
 engine.start();
 console.log(JSON.stringify({ms: Date.now()-start, modules: Object.keys(engine._modules||{}).length}));
 process.exit(0);
@@ -65,7 +65,7 @@ process.exit(0);
 
 ## 结论
 
-心虫引擎本身不是启动瓶颈。真正的慢在：
+新愿引擎本身不是启动瓶颈。真正的慢在：
 1. Hermes → LLM API 的 4-5 次往返（每次 2-3s）
 2. 微信消息队列的端到端延迟
 3. `plugins/heartflow_memory` 的 prefetch 超时（8 秒）

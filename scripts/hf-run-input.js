@@ -1,9 +1,9 @@
-const { HeartFlow } = require('../src/core/heartflow.js');
+const { Aspira } = require('../src/core/heartflow.js');
 const { readFileSync } = require('fs');
 const text = readFileSync('/tmp/hf-input.txt', 'utf8').trim();
 
 (async () => {
-  const hf = new HeartFlow({ dataDir: './data', silent: true });
+  const hf = new Aspira({ dataDir: './data', silent: true });
   hf.start();
   await new Promise(r => setTimeout(r, 3500));
 

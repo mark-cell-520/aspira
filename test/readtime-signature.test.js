@@ -7,7 +7,7 @@ module.exports = function ({ test }) {
 
   test('search results carry verification status', () => {
     const mem = new MeaningfulMemory({ dataDir: '/tmp/sigtest-' + Date.now() });
-    mem.store({ content: 'HeartFlow signature test alpha', layer: 'learned', importance: 10 });
+    mem.store({ content: 'Aspira signature test alpha', layer: 'learned', importance: 10 });
     const results = mem.searchByKeywords('signature');
     if (!results.length) throw new Error('no results');
     // 新记录应有签名; 验证状态字段存在

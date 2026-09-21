@@ -1,4 +1,4 @@
-# HeartFlow SelfScanner 全量扫描对比报告
+# Aspira SelfScanner 全量扫描对比报告
 **版本**: v6.0.66 / HEAD  
 **扫描范围**: SelfScanner 真实执行  
 **基准**: 160b9d15~1（SelfScanner 引入前最近一次基线）  

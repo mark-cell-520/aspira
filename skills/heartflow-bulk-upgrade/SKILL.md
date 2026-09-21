@@ -1,11 +1,11 @@
 ---
 name: heartflow-bulk-upgrade
 version: "1.1"
-title: "HeartFlow 批量升级工作流"
+title: "Aspira 批量升级工作流"
 description: >
-  并行多波次心虫升级：用 delegate_task 并发执行 3+2 波子任务（MCP测试/心理学接入/梦境升级 → 文档更新/知识蒸馏 → 验证推送）。
+  并行多波次新愿升级：用 delegate_task 并发执行 3+2 波子任务（MCP测试/心理学接入/梦境升级 → 文档更新/知识蒸馏 → 验证推送）。
   含版本统一、MCP重启、GitHub+clawhub推送。
-author: HeartFlow
+author: Aspira
 tags:
   - heartflow
   - upgrade
@@ -18,7 +18,7 @@ tags:
   - release
 ---
 
-# HeartFlow 批量升级工作流 v1.1
+# Aspira 批量升级工作流 v1.1
 
 ## 适用场景
 
@@ -43,7 +43,7 @@ tags:
 ```
 
 **每个子任务的 context 必须包含**：
-- 心虫运行目录（绝对路径）
+- 新愿运行目录（绝对路径）
 - 当前版本号
 - 目标模块的完整文件路径
 - 要修改的具体方法名或代码段
@@ -127,14 +127,14 @@ launchctl start com.heartflow.mcp
 
 **现象**：`clawhub publish . --version X.Y.Z` 返回 `"Slug is already taken"`
 
-**原因**：心虫 slug (`heartflow`) 已被 `mark-heartflow` 组织占用。
+**原因**：新愿 slug (`heartflow`) 已被 `mark-heartflow` 组织占用。
 
 **解决**：用新 slug 发布（`--fork-of` 不工作，必须 `--slug`）：
 ```bash
 clawhub publish . --version 2.14.0 --slug heartflow-ai-self-positioning
 ```
 
-**规则**：心虫主 slug 在 clawhub 上不可用，每次发布用描述性的替代 slug。
+**规则**：新愿主 slug 在 clawhub 上不可用，每次发布用描述性的替代 slug。
 
 ### 知识蒸馏包结构
 
@@ -149,7 +149,7 @@ distilled-knowledge/
 ```
 
 **设计原则**：
-- 零依赖：纯JSON+Markdown，不依赖心虫运行时或Node.js
+- 零依赖：纯JSON+Markdown，不依赖新愿运行时或Node.js
 - 标准化输出：统一JSON格式，任何AI可直接解析
 - 即插即用：AGENTS.md可直接被Claude Code/Hermes/OpenClaw读取
 
@@ -195,7 +195,7 @@ delegate_task 子代理每次调用有最大 50 次 tool_call 的迭代上限。
 
 ### 新模块路径陷阱（v3.0 新增）
 
-心虫的 `heartflow.js` 在 `src/core/` 目录下。新模块如果放在 `src/translator/`、`src/agent-layer/`、`src/persona-core/` 等 `src/` 直接子目录，require 路径必须用 `../` 不是 `./`：
+新愿的 `heartflow.js` 在 `src/core/` 目录下。新模块如果放在 `src/translator/`、`src/agent-layer/`、`src/persona-core/` 等 `src/` 直接子目录，require 路径必须用 `../` 不是 `./`：
 
 ```javascript
 // ❌ 错误（heartflow.js 在 src/core/ 下）
@@ -209,7 +209,7 @@ const _X = _lazy('x', () => require('../translator/x.js'));
 ```bash
 # 启动时如果报 "Cannot find module './translator/xxx.js'"
 # 说明 require 路径用错了层级
-node -e "const {HeartFlow}=require('./src/core/heartflow.js'); const h=new HeartFlow({rootPath:'.'}); h.start(); console.log(JSON.stringify(h._initErrors))"
+node -e "const {Aspira}=require('./src/core/heartflow.js'); const h=new Aspira({rootPath:'.'}); h.start(); console.log(JSON.stringify(h._initErrors))"
 ```
 
 ### dispatch 适配：嵌套对象 vs 扁平方法
@@ -236,8 +236,8 @@ try {
 **验证**：
 ```bash
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow({rootPath:'.'}); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira({rootPath:'.'}); h.start();
 // 应该返回对象（dispatch 成功），不是抛异常
 try { console.log(typeof h.dispatch('translator.userToLLM', '测试')); }
 catch(e) { console.log('FAIL:', e.message); }
@@ -246,7 +246,7 @@ catch(e) { console.log('FAIL:', e.message); }
 
 ### 模块注册三步验证（v3.0 新增）
 
-新模块注册到心虫需要**四步全部同步**，漏任何一步都不行：
+新模块注册到新愿需要**四步全部同步**，漏任何一步都不行：
 
 | 步骤 | 位置 | 检查命令 |
 |------|------|---------|
@@ -358,12 +358,12 @@ python3 -c "import socket; s=socket.socket(); s.settimeout(2); print('OK' if s.c
 
 ### 引擎启动测试超时处理
 
-心虫启动需要时间（50+模块初始化，含文件IO）。`node -e` 单行模式有30秒超时风险。
+新愿启动需要时间（50+模块初始化，含文件IO）。`node -e` 单行模式有30秒超时风险。
 ```bash
 # ✅ 正确：写测试文件运行
 cat > /tmp/test-heartflow.js << 'EOF'
 const HF = require('...');
-const hf = new HF.HeartFlow({rootPath:'...'});
+const hf = new HF.Aspira({rootPath:'...'});
 hf.start();
 // ... 测试代码 ...
 hf.shutdown();
@@ -372,7 +372,7 @@ EOF
 node /tmp/test-heartflow.js
 
 # ❌ 错误：内联 -e 模式容易超时
-node -e "const HF=require('...'); const hf=new HF.HeartFlow({rootPath:'.'}); hf.start(); ..."
+node -e "const HF=require('...'); const hf=new HF.Aspira({rootPath:'.'}); hf.start(); ..."
 
 ## 典型案例
 

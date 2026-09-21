@@ -37,8 +37,8 @@ module.exports = function ({ test }) {
   });
 
   test('接入 think: metaCalibration 挂到返回', async () => {
-    const { HeartFlow } = require('../src/core/heartflow.js');
-    const hf = new HeartFlow({ dataDir: process.cwd() + '/data', silent: true });
+    const { Aspira } = require('../src/core/heartflow.js');
+    const hf = new Aspira({ dataDir: process.cwd() + '/data', silent: true });
     hf.start();
     await new Promise(res => setTimeout(res, 3500));
     const r = await hf.think('明年全球经济的精确走向是什么');

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow — 缺失模块全量审计（F6）
+ * Aspira — 缺失模块全量审计（F6）
  *
  * 消除错误源：UPGRADE_PLAN 指出旧审计脚本有 bug（误把 ./ 相对路径排除，
  * 结果"0 缺失"不可信）。本脚本按实际 require/import resolve 跑全量扫描，
@@ -175,7 +175,7 @@ function isInTryCatch(file, spec) {
 }
 
 // 输出
-console.log(`\n=== HeartFlow 缺失模块审计 ===`);
+console.log(`\n=== Aspira 缺失模块审计 ===`);
 console.log(`扫描文件: ${files.length} | 待分类引用: ${findings.length}\n`);
 
 if (classified.A.length) {

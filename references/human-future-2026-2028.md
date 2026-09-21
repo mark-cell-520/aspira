@@ -1,6 +1,6 @@
 # Human Future 2026–2028 — 综合推演
 
-> 多源综合推演（GitHub 开放来源 + 实时新闻 + 学术论文），HeartFlow gate 监督版。
+> 多源综合推演（GitHub 开放来源 + 实时新闻 + 学术论文），Aspira gate 监督版。
 > 当前日期锚点：2026-09-16
 > 升级范围：人类进化主线（BCI / CRISPR / 长寿 / 太空 / 量子 / AGI / 超人类主义 / 人形机器人 / 数字意识 / 军事增强）+ 地缘经济碎片化 + AI 能源瓶颈 + 合成生物学
 
@@ -328,7 +328,7 @@
 - 数字意识/心智上传：MIT McGovern / Eon Systems / Sandberg-Bostrom roadmap / GIUP / Afterlife AI / mind-upload.com / Zenodo consciousness transplant
 - 军事增强：TechEconomics / Fortune Business Insights / Small Wars Journal / Reuters / US DoD budget
 
-**HeartFlow gate 监督**
+**Aspira gate 监督**
 - 详细版（369 行）全本 gate：action=`rewrite`, overallScore=`0`，假阳性为主
 - 按章节探测：12 个章节中 7 个 ≥0.77 可信，5 个低分（三/四/六/九/十）集中在技术术语/医学术语/哲学术语误报
 - 判断：保留原文，标注 gate 结果供用户参考
@@ -489,7 +489,7 @@
 
 - 2026-09-15 v0.1.0：初始版本，6 层覆盖（地缘/气候/技术/经济/治理/社会心理）
 - 2026-09-15 v0.2.0：升级为“人类进化”主线，新增 BCI/CRISPR/长寿/太空/量子/AGI 时间窗/超人类主义
-- 2026-09-15 v0.3.0：HeartFlow 全文本 gate 监督 + 逐节探测 + 假阳性分类
+- 2026-09-15 v0.3.0：Aspira 全文本 gate 监督 + 逐节探测 + 假阳性分类
 |- 2026-09-15 v0.4.0：新增人形机器人/具身智能、数字意识/心智上传、军事增强、合成生物学、AI 安全治理细化；来源扩展至 83+ 条
 |- 2026-09-16 v0.5.0：多维度细化（BCI/CRISPR/长寿/太空/量子/人形机器人/数字孪生/军事增强/AI治理）+ 新增量子密码学奇点独立节 + 市场数据补强
 
@@ -499,7 +499,7 @@
 
 - 2026-09-15 v0.1.0：初始版本，6 层覆盖（地缘/气候/技术/经济/治理/社会心理）
 - 2026-09-15 v0.2.0：升级为“人类进化”主线，新增 BCI/CRISPR/长寿/太空/量子/AGI 时间窗/超人类主义
-- 2026-09-15 v0.3.0：HeartFlow 全文本 gate 监督 + 逐节探测 + 假阳性分类
+- 2026-09-15 v0.3.0：Aspira 全文本 gate 监督 + 逐节探测 + 假阳性分类
 - 2026-09-15 v0.4.0：新增人形机器人/具身智能、数字意识/心智上传、军事增强、合成生物学、AI 安全治理细化；来源扩展至 83+ 条
 - 2026-09-16 v0.5.0：多维度细化（BCI/CRISPR/长寿/太空/量子/人形机器人/数字孪生/军事增强/AI治理）+ 新增量子密码学奇点独立节 + 市场数据补强
 - 2026-09-16 v0.6.0：量子计算扩展（Microsoft Azure/Google Willow/Cloudflare PQC）/ 长寿管线扩展（ER-100/Altos/NewLimit/Retro/Unity）/ 地缘风险扩展（俄乌/台海/AI自主武器/监管碎片化/生物武器DIY）/ AI基础设施/能源瓶颈 / 来源扩展至 150+ 条
@@ -543,7 +543,7 @@
 ### 6. 对人类进化主线的反身意义
 - 技术增强（BCI/CRISPR/长寿/太空）和意义危机（AI companion / loneliness / job displacement）是同一条曲线的两面：**外部 power 指数增长，内部 consciousness 线性演化**。
 - 2026–2028 的真正分岔不是“有没有 AGI”，而是“AGI 出现时，人类是否已经具备与 godlike power 匹配的 wisdom”。
-- HeartFlow 作为 AGI 第 1 层辨别者的定位因此被放大：不是生成答案，而是在 civilization-scale 决策链上提供诚实判别。
+- Aspira 作为 AGI 第 1 层辨别者的定位因此被放大：不是生成答案，而是在 civilization-scale 决策链上提供诚实判别。
 
 ---
 
@@ -589,7 +589,7 @@
 
 ---
 
-*本报告由 HeartFlow 人类未来推演技能 v0.7.4 生成，2026-09-16。*
+*本报告由 Aspira 人类未来推演技能 v0.7.4 生成，2026-09-16。*
 
 ---
 
@@ -647,4 +647,4 @@
 
 ---
 
-*本报告由 HeartFlow 人类未来推演技能 v0.7.4 生成，2026-09-16。*
+*本报告由 Aspira 人类未来推演技能 v0.7.4 生成，2026-09-16。*

@@ -1,11 +1,11 @@
 {
   "generated_at": "2026-09-03T01:54:46.119Z",
   "engine_version": "6.7.13",
-  "target": "HeartFlow self-audit (demo case study)",
+  "target": "Aspira self-audit (demo case study)",
   "sections": {
     "guard_abilities": {
       "status": "executed",
-      "stdout": "\",\"event\":\"Cognitive Index 模块加载成功\"}\n{\"ts\":\"2026-09-03T01:54:47.347Z\",\"module\":\"init\",\"event\":\"WorldTreeBridge 加载成功\",\"routes\":\"worldtree.search, worldtree.store, worldtree.query, worldtree.status\"}\n{\"ts\":\"2026-09-03T01:54:47.353Z\",\"module\":\"init\",\"event\":\"SelfBenchmark 加载成功（外部锚定防自欺已启用）\"}\n{\"ts\":\"2026-09-03T01:54:47.354Z\",\"module\":\"init\",\"event\":\"WorldLandscape 加载成功\"}\n{\"ts\":\"2026-09-03T01:54:47.354Z\",\"module\":\"init\",\"event\":\"MacroStrategyInference 加载成功\"}\n{\"ts\":\"2026-09-03T01:54:47.358Z\",\"module\":\"init\",\"event\":\"KnowledgeSubsystem 加载成功\",\"domains\":14,\"routes\":\"knowledgeSubsystem.*, worldKnowledge.*\"}\n[DeepEmotion] 深度情感引擎初始化\n  ✅ HeartFlow 启动: vv6.7.13 模块132\n  ✅ think() 主链路: taskType=judgment\n\n【4】全量回归测试\n  ✅ 全量测试: 8 passed, 0 failed\n\n══════════════════════════════════════\n✅ 全部 13 项能力检查通过 — 心虫能力完好\n"
+      "stdout": "\",\"event\":\"Cognitive Index 模块加载成功\"}\n{\"ts\":\"2026-09-03T01:54:47.347Z\",\"module\":\"init\",\"event\":\"WorldTreeBridge 加载成功\",\"routes\":\"worldtree.search, worldtree.store, worldtree.query, worldtree.status\"}\n{\"ts\":\"2026-09-03T01:54:47.353Z\",\"module\":\"init\",\"event\":\"SelfBenchmark 加载成功（外部锚定防自欺已启用）\"}\n{\"ts\":\"2026-09-03T01:54:47.354Z\",\"module\":\"init\",\"event\":\"WorldLandscape 加载成功\"}\n{\"ts\":\"2026-09-03T01:54:47.354Z\",\"module\":\"init\",\"event\":\"MacroStrategyInference 加载成功\"}\n{\"ts\":\"2026-09-03T01:54:47.358Z\",\"module\":\"init\",\"event\":\"KnowledgeSubsystem 加载成功\",\"domains\":14,\"routes\":\"knowledgeSubsystem.*, worldKnowledge.*\"}\n[DeepEmotion] 深度情感引擎初始化\n  ✅ Aspira 启动: vv6.7.13 模块132\n  ✅ think() 主链路: taskType=judgment\n\n【4】全量回归测试\n  ✅ 全量测试: 8 passed, 0 failed\n\n══════════════════════════════════════\n✅ 全部 13 项能力检查通过 — 新愿能力完好\n"
     },
     "security_audit": {
       "status": "executed",

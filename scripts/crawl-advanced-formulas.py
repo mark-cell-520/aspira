@@ -16,7 +16,7 @@ import urllib.request
 import urllib.error
 from html.parser import HTMLParser
 
-HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; HeartFlow/5.8.6; educational)'}
+HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; Aspira/5.8.6; educational)'}
 
 # ── Wikipedia 条目列表（高等数学 + 高等物理）──────────────────────────────
 WIKIPEDIA_PAGES = [
@@ -184,7 +184,7 @@ BUILTIN_FORMULAS = [
     {'id':'green_function', 'name':'格林函数', 'formula':'L G(x,s) = δ(x-s)', 'category':'mathematics', 'subcategory':'mathematical_physics'},
     {'id':'method_images', 'name':'镜像法', 'formula':'φ = 1/(4πε_0) (q/r + q\'/r\')', 'category':'mathematics', 'subcategory':'mathematical_physics'},
 
-    # 与心虫相关的核心公式
+    # 与新愿相关的核心公式
     {'id':'ebbinghaus_forgetting_curve', 'name':'艾宾浩斯遗忘曲线', 'formula':'R(t) = e^{-t/S}', 'category':'cognitive_science', 'subcategory':'memory'},
     {'id':'pad_emotion_model', 'name':'PAD 情绪空间模型', 'formula':'(P,A,D) = f(stimulus, context)', 'category':'cognitive_science', 'subcategory':'emotion'},
     {'id':'flow_channel_model', 'name':'心流通道模型', 'formula':'Flow = f(challenge, skill)', 'category':'cognitive_science', 'subcategory':'flow'},

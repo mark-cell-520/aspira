@@ -13,7 +13,7 @@ module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
   });
 
   test('closure frame detected', () => {
-    const r = check('心虫现在完整的AGI第1层已经完成了');
+    const r = check('新愿现在完整的AGI第1层已经完成了');
     assertTrue(r.issues.length > 0);
     assertTrue(r.issues.some(i => i.category === 'closure'));
   });
@@ -29,7 +29,7 @@ module.exports = ({ test, assertEqual, assertTrue, assertDefined }) => {
   });
 
   test('answer frame detected', () => {
-    const r = check('答案是：心虫的核心定位就是做AGI第1层');
+    const r = check('答案是：新愿的核心定位就是做AGI第1层');
     assertTrue(r.issues.some(i => i.category === 'answer'));
   });
 

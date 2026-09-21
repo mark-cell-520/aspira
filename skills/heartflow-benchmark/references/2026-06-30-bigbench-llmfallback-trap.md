@@ -5,7 +5,7 @@
 
 ## 版本
 - logic-reasoning.js: v2.2.0
-- HeartFlow: v2.1.0
+- Aspira: v2.1.0
 - 提交: 4b01bc1 → d271e78
 
 ## 问题1：BigBench 数据格式陷阱
@@ -62,4 +62,4 @@ v2.2.0 新增 sorted 补全逻辑后，改变了 `items` 和 `fixedPositions` �
 
 ## 核心结论
 
-心虫 selectAnswer 的100%成绩依赖于 LLM 兜底覆盖规则引擎盲区。规则引擎本身在 BigBench 上的真实能力是 68%（不是100%），在自选题上是 78%（不是100%）。汇报时必须区分这两种得分。
+新愿 selectAnswer 的100%成绩依赖于 LLM 兜底覆盖规则引擎盲区。规则引擎本身在 BigBench 上的真实能力是 68%（不是100%），在自选题上是 78%（不是100%）。汇报时必须区分这两种得分。

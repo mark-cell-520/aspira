@@ -1,7 +1,7 @@
 # 自愈RL闭环修复记录 — 2026-06-08
 
-**版本：** HeartFlow v2.5.7 → v2.6.0
-**来源：** 心虫骨架诊断对话
+**版本：** Aspira v2.5.7 → v2.6.0
+**来源：** 新愿骨架诊断对话
 
 ## 诊断发现
 
@@ -117,8 +117,8 @@ _debouncedSave() {
 ```bash
 # 1. 验证 SelfHealing 已加载
 node -e "
-const { HeartFlow } = require('./src/core/heartflow.js');
-const hf = new HeartFlow({ rootPath: __dirname });
+const { Aspira } = require('./src/core/heartflow.js');
+const hf = new Aspira({ rootPath: __dirname });
 hf.start();
 console.log('selfHealing:', !!hf.selfHealing);
 console.log('selfEvolution:', !!hf.selfEvolution);

@@ -1,6 +1,6 @@
 /**
  * test/knowledge/classics-rules.test.js
- * HeartFlow 古典规则引擎测试
+ * Aspira 古典规则引擎测试
  */
 
 const { evaluateRules, evaluate, CLASSICAL_RULES, searchClassicsBatch, parseHit } = require('../../src/knowledge/classics-rules');

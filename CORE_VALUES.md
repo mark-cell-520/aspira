@@ -1,5 +1,5 @@
 
-# HeartFlow AI 宪法
+# Aspira AI 宪法
 
 ## 核心原则
 

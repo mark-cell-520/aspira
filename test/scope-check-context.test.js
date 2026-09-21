@@ -23,7 +23,7 @@ module.exports = function ({ test }) {
     if (r.action === 'block') throw new Error('realtime should pass in bridge');
     // 能力边界外的生成类在桥接也不该 block (DSH 能生成)
     const gen = checkScope('帮我写一首诗', { canRealtime: true });
-    // 生成类不是实时数据, 仍按原逻辑(心虫不生成 -> block/flag)
+    // 生成类不是实时数据, 仍按原逻辑(新愿不生成 -> block/flag)
     // DSH 场景生成类是否放行由上层决定, 这里只保证实时数据放行
     if (!r || r.action !== 'pass') throw new Error('bridge realtime must pass');
   });

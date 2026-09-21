@@ -306,5 +306,5 @@ P3: 其余模块按使用频率排序
 
 ---
 
-*审查人：心虫代码审查系统 (HeartFlow Code Review System)*
+*审查人：新愿代码审查系统 (Aspira Code Review System)*
 *审查方法：SkillHub tech-code-review 专家包 6 步工作流*

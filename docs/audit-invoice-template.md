@@ -1,4 +1,4 @@
-# HeartFlow Agent Security Audit — Invoice
+# Aspira Agent Security Audit — Invoice
 
 **Invoice #:** HF-AUDIT-YYYY-XXX  
 **Date:** ___________________________  
@@ -6,7 +6,7 @@
 **Payable To:** ___________________________  
 **Payment Method:** [PayPal / Wise / BTC / USDC / Bank Transfer]  
 **Client:** ___________________________  
-**Project:** HeartFlow Agent Security Audit
+**Project:** Aspira Agent Security Audit
 
 ---
 
@@ -51,4 +51,4 @@ Please include invoice number in payment reference.
 
 ---
 
-*Thank you for using HeartFlow Agent Audit.*
+*Thank you for using Aspira Agent Audit.*

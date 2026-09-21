@@ -1,4 +1,4 @@
-# HeartFlow Formula Audit Report (v8.14.0)
+# Aspira Formula Audit Report (v8.14.0)
 
 **Audit date:** 2026-07-12
 **Formulas.json version:** 8.14.0

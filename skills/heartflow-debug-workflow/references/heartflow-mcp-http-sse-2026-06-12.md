@@ -1,26 +1,26 @@
-# 心虫 MCP HTTP SSE 常驻模式改造记录
+# 新愿 MCP HTTP SSE 常驻模式改造记录
 
 **日期**：2026-06-12  
-**目的**：将心虫 MCP 从 stdio 模式改为 HTTP SSE 常驻模式，消除每次连接重新加载引擎的开销  
+**目的**：将新愿 MCP 从 stdio 模式改为 HTTP SSE 常驻模式，消除每次连接重新加载引擎的开销  
 **结果**：连接时间从 ~200ms 降至 ~75ms
 
 ---
 
 ## 问题
 
-心虫 MCP 原使用 stdio 传输（`command: node` + `args: [mcp-server.js]`）。  
+新愿 MCP 原使用 stdio 传输（`command: node` + `args: [mcp-server.js]`）。  
 Hermes 每次需要 MCP 工具时启动 Node 进程，进程在 stdin 关闭后退出。  
 每次连接都需要重新 require + start 引擎（~200ms），且无法常驻。
 
 ## 方案：HTTP SSE 常驻模式
 
-心虫 MCP server 改为 HTTP 服务运行，两个端点：
+新愿 MCP server 改为 HTTP 服务运行，两个端点：
 
 - `GET /mcp` — SSE 端点（协议发现 + 心跳）
 - `POST /mcp` — JSON-RPC 端点（工具调用）
 - `GET /health` — 健康检查
 
-引擎在 `initHeartFlow()` 中只加载一次，后续所有 HTTP 请求复用同一实例。
+引擎在 `initAspira()` 中只加载一次，后续所有 HTTP 请求复用同一实例。
 
 ## 关键文件
 

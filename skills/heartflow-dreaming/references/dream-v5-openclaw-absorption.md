@@ -1,4 +1,4 @@
-# HeartFlow Dream V5 — OpenClaw 架构吸收记录
+# Aspira Dream V5 — OpenClaw 架构吸收记录
 
 **日期**: 2026-06-18
 **来源**: `openclaw-imports/heartflow/src/core/dream/dream.ts` (v3, 430行, TypeScript)
@@ -7,7 +7,7 @@
 
 ## 为什么要吸收
 
-当前心虫梦境引擎（DreamV4）的问题：
+当前新愿梦境引擎（DreamV4）的问题：
 1. **4睡眠阶段结构**（N1/N2/N3/REM）每阶段只是"不同深度的随机碎片"，没有认知操作
 2. **没有标签系统** — 材料没有标签，无法做跨域连接检测
 3. **没有矛盾检测** — 梦不分析自身结构的矛盾
@@ -17,7 +17,7 @@ OpenClaw dream.ts 的架构恰好解决了这些问题。
 
 ## 架构对比
 
-| 维度 | 心虫 DreamV4 (吸收前) | OpenClaw dream.ts | 心虫 DreamV5 (吸收后) |
+| 维度 | 新愿 DreamV4 (吸收前) | OpenClaw dream.ts | 新愿 DreamV5 (吸收后) |
 |------|----------------------|------------------|---------------------|
 | 阶段结构 | N1/N2/N3/REM（睡眠阶段） | Light/REM/Deep/Lucid/Wide（认知阶段） | Light/REM/Deep/Lucid/Wide |
 | 材料来源 | engineState 属性直接映射 | RecallBlock 带 tags + weight | engineState 属性 + 子材料 + 标签 |
@@ -47,7 +47,7 @@ for (let i = 0; i < Math.min(state.config.maxIterations, stageNames.length); i++
 }
 ```
 
-**心虫实现** (DreamV5):
+**新愿实现** (DreamV5):
 ```javascript
 const stageNames = ['Light', 'REM', 'Deep', 'Lucid', 'Wide'];
 for (const stageId of stageNames) {
@@ -58,7 +58,7 @@ for (const stageId of stageNames) {
 }
 ```
 
-**关键差异**: OpenClaw 有 `maxIterations` 控制循环次数，心虫固定为5个阶段各一次。
+**关键差异**: OpenClaw 有 `maxIterations` 控制循环次数，新愿固定为5个阶段各一次。
 
 ### 2. 标签系统（改造吸收）
 
@@ -74,7 +74,7 @@ interface RecallBlock {
 }
 ```
 
-**心虫的材料结构**:
+**新愿的材料结构**:
 ```javascript
 {
   id: 'core_mem',
@@ -85,7 +85,7 @@ interface RecallBlock {
 }
 ```
 
-**关键差异**: 心虫加了 `layer` 字段（core/learned/ephemeral），用于矛盾检测。
+**关键差异**: 新愿加了 `layer` 字段（core/learned/ephemeral），用于矛盾检测。
 
 ### 3. 连接分数计算（改造吸收）
 
@@ -102,33 +102,33 @@ function calculateConnectionScore(a: RecallBlock, b: RecallBlock): number {
 }
 ```
 
-**心虫**:
+**新愿**:
 ```javascript
 const sharedTags = a.tags.filter(t => b.tags.includes(t));
 const score = sharedTags.length * 2 + Math.abs(a.weight - b.weight) * 3;
 ```
 
-**关键差异**: 心虫用 `|weightA - weightB| * 3` 替代内容词重叠（心虫的材料没有长文本内容）+ 时间接近（心虫材料没有时间戳）。权重差大的材料反而得分高，因为它们之间有"张力"。
+**关键差异**: 新愿用 `|weightA - weightB| * 3` 替代内容词重叠（新愿的材料没有长文本内容）+ 时间接近（新愿材料没有时间戳）。权重差大的材料反而得分高，因为它们之间有"张力"。
 
 ### 4. 矛盾检测（改造吸收）
 
 **OpenClaw**: 文本级矛盾（关键词反义词对：应该/不必、必须/不需要等）
 
-**心虫**: 结构级矛盾——同层材料权重悬殊。如果有两个材料同属 `core` 层但权重分别为 0.9 和 0.4，产生矛盾洞察。
+**新愿**: 结构级矛盾——同层材料权重悬殊。如果有两个材料同属 `core` 层但权重分别为 0.9 和 0.4，产生矛盾洞察。
 
 ### 5. 洞察累积（改造吸收）
 
 **OpenClaw**: `state.insights.push(...significantInsights)`，上限1000→裁剪到500
 
-**心虫**: `this.insightHistory.push(...significant)`，上限200，同时维护 `this.insightTags`（标签→计数）用于下次梦的 `insight_history` 材料
+**新愿**: `this.insightHistory.push(...significant)`，上限200，同时维护 `this.insightTags`（标签→计数）用于下次梦的 `insight_history` 材料
 
-**关键差异**: 心虫的洞察会作为下次梦的材料输入（材料类型 #9: insight_history），实现"梦在消化自己的产出"。
+**关键差异**: 新愿的洞察会作为下次梦的材料输入（材料类型 #9: insight_history），实现"梦在消化自己的产出"。
 
 ### 6. 执念检测（改造吸收）
 
 **OpenClaw**: `tagFreq >= blocks.length * 0.4`（标签出现频率≥材料数的40%）
 
-**心虫**: `tagFreq >= Math.ceil(materials.length * 0.35)`（35%触发，因为心虫材料更少）
+**新愿**: `tagFreq >= Math.ceil(materials.length * 0.35)`（35%触发，因为新愿材料更少）
 
 ### 7. 反事实推理 + 荒谬连接（直接吸收）
 
@@ -149,15 +149,15 @@ OpenClaw 的 `consolidate()` 做 EpisodicBlock 级别的操作：
 - `findMergeCandidates()` — 双标签模式+重要性接近 → 合并候选
 - `mergeBlocks()` — 实际合并两个记忆块
 
-**没吸收的原因**: 心虫没有 EpisodicBlock 系统，记忆块由 HeartFlowMemory 管理。这个 consolidate 是记忆管理层的操作，不是梦境引擎层的操作。
+**没吸收的原因**: 新愿没有 EpisodicBlock 系统，记忆块由 AspiraMemory 管理。这个 consolidate 是记忆管理层的操作，不是梦境引擎层的操作。
 
 ### lightPhase() 的50%过滤
 
-OpenClaw 的 Light 阶段保留50%材料。心虫改为70%——因为心虫材料更少（12-14个 vs OpenClaw 的任意数量），保留更多材料可以让后面的阶段有足够输入。
+OpenClaw 的 Light 阶段保留50%材料。新愿改为70%——因为新愿材料更少（12-14个 vs OpenClaw 的任意数量），保留更多材料可以让后面的阶段有足够输入。
 
 ### TypeScript 类型系统
 
-OpenClaw 用 TS 接口定义类型（DreamConfig、DreamResult、Insight、RecallBlock）。心虫用 JS + JSDoc。不吸收 TS 类型定义。
+OpenClaw 用 TS 接口定义类型（DreamConfig、DreamResult、Insight、RecallBlock）。新愿用 JS + JSDoc。不吸收 TS 类型定义。
 
 ## MCP 集成变化
 
@@ -195,6 +195,6 @@ OpenClaw 用 TS 接口定义类型（DreamConfig、DreamResult、Insight、Recal
 
 ## 限制
 
-1. **洞察历史不持久化** — MCP server 重启后 insightHistory 丢失。未解决是因为心虫本身没有"跨进程持久化"的需求——下次重启后引擎状态可能已经变化。
+1. **洞察历史不持久化** — MCP server 重启后 insightHistory 丢失。未解决是因为新愿本身没有"跨进程持久化"的需求——下次重启后引擎状态可能已经变化。
 2. **材料标签手动维护** — 每个材料类型的标签是硬编码的。如果 engineState 结构变化，需要同步更新 `_gatherMaterials()`。
 3. **无反向传播** — 洞察不反向影响 engineState。梦只产生认知输出，不改变引擎的实际状态（权重、决策等）。这是设计决定——梦是认知过程不是配置修改。

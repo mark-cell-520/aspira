@@ -2,7 +2,7 @@
 
 ## Origin
 
-Added v3.8.1 (HeartFlow v4.1.4) in response to luoxuejian000's meta-audit question on DeepSeek-V3 #1447:
+Added v3.8.1 (Aspira v4.1.4) in response to luoxuejian000's meta-audit question on DeepSeek-V3 #1447:
 
 > "If the unconscious layer itself begins to drift, who audits the auditor?"
 

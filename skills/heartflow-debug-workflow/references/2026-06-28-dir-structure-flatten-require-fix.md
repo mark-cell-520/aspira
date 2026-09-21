@@ -2,7 +2,7 @@
 
 ## 背景
 
-SkillSpector 审计发现 `src/code/code-engine.js` 有 suspicious.dangerous_exec 误报。调查发现 `src/code/code-engine.js` 是 mark-code 项目遗留的死模块（127KB），它和两个 `self-audit.js`（各34KB）形成孤立引用链——三者均未被心虫核心模块引用。删除后自动消除4个误报。
+SkillSpector 审计发现 `src/code/code-engine.js` 有 suspicious.dangerous_exec 误报。调查发现 `src/code/code-engine.js` 是 mark-code 项目遗留的死模块（127KB），它和两个 `self-audit.js`（各34KB）形成孤立引用链——三者均未被新愿核心模块引用。删除后自动消除4个误报。
 
 ## 问题
 

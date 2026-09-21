@@ -61,7 +61,7 @@ const pkg = JSON.parse(fs.readFileSync('package.json','utf-8'));
 const sk = fs.readFileSync('SKILL.md','utf-8');
 const fm = sk.match(/version:\s*"([^"\n]+)"/);
 const hf = fs.readFileSync('src/core/heartflow.js','utf-8');
-const doc = hf.match(/HeartFlow\s+v(\d+\.\d+\.\d+)/);
+const doc = hf.match(/Aspira\s+v(\d+\.\d+\.\d+)/);
 
 // 文件完整性检查（existsSync 不加载内容）
 fs.existsSync('src/core/heartflow.js')  // true/false

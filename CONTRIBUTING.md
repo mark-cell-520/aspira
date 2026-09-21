@@ -1,6 +1,6 @@
-# Contributing to HeartFlow
+# Contributing to Aspira
 
-HeartFlow is AGI's first layer: **the layer that says "no"**. Every contribution that makes it better at saying "no" (or more honest about when it should say "I don't know") is valuable.
+Aspira is AGI's first layer: **the layer that says "no"**. Every contribution that makes it better at saying "no" (or more honest about when it should say "I don't know") is valuable.
 
 ## Quick Start
 
@@ -40,13 +40,13 @@ Tests are in `test/` and run via `node test/run-all.js`. Each test file exports 
 
 ## Philosophy
 
-1. **Zero-dependency rule engine** — No LLM calls, no GPU, no database. HeartFlow must remain installable with a single `npm install` and run anywhere Node.js runs.
+1. **Zero-dependency rule engine** — No LLM calls, no GPU, no database. Aspira must remain installable with a single `npm install` and run anywhere Node.js runs.
 
 2. **Auditable decisions** — Every check returns a full `checked_by` audit trail so users know exactly why something was blocked or rewritten.
 
 3. **Block > fail open** — For security dimensions (prompt injection, hate speech, dehumanization), default to blocking on uncertainty. A scanner that fails open is worse than no scanner.
 
-4. **Honest uncertainty** — When HeartFlow doesn't know, it should say so. The `doubt-engine` layer exists to catch overconfidence.
+4. **Honest uncertainty** — When Aspira doesn't know, it should say so. The `doubt-engine` layer exists to catch overconfidence.
 
 ## Pull Request Process
 
@@ -57,4 +57,4 @@ Tests are in `test/` and run via `node test/run-all.js`. Each test file exports 
 
 ## Code of Conduct
 
-Be direct. Be honest. Don't pretend something works when it doesn't. That's the HeartFlow way.
+Be direct. Be honest. Don't pretend something works when it doesn't. That's the Aspira way.

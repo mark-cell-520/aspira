@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * HeartFlow 自主进化脚本（无人值守）
+ * Aspira 自主进化脚本（无人值守）
  *
- * 心虫自己审计、自己升级、自己改善自己。
+ * 新愿自己审计、自己升级、自己改善自己。
  * 由 cron 定时调用（默认每6小时），无需人类干预。
  *
  * 流程：
@@ -98,7 +98,7 @@ function dedupeRefactorTodoBlocks() {
 
 // ─── 主流程 ──────────────────────────────────────────────────────────
 function main() {
-  console.log('[self-evolve] 心虫开始自主审计...');
+  console.log('[self-evolve] 新愿开始自主审计...');
 
   const fixes = dedupeRefactorTodoBlocks();
   console.log(`[self-evolve] 重复TODO去重: ${fixes.totalDeduped} 处, 文件: ${fixes.fixedFiles.join(', ') || '无'}`);
@@ -156,7 +156,7 @@ function main() {
       run(`git push origin main >/dev/null 2>&1`);
       console.log(`[self-evolve] 已提交观察快照到 git (v${readVersion()}, ${passedCount} tests passed)`);
     } else {
-      console.log('[self-evolve] 无需修复，心虫状态良好');
+      console.log('[self-evolve] 无需修复，新愿状态良好');
     }
     process.exit(0);
   }

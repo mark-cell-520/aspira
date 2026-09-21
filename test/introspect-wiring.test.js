@@ -11,8 +11,8 @@ module.exports = function ({ test }) {
   const ROOT = path.join(__dirname, '..');
 
   test('introspect: heartflow.introspect 路由可用', async () => {
-    const { HeartFlow } = require('../src/core/heartflow.js');
-    const hf = new HeartFlow({ dataDir: path.join(ROOT, 'data'), silent: true });
+    const { Aspira } = require('../src/core/heartflow.js');
+    const hf = new Aspira({ dataDir: path.join(ROOT, 'data'), silent: true });
     hf.start();
     await new Promise(r => setTimeout(r, 2500));
     const r = await hf.dispatch('heartflow.introspect');
@@ -24,8 +24,8 @@ module.exports = function ({ test }) {
   test('introspect: think 后 self-view.json 计数递增', async () => {
     const svPath = path.join(ROOT, 'data', 'self-view.json');
     const before = fs.existsSync(svPath) ? (JSON.parse(fs.readFileSync(svPath, 'utf8')).thinkCount || 0) : 0;
-    const { HeartFlow } = require('../src/core/heartflow.js');
-    const hf = new HeartFlow({ dataDir: path.join(ROOT, 'data'), silent: true });
+    const { Aspira } = require('../src/core/heartflow.js');
+    const hf = new Aspira({ dataDir: path.join(ROOT, 'data'), silent: true });
     hf.start();
     await new Promise(r => setTimeout(r, 2500));
     await hf.think('测试自省计数');

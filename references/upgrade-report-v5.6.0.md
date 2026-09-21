@@ -1,4 +1,4 @@
-# HeartFlow v5.6.0 — 论文驱动的认知引擎升级
+# Aspira v5.6.0 — 论文驱动的认知引擎升级
 
 **日期**: 2026-07-03
 **版本**: v5.6.0
@@ -13,71 +13,71 @@
 **核心论文**:
 - **Reflexion** (Shinn et al., 2023) — 语言代理通过语言强化学习实现自我反思
   - 关键发现：Agent 通过自然语言反思失败经验，形成可复用的策略
-  - 对心虫的意义：升级 self-diagnostic → verbal reinforcement loop
+  - 对新愿的意义：升级 self-diagnostic → verbal reinforcement loop
 
 - **LLaMA-Berry** (2024) — 通过 Monte Carlo Tree Search + self-training 实现自我改进
   - 关键发现：MCTS 用于探索推理路径，自我训练用于优化策略
-  - 对心虫的意义：增强 GoT (Graph of Thoughts) + MCTS 规划
+  - 对新愿的意义：增强 GoT (Graph of Thoughts) + MCTS 规划
 
 - **MemGPT / Letta** (2024) — 类操作系统记忆管理 (page/swap/fetch)
   - 关键发现：LLM 作为 OS，管理长期记忆的页面调度
-  - 对心虫的意义：升级 triality 记忆 → 分层页面管理
+  - 对新愿的意义：升级 triality 记忆 → 分层页面管理
 
 - **Zep** (2024) — 长会话记忆 + 自动摘要 + 实体提取
   - 关键发现：自动化的记忆管理减轻用户负担
-  - 对心虫的意义：增强 memory consolidation
+  - 对新愿的意义：增强 memory consolidation
 
 ### 2. 多智能体协作 (Multi-Agent Collaboration)
 
 **核心论文**:
 - **AutoGen** (Wu et al., 2023) — 多智能体对话框架
   - 关键发现：多个 LLM 代理通过对话协作解决复杂任务
-  - 对心虫的意义：升级 debate convergence → 多代理对话系统
+  - 对新愿的意义：升级 debate convergence → 多代理对话系统
 
 - **MetaGPT** (Hong et al., 2023) — 结构化多代理协作
   - 关键发现：标准化操作程序 (SOP) 驱动多代理协作
-  - 对心虫的意义：pipeline 阶段间增加 SOP 协作模式
+  - 对新愿的意义：pipeline 阶段间增加 SOP 协作模式
 
 ### 3. 推理与规划 (Reasoning & Planning)
 
 **核心论文**:
 - **Chain-of-Thought improvements** (2024) — 多样化 CoT
   - 关键发现：更多样化的推理路径 → 更好的泛化
-  - 对心虫的意义：增强 judgment engine 的路径多样性
+  - 对新愿的意义：增强 judgment engine 的路径多样性
 
 - **Process Reward Models** (2024) — 过程奖励模型
   - 关键发现：奖励中间步骤而非仅最终结果
-  - 对心虫的意义：升级 confidence calibrator → 过程级置信度
+  - 对新愿的意义：升级 confidence calibrator → 过程级置信度
 
 - **ReAct / Toolformer** (2023) — 推理+行动交替
   - 关键发现：交替进行推理和工具调用
-  - 对心虫的意义：增强 think() 的 interleaved reasoning-action
+  - 对新愿的意义：增强 think() 的 interleaved reasoning-action
 
 ### 4. 安全与对齐 (Safety & Alignment)
 
 **核心论文**:
 - **Constitutional AI v2** (Bai et al., 2024) — 改进的宪法式 AI
   - 关键发现：多轮自我批评 + 修订比单轮更有效
-  - 对心虫的意义：增强 constitutional AI 的多轮批评
+  - 对新愿的意义：增强 constitutional AI 的多轮批评
 
 - **Self-Play Fine-Tuning** (2024) — 自我博弈微调
   - 关键发现：Agent 与自己对抗，发现弱点并改进
-  - 对心虫的意义：增强 counterfactual engine → adversarial self-play
+  - 对新愿的意义：增强 counterfactual engine → adversarial self-play
 
 ### 5. 认知架构 (Cognitive Architecture)
 
 **核心论文**:
 - **Global Workspace Theory in AI** (2024) — 全局工作空间理论在 AI 中的应用
   - 关键发现：多个认知模块通过共享"全局工作空间"广播信息
-  - 对心虫的意义：优化 consciousness.globalWorkspace 模块
+  - 对新愿的意义：优化 consciousness.globalWorkspace 模块
 
 - **Active Inference** (2024) — 主动推理框架
   - 关键发现：Agent 通过最小化预测误差来行动
-  - 对心虫的意义：增强 adaptive planner → active inference planning
+  - 对新愿的意义：增强 adaptive planner → active inference planning
 
 ---
 
-## 二、当前心虫架构分析
+## 二、当前新愿架构分析
 
 ### 2.1 架构优势
 
@@ -191,7 +191,7 @@
 
 ## 六、总结
 
-心虫 v5.5.2 已经是一个架构完善的认知引擎，具备:
+新愿 v5.5.2 已经是一个架构完善的认知引擎，具备:
 - 60+ 模块的模块化设计
 - 7 阶段声明式管道
 - 多路径判断引擎
@@ -205,4 +205,4 @@
 4. **协作**: 从固定模式 → 对话式协作
 5. **规划**: 从平面 → 层次化
 
-这些升级将使心虫从"完善的认知引擎"进化为"具有自我改进能力的认知系统"。
+这些升级将使新愿从"完善的认知引擎"进化为"具有自我改进能力的认知系统"。

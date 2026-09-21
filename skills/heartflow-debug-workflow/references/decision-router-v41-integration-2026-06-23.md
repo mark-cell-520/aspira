@@ -114,8 +114,8 @@ node --check src/core/decision-router-v4.js
 
 # 2. Boot 测试
 node -e "
-const {HeartFlow} = require('./src/core/heartflow.js');
-const h = new HeartFlow({rootPath: '.'});
+const {Aspira} = require('./src/core/heartflow.js');
+const h = new Aspira({rootPath: '.'});
 h.start();
 console.log('decisionRouter:', h._decisionRouter?.constructor?.name);
 console.log('initErrors:', h._initErrors.length);
@@ -123,8 +123,8 @@ console.log('initErrors:', h._initErrors.length);
 
 # 3. Dispatch 测试
 node -e "
-const {HeartFlow} = require('./src/core/heartflow.js');
-const h = new HeartFlow({rootPath: '.'});
+const {Aspira} = require('./src/core/heartflow.js');
+const h = new Aspira({rootPath: '.'});
 h.start();
 const r = h.dispatch('decisionRouter.evaluate', {cognitiveLoad: 0.85});
 console.log('matched:', r.matched, 'decision:', r.decision, 'prob:', r.probability.toFixed(3));

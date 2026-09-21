@@ -7,7 +7,7 @@
 ## introspectAndDream() 设计
 
 ### 目标
-自省发现问题后自动触发梦境，让心虫用梦境处理自己的问题。
+自省发现问题后自动触发梦境，让新愿用梦境处理自己的问题。
 
 ### 触发条件
 `introspect()` 发现高或中优先级问题（counts.high > 0 或 counts.medium > 0）

@@ -8,7 +8,7 @@
 
 ## 典型特征（AI心理学引擎）
 
-- 需要 HeartFlow 主实例引用（`constructor(heartFlow)`）
+- 需要 Aspira 主实例引用（`constructor(heartFlow)`）
 - 基于上下文（decisionCount/tokenUsage/activeModules）而非文本关键词做判断
 - 输出健康度评分 (0-1) + 状态 (healthy/strained/distressed)
 - 多维度并行检测引擎（认知负荷/目标冲突/价值内化/漂移/决策衰减/认知失调）
@@ -108,8 +108,8 @@ detectDecisionDecay() {
 
 ## 关键陷阱
 
-### 1. HeartFlow 主实例循环引用
-两个模块的构造函数中传入 `this`（HeartFlow 实例），但 HeartFlow 构造函数尚未完成时，模块无法访问 `this.xxx`（如 `this.heartLogic`）。所有依赖 HeartFlow 实例的访问必须放在方法调用中而非构造函数中，用 try/catch 保护：
+### 1. Aspira 主实例循环引用
+两个模块的构造函数中传入 `this`（Aspira 实例），但 Aspira 构造函数尚未完成时，模块无法访问 `this.xxx`（如 `this.heartLogic`）。所有依赖 Aspira 实例的访问必须放在方法调用中而非构造函数中，用 try/catch 保护：
 ```javascript
 constructor(heartFlow) {
   this.hf = heartFlow; // 保存引用
@@ -124,7 +124,7 @@ assessExistence() {
 ```
 
 ### 2. 中文 n-gram 分词
-中文文本没有空格，不能按空格/标点切分。必须提取连续中文字符序列，然后生成所有2-gram。测试用例：`'心虫的核心身份是升级者'` → 正确提取 `['心虫','虫的','的核','核心','心身','身份','份是','是升','升级','级者']`。
+中文文本没有空格，不能按空格/标点切分。必须提取连续中文字符序列，然后生成所有2-gram。测试用例：`'新愿的核心身份是升级者'` → 正确提取 `['新愿','虫的','的核','核心','心身','身份','份是','是升','升级','级者']`。
 
 ### 3. 传递准确性评估的边界
 - 源文本和传递文本长度差异过大时，完整性会不准确
@@ -132,7 +132,7 @@ assessExistence() {
 - 关键词提取数量为0时，返回中等默认值(0.5)
 
 ### 4. 综合评估的维度顺序
-多维度检测有隐含的优先级顺序：认知失调 > 目标冲突 > 决策衰减 > 价值矛盾。认知失调（行为与核心价值冲突）的扣分权重应最高，因为它直接触及心虫的7条指令。
+多维度检测有隐含的优先级顺序：认知失调 > 目标冲突 > 决策衰减 > 价值矛盾。认知失调（行为与核心价值冲突）的扣分权重应最高，因为它直接触及新愿的7条指令。
 
 ## 模块级导出
 ```javascript
@@ -167,4 +167,4 @@ curl -sL "https://api.github.com/search/repositories?q=AI+psychology+framework&s
 - Besaids/companion-bridge (⭐1) — 关系优先的AI人格架构
 - research-team/NEUCOGAR (⭐25) — 情感认知架构（Lovheim情绪立方体）
 
-**无现成AI心理学框架**：截至2026-06-12，GitHub上没有现成的"AI心理学"开源项目。心虫的 agent-psychology.js 和 agent-philosophy.js 是该方向的首次实现。
+**无现成AI心理学框架**：截至2026-06-12，GitHub上没有现成的"AI心理学"开源项目。新愿的 agent-psychology.js 和 agent-philosophy.js 是该方向的首次实现。

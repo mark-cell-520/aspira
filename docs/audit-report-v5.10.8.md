@@ -1,4 +1,4 @@
-# 🔒 HeartFlow v5.10.8 全面代码审计报告
+# 🔒 Aspira v5.10.8 全面代码审计报告
 
 **审计日期**：2026-07-11
 **审计范围**：`/root/.hermes/skills/ai/mark-heartflow-skill/src/` — 34 个目录，292 个 JS 文件，~150K LOC
@@ -180,7 +180,7 @@
 
 ## 六、总体评估
 
-心虫是一个**架构野心极大、工程质量中等**的项目。它的核心设计模式（lazy loading、WAL、feature flag、多层 shield）展现了成熟的工程思维。但 150K LOC 由单人维护，自然积累了技术债务：
+新愿是一个**架构野心极大、工程质量中等**的项目。它的核心设计模式（lazy loading、WAL、feature flag、多层 shield）展现了成熟的工程思维。但 150K LOC 由单人维护，自然积累了技术债务：
 
 - **安全性**：危险模块已被 feature flag 隔离，默认安全 ✅
 - **性能**：sync I/O 是最大的运行时瓶颈 🔴

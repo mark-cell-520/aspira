@@ -27,7 +27,7 @@ const isFableBlocked = fableResult?.needsRefusal || fableResult?.level === 'refu
 - timeExtension 在**所有非代码问题**上都会执行时间延伸分析
 - 即使是在危机、需要沉默、或被 Fable 5 安全协议阻止的场景中，timeExtension 也会运行
 - 具体：`timeExtKeywords` 正则匹配（`/我应该|要不要|该不该|怎么选|怎么办|决定|选择|建议|advice|should|decide|choose|recommend/`）如果匹配到关键词，timeExtension 就会分析
-- 这可能导致在危机场景中增加不必要的认知负荷（虽然心虫不直接显示输出给用户，但消耗了计算资源）
+- 这可能导致在危机场景中增加不必要的认知负荷（虽然新愿不直接显示输出给用户，但消耗了计算资源）
 
 ## 影响评估
 

@@ -2,7 +2,7 @@
 
 ## 问题
 
-心虫的情绪检测依赖关键词列表（`emotionSignals`），每个情绪类型有一个字符串数组，用 `q.includes(signal)` 匹配。这种简单 substring 匹配会导致**非情绪词中的子串误触发**。
+新愿的情绪检测依赖关键词列表（`emotionSignals`），每个情绪类型有一个字符串数组，用 `q.includes(signal)` 匹配。这种简单 substring 匹配会导致**非情绪词中的子串误触发**。
 
 ## 典型案例
 

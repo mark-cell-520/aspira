@@ -1,4 +1,4 @@
-# HeartFlow Audit — MCP Server Risk Patterns
+# Aspira Audit — MCP Server Risk Patterns
 Date: 2026-09-03
 
 ## Scope

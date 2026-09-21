@@ -64,7 +64,7 @@ walk(root);
 const high = findings.filter(f => f.severity === 'high');
 const medium = findings.filter(f => f.severity === 'medium');
 const low = findings.filter(f => f.severity === 'low');
-const report = '# HeartFlow Audit Report\n\n## Summary\n\n- High: ' + high.length + '\n- Medium: ' + medium.length + '\n- Low: ' + low.length + '\n\n' + (findings.length ? '## Findings\n\n' + findings.map(f => '- [' + f.severity.toUpperCase() + '] ' + f.file + ':' + f.line + ' ' + f.finding + ': ' + f.match).join('\n') : '- No findings\n');
+const report = '# Aspira Audit Report\n\n## Summary\n\n- High: ' + high.length + '\n- Medium: ' + medium.length + '\n- Low: ' + low.length + '\n\n' + (findings.length ? '## Findings\n\n' + findings.map(f => '- [' + f.severity.toUpperCase() + '] ' + f.file + ':' + f.line + ' ' + f.finding + ': ' + f.match).join('\n') : '- No findings\n');
 fs.writeFileSync('heartflow-audit-report.md', report);
 console.log('findings=' + findings.length);
 console.log('high=' + high.length);

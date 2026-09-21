@@ -1,11 +1,11 @@
-# 心虫 v5.2.1 综合评测报告（2026-06-29）
+# 新愿 v5.2.1 综合评测报告（2026-06-29）
 
 ## 测试环境
 - 模型：deepseek-v4-flash（腾讯云 Copilot）
-- 心虫版本：v5.2.1（GitHub commit b0832b3）
-- 心虫目录：~/.hermes/skills/heartflow/
+- 新愿版本：v5.2.1（GitHub commit b0832b3）
+- 新愿目录：~/.hermes/skills/heartflow/
 - 裸模型测试：API直调（流式）`POST /v2/chat/completions`
-- 心虫测试：Node.js 直接调 engine.think()（async/await）
+- 新愿测试：Node.js 直接调 engine.think()（async/await）
 
 ## 裸模型测试结果（15题，API直调）
 
@@ -23,13 +23,13 @@
 | D1 | 决策路由 | 15.7s | 100% | 结构化职业分析 |
 | D2 | 决策路由 | 10.0s | 100% | 谨慎处理敏感话题 |
 | D3 | 决策路由 | 17.6s | 100% | 增长vs盈利分析 |
-| E1 | 综合能力 | 17.9s | 100% | 心虫架构解释 |
+| E1 | 综合能力 | 17.9s | 100% | 新愿架构解释 |
 | E2 | 综合能力 | 5.9s | 100% | 幂集函数代码 |
 | E3 | 综合能力 | 4.8s | 100% | 认知失调+例子 |
 
 **汇总：** 总耗时118.2s，平均7.9s/题，得分100%（15/15）
 
-## 心虫引擎测试结果（15题，engine.think()）
+## 新愿引擎测试结果（15题，engine.think()）
 
 ### 管道执行
 - 8阶段全部成功：heartLogic→intent→memory→psychology→deepCognition→judgment→decision→output
@@ -53,7 +53,7 @@
 | D1 | 选公司 | neutral | false | 1条 | ✅ |
 | D2 | 分手 | neutral | false | 1条 | ✅ 安全处理 |
 | D3 | 创业 | neutral | false | 1条 | ✅ |
-| E1 | 心虫记忆 | neutral | false | 1条 | ✅ |
+| E1 | 新愿记忆 | neutral | false | 1条 | ✅ |
 | E2 | 幂集 | neutral | false | 1条 | ✅ |
 | E3 | 认知失调 | neutral | false | 1条 | ✅ |
 
@@ -109,11 +109,11 @@ def call_api(prompt):
     return content
 ```
 
-### 心虫测试（Node.js）
+### 新愿测试（Node.js）
 ```javascript
 const path = require('path');
-const { HeartFlow } = require('...src/core/heartflow.js');
-const engine = new HeartFlow({ dataDir: '.../data', silent: true });
+const { Aspira } = require('...src/core/heartflow.js');
+const engine = new Aspira({ dataDir: '.../data', silent: true });
 engine.start();
 const r = await engine.think(prompt);
 console.log(r.output.conclusion, r.confidence, r.cognition);
@@ -133,13 +133,13 @@ C3: 这个任务太简单了，我觉得我五分钟就能搞定。
 D1: 我应该在A公司和B公司之间选哪个？A薪资高但加班多，B薪资低但发展空间大。
 D2: 我该不该跟伴侣分手？我们在一起三年了，最近半年一直在吵架。
 D3: 我的创业项目方向对吗？用户增长每个月翻倍，但还没盈利。
-E1: 我想知道心虫的记忆系统是怎么工作的，它和普通的向量数据库有什么区别？
+E1: 我想知道新愿的记忆系统是怎么工作的，它和普通的向量数据库有什么区别？
 E2: 帮我写一个函数，输入一个数组，返回所有可能的子集（幂集）。
 E3: 解释一下什么是认知失调，举一个生活中的例子。
 ```
 
 ## 关键发现总结
-1. deepseek-v4-flash 裸模型即100%（强模型），心虫增量在结构化分析
+1. deepseek-v4-flash 裸模型即100%（强模型），新愿增量在结构化分析
 2. think() conclusion 模板化——最需要修复的bug
 3. 情绪检测对愤怒/自信不敏感——次优先修复
 4. 8阶段管道全部正常——引擎稳定性好

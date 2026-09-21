@@ -3206,7 +3206,7 @@
       "subcategory": "reinforcement_learning",
       "formula": "alpha(t) = alpha_0 / (1 + beta * sqrt(t)), t = update count, alpha_0 = 0.5, beta controls decay speed",
       "difficulty": "intermediate",
-      "source": "HeartFlow v8.16.0 — resource-rational Q-learning"
+      "source": "Aspira v8.16.0 — resource-rational Q-learning"
     },
     {
       "id": "sequential_attention_weight",
@@ -3224,7 +3224,7 @@
       "subcategory": "decision_making",
       "formula": "ACC_w = sum(w_i * correct_i) / sum(w_i), w_i = exp(-lambda * (N-1-i))",
       "difficulty": "intermediate",
-      "source": "HeartFlow v8.16.0 — derived from 2605.08716"
+      "source": "Aspira v8.16.0 — derived from 2605.08716"
     },
     {
       "id": "s_measure",
@@ -3274,7 +3274,7 @@
           "description": "活跃关系数量"
         }
       },
-      "source": "HeartFlow v6.0.3 — W轴：情感连接密度"
+      "source": "Aspira v6.0.3 — W轴：情感连接密度"
     },
     {
       "id": "w_axis_trauma_activation",
@@ -3297,7 +3297,7 @@
           "description": "个体当前的整合能力"
         }
       },
-      "source": "HeartFlow v6.0.3 — W轴：创伤活跃度"
+      "source": "Aspira v6.0.3 — W轴：创伤活跃度"
     },
     {
       "id": "w_axis_awakening_signal",
@@ -3320,7 +3320,7 @@
           "description": "0-1，arousal>0.5且pleasure显著变化"
         }
       },
-      "source": "HeartFlow v6.0.3 — W轴：觉醒信号强度，基于arXiv 2505.01542情感支持综述"
+      "source": "Aspira v6.0.3 — W轴：觉醒信号强度，基于arXiv 2505.01542情感支持综述"
     },
     {
       "id": "newtons_second_law",

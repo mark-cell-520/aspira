@@ -203,7 +203,7 @@ const BUILTIN = [
   { id:'stress_tensor', name:'应力张量', formula:'σ_ij', cat:'engineering', sub:'mechanics' },
   { id:'strain_tensor', name:'应变张量', formula:'ε_ij = ½(∂u_i/∂x_j + ∂u_j/∂x_i)', cat:'engineering', sub:'mechanics' },
 
-  // 认知科学（直接用于心虫）
+  // 认知科学（直接用于新愿）
   { id:'ebbinghaus_forgetting', name:'艾宾浩斯遗忘曲线', formula:'R(t) = e^{-t/S}', cat:'cognitive_science', sub:'memory' },
   { id:'yarkes_dodson', name:'耶克斯-多德森定律', formula:'Performance = f(arousal) = -a·A² + b·A + c', cat:'cognitive_science', sub:'arousal' },
   { id:'pad_emotion', name:'PAD 情绪模型', formula:'(P,A,D) = f(stimulus)', cat:'cognitive_science', sub:'emotion' },
@@ -224,7 +224,7 @@ console.log('开始抓取 Wikipedia 公式...');
 function fetchWikiPage(page, cat, sub) {
   return new Promise((resolve) => {
     const url = `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(page)}&prop=wikitext&format=json&origin=*`;
-    return safeFetch(url, { timeout: 20000, headers: { 'User-Agent': 'HeartFlow/5.8.6 (educational)' } })
+    return safeFetch(url, { timeout: 20000, headers: { 'User-Agent': 'Aspira/5.8.6 (educational)' } })
       .then(res => res.text())
       let data = '';
       res.on('data', chunk => data += chunk);

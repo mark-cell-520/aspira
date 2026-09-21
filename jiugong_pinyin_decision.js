@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * jiugong_pinyin_decision.js
- * 九宫数码拼音输入法 — 心虫决策分析
+ * 九宫数码拼音输入法 — 新愿决策分析
  */
-const { HeartFlow } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/core/heartflow.js');
+const { Aspira } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/core/heartflow.js');
 const fs = require('fs');
 
 function showHeader() {
   console.log('='.repeat(60));
-  console.log('  九宫数码拼音输入法 · 心虫决策');
+  console.log('  九宫数码拼音输入法 · 新愿决策');
   console.log('='.repeat(60));
 }
 
@@ -40,7 +40,7 @@ async function main() {
   showHeader();
   showSchemes();
 
-  const hf = new HeartFlow({ dataDir: '/root/.hermes/skills/ai/mark-heartflow-skill/data', silent: true });
+  const hf = new Aspira({ dataDir: '/root/.hermes/skills/ai/mark-heartflow-skill/data', silent: true });
   hf.start();
 
   const task = `
@@ -52,14 +52,14 @@ C：首字母 + 韵母编码（保留拼音直觉，低重码）
 评估维度：学习成本、输入效率、重码率、实现难度、用户体验。
 `;
 
-  console.log('>>> 心虫分析中...');
+  console.log('>>> 新愿分析中...');
   const rThink = await hf.think(task);
-  console.log('\n【心虫分析结论】');
+  console.log('\n【新愿分析结论】');
   console.log('置信度:', rThink.output.meta.confidence);
   console.log('任务类型:', rThink.output.meta.taskType);
   console.log('结论:', rThink.output.conclusion);
 
-  console.log('\n>>> 心虫决策中...');
+  console.log('\n>>> 新愿决策中...');
   const rDecide = await hf.dispatch('decision.decide', {
     task,
     options: [
@@ -94,7 +94,7 @@ C：首字母 + 韵母编码（保留拼音直觉，低重码）
     constraints: { minFeasibility: 0.5 }
   });
 
-  console.log('\n【心虫决策结果】');
+  console.log('\n【新愿决策结果】');
   const reasoning = rDecide.reasoning || JSON.stringify(rDecide);
   console.log(reasoning);
 
@@ -102,7 +102,7 @@ C：首字母 + 韵母编码（保留拼音直觉，低重码）
   const match = reasoning.match(/Selected:\s*"([^"]+)"/);
   if (match) chosen = match[1];
 
-  console.log(`\n>>> 心虫选中: ${chosen}`);
+  console.log(`\n>>> 新愿选中: ${chosen}`);
 
   const result = {
     analysis: {

@@ -1,5 +1,5 @@
 /**
- * HeartFlow v5.8.2 — 单元测试：实体提取器
+ * Aspira v5.8.2 — 单元测试：实体提取器
  * 
  * 测试目标: src/memory/entity-extractor.js
  */
@@ -61,15 +61,15 @@ describe('EntityExtractor', () => {
     it('should parse JSON response correctly', async () => {
       const mockResponse = JSON.stringify([
         { entity: 'AI', type: '概念', confidence: 0.9 },
-        { entity: 'HeartFlow', type: '产品', confidence: 0.85 }
+        { entity: 'Aspira', type: '产品', confidence: 0.85 }
       ]);
       extractor.llm.call = createMockLLMCaller(mockResponse);
 
-      const entities = await extractor.extractEntities([{ role: 'user', content: 'AI和HeartFlow' }]);
+      const entities = await extractor.extractEntities([{ role: 'user', content: 'AI和Aspira' }]);
 
       assert.strictEqual(entities.length, 2);
       assert.strictEqual(entities[0].entity, 'AI');
-      assert.strictEqual(entities[1].entity, 'HeartFlow');
+      assert.strictEqual(entities[1].entity, 'Aspira');
     });
   });
 
@@ -132,13 +132,13 @@ describe('EntityExtractor', () => {
   describe('updateEntityIndex', () => {
     it('should update entity index with memories', () => {
       const memories = [
-        { id: 'mem_1', entities: ['AI', 'HeartFlow'] }
+        { id: 'mem_1', entities: ['AI', 'Aspira'] }
       ];
 
       extractor.updateEntityIndex(memories);
 
       assert(extractor.entityIndex.has('AI'));
-      assert(extractor.entityIndex.has('HeartFlow'));
+      assert(extractor.entityIndex.has('Aspira'));
       assert.strictEqual(extractor.entityIndex.get('AI')[0], 'mem_1');
     });
 
@@ -158,38 +158,38 @@ describe('EntityExtractor', () => {
   describe('buildEntityGraph', () => {
     it('should build entity graph from memories', () => {
       const memories = [
-        { entities: ['AI', 'HeartFlow'] },
-        { entities: ['HeartFlow', '认知引擎'] }
+        { entities: ['AI', 'Aspira'] },
+        { entities: ['Aspira', '认知引擎'] }
       ];
 
       extractor.buildEntityGraph(memories);
 
       assert(extractor.entityGraph.has('AI'));
-      assert(extractor.entityGraph.has('HeartFlow'));
-      assert(extractor.entityGraph.get('AI').has('HeartFlow'));
+      assert(extractor.entityGraph.has('Aspira'));
+      assert(extractor.entityGraph.get('AI').has('Aspira'));
     });
   });
 
   describe('getRelatedEntities', () => {
     it('should get directly related entities', () => {
-      extractor.entityGraph.set('AI', new Set(['HeartFlow', '机器学习']));
-      extractor.entityGraph.set('HeartFlow', new Set(['AI', '认知引擎']));
+      extractor.entityGraph.set('AI', new Set(['Aspira', '机器学习']));
+      extractor.entityGraph.set('Aspira', new Set(['AI', '认知引擎']));
 
       const related = extractor.getRelatedEntities('AI', 1);
 
-      assert(related.includes('HeartFlow'));
+      assert(related.includes('Aspira'));
       assert(related.includes('机器学习'));
     });
 
     it('should get entities within depth', () => {
-      extractor.entityGraph.set('AI', new Set(['HeartFlow']));
-      extractor.entityGraph.set('HeartFlow', new Set(['AI', '认知引擎']));
-      extractor.entityGraph.set('认知引擎', new Set(['HeartFlow']));
+      extractor.entityGraph.set('AI', new Set(['Aspira']));
+      extractor.entityGraph.set('Aspira', new Set(['AI', '认知引擎']));
+      extractor.entityGraph.set('认知引擎', new Set(['Aspira']));
 
       const related = extractor.getRelatedEntities('AI', 2);
 
       assert(related.includes('AI'));
-      assert(related.includes('HeartFlow'));
+      assert(related.includes('Aspira'));
       assert(related.includes('认知引擎'));
     });
   });

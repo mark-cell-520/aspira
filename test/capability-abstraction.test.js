@@ -1,5 +1,5 @@
 /**
- * capability-abstraction.test.js — 心虫自主升级补的 TDD
+ * capability-abstraction.test.js — 新愿自主升级补的 TDD
  * 来源: SelfScanner 扫出 src/core/capability-abstraction.js 未测试 (untestedModules)
  * 原则: 测平台无关的逻辑验证入口, 不侵入业务代码
  * 格式: 兼容 test/run-all.js — module.exports = fn(ctx), ctx 由 runner 注入

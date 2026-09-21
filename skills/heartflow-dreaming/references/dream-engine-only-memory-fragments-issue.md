@@ -74,5 +74,5 @@ _collectEngineFragments() {
   - `_collectMemoryFragments()` — 第~180行
   - `_assessSublimationQuality()` — 第~250行
   - `dream()` — 主入口
-- `src/core/heartflow.js` — createHeartFlow()
+- `src/core/heartflow.js` — createAspira()
   - 构造函数中初始化 DreamEngine 时传入了 memory 对象

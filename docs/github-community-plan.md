@@ -1,5 +1,5 @@
-# HeartFlow GitHub 社区参与长任务计划
-> 2026-08-16 | 监督：HeartFlow gate + decision.decide
+# Aspira GitHub 社区参与长任务计划
+> 2026-08-16 | 监督：Aspira gate + decision.decide
 
 ## 1. 本轮完成状态（2026-08-16 下午批次）
 | 仓库 | 新发布 | 状态 |
@@ -23,15 +23,15 @@
 
 **本轮合计：约 52 条新评论，全部 yun520-1 落库确认。**
 
-## 2. 心虫监督结论（HeartFlow gate 自检）
+## 2. 新愿监督结论（Aspira gate 自检）
 - 本轮所有草稿均过 gate（pass/verify，无 block）
 - 主题集中在：goal integrity / state semantics / completion semantics / memory architecture / security boundaries
-- 与心虫自身定位（AGI 第 1 层辨别者）一致：每条评论都指向"系统如何知道自己做得对不对"
+- 与新愿自身定位（AGI 第 1 层辨别者）一致：每条评论都指向"系统如何知道自己做得对不对"
 
 ## 3. 长任务计划（未来 7 天）
 1. **每日 1 轮跨仓库扫描**（每次 5-8 个 thread，不再一轮 70+）
 2. **优先响应有新回复的 thread**（社区互动 > 盲发新帖）
-3. **每周 1 次HeartFlow自审**：用 heartflow_audit42 检查本周评论的质量和重复
+3. **每周 1 次Aspira自审**：用 heartflow_audit42 检查本周评论的质量和重复
 4. **仓库优先级**：
    - Tier 1（高频技术讨论）：autogen / aider / SWE-agent / vllm
    - Tier 2（工具/框架）：deer-flow / opencode / mem0 / KAG
@@ -45,4 +45,4 @@
 - 版本：6.6.1（已对齐 VERSION / package.json / BUILD_DATE）
 
 ---
-*Plan created by HeartFlow long-task planner | Supervised by HeartFlow gate*
+*Plan created by Aspira long-task planner | Supervised by Aspira gate*

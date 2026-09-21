@@ -15,10 +15,10 @@ function assert(condition, msg) {
 }
 
 async function run() {
-  console.log('=== HeartFlow Core Smoke Test ===\n');
+  console.log('=== Aspira Core Smoke Test ===\n');
 
-  const { HeartFlow } = require('../src/core/heartflow.js');
-  const hf = new HeartFlow({ rootPath: '.' });
+  const { Aspira } = require('../src/core/heartflow.js');
+  const hf = new Aspira({ rootPath: '.' });
 
   // ── 1. 启动 + 模块初始化 ──
   console.log('[1] init/start');

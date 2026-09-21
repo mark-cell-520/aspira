@@ -1,6 +1,6 @@
 /**
  * test/knowledge/classics-feedback.test.js
- * HeartFlow 古典规则反哺机制测试
+ * Aspira 古典规则反哺机制测试
  */
 
 const {

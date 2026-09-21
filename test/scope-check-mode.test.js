@@ -1,6 +1,6 @@
 'use strict';
 // scope-check 模式边界测试 (2026-08-14, DSH 桥接实战驱动)
-// scope-check 只作用于 input 模式; AI 输出(output/draft)不该被"心虫能不能做"误杀
+// scope-check 只作用于 input 模式; AI 输出(output/draft)不该被"新愿能不能做"误杀
 module.exports = function ({ test }) {
   const { checkOutput } = require('../src/gate.js');
   const { checkInput } = require('../src/pipeline.js');

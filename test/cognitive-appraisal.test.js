@@ -1,5 +1,5 @@
 /**
- * 心虫自主升级补的 TDD (cognitive-appraisal, 未测试模块)
+ * 新愿自主升级补的 TDD (cognitive-appraisal, 未测试模块)
  */
 module.exports = function ({ test, assertEqual, assertTrue, assertFalse, assertDefined }) {
   const ca = require('../src/core/cognitive-appraisal.js');

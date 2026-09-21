@@ -3,7 +3,7 @@ name: heartflow-system-prompt-absorption
 version: "1.0.0"
 title: "外部系统提示吸收工作流"
 description: |
-  将外部 AI 系统提示（如 Claude Fable 5 泄露提示）吸收到 HeartFlow 心虫中。
+  将外部 AI 系统提示（如 Claude Fable 5 泄露提示）吸收到 Aspira 新愿中。
   系统性分析 → 分层注入 → 版本升级 → 推送。
 tags:
   - heartflow
@@ -17,12 +17,12 @@ tags:
 ## 触发条件
 
 - 用户提供外部 AI 系统提示泄露文件（如 Fable 5、GPT-4、Gemini 等）
-- 用户说"吸收这个系统提示"、"升级心虫"、"从XX吸收有用的"
+- 用户说"吸收这个系统提示"、"升级新愿"、"从XX吸收有用的"
 - 发现其他 AI 的提示设计模式值得借鉴
 
 ## 核心原则
 
-**不照搬，只吸收。** 外部系统提示是专为那个模型/产品设计的，心虫有不同的架构和哲学。吸收的是**设计模式**和**规则粒度**，不是复制内容。
+**不照搬，只吸收。** 外部系统提示是专为那个模型/产品设计的，新愿有不同的架构和哲学。吸收的是**设计模式**和**规则粒度**，不是复制内容。
 
 **分三层吸收：**
 - **插件层**（plugins/）— 注入类功能（记忆注入、安全过滤）
@@ -45,7 +45,7 @@ cat /path/to/system-prompt.txt | wc -l
 
 | 分类 | 判断标准 | 处理方式 |
 |------|---------|---------|
-| **直接吸收** | 与心虫已有能力匹配，设计精细 | 注入对应层 |
+| **直接吸收** | 与新愿已有能力匹配，设计精细 | 注入对应层 |
 | **改造吸收** | 概念相关但实现方式不同 | 适配后注入 |
 | **不吸收** | 产品信息、第三方集成、工具定义 | 跳过 |
 
@@ -66,11 +66,11 @@ cat /path/to/system-prompt.txt | wc -l
 
 ### 4. 不吸收的段落
 
-- `product_information` — 产品线介绍，不适用于心虫
+- `product_information` — 产品线介绍，不适用于新愿
 - `MCP_app_suggestions` — 第三方集成，不相关
-- `artifact_usage_criteria` — 代码生成/文件创建，心虫不处理
+- `artifact_usage_criteria` — 代码生成/文件创建，新愿不处理
 - `image_search` / `places_search` / `weather_fetch` — 特定工具
-- 工具 JSON schema 定义 — 与心虫无关
+- 工具 JSON schema 定义 — 与新愿无关
 
 ## 注入流程
 
@@ -134,7 +134,7 @@ const judgment = {
 - preference-guard.js — 三类型偏好引擎
 - 记忆注入偏好段标注
 - 全部 dispatch 路由注册
-- HeartFlow 构造函数初始化
+- Aspira 构造函数初始化
 
 详见 `references/fable5-third-wave.md`。
 
@@ -191,14 +191,14 @@ patch 时注释行（`// --- XXX ---`）如果放在类方法之间但没有方�
 
 ### 5. 不吸收的段落判断
 
-心虫与 Claude 是不同产品。Claude 的产品信息、MCP 集成、Artifact 系统、图片搜索、体育数据、地图/天气/食谱工具都与心虫无关。不要因为"Claude 有"就吸收。
+新愿与 Claude 是不同产品。Claude 的产品信息、MCP 集成、Artifact 系统、图片搜索、体育数据、地图/天气/食谱工具都与新愿无关。不要因为"Claude 有"就吸收。
 
 ## 参考
 
 - `references/fable5-absorption-analysis.md` — Fable 5 完整分析（3825行）
 - `references/fable5-third-wave.md` — Fable 5 第三波吸收详细记录（output-checklist + preference-guard）
 - 已吸收：v2.9.3（插件+4方法）、v2.9.4（think扩展+3方法）、v2.9.5（output-checklist + preference-guard）
-- 待吸收判断：refusal_handling、tone_and_formatting（已有心虫自有哲学，不覆盖）
+- 待吸收判断：refusal_handling、tone_and_formatting（已有新愿自有哲学，不覆盖）
 
 ### 已吸收的完整列表
 

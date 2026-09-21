@@ -1,4 +1,4 @@
-// e2e-test.js — 心虫管线端到端验证
+// e2e-test.js — 新愿管线端到端验证
 // 用真实场景跑全链路，看管线到底能不能抓到问题
 
 const { checkInput, checkDraft, checkOutput } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/pipeline.js');

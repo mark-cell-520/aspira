@@ -21,8 +21,8 @@ MCP server 是 **常驻进程**（由 launchd 管理），不会自动检测代�
 ```bash
 # 1. 直接验证引擎代码是否真的有问题
 node -e "
-const { HeartFlow } = require('~/.hermes/skills/heartflow/src/core/heartflow.js');
-const hf = new HeartFlow({ rootPath: '~/.hermes/skills/heartflow' });
+const { Aspira } = require('~/.hermes/skills/heartflow/src/core/heartflow.js');
+const hf = new Aspira({ rootPath: '~/.hermes/skills/heartflow' });
 hf.start();
 console.log('subsystem in _modules:', 'selfPositioning' in (hf._modules || {}));
 try {

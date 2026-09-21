@@ -1,4 +1,4 @@
-// OutputChecklist v1.2.0 — 包含心虫6维辨别器门禁测试
+// OutputChecklist v1.2.0 — 包含新愿6维辨别器门禁测试
 const { OutputChecklist } = require('../../src/core/output-checklist.js');
 
 let passed = 0, failed = 0;

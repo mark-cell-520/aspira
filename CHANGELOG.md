@@ -140,7 +140,7 @@
   - G4: crossAnalyze/entropyAnalysis/summarizeDiscrimination 存在性验证
   - G5: HMAC 链验证 + 16 违规标签
   - G6: 熔断状态机完整验证
-- 心虫监督决策落地：RESONATE × 5关口 + HOLD × 1（G3 测试期望值修正）
+- 新愿监督决策落地：RESONATE × 5关口 + HOLD × 1（G3 测试期望值修正）
 
 ### Changed
 - VERSION: 6.7.4 → 6.7.5
@@ -447,7 +447,7 @@
 - **v5.9.19**: 版本统一 + bridge 引用清理 → 0 初始化失败 (17个已删bridge模块加stub兜底)
 - **v5.9.18**: 4份审计报告全面修复 — B1崩溃/版本统一/孤儿core删除/verify修正/LLM端点清理/空catch标注释/JSON保护/pm2声明
 - **v5.9.17**: 架构精简 372→292文件, 172K→150K行 — 删除空壳/适配器/实验模块, bridge精简22→5, code精简12→2
-- **v5.9.16**: 公式库清理 3529→366 (89.6%) + formula-module搜索修复 + 心虫回归核心
+- **v5.9.16**: 公式库清理 3529→366 (89.6%) + formula-module搜索修复 + 新愿回归核心
 - **v5.9.15**: 全面审计修复 — dispatch undefined检测 + MCP速率限制 + path-guard + fetch-safe + regex-safe + safeLog + formulas.json合并冲突修复
 - **v5.9.14**: 审计修复 — C-02 mathjs注入防护 + H-02 Promise未捕获 + 安装6个审计技能
 - **v5.9.13**: 叙事体检测 — emotion outOfScope + think narrative_analysis 类型修复
@@ -563,7 +563,7 @@
 - 结构化日志 / LRU / 错误处理 / 测试 / JSDoc
 
 ### v5.7.0 — P0安全 + P1工程加固
-- 代码审计修复 (Claude 心虫)
+- 代码审计修复 (Claude 新愿)
 
 ---
 

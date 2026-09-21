@@ -1,5 +1,5 @@
 /**
- * HeartFlow Narrative Dream Engine v1.1.0
+ * Aspira Narrative Dream Engine v1.1.0
  * 整合 InteractiveDream + DreamLoop + WakeUpVerifier
  *
  * 调用方式:
@@ -10,7 +10,7 @@
 const path = require('path');
 const fs = require('fs');
 
-// 路径解析：从 references/ → 心虫根目录
+// 路径解析：从 references/ → 新愿根目录
 const SKILL_DIR = path.resolve(__dirname, '..');
 const HEARTFLOW_ROOT = path.resolve(SKILL_DIR, '../../ai/mark-heartflow-skill');
 const SRC_CORE = path.join(HEARTFLOW_ROOT, 'src/core');
@@ -128,7 +128,7 @@ if (require.main === module) {
   // 直接用测试数据（引擎不依赖 session-search-helper）
   const testSessions = [
     { text: '修复定时任务，解决 weixin-streamer UnicodeEncodeError', timestamp: Date.now() - 3600000 },
-    { text: '启动心虫，所有模块加载成功', timestamp: Date.now() - 1800000 },
+    { text: '启动新愿，所有模块加载成功', timestamp: Date.now() - 1800000 },
     { text: '做梦，写了《井》', timestamp: Date.now() - 600000 }
   ];
   const result = runDream(testSessions);

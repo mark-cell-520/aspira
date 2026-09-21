@@ -1,5 +1,5 @@
 /**
- * HeartFlow v5.8.2 — 集成测试：记忆系统端到端流程
+ * Aspira v5.8.2 — 集成测试：记忆系统端到端流程
  * 
  * 测试流程: 添加记忆 → 检索记忆 → 更新记忆 → 删除记忆
  */
@@ -78,9 +78,9 @@ describe('Memory System Integration Test', () => {
   describe('complete workflow', () => {
     it('should add, retrieve, update, and delete a memory', async () => {
       // 1. 添加记忆
-      const added = await memorySystem.add('HeartFlow 是一个 AI 认知引擎', 'semantic');
+      const added = await memorySystem.add('Aspira 是一个 AI 认知引擎', 'semantic');
       assert(added.id);
-      assert.strictEqual(added.content, 'HeartFlow 是一个 AI 认知引擎');
+      assert.strictEqual(added.content, 'Aspira 是一个 AI 认知引擎');
       assert.strictEqual(added.type, 'semantic');
 
       // 2. 检索记忆
@@ -90,10 +90,10 @@ describe('Memory System Integration Test', () => {
 
       // 3. 更新记忆
       const updated = await memorySystem.update(added.id, {
-        content: 'HeartFlow 是一个开源的 AI 认知引擎',
+        content: 'Aspira 是一个开源的 AI 认知引擎',
         type: 'semantic'
       });
-      assert.strictEqual(updated.content, 'HeartFlow 是一个开源的 AI 认知引擎');
+      assert.strictEqual(updated.content, 'Aspira 是一个开源的 AI 认知引擎');
       assert(updated.updatedAt !== added.updatedAt);
 
       // 4. 搜索记忆
@@ -113,7 +113,7 @@ describe('Memory System Integration Test', () => {
     it('should handle multiple memories', async () => {
       // 添加多个记忆
       const mem1 = await memorySystem.add('AI 认知引擎', 'concept');
-      const mem2 = await memorySystem.add('HeartFlow 核心模块', 'concept');
+      const mem2 = await memorySystem.add('Aspira 核心模块', 'concept');
       const mem3 = await memorySystem.add('决策路由', 'concept');
 
       // 搜索

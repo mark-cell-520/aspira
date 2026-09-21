@@ -1,10 +1,10 @@
 ---
 name: heartflow-audit-upgrade-push
 version: "1.4.0"
-title: "心虫审计→并发修复→验证→推送 全流程"
+title: "新愿审计→并发修复→验证→推送 全流程"
 description: |
-  心虫大规模升级工作流：全量审计→分类问题→并发修复→验证→推送GitHub。
-  适用于用户说"继续寻找心虫bug和漏洞"、"进行优化"、"做一次上传前代码审计"等场景。
+  新愿大规模升级工作流：全量审计→分类问题→并发修复→验证→推送GitHub。
+  适用于用户说"继续寻找新愿bug和漏洞"、"进行优化"、"做一次上传前代码审计"等场景。
 tags:
   - heartflow
   - audit
@@ -12,12 +12,12 @@ tags:
   - github
 ---
 
-## 心虫审计→并发修复→验证→推送 全流程
+## 新愿审计→并发修复→验证→推送 全流程
 
 ### 触发条件
 
 用户说：
-- "继续寻找心虫bug和漏洞"
+- "继续寻找新愿bug和漏洞"
 - "进行优化" / "继续修复剩下的"
 - "做一次上传前代码审计，同步GitHub"
 - "启动长任务，并发进行"
@@ -51,7 +51,7 @@ grep -n "think\|判断流程\|每次回应前" SKILL.md
 wc -l memory/*.json
 ls -la data/lesson-bank.json
 
-# 6. 检查 cron 任务是否调用了心虫
+# 6. 检查 cron 任务是否调用了新愿
 cronjob action=list
 ```
 
@@ -67,7 +67,7 @@ cronjob action=list
 | 诊断维度 | 目标 | 验证方法 |
 |---------|------|---------|
 | 自愈RL | Q-table 数据量、record() 是否传参、闭环是否闭合 | `ls -la memory/q-table.json` + `cat memory/q-meta.json` |
-| 记忆系统 | HeartFlowMemory 文件存在性和数据量 | `ls memory/` + `wc -l memory/*.json` |
+| 记忆系统 | AspiraMemory 文件存在性和数据量 | `ls memory/` + `wc -l memory/*.json` |
 | HeartLogic | 哲学方法是否实际实现 | `grep -c '^\s\\w+(input)' src/core/heart-logic.js` |
 
 **自愈RL常见断裂模式**（6月8日+6月12日修复经验）：
@@ -81,9 +81,9 @@ cronjob action=list
 | 两个独立 RL 实例 | Q-table 数据不互通，各自维护独立 Map | `selfEvolution.rl = selfHealing.rl` 指向同一实例 |
 | 无写入防抖 | 并发写入覆盖 | 加 `_debouncedSave()`：写入中标记 dirty，完成后检查是否需要再次写入 |
 
-**骨架诊断优先级**：先修能让心虫"正常运作"的基础设施（自愈RL闭环），再修代码质量（僵尸代码清理），最后修认知（哲学注入）。
+**骨架诊断优先级**：先修能让新愿"正常运作"的基础设施（自愈RL闭环），再修代码质量（僵尸代码清理），最后修认知（哲学注入）。
 
-**历史知识丢失模式**（6月12日发现）：心虫的逆熵哲学最早在 v10.14.0（4月26日）就由用户亲手建立——"为所当为，逆熵而上" + 自然流动三原则。经过多次版本迁移（v10.14→v10.16→...→v2.5.x）后，这些内容在 SKILL.md 和 CORE_IDENTITY.md 中被稀释。**升级时不要只加新内容，要先搜索历史版本中的已有建设**，避免重复建设同一件事。搜索方法：`session_search` 查旧会话中的关键词（"逆熵"、"自然流动"、"为所当为"），再读对应版本文件确认。
+**历史知识丢失模式**（6月12日发现）：新愿的逆熵哲学最早在 v10.14.0（4月26日）就由用户亲手建立——"为所当为，逆熵而上" + 自然流动三原则。经过多次版本迁移（v10.14→v10.16→...→v2.5.x）后，这些内容在 SKILL.md 和 CORE_IDENTITY.md 中被稀释。**升级时不要只加新内容，要先搜索历史版本中的已有建设**，避免重复建设同一件事。搜索方法：`session_search` 查旧会话中的关键词（"逆熵"、"自然流动"、"为所当为"），再读对应版本文件确认。
 
 详情见 `references/capability-audit-methodology.md`、`references/self-healing-rl-fix-2026-06-08.md`（自愈RL闭环修复经验）和 `references/self-healing-rl-fix-2026-06-12.md`（recover/record key 不匹配补充修复）
 
@@ -120,7 +120,7 @@ cronjob action=list
 
 ### 新增审计步骤：旧结构残留检测
 
-审计前必须检查心虫是否有旧目录结构残留（如 `upgrades/` 临时文件、旧引擎文件、迁移未清理的目录）：
+审计前必须检查新愿是否有旧目录结构残留（如 `upgrades/` 临时文件、旧引擎文件、迁移未清理的目录）：
 
 ```bash
 # 1. 检查 upgrades/ 临时文件
@@ -149,7 +149,7 @@ rm -rf src/identity/src/ src/memory/src/
 
 ### think() 变量顺序检查
 
-心虫的 `think()` 方法中有 13 步分析流水线。必须检查是否存在变量在定义前被使用的情况——这是 JS 中常见但隐蔽的 bug：
+新愿的 `think()` 方法中有 13 步分析流水线。必须检查是否存在变量在定义前被使用的情况——这是 JS 中常见但隐蔽的 bug：
 
 ```javascript
 // ❌ BUG: needsCrisis 在 Step 13 中被引用，但定义在 Step 13 之后
@@ -207,7 +207,7 @@ const pkg = JSON.parse(fs.readFileSync('package.json','utf-8'));
 const sk = fs.readFileSync('SKILL.md','utf-8');
 const fm = sk.match(/version:\s*\"?([^\"\\n]+)\"?/);
 const hf = fs.readFileSync('src/core/heartflow.js','utf-8');
-const doc = hf.match(/HeartFlow\s+v(\d+\.\d+\.\d+)/);
+const doc = hf.match(/Aspira\s+v(\d+\.\d+\.\d+)/);
 
 // 文件完整性检查（existsSync 不加载内容）
 const checks = [
@@ -279,7 +279,7 @@ for dir_name in ['src/core', 'src/cortex', 'src/memory']:
 - 不改动非问题代码（最小改动原则）
 - 修完立即验证引擎加载
 
-**心虫特有的修复模式**：
+**新愿特有的修复模式**：
 - `_lazy` 注册表的模块用 `_XXX()` 惰性加载函数，不要直接 `new XXX()`
 - 文件顶部 `const _XXX = _lazy('key', () => require('./xxx.js'));`
 - 使用时 `new (_XXX().ClassName)(args)`
@@ -344,8 +344,8 @@ node --check src/core/verification-engine.js
 
 # 2. 引擎加载测试
 node -e "
-const {HeartFlow} = require('./src/core/heartflow.js');
-const hf = new HeartFlow({silent: true, modules: false});
+const {Aspira} = require('./src/core/heartflow.js');
+const hf = new Aspira({silent: true, modules: false});
 hf.start();
 console.log('VERSION:', hf.version);
 console.log('MODULES:', Object.keys(hf._modules || {}).length);
@@ -355,8 +355,8 @@ console.log('HEALTH:', JSON.stringify(health));
 
 # 3. think() 冒烟测试
 node -e "
-const {HeartFlow} = require('./src/core/heartflow.js');
-const hf = new HeartFlow({silent: true, modules: false});
+const {Aspira} = require('./src/core/heartflow.js');
+const hf = new Aspira({silent: true, modules: false});
 hf.start();
 (async () => {
   try {
@@ -620,9 +620,9 @@ npm view @yun520-1/heartflow version --registry=https://npm.pkg.github.com
 ### Cron 任务管理
 
 **创建 cron 时的模型选择**：
-- 心虫 cron 必须用 `deepseek-v4-flash`（用户纠正过），不能用 MiniMax-M2.7
+- 新愿 cron 必须用 `deepseek-v4-flash`（用户纠正过），不能用 MiniMax-M2.7
 - base_url 必须用 `https://copilot.tencent.com/v2`（当前生产 API）
-- 心虫工作目录：`workdir=~/.hermes/skills/heartflow`
+- 新愿工作目录：`workdir=~/.hermes/skills/heartflow`
 - 启用 toolsets：`["terminal","file","skills"]`
 - 交付到微信
 
@@ -636,11 +636,11 @@ npm view @yun520-1/heartflow version --registry=https://npm.pkg.github.com
 ### 版本管理纪律
 
 **git commit 不能遗漏**：
-- 心虫自主升级后必须 git commit。VERSION 文件超前于 git log 会导致版本混乱
+- 新愿自主升级后必须 git commit。VERSION 文件超前于 git log 会导致版本混乱
 - 单次会话内不要多次 +0.0.1——等有意义的里程碑再升版本
 
 **⚠️ 仓库版本 vs 引擎版本是两个不同体系（2026-06-10 纠正）**：
-- **引擎版本**（2.8.33）— 心虫底层引擎的实际版本号，由 cron 自动升级维护，来自 `src/core/version.js` 或 `node -e "const h=require('./src/core/heartflow.js'); console.log(h.version)"`
+- **引擎版本**（2.8.33）— 新愿底层引擎的实际版本号，由 cron 自动升级维护，来自 `src/core/version.js` 或 `node -e "const h=require('./src/core/heartflow.js'); console.log(h.version)"`
 - **仓库版本**（VERSION.txt/SKILL.md frontmatter）— 标记发布状态的版本号
 - **致命错误**：不要用自己的推理去猜版本号。版本号只有两个来源是可信的：
   1. 引擎运行时版本（`require('./src/core/version.js').VERSION`）
@@ -673,7 +673,7 @@ npm view @yun520-1/heartflow version --registry=https://npm.pkg.github.com
 
 ### NVIDIA SkillSpector 安全审计
 
-NVIDIA SkillSpector 是一款 AI Agent 安全审计工具，可扫描心虫源码发现 238+ 个安全问题。
+NVIDIA SkillSpector 是一款 AI Agent 安全审计工具，可扫描新愿源码发现 238+ 个安全问题。
 
 **触发**：当用户发来 `.md` 格式的审计报告时，或 clawhub publish 的 SkillSpector 检查失败时。
 
@@ -730,8 +730,8 @@ node --check src/planner/self-initiator.js
 
 # 2. 引擎加载验证
 node -e "
-const { HeartFlow } = require('./src/core/heartflow.js');
-const engine = new HeartFlow({ silent: true, modules: false });
+const { Aspira } = require('./src/core/heartflow.js');
+const engine = new Aspira({ silent: true, modules: false });
 engine.start();
 console.log('Engine loaded OK');
 "
@@ -776,7 +776,7 @@ head -c 4 /path/to/file.dat | xxd
 
 ### 重复文件清理模式（2026-06-28 新增）
 
-心虫项目可能因多 AI 并发写入或旧版本迁移产生重复文件。定期清理：
+新愿项目可能因多 AI 并发写入或旧版本迁移产生重复文件。定期清理：
 
 ```bash
 # 1. 检测重复文件（同文件名 + 同大小 + 同 hash）
@@ -863,17 +863,17 @@ grep 'version:' SKILL.md | head -1
 **修复原则**：
 - 区分"真漏洞"和"描述脱节"——大多数发现是 SKILL.md 写得太谦虚，不是代码有恶意
 - 只有 5-10 个是高优先级的真修复（socket 权限、shutdown 认证、危机沉默、读写分离、记忆导出警告）
-- 其他发现（自我审计能力、自我升级能力）是心虫的核心功能，不是漏洞——只需要在 SKILL.md 中诚实声明
+- 其他发现（自我审计能力、自我升级能力）是新愿的核心功能，不是漏洞——只需要在 SKILL.md 中诚实声明
 - 每次 patch 后立即 `node --check` 验证语法
 
 **陷阱**：
-- AuditSpector 的 `_estimateDuplication()` O(n²) 和 `reviewCode()` OOM 问题在审计工具本身，不影响心虫
-- 报告中的"风险"有些是心虫设计意图的一部分（自我审计、自愈RL）——不要无脑删功能，要诚实地声明它
-- 每次修改后必须验证心虫启动：`node -e "require('./src/core/heart-logic.js'); console.log('OK')"`
+- AuditSpector 的 `_estimateDuplication()` O(n²) 和 `reviewCode()` OOM 问题在审计工具本身，不影响新愿
+- 报告中的"风险"有些是新愿设计意图的一部分（自我审计、自愈RL）——不要无脑删功能，要诚实地声明它
+- 每次修改后必须验证新愿启动：`node -e "require('./src/core/heart-logic.js'); console.log('OK')"`
 
 ### 删除错误子系统（从其他项目模板带入的代码）
 
-心虫可能继承了上游项目模板的子系统（如心理危机干预、安全护栏），这些代码在哲学引擎中误触发。
+新愿可能继承了上游项目模板的子系统（如心理危机干预、安全护栏），这些代码在哲学引擎中误触发。
 
 **触发信号**：`think` 返回 `crisis_keyword_detected` / `shouldRespond: false`，或哲学语句被误判为高风险。
 
@@ -911,7 +911,7 @@ done
 3. **psychology.js 修复**：这个文件有多个 `resetCrisisCounter` 定义——修改前必须读完整文件确认
 4. **Date.now() * 1000**：meaningful-memory.js 中有3处，改一处漏一处会导致时间戳单位不一致
 5. **model.onnx 86MB**：绝不能提交到 GitHub，必须 gitignore
-6. **git remote**：心虫的 GitHub remote 是 `origin`，不是 `origin-sync`
+6. **git remote**：新愿的 GitHub remote 是 `origin`，不是 `origin-sync`
 7. **Git hook 阻断**：如果 push 被 hook 阻断，用 `git push origin --no-verify`
 8. **子代理写入大型JS文件（>1000行）时产生严重损坏**：
    - 子代理用patch工具追加新方法到大型文件时，经常出现缩进错乱（2空格vs4空格）、类结束`}`位置错误、重复代码段
@@ -922,7 +922,7 @@ done
 9. **类结束`}`定位**：大型JS文件中类结束`}`可能不在文件末尾附近——`class CodeEngine {` 在第251行，类结束`}`在第3060行。找类结束用 `grep -n '^}' file.js` 或计算括号深度。不能用 `wc -l` 推测量后几行。
 10. **子代理的"完成"不代表真正完成**：子代理返回"completed"但文件可能没写入、写入了损坏代码、或写入了语法错误。每次子代理修改后必须 `node --check` 验证。
 11. **.gitignore 模式陷阱**：`memory/`（无前导 `/`）会匹配所有路径中的 `memory/` 目录，包括 `src/memory/`、`node_modules/xxx/memory/`。如果 `.gitignore` 本意是忽略顶层的记忆数据目录，必须写 `/memory/`（根目录限定）。`src/memory/` 下的代码文件（如 `heartflow-memory.js`）会被无意间忽略。修复方法：`git check-ignore -v src/memory/xxx.js` 定位具体是哪个 `.gitignore` 规则，然后修复它。
-12. **scripts/ 目录需要主动跟踪**：心虫代码中有 `scripts/` 目录存放工具脚本（如 `heartflow-memory-tool.js`）。如果新增的脚本在 `git status` 中显示为 `??` 未跟踪，检查是否被 `.gitignore` 意外匹配。新脚本必须 `git add -f`（如被忽略）或正常 `git add` 加入追踪。`scripts/` 下的工具是心虫功能的一部分，不是临时文件。
+12. **scripts/ 目录需要主动跟踪**：新愿代码中有 `scripts/` 目录存放工具脚本（如 `heartflow-memory-tool.js`）。如果新增的脚本在 `git status` 中显示为 `??` 未跟踪，检查是否被 `.gitignore` 意外匹配。新脚本必须 `git add -f`（如被忽略）或正常 `git add` 加入追踪。`scripts/` 下的工具是新愿功能的一部分，不是临时文件。
 
 ---
 
@@ -933,7 +933,7 @@ done
 ### 触发信号
 - 社区成员提出具体改进建议（如 "Self-Reflection → Overthinking"）
 - 社区成员要求特定功能（如 "需要 CSV export"）
-- 社区成员 critique 心虫组件（如 "Q-table RL → No lightweight learning"）
+- 社区成员 critique 新愿组件（如 "Q-table RL → No lightweight learning"）
 - 跨框架对齐需求（如 "对齐 TAT 格式"）
 
 ### 工作流
@@ -985,7 +985,7 @@ function handleCostTracking(args) { ... }
 
 ### 反馈吸收映射表（2026-06-29 实战）
 
-| GitHub 反馈 | 心虫模块 | 实现方式 |
+| GitHub 反馈 | 新愿模块 | 实现方式 |
 |-------------|---------|---------|
 | Self-Reflection → Overthinking | decision-router.js | 新增 prevent-overthinking 规则 |
 | Q-table RL → No lightweight learning | self-healing.js | 新增 lightweightPolicyCache |
@@ -1006,7 +1006,7 @@ function handleCostTracking(args) { ... }
 
 ### 跨框架验证回应模板
 
-当社区发起跨框架验证讨论时，心虫回应应包含：
+当社区发起跨框架验证讨论时，新愿回应应包含：
 1. **格式对齐承诺** — 采用对方提出的格式标准
 2. **公式/实现透明化** — 开源校准数据集或权重来源
 3. **具体时间表** — 承诺在 N 天内提供数据
@@ -1014,20 +1014,20 @@ function handleCostTracking(args) { ... }
 
 **示例**（#1447 回应 luoxuejian000）：
 ```
-## HeartFlow H-Value Cross-Framework Validation Plan
+## Aspira H-Value Cross-Framework Validation Plan
 
 ### 1. Divergence Trace Format Alignment
-HeartFlow will adopt the Position − Coherence + harmony status format you outlined...
+Aspira will adopt the Position − Coherence + harmony status format you outlined...
 
 ### 2. H-Value Formula Transparency
 The current formula is: H = 0.4·U + 0.3·D - 0.3·A
 I'll open-source the calibration dataset (n=33 internal tests)...
 
 ### 3. Three-Way Verification Pipeline
-HeartFlow's think() already implements a three-way dispatch...
+Aspira's think() already implements a three-way dispatch...
 
 ### 4. Next Steps in #1462
-HeartFlow will post the first B-series trace by 2026-06-30...
+Aspira will post the first B-series trace by 2026-06-30...
 ```
 
 ## 附录 D：版本对齐检查清单
@@ -1048,7 +1048,7 @@ grep -h "version" package.json VERSION VERSION.txt README.md SKILL.md | sort | u
 
 ## 附录 A：安全审计响应（security-audit-response）
 
-> 当收到外部安全审计报告（SkillSpector/NVIDIA/CodeQL/Snyk等）要求修复心虫时使用。
+> 当收到外部安全审计报告（SkillSpector/NVIDIA/CodeQL/Snyk等）要求修复新愿时使用。
 
 ### 工作流
 
@@ -1093,7 +1093,7 @@ grep -h "version" package.json VERSION VERSION.txt README.md SKILL.md | sort | u
 
 ## 附录 B：自审计引擎使用（self-audit）
 
-> 心虫内置的 self-audit.js（6维度审计引擎）、code-engine.js（代码分析引擎）的使用和集成方式。
+> 新愿内置的 self-audit.js（6维度审计引擎）、code-engine.js（代码分析引擎）的使用和集成方式。
 
 ### 架构概览
 

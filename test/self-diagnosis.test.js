@@ -4,7 +4,7 @@
 const assert = require('assert');
 const { SelfDiagnosis } = require('../src/core/self-diagnosis.js');
 
-// Mock HeartFlow with all data patterns
+// Mock Aspira with all data patterns
 function makeMockHF(withRichData = false) {
   if (!withRichData) {
     return {

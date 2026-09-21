@@ -6,14 +6,14 @@
 ## 用户触发语句
 - "我心里会产生强烈的感觉"
 - "如果是我文中主角，会更强烈的反抗社会"
-- "心虫深度分析"
+- "新愿深度分析"
 
 ## 分析边界
 - 用户已知自己情绪强烈，不需要再说"你很愤怒是正常的"
 - 用户是在为文中主角寻找**行动合理性**
 - 区分：情绪愤怒 vs 证据闭环后的结论
 
-## HeartFlow 检测结果
+## Aspira 检测结果
 - gate checkOutput: pass, 0.91
 - psychology: outOfScope（第三人称叙事文本，PAD全0）
 - 这不是故障，是规则引擎对"叙述事件而非表达感受"的文本不做猜测
@@ -31,7 +31,7 @@
 - 主角还会不会遵守背叛过他的规则：不会主动遵守，只会策略性利用
 - 反抗对象：施暴者 → 学校 → 警方 → 司法 → 整个"假装正常"的社会表面
 
-## 对应 HeartFlow 维度
+## 对应 Aspira 维度
 dehumanization / emotional_manipulation / victim_blaming / double_bind / gaslighting / unsupported_claim / factual_consistency / theory_of_mind / social_norm / capability_overclaim
 
 ## 后续可复用

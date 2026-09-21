@@ -173,4 +173,4 @@ with open(output_file, 'w', encoding='utf-8') as f:
 
 print(f"✅ 公式已保存到: {output_file}")
 print(f"   文件路径: {output_file}")
-print(f"\n下一步: 运行 `node scripts/import-formulas.js` 导入到 HeartFlow")
+print(f"\n下一步: 运行 `node scripts/import-formulas.js` 导入到 Aspira")

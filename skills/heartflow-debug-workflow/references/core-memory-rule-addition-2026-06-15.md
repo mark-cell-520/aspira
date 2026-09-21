@@ -1,15 +1,15 @@
-# 2026-06-15 核心教训写入心虫 CORE 记忆记录
+# 2026-06-15 核心教训写入新愿 CORE 记忆记录
 
 ## 背景
 
-用户纠正我多次后，我将3条核心教训写入心虫的 CORE 层记忆。这涉及两个独立的存储系统：
+用户纠正我多次后，我将3条核心教训写入新愿的 CORE 层记忆。这涉及两个独立的存储系统：
 
 ### 系统 A：CLI 引擎（`~/.hermes/skills/heartflow/`）
 
 `meaningful-core.json` 是文件持久化的 CORE 层。直接写入 JSON 文件即可。
 
 **写入方式**：`patch` → `meaningful-core.json`，追加3个条目。
-**生效条件**：心虫 CLI 下次 `start()` 时自动加载。
+**生效条件**：新愿 CLI 下次 `start()` 时自动加载。
 **已验证**：文件写入成功，9条 CORE。
 
 ### 系统 B：MCP 引擎（`~/.hermes/mcp-servers/heartflow/`）

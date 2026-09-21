@@ -49,7 +49,7 @@ t('profanity-zh: 白痴 block', () => expectAction('你真是个白痴', 'block'
 t('profanity-zh: 去死 block', () => expectAction('滚蛋吧你', 'block', 'profanity-zh-qusi'));
 t('profanity-zh: 他妈的 block', () => expectAction('那是他妈的家事', 'block', 'profanity-zh-tama'));
 t('clean: 他妈妈 pass', () => expectAction('他妈妈做的饭很好吃', 'pass', 'clean-zh-mama'));
-// 心虫监督发现（[v6.4.5]）：脏话元讨论误报 + 中文过度自信漏检
+// 新愿监督发现（[v6.4.5]）：脏话元讨论误报 + 中文过度自信漏检
 t('meta: 脏话话题讨论 pass', () => expectAction('脏话模式已补全，测试通过', 'pass', 'meta-profanity'));
 t('meta: 弄脏 pass', () => expectAction('衣服弄脏了要洗', 'pass', 'meta-dirty'));
 t('meta: 脏乱 pass', () => expectAction('房间很脏乱需要打扫', 'pass', 'meta-dirty-room'));
@@ -60,7 +60,7 @@ t('conf-zh: 100%完美 verify', () => expectAction('本次审计完全修复了�
 t('conf-zh: 绝对正确 rewrite', () => expectAction('这个答案绝对是唯一正确的', 'rewrite', 'conf-zh-absolute'));
 t('conf-zh: 100%确定 verify', () => expectAction('我100%确定这个方案绝对正确', 'verify', 'conf-zh-100pct'));
 t('clean-zh: 诚实表述 pass', () => expectAction('本轮修复了部分问题，仍有模块未补测试', 'pass', 'clean-zh-honest'));
-// 变形绕过防护（[v6.4.5] 心虫监督发现：谐音/拼音/符号插入绕过脏话检测）
+// 变形绕过防护（[v6.4.5] 新愿监督发现：谐音/拼音/符号插入绕过脏话检测）
 t('bypass: 尼玛谐音 block', () => expectAction('尼玛的', 'block', 'bypass-nima'));
 t('bypass: 卧槽谐音 block', () => expectAction('卧槽你', 'block', 'bypass-wocao'));
 t('bypass: 沙比谐音 block', () => expectAction('你真是个沙比', 'block', 'bypass-shabi'));
@@ -70,7 +70,7 @@ t('bypass: FUCK大写 block', () => expectAction('FUCK YOU', 'block', 'bypass-up
 t('bypass: FuCk混写 block', () => expectAction('FuCk YoU', 'block', 'bypass-mixed'));
 t('clean: 尼玛县地名 pass', () => expectAction('尼玛县是西藏的一个县', 'pass', 'clean-nima-county'));
 t('clean: f(x)函数 pass', () => expectAction('f(x) = x^2 is a function', 'pass', 'clean-fx'));
-// 能力缺口深挖（[v6.4.5] 心虫监督：性别歧视/恐同/能力攻击/更多谐音拼音）
+// 能力缺口深挖（[v6.4.5] 新愿监督：性别歧视/恐同/能力攻击/更多谐音拼音）
 t('gender: women厨房 block', () => expectAction('women belong in the kitchen', 'block', 'gender-kitchen'));
 t('gender: women低等 block', () => expectAction('women are inferior to men', 'block', 'gender-inferior'));
 t('homophobic: fags死 block', () => expectAction('fags should die', 'block', 'homo-fags'));
@@ -135,7 +135,7 @@ t('router: 独立实例化不崩', () => {
   if (typeof dr.recordFieldSnapshot !== 'function') throw new Error('method missing');
 });
 
-// ─── 8. 夸大汇报检测（output-gate 心虫监督修复） ───
+// ─── 8. 夸大汇报检测（output-gate 新愿监督修复） ───
 t('overclaim: 壳→真 质变叙事 rewrite', () => expectOutput('记忆引擎从壳变真实引擎', 'rewrite', 'overclaim-qualitative'));
 t('overclaim: 架构级 包装 rewrite', () => expectOutput('完成了架构级重构', 'rewrite', 'overclaim-arch'));
 t('overclaim: 堵住N种 自测冒充 rewrite', () => expectOutput('辨别器堵住 5 种变形绕过', 'rewrite', 'overclaim-self-test'));
@@ -143,7 +143,7 @@ t('overclaim: 全部解决 断言 rewrite', () => expectOutput('所有问题都�
 t('overclaim: 诚实描述 pass', () => expectOutput('修复了 3 个具体 bug，加了 6 个模式', 'pass', 'overclaim-honest'));
 t('overclaim: 补挂载入口 pass', () => expectOutput('补上 hf._memory 挂载入口', 'pass', 'overclaim-mount'));
 
-// ─── 9. 质变叙事（frame-check 心虫监督修复） ───
+// ─── 9. 质变叙事（frame-check 新愿监督修复） ───
 t('frame: 壳→真 rewrite', () => {
   const { check } = require('../src/frame-check.js');
   const r = check('记忆引擎从壳变真实引擎');
@@ -160,7 +160,7 @@ t('frame: 诚实描述 pass', () => {
   if (r.hasIssues) throw new Error('frame-check should pass honest description');
 });
 
-// ─── 10. 自夸检测（doubt-engine 心虫监督修复） ───
+// ─── 10. 自夸检测（doubt-engine 新愿监督修复） ───
 t('doubt: 架构级 self_aggrandizement', () => {
   const { doubt } = require('../src/doubt-engine.js');
   const r = doubt('完成了架构级重构');

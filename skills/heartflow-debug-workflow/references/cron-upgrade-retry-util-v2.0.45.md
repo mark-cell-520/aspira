@@ -3,7 +3,7 @@
 ## 升级背景
 
 **日期**: 2026-06-04
-**升级者**: Hermes Agent (HeartFlow 自主升级 Cron)
+**升级者**: Hermes Agent (Aspira 自主升级 Cron)
 **源版本**: 2.0.44
 **目标版本**: 2.0.45
 **模块**: `src/core/utils/retry-util.js`

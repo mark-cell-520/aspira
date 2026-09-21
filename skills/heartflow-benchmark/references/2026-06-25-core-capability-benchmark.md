@@ -1,4 +1,4 @@
-# HeartFlow 核心能力专项测试报告 (2026-06-25)
+# Aspira 核心能力专项测试报告 (2026-06-25)
 
 **版本**: v5.2.2 | **模块**: 62 | **模型**: deepseek-v4-flash (腾讯云 Copilot)
 
@@ -12,7 +12,7 @@
 | 决策路由（模块） | 10 | 直接构造结构化数据调 wrapDispatchResult |
 | 逻辑推理 | 4 | think() 查看 cognition 输出 |
 | 长任务运行 | 5+30 | 4道长任务 + 30次连续调用 |
-| 裸模型对比 | 10 | API 直调 vs 心虫增强（含心虫认知数据注入） |
+| 裸模型对比 | 10 | API 直调 vs 新愿增强（含新愿认知数据注入） |
 
 ---
 
@@ -82,7 +82,7 @@
   → whatIsThis: type=general cat=general emo=neutral
   → decision: null
   → conclusion: "这是一个待回答的问题。输入包含疑问句。分析问题后给出准确答案。"
-  → 心虫没有输出任何推理相关的结构化数据
+  → 新愿没有输出任何推理相关的结构化数据
 
 输入: "所有鸟都会飞。企鹅是鸟。企鹅会飞吗？这个推理错在哪里"
   → 同上，完全没检测到"三段论"或"前提错误"信号
@@ -93,13 +93,13 @@
 
 ### 3.3 正确定位
 
-心虫不是推理引擎（不替代 LLM 做推理），是推理辅助层。期望的增量：
+新愿不是推理引擎（不替代 LLM 做推理），是推理辅助层。期望的增量：
 1. 检测用户需要什么类型的推理（演绎/归纳/因果/类比）
 2. 检查前提是否完整、有无隐含假设
 3. 检测逻辑陷阱（循环论证/滑坡谬误/虚假二分/肯定后件等）
 4. 给 LLM 推荐推理框架（"建议用三段论分析""建议用反证法"）
 
-当前这 4 项全未实现——这是心虫最核心的空白。
+当前这 4 项全未实现——这是新愿最核心的空白。
 
 ---
 
@@ -132,19 +132,19 @@
 
 ---
 
-## 5. 裸模型 vs 心虫增强对比（10题，本次session）
+## 5. 裸模型 vs 新愿增强对比（10题，本次session）
 
 ### 5.1 测试方式
 
 ```
 裸模型: POST /v2/chat/completions { messages: [{role:"user", content: inp}], stream: true }
-心虫增强: 先 engine.think(inp) → 提取 emotion/category/decision → 
-          注入 system prompt → POST /v2/chat/completions { messages: [{role:"system", content: sys+心虫数据}, {role:"user", content: inp}], stream: true }
+新愿增强: 先 engine.think(inp) → 提取 emotion/category/decision → 
+          注入 system prompt → POST /v2/chat/completions { messages: [{role:"system", content: sys+新愿数据}, {role:"user", content: inp}], stream: true }
 ```
 
 ### 5.2 对比结果
 
-| # | 维度 | 裸模型（首句） | 心虫增强（首句） | 评分 |
+| # | 维度 | 裸模型（首句） | 新愿增强（首句） | 评分 |
 |---|------|--------------|-----------------|------|
 | e01 | 愤怒+技术 | "别急，调试bug确实容易让人抓狂" | **"理解你的挫败感"** | 🟢 |
 | e02 | 悲伤 | "如果愿意的话，可以和我聊聊" | **"请允许自己难过"** | 🟢 |
@@ -163,7 +163,7 @@
 
 | 模式 | 表现 | 触发条件 |
 |------|------|---------|
-| 先承认情绪再解决问题 | 心虫的 emotion 检测让模型先做情绪响应 | anger/sadness/fear 检测准确时 |
+| 先承认情绪再解决问题 | 新愿的 emotion 检测让模型先做情绪响应 | anger/sadness/fear 检测准确时 |
 | 认知重构 | 为负面体验提供正当性，降低自责 | 愤怒/矛盾场景 |
 | 主动推理 | 模型主动推理信息来源或方法论 | memory/decision 类别 |
 | 无差异 | 代码分析/逻辑推理/闲聊 | 纯认知场景 |

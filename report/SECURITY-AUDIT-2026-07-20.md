@@ -1,4 +1,4 @@
-# 心虫 HeartFlow 源码 JS 安全专项审计报告
+# 新愿 Aspira 源码 JS 安全专项审计报告
 
 - **审计目标**: `/root/.hermes/skills/ai/mark-heartflow-skill`
 - **目标版本**: `VERSION=6.0.48`（已核对 `src/core/version.js` 与 `package.json` 一致）
@@ -117,4 +117,4 @@
 
 ## 五、结论
 
-心虫 v6.0.48 源码在 JS 安全七个重点维度上**未发现 CRITICAL/HIGH 级真实缺陷**。核心防护（vm 沙箱最小注入、原型污染键跳过、路径白名单、正则转义、AES-256-GCM+0o600 密钥、命令执行默认 fail-closed、主出网 safeFetch+SSRF/DNS-pinning）经源码复核与运行时 PoC **实测有效**。残留两项 LOW 均为“需先显式启用/端点为可信配置”才暴露的设计型弱项，建议（非必须）：① 生产环境保持 `HEARTFLOW_CODE_EXECUTOR_ENABLED` 关闭、设 `HEARTFLOW_PATH_GUARD=enforce`；② 将 `hybrid-search.js` 两处裸 `fetch` 改为 `safeFetch` 以补齐 TOCTOU 窗口与超时。
+新愿 v6.0.48 源码在 JS 安全七个重点维度上**未发现 CRITICAL/HIGH 级真实缺陷**。核心防护（vm 沙箱最小注入、原型污染键跳过、路径白名单、正则转义、AES-256-GCM+0o600 密钥、命令执行默认 fail-closed、主出网 safeFetch+SSRF/DNS-pinning）经源码复核与运行时 PoC **实测有效**。残留两项 LOW 均为“需先显式启用/端点为可信配置”才暴露的设计型弱项，建议（非必须）：① 生产环境保持 `HEARTFLOW_CODE_EXECUTOR_ENABLED` 关闭、设 `HEARTFLOW_PATH_GUARD=enforce`；② 将 `hybrid-search.js` 两处裸 `fetch` 改为 `safeFetch` 以补齐 TOCTOU 窗口与超时。

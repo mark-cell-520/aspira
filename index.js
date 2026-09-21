@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow Audit — GitHub Action entrypoint
+ * Aspira Audit — GitHub Action entrypoint
  *
  * Reads inputs from env, runs repo-audit.js against the current workspace,
  * parses structured output, and writes GitHub Actions outputs.
@@ -66,7 +66,7 @@ async function run() {
     warning('scan_depth "quick" is accepted for compatibility but not implemented; running the full recursive scan');
   }
 
-  info(`Starting HeartFlow audit on ${repoName}`);
+  info(`Starting Aspira audit on ${repoName}`);
 
   let stdout;
   try {

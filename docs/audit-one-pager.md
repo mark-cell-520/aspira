@@ -1,4 +1,4 @@
-# HeartFlow — AI Agent / MCP Security Audit
+# Aspira — AI Agent / MCP Security Audit
 
 One-page capability brief for technical buyers.
 

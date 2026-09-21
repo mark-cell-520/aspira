@@ -2,7 +2,7 @@
 
 ## 审计概况
 - **日期**: 2026-06-29
-- **范围**: HeartFlow 引擎完整审计（heartflow.js + src/core/*.js + src/* 子目录）
+- **范围**: Aspira 引擎完整审计（heartflow.js + src/core/*.js + src/* 子目录）
 - **文件数**: 210 个 JS 文件
 - **发现总数**: 371 项
 - **严重度分布**: CRITICAL 45 / HIGH 14 / MEDIUM 56 / LOW 232 / INFO 24

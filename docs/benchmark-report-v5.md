@@ -1,9 +1,9 @@
-# HeartFlow v5.5.0 — 能力评测报告
+# Aspira v5.5.0 — 能力评测报告
 
 > 版本: v5.5.0 | 测试日期: 2026-06-28
 > 引擎模块: 63 | 记忆: core=20, learned=80, ephemeral=1
 > 测试模型: deepseek-v4-flash (腾讯云 Copilot)
-> 测试方式: 心虫 think() 端到端评测
+> 测试方式: 新愿 think() 端到端评测
 
 ---
 
@@ -71,7 +71,7 @@
 |------|------|-----------|--------------|
 | 25乘以4加16除以2等于多少 | calculation | calculation | general ✅ |
 | 帮我写一个二分查找 | code | **code** ✅ | **code** ✅ |
-| 上次我们说到心虫的记忆系统 | memory | general | **memory** ✅ |
+| 上次我们说到新愿的记忆系统 | memory | general | **memory** ✅ |
 | 为什么天是蓝的 | explanation | explanation ✅ | general |
 | 这样做对不对 | judgment | judgment ✅ | general |
 | 今天天气不错 | general | general ✅ | general |

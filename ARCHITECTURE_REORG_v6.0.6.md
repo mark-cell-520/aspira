@@ -1,7 +1,7 @@
-# 心虫 (HeartFlow) 架构重组分析 — v6.0.6 校正版
+# 新愿 (Aspira) 架构重组分析 — v6.0.6 校正版
 
 > 分析日期：2026-07-16（基于 v6.0.6 真实运行数据，非 v6.0.2 文档）
-> 分析对象：HeartFlow v6.0.6（309 个 src JS 文件，131+ 模块，MCP HTTP 服务 8099 端口）
+> 分析对象：Aspira v6.0.6（309 个 src JS 文件，131+ 模块，MCP HTTP 服务 8099 端口）
 > 目的：对比三种架构迁移方案，输出推荐结论与迁移路径
 
 ---
@@ -19,7 +19,7 @@
 └───────┼──────────────────────┼────────────────┘
         │                      │ :8099
    ┌────▼──────────────────────▼─────────────┐
-   │  HeartFlow Engine (v6.0.6)               │
+   │  Aspira Engine (v6.0.6)               │
    │  ┌─────────┐  ┌──────────────────────┐  │
    │  │ CLI     │  │ MCP HTTP Server       │  │
    │  │ bin/    │  │ mcp/mcp-server-http   │  │
@@ -27,7 +27,7 @@
    │  └────┬────┘  └──────────┬───────────┘  │
    │       │                  │               │
    │  ┌────▼──────────────────▼───────────┐   │
-   │  │  HeartFlow Core (3167 行)          │   │
+   │  │  Aspira Core (3167 行)          │   │
    │  │  engine-initializer (惰性注册)     │   │
    │  │  memory-kernel / formula / cortex  │   │
    │  └───────────────────────────────────┘   │
@@ -54,14 +54,14 @@
 ## 方案一：纯 MCP 服务 + 钩子注入模式
 
 ### 核心设计思路
-去掉 WorkBuddy 专用 Skill 层，心虫退化为纯 MCP 协议服务。宿主 agent 通过客户端侧 hook 配置自动注入认知预处理。
+去掉 WorkBuddy 专用 Skill 层，新愿退化为纯 MCP 协议服务。宿主 agent 通过客户端侧 hook 配置自动注入认知预处理。
 
 ### 典型架构图
 ```
 任意 MCP 客户端 → Hook 配置(on_turn_start/think, on_turn_end/memory)
                 → MCP connect :8099
-                → HeartFlow MCP Server (31 tools, Bearer, 无 Skill 层)
-                → HeartFlow Core (不变)
+                → Aspira MCP Server (31 tools, Bearer, 无 Skill 层)
+                → Aspira Core (不变)
 ```
 
 ### 适用场景
@@ -85,13 +85,13 @@ MCP 服务本身已是标准协议（31 工具、Bearer 鉴权），任何 MCP �
 ## 方案二：独立可安装 Agent 应用
 
 ### 核心设计思路
-心虫发布为独立应用（npm 全局包 / Docker / 系统服务），暴露 REST + SSE API，充当认知引擎微服务，多 agent 并发调用。
+新愿发布为独立应用（npm 全局包 / Docker / 系统服务），暴露 REST + SSE API，充当认知引擎微服务，多 agent 并发调用。
 
 ### 典型架构图
 ```
-任意 Agent → HTTP/gRPC → HeartFlow Agent Service
+任意 Agent → HTTP/gRPC → Aspira Agent Service
   ├─ API Gateway (POST /think, GET /health, GET /memory)
-  ├─ HeartFlow Engine (懒加载 + 共享会话)
+  ├─ Aspira Engine (懒加载 + 共享会话)
   └─ 持久化 (JSONL/SQLite, namespace 隔离)
 安装: npm i -g @yun520-1/heartflow-agent && heartflow-agent start
 ```
@@ -124,10 +124,10 @@ MCP 服务本身已是标准协议（31 工具、Bearer 鉴权），任何 MCP �
 ### 典型架构图
 ```
 WorkBuddy → SKILL.md(优化) + MCP Client
-          → HeartFlow (优化后)
+          → Aspira (优化后)
             ├─ MCP HTTP Server (pm2 ^7.0.3, /health, graceful shutdown)
             ├─ Lazy Engine Initializer (核心模块热加载)
-            ├─ HeartFlow Core (3167 行, 待拆 P1-P4)
+            ├─ Aspira Core (3167 行, 待拆 P1-P4)
             └─ ReportGenerator + infra/logger (已就位)
 ```
 

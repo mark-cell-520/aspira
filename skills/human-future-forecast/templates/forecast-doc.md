@@ -1,6 +1,6 @@
 # <主题> <年份> 推演
 
-> 本推演由 multi-source 综合生成，已交 HeartFlow gate 监督。
+> 本推演由 multi-source 综合生成，已交 Aspira gate 监督。
 
 ## 一、总览表
 
@@ -36,7 +36,7 @@
 2.
 3.
 
-## 六、HeartFlow 监督结果
+## 六、Aspira 监督结果
 
 - action:
 - overallScore:

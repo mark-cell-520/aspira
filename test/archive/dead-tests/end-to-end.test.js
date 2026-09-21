@@ -75,7 +75,7 @@ async function runEndToEndTest() {
   console.log('✅ 创造力引擎完成');
 
   console.log('\n=== 端到端测试完成 ✅ ===');
-  console.log('总结：所有引擎协同工作正常，心虫已具备 AI 人类的核心能力。');
+  console.log('总结：所有引擎协同工作正常，新愿已具备 AI 人类的核心能力。');
 }
 
 // 运行端到端测试

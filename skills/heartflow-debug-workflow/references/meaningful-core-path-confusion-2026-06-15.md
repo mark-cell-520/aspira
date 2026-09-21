@@ -2,7 +2,7 @@
 
 ## 问题
 
-3条核心教训（`core.problem-solving`、`core.verify-before-analyze`、`core.report-honesty`）写入心虫 CORE 层后，`listCore()` 和 `searchByKeywords()` 都搜不到。
+3条核心教训（`core.problem-solving`、`core.verify-before-analyze`、`core.report-honesty`）写入新愿 CORE 层后，`listCore()` 和 `searchByKeywords()` 都搜不到。
 
 ## 根因：路径混淆
 

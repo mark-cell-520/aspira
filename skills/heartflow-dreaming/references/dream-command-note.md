@@ -1,4 +1,4 @@
-# HeartFlow Dream Command — Session Note
+# Aspira Dream Command — Session Note
 
 **日期**: 2026-05-29
 
@@ -15,7 +15,7 @@ heartflow CLI 可用命令：status / analyze / plan / upgrade / paper-upgrade /
 
 ## 当前实现方式
 
-用户说"做梦"时，心虫直接生成梦境内容，不调用 CLI 命令。
+用户说"做梦"时，新愿直接生成梦境内容，不调用 CLI 命令。
 
 生成原则：
 - 短、单主题、强故事性

@@ -1,9 +1,9 @@
 /**
- * HeartFlow Core Unit Tests
+ * Aspira Core Unit Tests
  * 运行: HEARTFLOW_CODE_EXECUTOR_ENABLED=true node tests/core.test.js
  */
 
-const { HeartFlow } = require('../src/core/heartflow.js');
+const { Aspira } = require('../src/core/heartflow.js');
 const { CodeExecutor, ExecStatus } = require('../src/code/code-executor.js');
 
 let passed = 0;
@@ -25,7 +25,7 @@ function assert(condition, message) {
 }
 
 async function runTests() {
-  console.log('\n🧪 HeartFlow Core Tests\n');
+  console.log('\n🧪 Aspira Core Tests\n');
 
   // ─── CodeExecutor Tests ─────────────────────────────────────────
   console.log('📦 CodeExecutor:');
@@ -85,9 +85,9 @@ async function runTests() {
     assert(Array.isArray(health.executors), 'executors should be array');
   });
 
-  // ─── HeartFlow Core Tests ──────────────────────────────────────
-  console.log('\n💓 HeartFlow Core:');
-  const hf = new HeartFlow({ rootPath: '/tmp/heartflow-test-' + Date.now() });
+  // ─── Aspira Core Tests ──────────────────────────────────────
+  console.log('\n💓 Aspira Core:');
+  const hf = new Aspira({ rootPath: '/tmp/heartflow-test-' + Date.now() });
 
   test('constructor sets version', () => {
     assert(hf.version !== null && hf.version !== 'unknown', `Version should be set, got: ${hf.version}`);

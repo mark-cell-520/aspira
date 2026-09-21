@@ -1,5 +1,5 @@
 name: Bug report / False positive
-description: HeartFlow flagged something it should not (or missed something it should)
+description: Aspira flagged something it should not (or missed something it should)
 body:
   - type: textarea
     attributes:
@@ -7,7 +7,7 @@ body:
       render: text
   - type: textarea
     attributes:
-      label: "What HeartFlow returned"
+      label: "What Aspira returned"
       render: text
   - type: textarea
     attributes:

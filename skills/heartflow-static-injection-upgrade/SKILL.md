@@ -4,7 +4,7 @@ description: "本地静态代码注入批量升级：用 Python 脚本解析 JS 
 version: 1.0.0
 ---
 
-# HeartFlow 静态代码注入批量升级
+# Aspira 静态代码注入批量升级
 
 ## 概念
 

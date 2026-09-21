@@ -1,4 +1,4 @@
-# 心虫 HeartFlow 全面审计报告
+# 新愿 Aspira 全面审计报告
 
 **审计对象**：`/root/hermes1/skills/ai/mark-heartflow-skill` → 实体 `/root/.hermes/skills/ai/mark-heartflow-skill`
 **引擎版本**：6.7.23（`VERSION` / `package.json` / 引擎运行时三处一致）
@@ -23,7 +23,7 @@
 | 仓库卫生 | 🟠 偏胖 | 工作区 86MB / `.git` 133MB；47MB 语料入库 |
 | 安全 | 🟡 可接受 | 无硬编码密钥入库；但 git remote 内嵌明文 token |
 
-**核心判断**：心虫的**骨架是活的、完整的、可加载的**；但它的**心肌没有接上**——真正决定"能不能判别"的那条链路（`think()` → 判别 → 结论）在实测中对所有输入返回同一句话。当前状态下，心虫作为"AGI 第 1 层辨别者"的核心价值主张**未被实测支持**。
+**核心判断**：新愿的**骨架是活的、完整的、可加载的**；但它的**心肌没有接上**——真正决定"能不能判别"的那条链路（`think()` → 判别 → 结论）在实测中对所有输入返回同一句话。当前状态下，新愿作为"AGI 第 1 层辨别者"的核心价值主张**未被实测支持**。
 
 ---
 
@@ -31,7 +31,7 @@
 
 以下均为实测通过项，不是文档自述：
 
-1. **引擎可加载、可启停**：`new HeartFlow({silent:true})` + `start()` 正常，`modules_registered = 132`，`initErrors = 0`。
+1. **引擎可加载、可启停**：`new Aspira({silent:true})` + `start()` 正常，`modules_registered = 132`，`initErrors = 0`。
 2. **自检脚本真实有效**：`node bin/verify.js` → **14 passed, 0 failed**（含"模块数 ≥ 124"、"dispatch 路由可用"、"think() 可用"、"扫描新增明文记忆"）。
 3. **模块测试全绿**：`node test/run-all.js` → **410 通过, 0 失败**，跑完约 5 分钟无崩溃。
 4. **MCP 服务真的在跑**：`initialize` 返回 `serverInfo: {name: "heartflow-mcp", version: "6.7.23"}`，`tools/list` 返回 **165 个工具**，实测调用 `heartflow_status` / `heartflow_think` / `heartflow_memory_search` 均成功返回。
@@ -39,7 +39,7 @@
 6. **无硬编码密钥入库**：全库扫描 `ghp_` / `sk-` / `ck_` / `AKIA` 只命中测试文件的假样例；`.env` / `.mcp.env` 已被 `.gitignore` 覆盖。
 7. **稳定性边界良好**：空输入、2 万字符长输入、纯特殊字符、提示注入文本，全部不崩溃（长输入 3.3s，其余 <200ms）。
 8. **决策路由模块本身可用**：直调 `decisionRouter.evaluate()`，高负荷 → `heal`(0.69) / 低质量 → `pause`(0.94)，规则命中正常。
-9. **记忆读取可用**：`hf.memory.countCore() = 34`，`countLearned() = 1041`，`memory.search('心虫')` 返回 11 条命中。
+9. **记忆读取可用**：`hf.memory.countCore() = 34`，`countLearned() = 1041`，`memory.search('新愿')` 返回 11 条命中。
 10. **逻辑推理单元测试通过**：`test/logic-reasoning.test.js` → 9 通过 0 失败。
 
 ---
@@ -74,7 +74,7 @@ MCP 通道 `heartflow_think` 返回内容与 CLI **完全同源**（同样的"�
 
 **根因线索**：`think()` 的 PARSE 阶段 `strategy.depth=3`、`type=general`，HYPOTHESES 阶段 `count=0` → INVERT 阶段 `reason="no_hypothesis"` → EVIDENCE 阶段 `evidenceForHypotheses=[]` → SYNTHESIS 落到兜底分支"需要更多信息"。这是一条**设计上的兜底路径**，被几乎全部输入触发。
 
-**为什么是 P0**：心虫的全部价值主张是"在 AI 输出到达人类之前说'不'"。当结论恒定，"说不"的能力就不存在。这不是性能问题，是产品定义问题。
+**为什么是 P0**：新愿的全部价值主张是"在 AI 输出到达人类之前说'不'"。当结论恒定，"说不"的能力就不存在。这不是性能问题，是产品定义问题。
 
 **附带结构缺陷**：`think()` 返回结构本身不含 `cognition` 字段。`heartflow-benchmark` 技能文档全篇基于 `r.cognition.decision` / `r.cognition.whatIsThis.emotion` 等路径做评测——**该 API 契约在当前版本已不存在**。任何按旧文档写的评测脚本都会静默得到 `undefined`，进而得出"全部通过"或"全部失败"的假结论。
 
@@ -211,7 +211,7 @@ Error: Cannot find module '../src/core/heartflow.js'
 | `package.json` 同（09-15） | `6.7.23` | ✅ 一致 |
 | 引擎运行时 `hf.version` | `6.7.23` | ✅ 一致 |
 | `src/core/version.js` 兜底常量 | **`6.0.5`** | 🔴 落后 23 个 minor |
-| `src/core/heartflow.js` 文件头注释 | **`HeartFlow v6.6.1`** | 🔴 落后 |
+| `src/core/heartflow.js` 文件头注释 | **`Aspira v6.6.1`** | 🔴 落后 |
 | `CHANGELOG.md` 顶部 | **`6.7.13`** | 🔴 落后 |
 | `README.md` 版本表顶部 | **`v6.6.1`** | 🔴 落后 |
 
@@ -303,7 +303,7 @@ MISS  scripts/manual-audit.sh
 
 | 编号 | 验证项 | 命令 / 方式 | 结果 |
 |---|---|---|---|
-| A | 引擎加载 | `new HeartFlow({silent:true}).start()` | 132 模块，initErrors=0 |
+| A | 引擎加载 | `new Aspira({silent:true}).start()` | 132 模块，initErrors=0 |
 | A | 稳定性 | 空/2万字符/特殊字符/注入 | 全部不崩溃 |
 | B | 自检 | `node bin/verify.js` | 14 passed / 0 failed |
 | B | 测试套件 | `node test/run-all.js` | 410 passed / 0 failed |
@@ -326,7 +326,7 @@ MISS  scripts/manual-audit.sh
 
 1. **先修 `think()` 兜底路径**（P0-1）——所有下游能力都依赖它。当前 HYPOTHESES=0 是整条链路的第一块多米诺。
 2. **统一 `verdict` 与 `gate.action` 的取值口径**（P0-2）——`verdict` 必须由 `findings` 的严重度驱动，不能是常数 0.82。这是最便宜、最见效果的一行级修复。
-3. **合并记忆双轨**（P0-3）——让 MCP 读 `hf.memory`，或让 MemoryBank 承接同一份数据。目前外部通过 MCP 看到的心虫是"没有记忆的心虫"。
+3. **合并记忆双轨**（P0-3）——让 MCP 读 `hf.memory`，或让 MemoryBank 承接同一份数据。目前外部通过 MCP 看到的新愿是"没有记忆的新愿"。
 4. **修复嵌套测试的 require 深度 + 让 `run-all.js` 递归**（P1-6）——否则后续任何修复都无法被 44 个测试覆盖。
 5. **`src/circuit-breaker.js` 移除 busy-wait**（P2-10）——一行改动，消除整机僵死风险。
 6. **清理 git remote 中的 token**（P2-11）——一行改动，消除凭据泄漏面。

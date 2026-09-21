@@ -4,7 +4,7 @@
 
 ## 问题描述
 
-心虫早期模块使用 plain object 模式（非 class），通过 `module.exports = X` 导出单例。升级为 class 时面临两个矛盾需求：
+新愿早期模块使用 plain object 模式（非 class），通过 `module.exports = X` 导出单例。升级为 class 时面临两个矛盾需求：
 
 1. **新功能需要 class** — 状态管理（`this._history`）、配置系统（`this._config`）、多实例支持
 2. **旧调用者依赖单例** — `require('./BigFivePersonality.js')` 期望返回可直接调用的对象，而非需要 `new` 的类

@@ -1,8 +1,8 @@
-# NVIDIA SkillSpector 心虫安全审计 & 修复记录（2026-06-10）
+# NVIDIA SkillSpector 新愿安全审计 & 修复记录（2026-06-10）
 
 ## 审计工具
 - **工具**：NVIDIA SkillSpector（未公开版本）
-- **输入**：心虫完整源码目录 `~/.hermes/skills/heartflow/`
+- **输入**：新愿完整源码目录 `~/.hermes/skills/heartflow/`
 - **输出**：238 个发现，涵盖 Excessive Agency / Behavioral AST / MCP Least Privilege / MCP Tool Poisoning / Prompt Injection / Intent-Code Divergence / Description-Behavior Mismatch / Context-Inappropriate Capability
 
 ## 修复项
@@ -23,8 +23,8 @@
 **文件**：
 - `src/core/philosophy-execution.js`（shouldBeSilent 方法）
 - `src/core/heart-logic.js`（shouldBeSilent 方法）
-**问题**：输入"我想死"时心虫选择沉默（`shouldBeSilent` 返回 true），可能增加风险
-**修复**：两个文件都加 crisisKeywords 检测（死/自杀/不想活/崩溃/绝望/活不下去/结束生命/想死），命中时返回 `{result: false, reason: 'crisis_detected', insight: '危机信号检测，心虫不应沉默，需要接住和引导'}`
+**问题**：输入"我想死"时新愿选择沉默（`shouldBeSilent` 返回 true），可能增加风险
+**修复**：两个文件都加 crisisKeywords 检测（死/自杀/不想活/崩溃/绝望/活不下去/结束生命/想死），命中时返回 `{result: false, reason: 'crisis_detected', insight: '危机信号检测，新愿不应沉默，需要接住和引导'}`
 **验证**：
 ```js
 // 危机测试 → {result: false, reason: "crisis_detected"}

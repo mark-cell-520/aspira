@@ -1,6 +1,6 @@
 # ThinkCheck Logger 调试参考
 
-> 2026-06-22 基于心虫 v3.4.4 引擎
+> 2026-06-22 基于新愿 v3.4.4 引擎
 
 ## 模块位置
 
@@ -12,7 +12,7 @@
 
 ## 触发条件
 
-心虫 `think()` 方法每次调用时自动触发（在 heartflow.js 的 think() 方法末尾注入）。
+新愿 `think()` 方法每次调用时自动触发（在 heartflow.js 的 think() 方法末尾注入）。
 
 ## 输出
 
@@ -34,8 +34,8 @@ cat /tmp/heartflow-thinkcheck.log
 
 # 或直接调用引擎
 node -e "
-const {HeartFlow} = require('/path/to/src/core/heartflow.js');
-const hf = new HeartFlow({rootPath: '/path/to'});
+const {Aspira} = require('/path/to/src/core/heartflow.js');
+const hf = new Aspira({rootPath: '/path/to'});
 hf.start();
 hf.think('测试输入');
 console.log(require('fs').readFileSync('/tmp/heartflow-thinkcheck.log','utf8'));

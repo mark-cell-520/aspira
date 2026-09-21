@@ -1,5 +1,5 @@
 /**
- * HeartFlow v5.8.2 — 单元测试：异步队列
+ * Aspira v5.8.2 — 单元测试：异步队列
  * 
  * 测试目标: src/utils/async-queue.js
  */

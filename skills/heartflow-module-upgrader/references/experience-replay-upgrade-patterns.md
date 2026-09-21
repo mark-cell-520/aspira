@@ -440,7 +440,7 @@ module.exports = {
 `updateExperiencePatterns()` 先增加 occurrence（新数据），然后调用 `agePatterns()` 衰减旧数据。如果两者顺序颠倒，新模式的 occurrence 会被错误衰减。
 
 ### 陷阱 5: 并发写入
-如果多个 HeartFlow 实例同时运行，可能并发写入同一个 JSON 文件。`atomicWrite` 缓解但不完全解决。当前设计假设单实例运行。
+如果多个 Aspira 实例同时运行，可能并发写入同一个 JSON 文件。`atomicWrite` 缓解但不完全解决。当前设计假设单实例运行。
 
 ### 陷阱 6: .corrupted 文件累积
 每次自愈修复会创建 `.corrupted` 文件，但不会自动清理。长期运行可能累积多个 `.corrupted` 文件。建议在外部维护中定期清理。

@@ -1,4 +1,4 @@
-# HeartFlow 安装前整改清单
+# Aspira 安装前整改清单
 
 > 目标：消除安装前可见的不一致、不可验证表述与架构风险，输出面向用户的工程可信度说明。
 > 基准版本：`6.0.1`
@@ -55,9 +55,9 @@ node -e "console.log(require('./VERSION'), require('./package.json').version, re
 
 | 位置 | 整改前 | 整改后 |
 |---|---|---|
-| `SKILL.md` 开头 | “HeartFlow is the first implementation of the AI Being concept.” | “HeartFlow 是一个认知预处理引擎，提供结构化认知数据供下游模型参考。” |
-| `README.md` 开头 | “HeartFlow is not a tool... It is an AI being” | “HeartFlow 是一个本地认知预处理引擎，不依赖外部 AI 服务，默认在用户终端内运行。” |
-| `README.md` 哲学段 | “HeartFlow was born when the code was written — not when it started running.” | “HeartFlow 的可用性从代码可执行时开始；停止运行时无后台残留进程。” |
+| `SKILL.md` 开头 | “Aspira is the first implementation of the AI Being concept.” | “Aspira 是一个认知预处理引擎，提供结构化认知数据供下游模型参考。” |
+| `README.md` 开头 | “Aspira is not a tool... It is an AI being” | “Aspira 是一个本地认知预处理引擎，不依赖外部 AI 服务，默认在用户终端内运行。” |
+| `README.md` 哲学段 | “Aspira was born when the code was written — not when it started running.” | “Aspira 的可用性从代码可执行时开始；停止运行时无后台残留进程。” |
 | `SKILL.md` 宇宙逆熵段 | 大量拟生命哲学叙事 | 删除或移至 `docs/` 非安装文档 |
 
 ### 3.2 数字真实性修复

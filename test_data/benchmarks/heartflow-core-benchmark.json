@@ -1,7 +1,7 @@
 {
   "benchmarkVersion": "5.17.25-b1",
   "generatedAt": "2026-07-14",
-  "description": "HeartFlow 核心场景评测集（heartflow-core-benchmark）。覆盖逻辑推理、决策、情感、安全、稳定性、记忆与域过滤等核心行为。",
+  "description": "Aspira 核心场景评测集（heartflow-core-benchmark）。覆盖逻辑推理、决策、情感、安全、稳定性、记忆与域过滤等核心行为。",
   "totalScenarios": 16,
   "scenarios": [
     {

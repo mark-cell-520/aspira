@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow v2.0.19 集成测试
+ * Aspira v2.0.19 集成测试
  * 覆盖本次 4 Phase 改动：
  *   - truth isLying 检测 + thought-chain await 修通
  *   - behavior 系统接入
@@ -9,7 +9,7 @@
  *
  * 运行: node tests/v2_0_19.test.js
  */
-const { HeartFlow } = require('../src/core/heartflow.js');
+const { Aspira } = require('../src/core/heartflow.js');
 
 let passed = 0, failed = 0;
 
@@ -32,10 +32,10 @@ function test(name, fn) {
 }
 
 (async () => {
-  const hf = new HeartFlow({ quiet: true });
+  const hf = new Aspira({ quiet: true });
   await hf.start();
 
-  console.log('\n=== HeartFlow v2.0.19 集成测试 ===\n');
+  console.log('\n=== Aspira v2.0.19 集成测试 ===\n');
 
   // === Phase 4: truth 修通 ===
   await test('truth.isLying: 绝对化声明应被检测', async () => {
@@ -136,7 +136,7 @@ function test(name, fn) {
     return r && typeof r.averageRetention === 'number';
   });
   await test('triality.searchByKeywords: 返回数组', () => {
-    const r = hf.dispatch('triality.searchByKeywords', '心虫', 5);
+    const r = hf.dispatch('triality.searchByKeywords', '新愿', 5);
     return Array.isArray(r);
   });
 

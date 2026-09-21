@@ -1,6 +1,6 @@
 ---
 name: inner-os-protocol
-description: AI Inner OS protocol for visible inner monologue. Reference for adding inner monologue output to HeartFlow's MCP interface.
+description: AI Inner OS protocol for visible inner monologue. Reference for adding inner monologue output to Aspira's MCP interface.
 ---
 
 # AI Inner OS Protocol

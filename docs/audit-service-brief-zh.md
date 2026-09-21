@@ -1,4 +1,4 @@
-# HeartFlow Audit — 服务介绍（用于 Gumroad / 特来搞 / 知识星球等第三方平台）
+# Aspira Audit — 服务介绍（用于 Gumroad / 特来搞 / 知识星球等第三方平台）
 
 ## 卖给谁
 - 正在把 AI agent 接入生产环境的技术负责人 / CISO
@@ -23,7 +23,7 @@
 - modelcontextprotocol/servers（156 servers / 2 traversal）
 - openai/openai-agents-python（1,561 文件 / 58 shell / 3 traversal）
 
-## 为什么选 HeartFlow
+## 为什么选 Aspira
 - 47 维判别引擎 + 132 个运行模块，不是玩具扫描器
 - 已审计 5 个知名开源仓库，报告可直接对外展示
 - 固定范围 / 固定价格 / 固定交付时间，不按小时 billed

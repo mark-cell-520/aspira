@@ -1,4 +1,4 @@
-# HeartFlow 安装报告
+# Aspira 安装报告
 
 **日期**: 2026-07-04
 **环境**: macOS (Darwin 25.5.0), Node.js >= 18, Claude Code CLI

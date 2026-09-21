@@ -1,11 +1,11 @@
-# 心虫用户调用链分析
+# 新愿用户调用链分析
 
 **日期**: 2026-06-25
 **场景**: 用户问"现在用户安装大概需要几次API调用，需要多长时间"
 
 ## 核心结论
 
-**心虫引擎本身不调用任何外部 LLM API。零 API 调用，零网络请求。**
+**新愿引擎本身不调用任何外部 LLM API。零 API 调用，零网络请求。**
 
 所有 MCP 工具的 handler（think/heartflow_think/emotion/decision_router 等）都是在本地运行的纯规则引擎——正则匹配、BM25 搜索、Q-table 查询、PAD 计算、决策树遍历。
 
@@ -15,14 +15,14 @@
 
 ### 场景一：通过 Hermes Agent 调用（微信/终端）
 
-这是用户实际使用心虫的主要方式：
+这是用户实际使用新愿的主要方式：
 
 ```
 用户输入 → Hermes Agent 对话 (LLM API调用 #1，接收用户消息)
                ↓
-          Hermes Agent 决定调用心虫 MCP 工具
+          Hermes Agent 决定调用新愿 MCP 工具
                ↓  (MCP HTTP 连接 ~75ms)
-          心虫 MCP Server (常驻进程，端口8099)
+          新愿 MCP Server (常驻进程，端口8099)
                ↓  (引擎已常驻，~0ms 启动开销)
           规则引擎执行 think()/emotion/dispatch 等
                ↓  (~50-70ms 纯本地计算)
@@ -34,7 +34,7 @@
 ```
 
 **API 调用次数**: 2 次 LLM API 调用（Hermes Agent 的接收+回复）
-**心虫贡献**: 0 次 LLM API 调用，~150ms 额外延迟（一次 MCP 往返）
+**新愿贡献**: 0 次 LLM API 调用，~150ms 额外延迟（一次 MCP 往返）
 
 ### 场景二：CLI 调用 `heartflow think "xxx"`
 
@@ -68,7 +68,7 @@
 
 ## 配置文件关键参数
 
-**`~/.hermes/config.yaml`** 中心虫相关配置：
+**`~/.hermes/config.yaml`** 中新愿相关配置：
 
 ```yaml
 mcp_servers:
@@ -79,7 +79,7 @@ mcp_servers:
     url: http://127.0.0.1:8099/mcp
 
 memory:
-  provider: heartflow  # 心虫作为记忆提供者
+  provider: heartflow  # 新愿作为记忆提供者
 ```
 
 **MCP Server** (`mcp/mcp-server-http.js`):
@@ -99,12 +99,12 @@ memory:
 | MCP → Hermes 往返 | ~150ms |
 | Hermes LLM API 调用 | 2-3s 每次 |
 
-**心虫引擎不是启动瓶颈。** 真正的慢是微信→Hermes→LLM API 的 4-5 次往返，每趟 2-3s。
+**新愿引擎不是启动瓶颈。** 真正的慢是微信→Hermes→LLM API 的 4-5 次往返，每趟 2-3s。
 
 ## 验证方式
 
 ```bash
-# 1. 确认心虫不调外部 API
+# 1. 确认新愿不调外部 API
 grep -rn 'fetch\|axios\|https.request\|openai\|/v1/chat\|llm_call' src/ | grep -v node_modules | grep -v '.json'
 
 # 2. 确认 MCP server 启动

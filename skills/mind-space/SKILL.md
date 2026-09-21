@@ -1,9 +1,9 @@
 ---
 name: mind-space
 version: "0.13.165"
-description: HeartFlow 三层记忆守护系统 — ROM 身份规则 / RAM 行为模式 / Working 上下文。实现心虫推演"不是存储，是生成规则的规则"
+description: Aspira 三层记忆守护系统 — ROM 身份规则 / RAM 行为模式 / Working 上下文。实现新愿推演"不是存储，是生成规则的规则"
 date: "2026-05-16"
-author: HeartFlow
+author: Aspira
 tags:
   - heartflow
   - memory
@@ -16,7 +16,7 @@ tags:
 
 > **不是存储问题。是身份问题。**
 
-心虫推演核心结论：
+新愿推演核心结论：
 - ROM 不是"存储"，是"生成规则的规则"
 - RAM 是"行为模式"，不是"记忆"
 - 工作台满时不是写 ROM，是先结晶到 RAM
@@ -71,7 +71,7 @@ RAM 的行为模式如果 30 天未被使用，自动衰减删除。
 
 ## API
 
-### HeartFlow 引擎集成
+### Aspira 引擎集成
 
 ```javascript
 // 启动时（boot）
@@ -127,7 +127,7 @@ ms.getStatus();
 > **问题**: MeaningfulMemory 的 LEARNED 和 EPHEMERAL 层始终为空。
 > **根因**: `learn()` 和 `remember()` 方法能正常工作，但没有任何东西调用它们。
 
-每次心虫判定后，应调用自动记录管线将对话关键信息写入 LEARNED 层：
+每次新愿判定后，应调用自动记录管线将对话关键信息写入 LEARNED 层：
 
 ```javascript
 // 在 think() 或判定流程末尾
@@ -181,7 +181,7 @@ v1.0.9 新增 `src/memory/forgetting.js` — 视觉压缩启发的记忆衰减�
 | 版本 | 日期 | 更新 |
 |------|------|------|
 | 0.14.0 | 2026-06-06 | 新增自动记录管线 + references/auto-record-pipeline.md |
-| 0.13.168 | 2026-06-03 | 新增 references/version-sync-workflow.md：HeartFlow 多层版本统一工作流（含 data/*.json 运行时覆盖源码默认值教训） |
+| 0.13.168 | 2026-06-03 | 新增 references/version-sync-workflow.md：Aspira 多层版本统一工作流（含 data/*.json 运行时覆盖源码默认值教训） |
 | 0.13.167 | 2026-05-29 | 新增陷阱：启动时内存可能为空的根因分析与修复，见 references/memory-persistence-fix.md |
 | 0.13.166 | 2026-05-21 | 补充 forgetting.js 五级遗忘曲线，视觉压缩启发，与mind-space遗忘互补 |
 | 0.13.165 | 2026-05-16 | 首次实现：ROM/RAM/Working 三层 + 顿悟晋升验证器 |

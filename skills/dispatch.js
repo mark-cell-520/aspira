@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HeartFlow Skill Router — truthfulness-first edition
+ * Aspira Skill Router — truthfulness-first edition
  *
  * Only routes to skills that actually exist on disk.
  * Searches: repo skills/, global ~/.hermes/skills/heartflow/, global mark-heartflow-s技能
@@ -30,8 +30,8 @@ function exists(skill) {
 
 // Build registry lazily so missing skills don't break routing.
 const ROUTES = [
-  { intents: ['upgrade','self-upgrade','进化','升级','升级心虫'], skill: 'heartflow-self-upgrade', desc: '自我升级（全局）' },
-  { intents: ['upgrade','self-upgrade','进化','升级','升级心虫'], skill: 'heartflow-upgrade-methodology', desc: '升级方法论（仓库）' },
+  { intents: ['upgrade','self-upgrade','进化','升级','升级新愿'], skill: 'heartflow-self-upgrade', desc: '自我升级（全局）' },
+  { intents: ['upgrade','self-upgrade','进化','升级','升级新愿'], skill: 'heartflow-upgrade-methodology', desc: '升级方法论（仓库）' },
   { intents: ['audit','审计','体检','安全审计'], skill: 'heartflow-audit-fix-workflow', desc: '审计修复（仓库）' },
   { intents: ['audit','审计','体检','安全审计'], skill: 'heartflow-auto-audit-fix', desc: '自动审计修复（全局）' },
   { intents: ['audit','审计','体检','安全审计'], skill: 'heartflow-closed-loop-audit', desc: '闭环审计（全局）' },
@@ -78,7 +78,7 @@ function pickRoute(input) {
 function main() {
   const input = process.argv.slice(2).join(' ');
   if (!input) {
-    console.log('HeartFlow Skill Router');
+    console.log('Aspira Skill Router');
     console.log('Usage: node skills/dispatch.js <intent>');
     console.log('');
     console.log('Quick routes:');

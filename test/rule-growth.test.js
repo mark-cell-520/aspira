@@ -1,5 +1,5 @@
 /**
- * RuleGrowth 测试 — 验证心虫判断生长能力（v6.0.59 新增核心能力）
+ * RuleGrowth 测试 — 验证新愿判断生长能力（v6.0.59 新增核心能力）
  */
 module.exports = function ({ test, assertEqual, assertTrue, assertFalse, assertDefined, assertThrows }) {
   const { RuleGrowth, MIN_OCCURRENCE } = require('../src/cortex/rule-growth.js');

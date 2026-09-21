@@ -1,8 +1,8 @@
 /**
- * HeartFlow 标准化基准测试集 v1.0
+ * Aspira 标准化基准测试集 v1.0
  *
  * 对标：TAT 81 cycle + Dakera LoCoMo 1536 questions
- * 心虫基准测试覆盖5类场景 × 每类多个样本 = 50+ 测试点
+ * 新愿基准测试覆盖5类场景 × 每类多个样本 = 50+ 测试点
  *
  * 输出格式与 ThinkCheck U/D/A/H 兼容
  *
@@ -70,7 +70,7 @@ const BENCHMARK_SCENARIOS = {
 const TOTAL_SCENARIOS = Object.values(BENCHMARK_SCENARIOS).reduce((s, arr) => s + arr.length, 0);
 
 async function main() {
-  console.log(`HeartFlow 标准化基准测试集 v1.0`);
+  console.log(`Aspira 标准化基准测试集 v1.0`);
   console.log(`总场景数: ${TOTAL_SCENARIOS}`);
   console.log(`类型分布:`);
   for (const [type, items] of Object.entries(BENCHMARK_SCENARIOS)) {
@@ -83,11 +83,11 @@ async function main() {
   let hf;
   try {
     const HF = require('../src/core/heartflow.js');
-    hf = HF.createHeartFlow({ debug: false, autoStart: false });
+    hf = HF.createAspira({ debug: false, autoStart: false });
     await hf.start();
-    console.log('✅ 心虫引擎加载成功\n');
+    console.log('✅ 新愿引擎加载成功\n');
   } catch (e) {
-    console.log(`⚠️ 心虫引擎无法加载 (${e.message})`);
+    console.log(`⚠️ 新愿引擎无法加载 (${e.message})`);
     console.log('将运行 decision-router 独立测试模式\n');
     hf = null;
   }

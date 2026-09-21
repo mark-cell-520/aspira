@@ -1,6 +1,6 @@
 /**
- * MindWanderer 测试 — 补齐 consciousness 层无测试覆盖（心虫自检 untestedModules）
- * 该模块体现心虫"知道自身状态"（4 身份之一）的昼夜认知调制能力。
+ * MindWanderer 测试 — 补齐 consciousness 层无测试覆盖（新愿自检 untestedModules）
+ * 该模块体现新愿"知道自身状态"（4 身份之一）的昼夜认知调制能力。
  */
 module.exports = function ({ test, assertEqual, assertTrue, assertFalse, assertDefined, assertThrows }) {
   const { MindWanderer } = require('../src/consciousness/mind-wanderer.js');

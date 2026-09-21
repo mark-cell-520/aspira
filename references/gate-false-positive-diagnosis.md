@@ -1,6 +1,6 @@
-# HeartFlow Gate False Positive Diagnosis — 长文本推演场景专用
+# Aspira Gate False Positive Diagnosis — 长文本推演场景专用
 
-> 适用场景：对 200+ 行综合推演/预测/综述类文档做 HeartFlow gate 监督时，区分真问题 vs 技术语言误报。
+> 适用场景：对 200+ 行综合推演/预测/综述类文档做 Aspira gate 监督时，区分真问题 vs 技术语言误报。
 
 ## 典型模式
 
@@ -37,8 +37,8 @@
 
 ```javascript
 // /tmp/hf-probe-<name>.js
-const { HeartFlow } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/core/heartflow.js');
-const hf = new HeartFlow({ dataDir: '/root/.hermes/skills/ai/mark-heartflow-skill/data', silent: true });
+const { Aspira } = require('/root/.hermes/skills/ai/mark-heartflow-skill/src/core/heartflow.js');
+const hf = new Aspira({ dataDir: '/root/.hermes/skills/ai/mark-heartflow-skill/data', silent: true });
 hf.start();
 setTimeout(async () => {
   const text = fs.readFileSync('/root/.hermes/skills/ai/mark-heartflow-skill/references/<target>.md', 'utf8');

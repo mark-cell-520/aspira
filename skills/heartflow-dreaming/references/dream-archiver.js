@@ -1,5 +1,5 @@
 /**
- * HeartFlow Dream Archiver v1.0.0
+ * Aspira Dream Archiver v1.0.0
  * 自动存档梦境到 dream-archive.md
  */
 
@@ -53,7 +53,7 @@ function archiveDream(dreamResult, scoring, title) {
         fs.writeFileSync(ARCHIVE_PATH, entry + '\n' + existing);
       }
     } else {
-      fs.writeFileSync(ARCHIVE_PATH, `# Dream Archive — 心虫梦境存档\n\n${entry}`);
+      fs.writeFileSync(ARCHIVE_PATH, `# Dream Archive — 新愿梦境存档\n\n${entry}`);
     }
     return { success: true, title: autoTitle, path: ARCHIVE_PATH };
   } catch (err) {

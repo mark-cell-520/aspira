@@ -8,11 +8,11 @@ const repo = process.env.GITHUB_REPOSITORY;
 const pr = process.env.GITHUB_EVENT_PATH ? JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')).pull_request.number : null;
 const token = process.env.GITHUB_TOKEN;
 
-let body = `## HeartFlow Audit\n\n`;
+let body = `## Aspira Audit\n\n`;
 body += `- Risk: **${riskLevel}**\n`;
 body += `- Findings: **${findingsCount}**\n`;
 body += `- Report: see artifact attachment\n\n`;
-body += `*This comment is posted by HeartFlow Audit Action.*`;
+body += `*This comment is posted by Aspira Audit Action.*`;
 
 function request(options, postData) {
   return new Promise((resolve, reject) => {
@@ -40,7 +40,7 @@ async function run() {
     path: `/repos/${repo}/issues/${pr}/comments`,
     method: 'POST',
     headers: {
-      'User-Agent': 'HeartFlow-Action',
+      'User-Agent': 'Aspira-Action',
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(payload)

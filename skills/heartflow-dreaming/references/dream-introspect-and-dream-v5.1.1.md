@@ -59,9 +59,9 @@ dispatch 调用 `introspectAndDream` 后，decision-router 自动评估自省结
 
 ```bash
 node -e '
-const { HeartFlow } = require("./src/core/heartflow.js");
+const { Aspira } = require("./src/core/heartflow.js");
 async function test() {
-  const hf = new HeartFlow({ root: "/tmp/hf-test-introspect-dream" });
+  const hf = new Aspira({ root: "/tmp/hf-test-introspect-dream" });
   await hf.start();
   await hf.think("我想学编程");
   const result = await hf.introspectAndDream({ detail: true });

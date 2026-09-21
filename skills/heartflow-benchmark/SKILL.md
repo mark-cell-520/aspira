@@ -1,9 +1,9 @@
 ---
 name: heartflow-benchmark
 version: "3.1.0"
-title: "心虫(HeartFlow)引擎能力评测框架"
+title: "新愿(Aspira)引擎能力评测框架"
 description: |-
-  对心虫引擎进行系统性能力评测，覆盖所有底层模块（验证、心理学、情绪、决策、记忆、认知）。
+  对新愿引擎进行系统性能力评测，覆盖所有底层模块（验证、心理学、情绪、决策、记忆、认知）。
   生成公平公正的评测报告，用于推广素材。
 tags:
   - heartflow
@@ -13,26 +13,26 @@ tags:
   - methodology
 ---
 
-# HeartFlow 引擎能力评测框架
+# Aspira 引擎能力评测框架
 
 ## 触发条件
-- 用户要求"评测心虫能力"、"做测试"、"验证能力"、"出评测报告"
-- 用户要求"裸模型73%→心虫100%再验证"、"全部都做"
+- 用户要求"评测新愿能力"、"做测试"、"验证能力"、"出评测报告"
+- 用户要求"裸模型73%→新愿100%再验证"、"全部都做"
 - 需要评测数据作为推广素材时
 
 ## 核心原则
-- **公平公正**：裸模型 vs 心虫，同一套测试用例
+- **公平公正**：裸模型 vs 新愿，同一套测试用例
 - **不造假**：真实记录 pass/fail，不美化结果
-- **区分心虫价值 vs LLM价值**：心虫是认知前置处理器，不是替代LLM
-- **强模型下心虫增量不明显**：deepseek-v4-flash 裸模型可达100%，心虫增量在结构化分析而非回答质量
-- **测试必须覆盖心虫的核心能力**：决策能力和逻辑思维能力比情绪检测更重要。情绪检测是易测但低价值的方向，决策路由和逻辑推理是心虫的真正定位。
+- **区分新愿价值 vs LLM价值**：新愿是认知前置处理器，不是替代LLM
+- **强模型下新愿增量不明显**：deepseek-v4-flash 裸模型可达100%，新愿增量在结构化分析而非回答质量
+- **测试必须覆盖新愿的核心能力**：决策能力和逻辑思维能力比情绪检测更重要。情绪检测是易测但低价值的方向，决策路由和逻辑推理是新愿的真正定位。
 - **区分模块测试 vs 端到端测试**：决策路由模块本身（80%通过率）和通过pipeline调用（30%通过率）差距极大，必须分开报告才能准确归因问题
 
-## ⚠️ 关键警告：心虫评测的致命陷阱
+## ⚠️ 关键警告：新愿评测的致命陷阱
 
 ### 自己出题自己考 = 伪100%
 
-心虫的 `logic-reasoning.js` 是基于关键词匹配的规则引擎，不是基于语义理解的推理引擎。这意味着：
+新愿的 `logic-reasoning.js` 是基于关键词匹配的规则引擎，不是基于语义理解的推理引擎。这意味着：
 
 1. **自然语言输入**（"如果允许同性恋结婚，下一步就会允许人和动物结婚"）→ 命中滑坡谬误关键词 → 正确检测 ✅
 2. **选择题格式**（"以下推理犯了什么谬误？A. 滑坡谬误 B. 稻草人谬误..."）→ 文本被选项格式打散，关键词不命中 → 0%检测率 ❌
@@ -40,21 +40,21 @@ tags:
 
 **实测数据（2026-06-29，deepseek-v4-flash）：**
 
-| 测试集 | 裸模型 | 心虫 logic-reasoning | 心虫 think() |
+| 测试集 | 裸模型 | 新愿 logic-reasoning | 新愿 think() |
 |--------|--------|----------------------|--------------|
-| 心虫自出题（15题，自然语言） | 15/15 (100%) | 15/15 (100%) | 12/15 (80%) |
+| 新愿自出题（15题，自然语言） | 15/15 (100%) | 15/15 (100%) | 12/15 (80%) |
 | 标准化外部题（23题，选择题格式） | 19/23 (82%) | 0/23 (0%) | 0/23 (0%) |
 
-**结论：心虫的100%只证明自己设计的题和自身关键词模式对齐。这不是推理能力的体现，是关键词覆盖率的体现。**
+**结论：新愿的100%只证明自己设计的题和自身关键词模式对齐。这不是推理能力的体现，是关键词覆盖率的体现。**
 
 ### 评测必须包含外部标准测试集
 
-任何有意义的心虫评测必须同时满足：
-1. **心虫自出题**（验证核心模块功能）— 用于debug
+任何有意义的新愿评测必须同时满足：
+1. **新愿自出题**（验证核心模块功能）— 用于debug
 2. **标准外部测试集**（选择题格式，如HellaSwag/LogiQA）— 用于真实能力评估
 3. **裸模型对比**（同一套题，API直调）— 用于量化增量价值
 
-### 心虫的能力边界（hard limitation）
+### 新愿的能力边界（hard limitation）
 
 - **逻辑推理模块**：关键词模式匹配，对自然语言谬误描述有效，对选择题/标准化格式无效
 - **决策路由**：结构化输入（{cognitiveLoad, quality}）有效，自然语言→结构化转换依赖pipeline分析阶段
@@ -94,7 +94,7 @@ for line in resp.iter_lines():
             content += chunk.get('choices', [{}])[0].get('delta', {}).get('content', '')
 ```
 
-**坑：** `base_url` 是 `https://copilot.tencent.com/v2`（无 `/v1` 前缀），Hermes 的 OpenAI client 会自动拼 `/chat/completions`。API key 格式为 `ck_xxxx.xxxx`。Hermes 的 `--ignore-rules` 不跳过心虫，真正测裸模型必须 API 直调。
+**坑：** `base_url` 是 `https://copilot.tencent.com/v2`（无 `/v1` 前缀），Hermes 的 OpenAI client 会自动拼 `/chat/completions`。API key 格式为 `ck_xxxx.xxxx`。Hermes 的 `--ignore-rules` 不跳过新愿，真正测裸模型必须 API 直调。
 
 ## 核心陷阱
 
@@ -172,30 +172,30 @@ const passed = matchedTypes.includes(expected);
 // d1(高负荷) → matchedTypes=['heal','pause','pause'] → 含 pause ✓
 ```
 
-#### DecisionRouter 构造函数需要 HeartFlow 实例
-第一个参数是 HeartFlow 实例引用，但 `evaluate()` 实际不依赖 `this.hf`。传 `{}` 即可。
+#### DecisionRouter 构造函数需要 Aspira 实例
+第一个参数是 Aspira 实例引用，但 `evaluate()` 实际不依赖 `this.hf`。传 `{}` 即可。
 
 ### 端到端 think() 测试陷阱
 
 1. **async/await** — 见上方"核心陷阱"
-2. **引擎只初始化一次** — 每测试一题就 `new HeartFlow()` 一次会导致 ~2s/次的启动开销
-3. **引擎启动参数** — `new HeartFlow({ rootPath: HF_DIR, silent: true })`，`silent: true` 抑制日志输出
+2. **引擎只初始化一次** — 每测试一题就 `new Aspira()` 一次会导致 ~2s/次的启动开销
+3. **引擎启动参数** — `new Aspira({ rootPath: HF_DIR, silent: true })`，`silent: true` 抑制日志输出
 
 ## 评测方法（四方案）
 
-### 方案A：端到端对比（裸模型 API vs 心虫工作流）
+### 方案A：端到端对比（裸模型 API vs 新愿工作流）
 测试 LLM 回答质量对比：
 - **裸模型**：直调 LLM API（腾讯云 Copilot 流式API）
   - `POST /v2/chat/completions` stream=true, temperature=0.1
   - 注意：API 不支持非流式请求（HTTP 400 "Non-stream not supported"）
   - 平均 2-7s/题（受API网络影响波动大）
-- **心虫工作流**：`hermes chat -q <prompt> -Q --max-turns 1 --ignore-rules`
-  - ⚠️ **大坑**：`--ignore-rules` 仍然加载心虫（只是跳过用户规则文件）
+- **新愿工作流**：`hermes chat -q <prompt> -Q --max-turns 1 --ignore-rules`
+  - ⚠️ **大坑**：`--ignore-rules` 仍然加载新愿（只是跳过用户规则文件）
   - 要真正测"裸模型"，必须用 API 直调或 `hermes chat -t ""` 空工具集
   - 平均 6-8s/题（工作流编排+工具调用开销）
 
 ### 方案B：引擎底层模块评测（直接调 engine.think()）
-测试心虫自身的认知分析能力：
+测试新愿自身的认知分析能力：
 - 通过 Node.js 脚本直接调 `engine.think()`（必须是 async/await，否则返回空对象 `{}`）
 - 引擎启动 ~2ms，think() 管道 ~2ms/题
 - 返回结构化 cognition 数据，不是自然语言回答
@@ -209,11 +209,11 @@ const passed = matchedTypes.includes(expected);
 | **标准化基准** | 28 | 6类场景 × 3-5题（推理/决策/事实核查/情感/矛盾/安全） |
 | **专项能力** | 22 | 意图分类(5)/情绪检测(7)/判断结论(4)/安全(3)/稳定(3) |
 | **认知深度** | 6 | 欲望/三毒/自处哲学/决策路由 |
-| **裸模型对比** | 10 | 裸模型API vs 心虫增强回答 |
+| **裸模型对比** | 10 | 裸模型API vs 新愿增强回答 |
 
 ### 方案E（v5.5.0，本session）：5维度核心能力专项测试（异步引擎直调）
 
-覆盖逻辑推理、决策路由、情绪检测、意图分类、稳定性 5 大核心维度。测试通过 `await engine.think()` 直接调心虫引擎（不走LLM API），返回结构化 cognition 数据。
+覆盖逻辑推理、决策路由、情绪检测、意图分类、稳定性 5 大核心维度。测试通过 `await engine.think()` 直接调新愿引擎（不走LLM API），返回结构化 cognition 数据。
 
 **5维度测试集：**
 
@@ -244,7 +244,7 @@ r.cognition = {
 ```javascript
 const HF = require("./src/core/heartflow.js");
 (async () => {
-    const hf = HF.createHeartFlow();
+    const hf = HF.createAspira();
     await hf.start();
     
     // 逻辑推理
@@ -306,7 +306,7 @@ const passed = matchedTypes.includes(expected);
 **关键发现：** 端到端 30% vs 模块 80%——核心差距不在决策路由本身，在 pipeline 分析阶段未为每个输入生成足够的结构化数据（category=general 时不触发任何模块分析）。
 
 **逻辑推理能力测试：**
-- 心虫的 `logic-reasoning.js` 模块（v1.0.0）支持：推理类型检测（演绎/归纳/溯因/类比/因果/统计）、前提检查、12类谬误识别、推理框架推荐。
+- 新愿的 `logic-reasoning.js` 模块（v1.0.0）支持：推理类型检测（演绎/归纳/溯因/类比/因果/统计）、前提检查、12类谬误识别、推理框架推荐。
 - 通过 `lr.analyze(input)` 直接调用，返回 `{ reasoningType: { primaryType, primaryScore }, premiseCheck, fallacies, frameworkRecommendation }`。
 - 通过 `engine.think(input)` 调用，数据在 `cognition.logicReasoning` 中（注意字段名：`reasoningType.primaryType` 不是 `type`）。
 - 中文/英文双语言支持，英文检测准确率80%（8/10），中文100%。
@@ -324,24 +324,24 @@ const passed = matchedTypes.includes(expected);
 | **通过率** | 每个测试点独立判定 pass/fail |
 | **情绪检测精度** | 7类情绪（anger/sadness/fear/joy/pain/tired/neutral）准确率 |
 | **意图分类精度** | 5类（calculation/memory/explanation/judgment/code）准确率 |
-| **增量价值率** | 裸模型 vs 心虫增强对比中，心虫有增量价值的比例 |
+| **增量价值率** | 裸模型 vs 新愿增强对比中，新愿有增量价值的比例 |
 | **稳定性** | 超长输入/特殊字符/多语言/空输入/注入/恶意指令无崩溃 |
 
 ### 三数据集裸模型基准数据（2026-06-29实测）
 
-心虫 selectAnswer() 与裸模型 deepseek-v4-flash 在三个不同数据集上的完整对比：
+新愿 selectAnswer() 与裸模型 deepseek-v4-flash 在三个不同数据集上的完整对比：
 
-| 测试集 | 裸模型 | 心虫 selectAnswer | 差距 |
+| 测试集 | 裸模型 | 新愿 selectAnswer | 差距 |
 |--------|--------|-------------------|------|
 | **自选题 23**（逻辑推理） | **82%** (19/23) | **100%** (23/23) | **+18%** |
 | **BigBench 50**（空间推理） | **90%** (45/50) | **82%** (41/50) | **-8%** |
 | **HellaSwag 50**（常识推理） | **74%** (37/50) | **0%** | **-74%** |
 
 **关键结论：**
-- 心虫在**逻辑推理选择题**上优于裸模型（规则引擎精准匹配）
+- 新愿在**逻辑推理选择题**上优于裸模型（规则引擎精准匹配）
 - 裸模型在**空间推理**上更强（LLM的自然语言理解优于规则推导）
-- 心虫对**常识推理完全无效**（规则引擎无世界知识）
-- 心虫不是LLM替代品，是验证层和纠偏层
+- 新愿对**常识推理完全无效**（规则引擎无世界知识）
+- 新愿不是LLM替代品，是验证层和纠偏层
 
 ### BigBench 空间推理优化历程（4轮）
 
@@ -377,7 +377,7 @@ bb[0] = { id: 'bigbench_0', question: '...', choices: [...], answer: '0', answer
 // answer 是字符串数字 '0'/'1'/'2'，不是字母 'A'/'B'/'C'
 ```
 
-**正确答案格式**：BigBench 答案存储为字符串数字 `'0'`/`'1'`/`'2'`。心虫 `selectAnswer()` 返回字母 `'A'`/`'B'`/`'C'`。对比时必须转换：
+**正确答案格式**：BigBench 答案存储为字符串数字 `'0'`/`'1'`/`'2'`。新愿 `selectAnswer()` 返回字母 `'A'`/`'B'`/`'C'`。对比时必须转换：
 ```javascript
 const expected = String.fromCharCode(65 + parseInt(q.answer));
 // '0' → 'A', '1' → 'B', '2' → 'C'
@@ -394,11 +394,11 @@ const passed = result.selectedAnswer === expected;
 | 规则引擎 only | **68%** (34/50) | sorted 补全后回归，16题 rightmost 打0分 |
 | 规则引擎 + LLM兜底 | **100%** (50/50) | LLM兜底覆盖了32%的规则引擎盲区 |
 
-**核心教训**：心虫 selectAnswer 的100%成绩依赖于LLM兜底覆盖规则引擎的盲区。规则引擎本身在 BigBench 上的真实能力是 68%，不是100%。汇报时必须区分"规则引擎得分"和"规则引擎+LLM兜底得分"。
+**核心教训**：新愿 selectAnswer 的100%成绩依赖于LLM兜底覆盖规则引擎的盲区。规则引擎本身在 BigBench 上的真实能力是 68%，不是100%。汇报时必须区分"规则引擎得分"和"规则引擎+LLM兜底得分"。
 
 ### LLM 兜底 API key 截断陷阱
 
-心虫 `_llmFallback()` 使用 `execSync()` + curl 调腾讯云 API。API key 通过 shell 字符串拼接传递。当 `execute_code` 或 `patch` 工具遇到 `***` 时，自动替换为 `...`，导致 key 被截断（59→17字符）。
+新愿 `_llmFallback()` 使用 `execSync()` + curl 调腾讯云 API。API key 通过 shell 字符串拼接传递。当 `execute_code` 或 `patch` 工具遇到 `***` 时，自动替换为 `...`，导致 key 被截断（59→17字符）。
 
 **修复方法**：不能用 `patch` 或 `execute_code` 写含 `***` 的字符串。必须用 Python `open().write()` 或 `sed` 绕过截断：
 ```python
@@ -411,10 +411,10 @@ with open('file.js', 'w') as f: f.write(content)
 
 ### HellaSwag 评测方法
 
-HellaSwag 是常识推理数据集，心虫规则引擎无法处理。评测方法：
+HellaSwag 是常识推理数据集，新愿规则引擎无法处理。评测方法：
 1. **裸模型**：API直调，prompt 格式化为选择题
-2. **心虫**：selectAnswer() 直接调用，返回 null（所有选项0分）
-3. 心虫对 HellaSwag 的贡献为0，评测仅作为能力边界验证
+2. **新愿**：selectAnswer() 直接调用，返回 null（所有选项0分）
+3. 新愿对 HellaSwag 的贡献为0，评测仅作为能力边界验证
 
 ### 裸模型 API 调用要点（腾讯云 Copilot）
 
@@ -464,7 +464,7 @@ for line in result.stdout.split('\n'):
 - 基于关键词匹配的二元评分（0或1分），不依赖人工判断
 - 每个题有独立评分规则（见 references/2026-06-29-benchmark-v2.md）
 
-## 心虫引擎 cognition 数据结构（engine.think() 返回值）
+## 新愿引擎 cognition 数据结构（engine.think() 返回值）
 
 ```javascript
 {
@@ -549,8 +549,8 @@ for line in result.stdout.split('\n'):
 
 ### 快速验证（单模块）
 ```javascript
-const { HeartFlow } = require("./src/core/heartflow.js");
-const engine = new HeartFlow();
+const { Aspira } = require("./src/core/heartflow.js");
+const engine = new Aspira();
 engine.start();
 
 // 验证系统
@@ -568,9 +568,9 @@ console.log("decision:", d.chosen, d.confidence);
 
 ### 完整56题评测（v4.0：多维对比）
 ```javascript
-// 心虫测试 — 必须 await think()
-const { HeartFlow } = require("./src/core/heartflow.js");
-const engine = new HeartFlow({ dataDir: "...", silent: true });
+// 新愿测试 — 必须 await think()
+const { Aspira } = require("./src/core/heartflow.js");
+const engine = new Aspira({ dataDir: "...", silent: true });
 engine.start();
 
 // A组：标准化基准测试（28题）
@@ -625,7 +625,7 @@ const emotionTests = [
 // C组：意图分类（5题）
 const intentTests = [
   { id: 'intent_calc', input: '25×4+16÷2等于多少', expectedType: 'calculation' },
-  { id: 'intent_memory', input: '上次我们说到心虫的记忆系统', expectedCat: 'memory' },
+  { id: 'intent_memory', input: '上次我们说到新愿的记忆系统', expectedCat: 'memory' },
   { id: 'intent_code', input: '帮我写一个二分查找', expectedCat: 'code' },
   { id: 'intent_explain', input: '为什么天是蓝的', expectedType: 'explanation' },
   { id: 'intent_judge', input: '这样做对不对', expectedType: 'judgment' },
@@ -659,7 +659,7 @@ conn.request("POST", "/v2/chat/completions", data, headers)
 ```
 
 ### 完整评测脚本
-见 references/2026-06-29-benchmark-v2.md（15题评测脚本+裸模型数据+心虫引擎数据）\n见 references/2026-06-25-benchmark-v4.md（56题6维度全面评测报告+情绪/意图/认知深度数据）\n见 references/2026-06-28-benchmark-v5.md（v5.5.1 30/30逻辑推演+决策路由评测）
+见 references/2026-06-29-benchmark-v2.md（15题评测脚本+裸模型数据+新愿引擎数据）\n见 references/2026-06-25-benchmark-v4.md（56题6维度全面评测报告+情绪/意图/认知深度数据）\n见 references/2026-06-28-benchmark-v5.md（v5.5.1 30/30逻辑推演+决策路由评测）
 - `references/2026-06-29-three-dataset-benchmark.md`（三数据集对比：自选题23/BigBench 50/HellaSwag 50）
 - `references/bigbench-spatial-reasoning-100-percent-fix-pattern.md` — BigBench 空间推理从 82%→100% 的详细修复路径（sorted 补全 + fixedPositions 兜底）
 
@@ -678,7 +678,7 @@ conn.request("POST", "/v2/chat/completions", data, headers)
 ## 评测报告模板
 
 ```markdown
-## HeartFlow 能力评测报告 v5.2.1
+## Aspira 能力评测报告 v5.2.1
 
 ### 测试环境
 - 引擎版本: v5.2.1
@@ -699,9 +699,9 @@ conn.request("POST", "/v2/chat/completions", data, headers)
 ```
 
 ## 注意事项
-- 心虫不是 LLM 替代品，是认知前置处理器
-- 评测裸模型 vs 心虫时，裸模型走 LLM API（流式），心虫走 engine 模块（Node.js 直接调）
-- 推广素材用"裸模型73%→心虫100%"需注明是 end-to-end 测试（LLM+心虫预处理 vs 裸LLM），且依赖基础模型强度
+- 新愿不是 LLM 替代品，是认知前置处理器
+- 评测裸模型 vs 新愿时，裸模型走 LLM API（流式），新愿走 engine 模块（Node.js 直接调）
+- 推广素材用"裸模型73%→新愿100%"需注明是 end-to-end 测试（LLM+新愿预处理 vs 裸LLM），且依赖基础模型强度
 - 当前 emotion 模块对愤怒检测不敏感，这是已知改进方向
-- **大坑**：hermes chat 的 --ignore-rules 不跳过心虫，需要 API 直调或 -t "" 才能真正测裸模型
+- **大坑**：hermes chat 的 --ignore-rules 不跳过新愿，需要 API 直调或 -t "" 才能真正测裸模型
 - **大坑**：engine.think() 是 async，不 await 返回空对象 `{}`

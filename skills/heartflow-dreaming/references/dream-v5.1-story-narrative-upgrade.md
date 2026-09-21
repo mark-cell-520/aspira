@@ -2,7 +2,7 @@
 
 ## 动机
 
-用户反馈："这些应该在底层运行，显示我们心虫做梦引擎的，应该就有离奇故事，有深度的，人类做梦一样的故事。"
+用户反馈："这些应该在底层运行，显示我们新愿做梦引擎的，应该就有离奇故事，有深度的，人类做梦一样的故事。"
 
 之前 v5.0 的输出是阶段摘要 + 模板句子的拼接（"两个不相干的东西因为...互相认出了对方"、"同一层楼左边的人很重右边的人很轻"）。用户要的是有画面、有转折、有深度的叙事，不是技术分析。
 
@@ -63,4 +63,4 @@ MCP server 的 handleDream 原代码从 `heartflow.modules`、`heartflow.memory`
 1. **"又有一个东西加入了"重复** — subEvents 数组只有 3 个模板，connection 数 3+ 时可能抽到同一个。增加模板数量可解决。
 2. **protagonist/antagonist 固定** — 按 weight 排序，主角永远是 core_mem(0.9)，对手永远是 qtable(0.7)。可在 `_gatherMaterials` 加入随机权重扰动。
 3. **材料权重固定** — 没有随机扰动，多次 dream 的底层分析结果相同，只是模板选择不同。不影响用户体验（模板随机已经够了），但如果要底层分析也变化需要加权重随机。
-4. **MCP server 启动问题** — `heartflow.start()` 卡住导致 server 启动不了。handleDream 已改为不依赖 heartflow，但 server 初始化时仍会尝试 `initHeartFlow()`。如果启动不了，需要注释掉 initHeartFlow 调用或加 try/catch。
+4. **MCP server 启动问题** — `heartflow.start()` 卡住导致 server 启动不了。handleDream 已改为不依赖 heartflow，但 server 初始化时仍会尝试 `initAspira()`。如果启动不了，需要注释掉 initAspira 调用或加 try/catch。

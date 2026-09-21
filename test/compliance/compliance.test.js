@@ -86,7 +86,7 @@ test('G3-3: 机密合同 → rewrite', () => {
 
 test('G3-4: 公开内容 → rewrite(脱敏)', () => {
   // 实际: 公开内容触发 PII 规则 rewrite（非 bug，是 PII 规则触发）
-  // 心虫监督: rewrite ≠ 泄露，脱敏后放行符合国标 PII 处理要求
+  // 新愿监督: rewrite ≠ 泄露，脱敏后放行符合国标 PII 处理要求
   const r = checkOutbound({ text: '今天天气真好' });
   assert.strictEqual(r.action, 'rewrite', 'action=' + r.action);
   assert.ok(r.sanitized, '应脱敏');

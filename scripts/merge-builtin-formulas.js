@@ -120,7 +120,7 @@ const BUILTIN = [
   { id:'stress_tensor', name:'应力张量', formula:'σ_ij', cat:'engineering', sub:'mechanics', difficulty:'advanced' },
   { id:'strain_tensor', name:'应变张量', formula:'ε_ij = ½(∂u_i/∂x_j + ∂u_j/∂x_i)', cat:'engineering', sub:'mechanics', difficulty:'advanced' },
 
-  // ── 认知科学（心虫核心） ──
+  // ── 认知科学（新愿核心） ──
   { id:'yarkes_dodson', name:'耶克斯-多德森定律', formula:'Performance = f(arousal) = -a·A² + b·A + c', cat:'cognitive_science', sub:'arousal', difficulty:'intermediate' },
   { id:'q_learning_update', name:'Q-Learning 更新规则', formula:'Q(s,a) ← Q(s,a) + α[r + γ max_a\' Q(s\',a\') - Q(s,a)]', cat:'cognitive_science', sub:'reinforcement_learning', difficulty:'advanced' },
   { id:'policy_gradient', name:'策略梯度定理', formula:'∇J(θ) = E[∇ log π(a|s) Q(s,a)]', cat:'cognitive_science', sub:'reinforcement_learning', difficulty:'advanced' },

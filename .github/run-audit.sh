@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
-echo "Running HeartFlow audit..."
+echo "Running Aspira audit..."
 node .github/audit-runner.js || echo "Audit runner failed; generating empty report for workflow continuity"
 cat > heartflow-audit-report.md <<'EOF'
-# HeartFlow Audit Report
+# Aspira Audit Report
 
 - Audit runner failed or produced no output.
 EOF

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Local PR commenter — replaces external action mark-HeartFlow/mark-heartflow-skill/.github/comment-action@main
+# Local PR commenter — replaces external action mark-Aspira/mark-heartflow-skill/.github/comment-action@main
 REPORT_PATH="${1:-heartflow-audit-report.md}"
 if [ ! -f "$REPORT_PATH" ]; then
   echo "Report not found: $REPORT_PATH"

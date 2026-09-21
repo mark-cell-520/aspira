@@ -125,8 +125,8 @@ heartflow status
 node -e '
 const path = require("path");
 const hfDir = path.join(process.env.HOME, ".hermes/skills/heartflow");
-const { HeartFlow } = require(path.join(hfDir, "src/core/heartflow.js"));
-const engine = new HeartFlow({ dataDir: path.join(hfDir, "data"), silent: true });
+const { Aspira } = require(path.join(hfDir, "src/core/heartflow.js"));
+const engine = new Aspira({ dataDir: path.join(hfDir, "data"), silent: true });
 engine.start();
 engine.dreamNow({ intensity: 0.85, force: true }).then(r => {
   if (!r.skipped) console.log(r.narrative);
@@ -137,6 +137,6 @@ engine.dreamNow({ intensity: 0.85, force: true }).then(r => {
 ## 遗留问题
 
 1. **材料权重分布不均**：core_mem 始终 0.9，qtable 始终 0.7，导致叙事主角总是这两个。需要随机权重扰动。
-2. **handleDream 硬编码状态**：MCP server 的 handleDream 中 engineState 是硬编码的，不会随心虫状态变化。
+2. **handleDream 硬编码状态**：MCP server 的 handleDream 中 engineState 是硬编码的，不会随新愿状态变化。
 3. **遗忘阈值**：0.08 是硬编码的。不同场景可能需要不同遗忘强度。
 4. **周期间连接**：当前每个周期独立处理材料，没有跨周期的"故事线"。

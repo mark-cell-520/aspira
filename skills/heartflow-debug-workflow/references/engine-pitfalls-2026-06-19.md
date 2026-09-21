@@ -1,4 +1,4 @@
-# HeartFlow Engine Pitfalls (2026-06-19)
+# Aspira Engine Pitfalls (2026-06-19)
 
 ## P1: `think()` misclassifies user emotion queries
 

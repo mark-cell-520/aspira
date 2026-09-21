@@ -8,7 +8,7 @@ const { checkOutput } = require(process.env.HEARTFLOW_SRC || require('path').joi
  *   node scripts/probe-gate-triggers.js --file references/some-doc.md
  *
  * Environment:
- *   HEARTFLOW_SRC — path to HeartFlow repo root (optional)
+ *   HEARTFLOW_SRC — path to Aspira repo root (optional)
  */
 
 const fs = require('fs');

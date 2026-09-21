@@ -5,11 +5,11 @@
  * Fix: 从 ctx.stages 取 HYPOTHESES 阶段真实结果。
  */
 const assert = require('assert');
-const { HeartFlow } = require('../src/core/heartflow.js');
+const { Aspira } = require('../src/core/heartflow.js');
 
 module.exports = function ({ test }) {
   test('主动推理 EFE 层接入主路径，不再因未定义变量静默跳过', async () => {
-    const hf = new HeartFlow({ dataDir: process.cwd() + '/data', silent: true });
+    const hf = new Aspira({ dataDir: process.cwd() + '/data', silent: true });
     hf.start();
     await new Promise(r => setTimeout(r, 3000));
 

@@ -1,4 +1,4 @@
-name: 'HeartFlow Audit Comment'
+name: 'Aspira Audit Comment'
 description: 'Comment audit summary on a PR'
 inputs:
   report_path:

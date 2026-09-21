@@ -1,8 +1,8 @@
-# 跨心虫版本代码吸收工作流
+# 跨新愿版本代码吸收工作流
 
 ## 适用场景
 
-当两个心虫（HeartFlow）版本在不同路径下各自演化时（如 `~/.hermes/skills/heartflow/` 的Hermes心虫 vs `~/.claude/skills/mark-heartflow-skill/` 的Claude心虫），将旧版中有价值但新版缺失的模块/方法吸收到新版中。
+当两个新愿（Aspira）版本在不同路径下各自演化时（如 `~/.hermes/skills/heartflow/` 的Hermes新愿 vs `~/.claude/skills/mark-heartflow-skill/` 的Claude新愿），将旧版中有价值但新版缺失的模块/方法吸收到新版中。
 
 ## 执行步骤
 

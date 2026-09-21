@@ -60,8 +60,8 @@ node --check src/core/heartflow.js
 
 # 2. 引擎启动验证
 node -e "
-const {HeartFlow} = require('./src/core/heartflow.js');
-const h = new HeartFlow({rootPath:'.'});
+const {Aspira} = require('./src/core/heartflow.js');
+const h = new Aspira({rootPath:'.'});
 h.start();
 console.log('started:', h.started);
 console.log('decisionRouter:', !!h.decisionRouter);
@@ -71,8 +71,8 @@ process.exit(0);
 
 # 3. think() 返回含 drDecision
 node -e "
-const {HeartFlow} = require('./src/core/heartflow.js');
-const h = new HeartFlow({rootPath:'.'});
+const {Aspira} = require('./src/core/heartflow.js');
+const h = new Aspira({rootPath:'.'});
 h.start();
 h.think('测试输入').then(r => {
   console.log('drDecision:', JSON.stringify(r.drDecision));

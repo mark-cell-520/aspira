@@ -1,4 +1,4 @@
-# HeartFlow 代码审计与 Hook 扩展分析报告
+# Aspira 代码审计与 Hook 扩展分析报告
 
 > 审计日期：2026-07-14
 > 审计范围：`src/core/`、`src/mcp-server.js`、`src/memory/topic-scope.js`、`skills/heartflow-module-upgrader/references/hooks-adapter-patterns.md`
@@ -9,7 +9,7 @@
 
 ## 一、审计摘要
 
-HeartFlow 当前是**模块化懒加载架构**，核心通过 `_lazy()` 实现 80+ 模块按需加载。已具备基础事件钩子系统（TopicScope 4 事件 + Hooks Adapter 4 生命周期），但**缺乏引擎原生 pipeline hook 机制**。现有扩展主要依赖 MCP 工具注册和 dispatch 白名单，能力边界清晰但可扩展性受限。
+Aspira 当前是**模块化懒加载架构**，核心通过 `_lazy()` 实现 80+ 模块按需加载。已具备基础事件钩子系统（TopicScope 4 事件 + Hooks Adapter 4 生命周期），但**缺乏引擎原生 pipeline hook 机制**。现有扩展主要依赖 MCP 工具注册和 dispatch 白名单，能力边界清晰但可扩展性受限。
 
 ---
 
@@ -34,7 +34,7 @@ HeartFlow 当前是**模块化懒加载架构**，核心通过 `_lazy()` 实现 
 
 ### 2.2 Hooks Adapter（Claude Code 生命周期映射）
 
-| 事件 | 心虫内部映射 | 默认行为 |
+| 事件 | 新愿内部映射 | 默认行为 |
 |------|-------------|---------|
 | `SessionStart` | `cognitive.boot` | 加载身份核心、记忆系统、元认知协议 |
 | `UserPromptSubmit` | `psychology.scan+intent` | 心理扫描、意图检测、情绪评估 |
@@ -43,7 +43,7 @@ HeartFlow 当前是**模块化懒加载架构**，核心通过 `_lazy()` 实现 
 
 **实现位置**：`skills/heartflow-module-upgrader/references/hooks-adapter-patterns.md`
 **局限**：
-- 绑定 Claude Code 外部生命周期，非心虫原生
+- 绑定 Claude Code 外部生命周期，非新愿原生
 - 事件粒度粗，无法介入 think pipeline 中间态
 - 无错误传播机制
 
@@ -230,7 +230,7 @@ Phase 4（v6.4.0）：Formula/Error Hooks（如需要）
 
 ## 七、结论
 
-HeartFlow 当前具备**基础但分散**的 hook 能力：
+Aspira 当前具备**基础但分散**的 hook 能力：
 - TopicScope 的 4 事件钩子是现有最完整的实现
 - Hooks Adapter 提供了外部生命周期映射
 - MCP 工具注册是主要功能扩展点

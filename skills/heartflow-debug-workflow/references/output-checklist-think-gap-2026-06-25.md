@@ -68,8 +68,8 @@ try {
 
 ```bash
 node -e "
-const {HeartFlow}=require('./src/core/heartflow.js');
-const h=new HeartFlow(); h.start();
+const {Aspira}=require('./src/core/heartflow.js');
+const h=new Aspira(); h.start();
 const oc = h.outputChecklist;
 if (oc) {
   const tests = [
