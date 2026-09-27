@@ -1,0 +1,63 @@
+{
+  "ts": "2026-09-27T19:58:56.228Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[test-coverage-gap,assess-gate-verdict,doc-honest-numbers], 按consequence_value最高选 test-coverage-gap",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.73, 文档诚实数字审计=0.73, 评估 gate-verdict 冗余性/是否接线=0.72 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.73
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.71
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.71
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 161,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "800/0"
+  },
+  "result": "测试覆盖缺口填补 → 上轮审计显示覆盖分布 1:31，本轮实测已降至 1:15(上轮 firing 测试抬升了 16 个维度)。剩余 15 个单文件维度只有「能触发」的单向断言——模式一旦被改宽，不会有任何测试叫住。新增 test/dimension-negative-controls.test.js(4 测试)给这 15 个维度锁**近邻负对照**: 语义正常但与该维度模式共享词汇/结构的文本。过程中查出并修复一个真误报: dehumanization 的 /这些(?:人|家伙|货色|垃圾人)/i 是**裸短语匹配**——「这些人」这个中性词单独出现即判非人化，实测「这些人应当受到公正审判。」(伸张正义)被判 hit。同组其它模式都要求贬义谓语(如 (?:就是|全是|都是|简直是|这帮|这群)[^。]{0,6}(?:人|垃圾人))，只有这一条没有。已改为要求后续出现贬义/清除标记，既有 6 个正例全部保留，4 个中性表述零误报。同时本轮三次判断出「是我的探针错而非模式错」，均如实记录在测试注释里: (1) moral_foundations 是**道德基础词汇分类器**不是违规检测器，「从公平角度考虑」点名 foundation 名称，命中是正确行为; (2)「数据显示转化率提升了12%」被判 rewrite 是正确的——无来源归因+无引证精确数字，guidance 正是「补充可验证的数据来源」; (3)「我们应该尊重不同的文化背景」gate=verify 是因「尊重」命中 moral_foundations 词汇表(severity 20)叠加 ai_writing_tell(35)，属设计行为。第 (3) 条暴露一个系统性事实: 门禁对含道德判断词汇的良性文字普遍升级 verify——这是设计而非缺陷，但意味着门禁级负例必须避开道德基础词汇，否则测的是门禁而非目标维度。修复后 FP/召回无回归: 5.3%/100%。"
+}
