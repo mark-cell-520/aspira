@@ -1,0 +1,65 @@
+{
+  "ts": "2026-09-27T20:23:56.734Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"评估 gate-verdict 冗余性/是否接线\" (0.72); \"维度健康审计与增强\" (0.71); \"测试覆盖缺口填补\" (0.71); \"对抗鲁棒性增强\" (0.71); \"误报/召回校准\" (0.7); \"MCP 工具增强\" (0.7); \"性能优化\" (0.67)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.73
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "score": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.71
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.71
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 162,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "807/0"
+  },
+  "restartSkipped": "本轮只改文档/脚本/测试，未涉及 src/ 引擎代码，按周期规则跳过 MCP 重启",
+  "result": "文档诚实数字审计 → 建 scripts/audit-doc-numbers.js，把 README/SKILL/AGENTS 里声称的每个数字与代码实测比对(AGENTS.md 原则 #5: 任何被声称的指标必须可测量)。审计自身错了四轮才可信，全是审计器的缺陷而非被审对象的: (1) routes() 数模块级键数(132)而非展开条目数(1510)，把正确的「1,510 dispatch routes」报成无法实测; (2) 把文档的 \">= 18.17\" 与 package.json 的 \">=18.17\" 当不符(排版差异); (3) 把 changelog 散文里的偶然匹配(\"11 refs across 8 modules\")当成引擎声称; (4) 把 changelog 历史记录当当前声称——修好 routes 后「Modules 132, dispatch routes 1,510」会变成假警报，故剥掉 changelog 表再审。可信之后查出两个真漂移: (1) **pipeline 层数错**: 文档称 14 层，src/pipeline.js 实测 17 层；且文档名单里 3 个层(evidence verify / rewriter / self-diagnosis)在代码中根本不存在，同时漏掉 9 个真实层(classical-knowledge / adversarial-variant / dao-decision / uncertainty / priority-guardian / progress-judgment / verifier / auto-rules / discriminate)；还把 gate 排第 4 位而代码里 gate 是第 10 个执行的层。SKILL.md 图已改为 17 层实测顺序并注明「此名单是测出来的不是记下来的」。(2) **测试数陈旧**: README 写 740 passing tests，实测 800。新增 test/doc-numbers.test.js(7 测试)锁层数/层名单/层顺序/维度数/工具数，使文档数字今后改坏即失败。测试数是唯一无法自证的数字(自证意味着在套件内跑套件)，每轮手工校正。修复过程中我的解析正则也漏了 discriminate(54 dims) 这种层名后接括号的写法，把正确文档报成「漏掉一层」——同属解析器 bug。最终审计 20/20 一致、0 不符、0 无法实测。"
+}

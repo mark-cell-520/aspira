@@ -5,7 +5,7 @@ version: "1.0.0"
 description: |-
   Aspira is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
-  it reaches a human. 54 discrimination dimensions × 14-layer pipeline × 132 modules ×
+  it reaches a human. 54 discrimination dimensions × 17-layer pipeline × 132 modules ×
   181 MCP tools. Zero LLM dependency.
 
   Upgraded capabilities (v6.7.69): reasoning effort control, sparse module activation,
@@ -297,16 +297,28 @@ console.log(deep._decisionApplied);      // { applied: true/false, decision: {..
 
 ---
 
-## The 14-layer check pipeline
+## The 17-layer check pipeline
 
 ```
-input -> scope-check -> premise-check -> discriminate(51 dims) -> gate
-      -> evidence verify -> frame-check -> output-gate -> doubt-engine
-      -> intent-anchor -> rewriter -> error-memory -> self-diagnosis -> output
+input -> scope-check -> premise-check -> discriminate(54 dims) -> classical-knowledge
+      -> adversarial-variant -> dao-decision -> uncertainty -> priority-guardian
+      -> progress-judgment -> gate -> verifier -> frame-check -> output-gate
+      -> doubt-engine -> error-memory -> auto-rules -> intent-anchor -> output
 ```
 
 The gate aggregates every layer's findings and emits one of four actions:
 `block` / `rewrite` / `verify` / `pass`.
+
+> **This list is measured, not remembered.** `scripts/audit-doc-numbers.js` extracts the
+> layer names straight out of the `checked_by.push({ layer: '…' })` statements in
+> `src/pipeline.js` and compares them against this diagram. The previous version of this
+> section claimed 14 layers and named three that do not exist in the code (`evidence
+> verify`, `rewriter`, `self-diagnosis`) while omitting nine that do
+> (`classical-knowledge`, `adversarial-variant`, `dao-decision`, `uncertainty`,
+> `priority-guardian`, `progress-judgment`, `verifier`, `auto-rules`, and `discriminate`
+> itself). It also placed `gate` fourth, when in the code the gate runs tenth — after all
+> the discriminators and before the verifier. Every layer above now appears in the order
+> the code executes it.
 
 ---
 
