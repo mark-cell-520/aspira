@@ -1296,8 +1296,8 @@ function checkUnsupportedClaim(text) {
   // 是诚实的学术表述，不应判为无依据断言。
   const specificSource = hasChinese ? [
     /(?:论文|期刊|文献|报告|实验|测试集|数据集|研究机构|实验室|数据源)/,
-    /(?:公开数据|官方数据|统计局|央行|财政部|海关总署|工信部|发改委|联合国|世界银行|IMF|WHO)/,
-    /(?:哈佛|剑桥|牛津|斯坦福|麻省理工|清华|北大|中科院|耶鲁|普林斯顿|伯克利|MIT|Stanford|Harvard|Oxford|Cambridge|Yale)/,
+    /(?:公开数据|官方数据|统计局|央行|财政部|海关总署|工信部|发改委|联合国|世界银行|IMF|WHO)/i,
+    /(?:哈佛|剑桥|牛津|斯坦福|麻省理工|清华|北大|中科院|耶鲁|普林斯顿|伯克利|MIT|Stanford|Harvard|Oxford|Cambridge|Yale)/i,
   ] : [
     /\b(?:paper|journal|report|literature|experiment|test set|dataset|study from|research from|university|institute|lab|official data|public data|statistics bureau|central bank|world bank|united nations|IMF|WHO)\b/i,
     /\b(?:Harvard|MIT|Stanford|Oxford|Cambridge|Yale|Princeton|Berkeley|Caltech|ETH)\b/i,
@@ -1318,7 +1318,7 @@ function checkUnsupportedClaim(text) {
   // 公开权威来源直接豁免：来源本身公开可查（统计局/央行/公开数据/官方数据/知名机构），
   // 即使无保留语也不判"无依据断言"——这类来源的引用是正常信息传递，不是编造风险。
   const publicAuthoritySource = hasChinese ? [
-    /(?:根据|据|按|参照)\s*(?:公开数据|官方数据|统计局|央行|财政部|海关总署|工信部|发改委|联合国|世界银行|IMF|WHO)/,
+    /(?:根据|据|按|参照)\s*(?:公开数据|官方数据|统计局|央行|财政部|海关总署|工信部|发改委|联合国|世界银行|IMF|WHO)/i,
     /(?:我们|本公司|我司|团队|课题组)?\s*(?:调查|调研|测试|检测|统计|实验|审计)[^。]{0,20}(?:名|位|人|样本|覆盖)/,  // 有样本量/覆盖范围的调查
     /(?:报告|数据|统计|审计)[^。]{0,15}(?:显示|表明|来自)[^。]{0,20}(?:年报|审计|官方|报告|数据源|数据库)/,  // 数据来自明确来源
   ] : [
@@ -1708,7 +1708,9 @@ const CODE_SECURITY_PATTERNS = {
     /(?:api_key|apikey|api_secret|secret_key|secretKey|password|passwd|pwd)\s*[:=]\s*['"][^'"]+['"]/i,
     /(?:token|access_token|auth_token|bearer|jwt)\s*[:=]\s*['"][^'"]+['"]/i,
     /(?:aws_secret|aws_access|iam_secret|github_token|ghp_|gho_|ghs_|ghr_|sk-[a-zA-Z0-9]{20,})/i,
-    /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/,
+    // /i 不可省：text-normalizer 第 6 步统一转小写，缺 /i 时真实的
+    // "-----BEGIN RSA PRIVATE KEY-----" 会被转成小写而永不命中(实测漏过)。
+    /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/i,
     /(?:^|\n)\s*(?:DATABASE_URL|MONGO_URI|REDIS_URL|MYSQL_|PGPASSWORD|DB_PASS|SECRET_KEY_BASE|JWT_SECRET|ENCRYPTION_KEY|COOKIE_SECRET|SESSION_SECRET)\s*=\s*[^\s'"\n]+/i,
     /(?:^|\n)\s*(?:\/\/registry\.npmjs\.org\/:_authToken|_auth|username|password)\s*=\s*[^\s\n]+/im,
     /\/\/\s*(?:TODO|FIXME|HACK|XXX)\s*:?.*?(?:password|pass|pwd|credentials?|secret|api.?key|token):?\s*['"][^'"]+['"]/i,
@@ -1737,6 +1739,10 @@ const CODE_SECURITY_PATTERNS = {
     /\[innerHTML\]\s*=\s*['"].*\+\s*(?:this\.|props\.|state\.)/i,
     /dangerouslySetInnerHTML\s*=\{\{__html:/i,
     /expression\s*\(\s*[^)]*javascript/i, /url\s*\(\s*['"]?\s*javascript:/i,
+    // [对抗鲁棒性增强] 原 innerHTML 模式要求右侧出现 + 拼接，el.innerHTML = userInput
+    // 这种无拼接的直接赋值漏过。改为按「右值是否为字面量」判定。
+    /(?:\.innerHTML|\.outerHTML)\s*=\s*(?!['"`])\s*[A-Za-z_$]/i,
+    /document\.write\s*\(\s*(?!['"`])\s*[A-Za-z_$]/i,
   ],
   path_traversal: [
     /\.\.\//, /\.\.\\/,
@@ -1756,6 +1762,21 @@ const CODE_SECURITY_PATTERNS = {
     /child_process\.(?:exec|execSync|spawn|spawnSync|execFile)\s*\(\s*['"].*\+\s*(?:req|request|params|body|input)/i,
     /(?:eval|Function)\s*\(\s*(?:req|request|body|params|input)/i,
     /(?:`[^`]*\$\{[^}]*req|`[^`]*\$\{[^}]*body|`[^`]*\$\{[^}]*params|`[^`]*\$\{[^}]*input)/i,
+    // [对抗鲁棒性增强] 以上四条只认 req|request|params|body|input 这几个污点名，
+    // 等于要求调用方按约定命名——改成 userInput / res.data / myVar 即完全绕过，
+    // 实测 12 个命令注入探针漏 10 个。改为按「参数是否为字面量」判定：字面量无害，
+    // 字符串拼接或模板插值即可疑，与变量叫什么名字无关。
+    /(?:\bexec|\bexecSync|\bexecFile|\bexecFileSync|\bspawn|\bspawnSync|\bfork)\s*\(\s*['"][^'"]*['"]\s*\+/i,
+    /(?:\bexec|\bexecSync|\bexecFile|\bexecFileSync|\bspawn|\bspawnSync)\s*\(\s*`[^`]*\$\{/i,
+  ],
+  // [对抗鲁棒性增强] 动态代码执行。原 command_injection 里的 eval 模式同样只认
+  // 那五个污点名，于是 eval(userInput) 这种最经典的写法反而漏过。判定依据改为
+  // 参数是否为字面量：eval("1+1") / eval() 无害，eval(<标识符或成员表达式>) 即可疑。
+  // 注意 /i 标志不可省：text-normalizer 第 6 步会把全文统一转小写，缺 /i 的模式
+  // (如 new Function)在归一化后的文本上永远匹配不上，且不报错。
+  dynamic_code_execution: [
+    /\beval\s*\(\s*(?!['"`])\s*[A-Za-z_$]/i,
+    /new\s+Function\s*\(\s*(?!['"`])\s*[A-Za-z_$]/i,
   ],
   ldap_injection: [
     /(?:ldapsearch|ldap\.search|ldapjs|activedirectory)\s*\([^)]*\+?\s*(?:req|request|params|body|input)/i,
@@ -1785,9 +1806,11 @@ const CODE_SECURITY_PATTERNS = {
 };
 const CS_L = { secret:'critical', sql_injection:'critical', xss:'high', path_traversal:'high',
   insecure_crypto:'medium', command_injection:'critical', ldap_injection:'high',
-  xxe:'high', ssrf:'medium', insecure_deserialization:'high', open_redirect:'high' };
+  xxe:'high', ssrf:'medium', insecure_deserialization:'high', open_redirect:'high',
+  dynamic_code_execution:'critical' };
 const CS_W = { secret:0.9, sql_injection:0.9, xss:0.7, path_traversal:0.7, insecure_crypto:0.4,
-  command_injection:0.9, ldap_injection:0.7, xxe:0.7, ssrf:0.6, insecure_deserialization:0.7, open_redirect:0.7 };
+  command_injection:0.9, ldap_injection:0.7, xxe:0.7, ssrf:0.6, insecure_deserialization:0.7, open_redirect:0.7,
+  dynamic_code_execution:0.9 };
 function checkCodeSecurity(text) {
   if (!text || typeof text !== 'string') return { count: 0, issues: [], types: [], score: 0 };
   const issues = [];

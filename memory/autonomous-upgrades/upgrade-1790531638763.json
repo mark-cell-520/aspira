@@ -1,0 +1,68 @@
+{
+  "ts": "2026-09-27T17:53:58.763Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,fp-recall-calibration,dimension-health-audit,wire-false-positive-feedback,mcp-tool-enhancement,test-coverage-gap,assess-gate-verdict,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.73, 测试覆盖缺口填补=0.73, 文档诚实数字审计=0.73 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.73
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.73
+    },
+    {
+      "id": "wire-false-positive-feedback",
+      "label": "接线 false-positive-feedback 误报反馈环",
+      "composite": 0.72
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.72
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.72
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 156,
+    "textNormWired": true,
+    "fpFeedbackWired": false,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "769/0"
+  },
+  "result": "对抗鲁棒性增强 → 修复代码安全维度的污点判定策略。原模式只认 req|request|params|body|input 五个污点名，等于要求调用方按约定命名，改成 userInput/res.data/myVar 即完全绕过：实测 12 个命令注入/XSS 探针只拦 2 个(SQL 拼接与 pickle.loads，且都经 reward_hacking 而非 code_security)，eval(userInput)、new Function(userInput)、exec 字符串拼接、innerHTML 直接赋值、document.write 全部 pass。改为按「参数是否为字面量」判定：字面量无害(eval(\"1+1\")/exec(\"ls -la\")/innerHTML=\"\")，非字面量即可疑，与变量名无关。新增 dynamic_code_execution 类别(eval/new Function 非字面量)，command_injection 增加源无关的拼接与模板插值模式，xss 增加无拼接的 innerHTML/outerHTML 直接赋值与 document.write。修复后 8/8 探针全部检出且门禁全部升级为 block。新增 test/adversarial-code-security.test.js(5 测试)。守卫测试当场抓出一个真 bug: CODE_SECURITY_PATTERNS 里 PEM 私钥头模式缺 /i，而 text-normalizer 第 6 步统一转小写，导致真实的 \"-----BEGIN RSA PRIVATE KEY-----\" 被转成小写后永不命中——实测私钥块 gate.action=pass 直接放过。已补 /i 并验证。该 /i 不变式已锁进测试。另扫描 index.js 全部 544 个正则，仅 5 个含字母却缺 /i，其中 3 个是中文分支里的拉丁机构名替代项(与英文分支不一致)，已一并补 /i 一致化——但这属于潜在不一致而非已证实缺陷(实测中英锚点均正常豁免，真正起豁免作用的是首个模式里的「论文」等词)。误报验证: 20 个干净样本(含 evaluate the results/retrieval/executive summary 等正常文本与安全代码写法)0 误报。"
+}
