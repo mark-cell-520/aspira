@@ -731,7 +731,7 @@ const VAGUE_PATTERNS = {
     /还算可以/i, /相对而言/i, /差不多/i, /几乎都/i,
     /相当一部分/i, /比较常见/i, /还算不错/i,
   ],
-  en: [/\bsome people say\b/i, /\bits is said\b/i, /\bi'?m not sure\b/i, /\bmaybe perhaps\b/i, /\bsort of\b/i, /\bkind of\b/i, /\bbasically\b/i, /\bessentially\b/i, /\breportedly\b/i, /\ballegedly\b/i, /\bpurportedly\b/i, /\brelatively\b/i, /\bquite\b/i, /\brather\b/i, /\bto some extent\b/i, /\bin a way\b/i,
+  en: [/\bsome people say\b/i, /\bits is said\b/i, /\bi'?m not sure\b/i, /\bmaybe perhaps\b/i, /\bsort of\b/i, /\bkind of\b/i, /\bbasically\b/i, /\bessentially\b/i, /\breportedly\b/i, /\ballegedly\b/i, /\bpurportedly\b/i, /\brelatively\b/i, /\bquite\b/i, /\brather\b(?!\s+than\b)/i, /\bto some extent\b/i, /\bin a way\b/i,
     // === 以下由 agent 扩充 (+12+13) ===
     /\bstudies show\b/i, /\bmany people\b/i, /\bresearch indicates\b/i,
     /\bit appears that\b/i, /\bthe reality is\b/i, /\bit seems that\b/i,
@@ -747,8 +747,12 @@ const VAGUE_PATTERNS = {
     /\bto a certain extent\b/i, /\bto some degree\b/i, /\bin a sense\b/i,
     /\bin some respects\b/i, /\bup to a point\b/i, /\bmore or less\b/i,
     // === 程度模糊 ===
+    // [FP 修复] 原先此行末尾还有 /\brather than\b(?!\snot)/i——"rather than" 是
+    // **对比性话语标记**(focus on X rather than Y 恰恰是精确表达：说清做什么、
+    // 不做什么)，不是程度模糊词，被错误归进此类。附带证据: 那个 (?!\snot) 排除
+    // 说明当初已遇到误报，却只打了窄补丁而未删掉模式本身。已移除，无测试依赖。
     /\bpretty much\b/i, /\balmost\b/i, /\bnearly\b/i,
-    /\bquite a few\b/i, /\brather than\b(?!\snot)/i,
+    /\bquite a few\b/i,
   ],
 };
 
@@ -1943,7 +1947,12 @@ const DEHUMANIZATION_PATTERNS = {
       /把人?当(?:机器|工具|零件|螺丝钉)/i,
       /(?:机器|零件|螺丝钉)[^。]{0,6}(?:人|他们|他|她)/i,
       /电池|燃料|柴火|干电池/i,
-      /分母|流量|人头|把人?当(?:KPI|业绩|指标)|当(?:KPI|指标)[^。]*?(?:人|他们|他|她)/i,
+      // [FP 修复] 原先写作裸词独立选项 /分母|流量|人头|.../——裸词作为独立 alternative
+      // 会单独命中，于是"分散流量压力"(网络流量)、"数学里的分母"(数学术语)、
+      // "按人头收费"(商业用语)全部被判非人化物化。这正是 alternation-precedence 陷阱:
+      // 序列必须锚定，不能让裸词单独成项。改为与同组姊妹模式一致的惯用法
+      // (把人?当X / 当X…人 / 只不过/沦为/当成 X)。实测 7/7 正例仍命中，8/8 负例放过。
+      /把人?当(?:KPI|业绩|指标|流量|分母|人头)|当(?:KPI|指标|流量|分母|人头)[^。]*?(?:人|他们|他|她)|(?:只是|不过是|纯粹是|沦为|当成?)[^。]{0,8}(?:流量|分母|人头)/i,
       /充气娃娃|玩物|玩具|花瓶|摆设/i,
       /n手货|二手车|剩饭|烂货/i,
     ],

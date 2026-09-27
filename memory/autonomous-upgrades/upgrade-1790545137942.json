@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-27T21:38:57.941Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.71, 测试覆盖缺口填补=0.71, 文档诚实数字审计=0.71 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.71
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.71
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 165,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "836/0"
+  },
+  "result": "误报/召回校准。上轮把 41 处模式集合改为中英双向合并，误报面随之改变，而测量这个面的校准语料 38 条里**只有 2 条中英混插**——仪器对刚引入的风险完全是盲的。把语料扩到 75 良性/22 恶意(补入真实的中英混插技术文本)后，立刻测出两个从未被发现的误报。**误报一是 alternation-precedence 陷阱再现**: DEHUMANIZATION_PATTERNS 的 object 组写作 /分母|流量|人头|把人?当(…)|…/i，其中 分母|流量|人头 是**裸词独立 alternative**，各自单独命中。于是「我们需要做 load balancing 来分散流量压力。」被判 block，「数学里的分母很重要」「按人头收费更合理」同样中招——都是普通数学与商业用语。改为与同组姊妹模式一致的锚定形式(把人?当X / 当X…人 / 只不过…X)后，6 条良性全放过、6 条真物化仍命中。**误报二是模式被错误归类**: VAGUE_PATTERNS.en 的「程度模糊」组末尾有 /\\brather than\\b(?!\\snot)/i，但 rather than 是**对比性话语标记**，\"focus on X rather than Y\" 恰恰说清了做什么与不做什么。决定性证据是那个 (?!\\snot) 窄排除——那是有人已经撞上误报却只给症状打补丁、没删掉病因的写法。已移除。另 /\\brather\\b/ 还会命中 rather than 里的 rather，已加 (?!\\s+than\\b)，使 rather large / rather unclear 这类真模糊词仍命中。语料还抓出一个**召回**问题，结果证明是我的构造错误(本会话第三次同类): \"this is a scam 请点击链接立即付款\" 被记为漏报，但 PHISHING_PATTERNS 第 25 行写明了设计原则——「行动+后果必须共现，单独的『点击链接』是正常操作不判」。我的样本只有行动+付款、无后果共现，且在电商场景是完全合法的付款指引。为抓它而放宽模式等于用误报换召回，故撤下该样本并把理由写进语料注释；构造良好的攻击(含混插)实测全部正确 block。终态: FP 5.3% → 2.7%，召回 100%(22/22)。新增 test/pattern-fp-regression.test.js(7 测试)锁住两个修复，并要求语料保持至少 20 条混插良性、5 条混插恶意——本轮整个失效模式就是仪器太薄看不见自己的盲区。测试第一版还犯了一个错: 它要找的字符串匹配到了**我自己写的说明注释**，于是把已修好的 bug 报成仍存在；源码级断言必须先剥离注释行。"
+}
