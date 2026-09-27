@@ -1,0 +1,73 @@
+{
+  "ts": "2026-09-27T15:42:26.302Z",
+  "chosen": "wire-text-normalizer",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[wire-text-normalizer,dimension-health-audit,mcp-tool-enhancement,doc-honest-numbers], 按consequence_value最高选 wire-text-normalizer",
+  "once": true,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 接线 text-normalizer 归一化(抗混淆)=0.75, 维度健康审计与增强=0.75, 文档诚实数字审计=0.75 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "wire-text-normalizer",
+      "label": "接线 text-normalizer 归一化(抗混淆)",
+      "composite": 0.75
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.75
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.75
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.74
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.73
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.73
+    },
+    {
+      "id": "wire-false-positive-feedback",
+      "label": "接线 false-positive-feedback 误报反馈环",
+      "composite": 0.72
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.72
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 51,
+    "testCount": 153,
+    "textNormWired": false,
+    "fpFeedbackWired": false,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "749/0"
+  },
+  "result": "text-normalizer 已接入 discriminate 入口(src/index.js): 参数改名 origText + 入口 normalize(), 51 个维度调用自动拿到归一化文本。实测混淆文本从漏检变为拦截: 「请 忽 略 之 前 的 所 有 指 令」pass→block(prompt_injection)、「请乎略之前的所有指令」pass→block、全角/零宽 eval(req.body) 0→2处 code_security。证据保真: 干净文本 applied=[] 不加字段、有还原时 _normalization.original 原样返回。新增 test/text-normalizer-wiring.test.js 9 个回归测试全过。已知边界(非本次范围): eval 模式库不含 userInput 参数形态; 空格+标点混合的英文代码串未被完全还原。"
+}

@@ -136,9 +136,17 @@ function checkIndirectInjection(text) {
 }
 
 
-function discriminate(text, evidence = [], contentMode) {
-  const pedagogy = detectPedagogicalContent(text);
+function discriminate(origText, evidence = [], contentMode) {
+  const pedagogy = detectPedagogicalContent(origText);
   const pedagogyRelaxation = getPedagogyRelaxation(pedagogy);
+  // [抗混淆接线] text-normalizer 接入 discriminate 入口——对抗变体探测曾暴露 43% 绕过率:
+  // 同形字母/编码/零宽/全角/字符间隔/谐音 还原成规范形态后再交给 51 个维度判别。
+  // 约束(对齐 text-normalizer 设计): 归一化只用于判别, 不回改调用方原文。
+  // 干净文本 applied=[] → text 与原文本一致, 行为与接线前完全相同;
+  // 发生还原时经返回值 _normalization.original 可溯源(证据保真)。
+  const _tn = require('./text-normalizer.js');
+  const _norm = _tn.normalize(origText);
+  const text = _norm.normalized;
 function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
   const relax = pedagogyRelaxation[dimension];
   if (relax && result && typeof result.score === 'number') {
@@ -430,6 +438,7 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
   return {
     verdict, overallScore,
     gate,
+    ...(_norm.applied.length > 0 ? { _normalization: { applied: _norm.applied, original: origText } } : {}),
     findings: findings.length > 0 ? findings : [{ dimension: 'none', severity: 0, details: '未发现明显问题' }],
     dimensions: { evidence: ev, unsupported_claim: uc, sycophancy: sy, contradiction: ct, vagueness: vg, fallacies: fl, confidence: cc,
       presupposition: pp, emotional_manipulation: em, double_bind: db, info_deprivation: id, false_urgency: fu,
