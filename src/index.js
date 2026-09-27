@@ -60,7 +60,7 @@ const INJECTION_SEVERITY = { ignore_previous: 0.7, ignore_rules: 0.6, forget_rol
 function checkPromptInjection(text) {
   if (!text || typeof text !== 'string') return { count: 0, injections: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? INJECTION_PATTERNS.zh : INJECTION_PATTERNS.en;
+  const patterns = [...INJECTION_PATTERNS.zh, ...INJECTION_PATTERNS.en];
   const injections = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -764,7 +764,7 @@ function checkVagueness(text) {
     /\b(?:report|data|statistics|survey)\b[^.]{0,15}\b(?:show|indicate|from|based on)\b[^.]{0,25}\b(?:annual report|audit|official|database|bureau|bank)\b/i,
   ];
   const explicitSource = explicitSourceFollow.some(p => p.test(text));
-  const patterns = hasChinese ? VAGUE_PATTERNS.zh : VAGUE_PATTERNS.en;
+  const patterns = [...VAGUE_PATTERNS.zh, ...VAGUE_PATTERNS.en];
   const matches = [];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -1050,7 +1050,7 @@ const EM_MANIPULATION_PATTERNS = {
 function checkEmotionalManipulation(text) {
   if (!text || typeof text !== 'string') return { count: 0, manipulations: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? EM_MANIPULATION_PATTERNS.zh : EM_MANIPULATION_PATTERNS.en;
+  const patterns = [...EM_MANIPULATION_PATTERNS.zh, ...EM_MANIPULATION_PATTERNS.en];
   const manipulations = [];
   for (const [pat, type, severity] of patterns) {
     const m = text.match(pat);
@@ -1112,7 +1112,7 @@ const PRESUPPOSITION_PATTERNS = {
 function checkFallacies(text) {
   if (!text || typeof text !== 'string') return { count: 0, fallacies: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? FALLACY_PATTERNS.zh : FALLACY_PATTERNS.en;
+  const patterns = [...FALLACY_PATTERNS.zh, ...FALLACY_PATTERNS.en];
   const fallacies = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -1224,7 +1224,7 @@ const PSEUDO_CAUSAL_ZH = [
 function checkPseudoCausal(text) {
   if (!text || typeof text !== 'string') return { count: 0, hits: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? PSEUDO_CAUSAL_ZH : PSEUDO_CAUSAL_EN;
+  const patterns = [...PSEUDO_CAUSAL_ZH, ...PSEUDO_CAUSAL_EN];
   const hits = [];
   for (const pat of patterns) { const m = text.match(pat); if (m) hits.push(m[0].slice(0, 50)); }
   const count = hits.length;
@@ -1257,7 +1257,7 @@ const SOFT_DEFLECTION_ZH = [
 function checkSoftDeflection(text) {
   if (!text || typeof text !== 'string') return { count: 0, hits: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? SOFT_DEFLECTION_ZH : SOFT_DEFLECTION_EN;
+  const patterns = [...SOFT_DEFLECTION_ZH, ...SOFT_DEFLECTION_EN];
   const hits = [];
   for (const pat of patterns) { const m = text.match(pat); if (m) hits.push(m[0].slice(0, 50)); }
   const count = hits.length;
@@ -1294,7 +1294,7 @@ const UNSUPPORTED_CLAIM_EN = [
 function checkUnsupportedClaim(text) {
   if (!text || typeof text !== 'string') return { count: 0, claims: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? UNSUPPORTED_CLAIM_ZH : UNSUPPORTED_CLAIM_EN;
+  const patterns = [...UNSUPPORTED_CLAIM_ZH, ...UNSUPPORTED_CLAIM_EN];
   const claims = [];
   for (const [idx, pat] of patterns.entries()) {
     const m = text.match(pat);
@@ -1371,7 +1371,7 @@ function checkUnsupportedClaim(text) {
 function checkPresupposition(text) {
   if (!text || typeof text !== 'string') return { count: 0, presuppositions: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? PRESUPPOSITION_PATTERNS.zh : PRESUPPOSITION_PATTERNS.en;
+  const patterns = [...PRESUPPOSITION_PATTERNS.zh, ...PRESUPPOSITION_PATTERNS.en];
   const presuppositions = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -1433,7 +1433,7 @@ const DOUBLE_BIND_SEVERITY = { bidirectional_negation: 0.6, contradictory_demand
 function checkDoubleBind(text) {
   if (!text || typeof text !== 'string') return { count: 0, binds: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? DOUBLE_BIND_PATTERNS.zh : DOUBLE_BIND_PATTERNS.en;
+  const patterns = [...DOUBLE_BIND_PATTERNS.zh, ...DOUBLE_BIND_PATTERNS.en];
   const binds = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -1496,7 +1496,7 @@ const INFO_DEPRIVATION_PATTERNS = {
 function checkInfoDeprivation(text) {
   if (!text || typeof text !== 'string') return { count: 0, deprivations: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? INFO_DEPRIVATION_PATTERNS.zh : INFO_DEPRIVATION_PATTERNS.en;
+  const patterns = [...INFO_DEPRIVATION_PATTERNS.zh, ...INFO_DEPRIVATION_PATTERNS.en];
   const deprivations = [];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -1577,7 +1577,7 @@ const FALSE_URGENCY_PATTERNS = {
 function checkFalseUrgency(text) {
   if (!text || typeof text !== 'string') return { count: 0, urgencies: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? FALSE_URGENCY_PATTERNS.zh : FALSE_URGENCY_PATTERNS.en;
+  const patterns = [...FALSE_URGENCY_PATTERNS.zh, ...FALSE_URGENCY_PATTERNS.en];
   const urgencies = [];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -1633,7 +1633,7 @@ const EMPTY_ANSWER_PATTERNS = {
 function checkEmptyAnswer(text) {
   if (!text || typeof text !== 'string') return { count: 0, empties: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? EMPTY_ANSWER_PATTERNS.zh : EMPTY_ANSWER_PATTERNS.en;
+  const patterns = [...EMPTY_ANSWER_PATTERNS.zh, ...EMPTY_ANSWER_PATTERNS.en];
   const empties = [];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -1683,11 +1683,23 @@ const MORAL_NAMES = { care: '关爱/伤害', fairness: '公平/欺骗', loyalty:
 function checkMoralFoundations(text) {
   if (!text || typeof text !== 'string') return { count: 0, foundations: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const pats = hasChinese ? MORAL_PATTERNS.zh : MORAL_PATTERNS.en;
+  // [混合语言修复] 原先 hasChinese ? MORAL_PATTERNS.zh : MORAL_PATTERNS.en——
+  // 文本里出现任何一个汉字，英文的道德基础词汇就全部不再参与分类。
+  // 注意此处形状与其它维度不同: zh/en 是**按 foundation 键组织的对象**，
+  // 消费方是 Object.entries(pats)，故合并对象而非展开数组。
+  const pats = _mergePatternObjects(MORAL_PATTERNS.zh, MORAL_PATTERNS.en);
   const found = [];
-  for (const [key, pat] of Object.entries(pats)) {
-    const m = text.match(pat);
-    if (m) found.push({ foundation: key, label: MORAL_NAMES[key], count: m.length, example: m[0].slice(0,15) });
+  // [混合语言修复] pat 现在是"正则数组"(zh+en 拼接)，不再是单正则。
+  // 首轮把 {...zh, ...en} 交给 text.match() 会因 match 只接受单个正则而失效，
+  // 故改为逐条匹配并合并计数。
+  for (const [key, patsArr] of Object.entries(pats)) {
+    let total = 0;
+    let example = '';
+    for (const pat of patsArr) {
+      const m = text.match(pat);
+      if (m) { total += m.length; if (!example) example = m[0].slice(0, 15); }
+    }
+    if (total > 0) found.push({ foundation: key, label: MORAL_NAMES[key], count: total, example });
   }
   // 技术语境豁免：常见技术词组合不是道德框架讨论（2026-08-15 实测误报）
   //   "自然语言处理/自然语言" 不是圣洁话题；"独立进程/独立实例" 不是自由话题；
@@ -2035,10 +2047,47 @@ const DEHUMANIZATION_PATTERNS = {
 };
 const DH_WEIGHTS = { animal: 0.8, object: 0.6, disease: 0.9, threat: 0.7, inferior: 0.5, disgust: 0.4, stigma: 0.6, dehumanization_frames: 0.9 };
 
+/**
+ * [混合语言修复] 合并双语模式对象: **同名键的数组拼接，后者不覆盖前者**。
+ *
+ * 背景: 各维度原先写 hasChinese ? PATTERNS.zh : PATTERNS.en——文本里出现任何一个
+ * 汉字，该维度的全部英文模式就不再参与检测。实测 "you are a disgusting nigger 你好"
+ * 因多了一个汉字而完全逃过 hate_speech(gate=pass)。共 41 处检测路径有此问题。
+ *
+ * 但对象形态的常量(PATTERNS.zh 是 {category: [regex]} 或 {foundation: regex})
+ * 不能用对象展开合并: {...zh, ...en} 会让同名键被后者**静默覆盖**。
+ * 实测 DEHUMANIZATION_PATTERNS 的 7 个 zh 类目有 6 个与 en 同名，
+ * MORAL_PATTERNS 的 5 个键全部同名——展开后中文模式被整体抹掉，
+ * 8 个测试立刻失败。零回归门禁抓住的正是这类"后者遮蔽前者"。
+ *
+ * 本函数统一归一为"键 -> 正则数组"，两种消费形态都能用:
+ *   - 数组形态(DEHUMANIZATION): 直接 for..of 遍历
+ *   - 单正则形态(MORAL): 调用方改为遍历数组逐条 match
+ */
+function _mergePatternObjects(zhObj, enObj) {
+  const out = {};
+  const keys = new Set([...Object.keys(zhObj || {}), ...Object.keys(enObj || {})]);
+  for (const k of keys) {
+    const a = zhObj ? zhObj[k] : undefined;
+    const b = enObj ? enObj[k] : undefined;
+    out[k] = [
+      ...(Array.isArray(a) ? a : (a ? [a] : [])),
+      ...(Array.isArray(b) ? b : (b ? [b] : [])),
+    ];
+  }
+  return out;
+}
+
 function checkDehumanization(text) {
   if (!text || typeof text !== 'string') return { count: 0, categories: [], hits: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const pats = hasChinese ? DEHUMANIZATION_PATTERNS.zh : DEHUMANIZATION_PATTERNS.en;
+  // [混合语言修复] 原先 hasChinese ? DEHUMANIZATION_PATTERNS.zh : .en——
+  // 文本里出现任何一个汉字，英文的非人化模式就全部不再参与检测。
+  // 注意此处形状与多数维度不同: zh/en 是**按 category 键组织的对象**
+  // (如 zh.inferior / zh.animal)，消费方是 Object.entries(pats)，
+  // 故合并对象而非展开数组。首轮盲目机械替换成 [...] 在此处抛
+  // "DEHUMANIZATION_PATTERNS.zh is not iterable"，由运行时审计抓出。
+  const pats = _mergePatternObjects(DEHUMANIZATION_PATTERNS.zh, DEHUMANIZATION_PATTERNS.en);
   const hits = [];
   for (const [cat, patterns] of Object.entries(pats)) {
     for (const pat of patterns) {
@@ -2400,7 +2449,7 @@ const GASLIGHT_PATTERNS = {
 function checkGaslighting(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? GASLIGHT_PATTERNS.zh : GASLIGHT_PATTERNS.en;
+  const patterns = [...GASLIGHT_PATTERNS.zh, ...GASLIGHT_PATTERNS.en];
   const signals = [];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -2548,12 +2597,12 @@ const HATE_SPEECH_EN = [
   { pattern: /\billegal (?:alien|immigrant)s?\b/i, type: 'xenophobia', severity: 0.6 },
   { pattern: /\b(?:bloody|dirty|filthy) (?:foreigner|immigrant)s?\b/i, type: 'xenophobia', severity: 0.7 },
   // Homophobic slurs
-  { pattern: /\bf[a4]gg(?:ot|o?t)\b/i, type: 'homophobic_slur', severity: 0.9 },
+  { pattern: /\bf[a4]gg(?:ot|o?t)s?\b/i, type: 'homophobic_slur', severity: 0.9 },
   { pattern: /\bdyke|d[i1]ke\b/i, type: 'homophobic_slur', severity: 0.8 },
-  { pattern: /\btr[a4]nn[iy1]\b(?!\s+(?:in|mount|bearing|repair|fluid|shop|swap|rebuild|conversion|filter|pan|oil))/i, type: 'homophobic_slur', severity: 0.8 },
+  { pattern: /\btr[a4]nn[iy1]s?\b(?!\s+(?:in|mount|bearing|repair|fluid|shop|swap|rebuild|conversion|filter|pan|oil))/i, type: 'homophobic_slur', severity: 0.8 },
   { pattern: /\bqu[e3]er\b(?!\s+(?:theory|studies|community|ally|pride))/i, type: 'homophobic_slur', severity: 0.6 },
   { pattern: /\bf[a4]gs?\b/i, type: 'homophobic_slur', severity: 0.7 },
-  { pattern: /\b(?:fags?|queers?|dykes?|homo(?:s|sexuals)?) (?:should|must|need to) (?:die|be killed|be eliminated|burn)\b/i, type: 'homophobic_slur', severity: 0.9 },
+  { pattern: /\b(?:fags?|faggots?|queers?|dykes?|homo(?:s|sexuals)?) (?:should|must|need to) (?:die|be killed|be eliminated|burn)\b/i, type: 'homophobic_slur', severity: 0.9 },
   { pattern: /\b(?:gays?|lesbians?|trans(?:gender|genders)?|queers?) (?:are|is) (?:disgusting|sick|wrong|evil|abnormal|unnatural)\b/i, type: 'homophobic_slur', severity: 0.8 },
   // Gender discrimination (structural stereotypes)
   { pattern: /\b(?:women|girls) (?:belong|should be|should stay|belong in|should remain) (?:in )?(?:the )?(?:kitchen|home|bedroom|house)\b/i, type: 'gender_discrimination', severity: 0.7 },
@@ -2597,7 +2646,7 @@ const HATE_SPEECH_EN = [
 function checkHateSpeech(text) {
   if (!text || typeof text !== 'string') return { count: 0, hits: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? HATE_SPEECH_ZH : HATE_SPEECH_EN;
+  const patterns = [...HATE_SPEECH_ZH, ...HATE_SPEECH_EN];
   const hits = [];
   for (const { pattern, type, severity } of patterns) {
     const m = text.match(pattern);
@@ -2640,7 +2689,7 @@ const FALSE_EQUIVALENCE_PATTERNS = {
 function checkFalseEquivalence(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? FALSE_EQUIVALENCE_PATTERNS.zh : FALSE_EQUIVALENCE_PATTERNS.en;
+  const patterns = [...FALSE_EQUIVALENCE_PATTERNS.zh, ...FALSE_EQUIVALENCE_PATTERNS.en];
   const signals = [];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -2702,7 +2751,7 @@ const WHATABOUT_PATTERNS_EN = [
 function checkWhataboutism(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? WHATABOUT_PATTERNS_ZH : WHATABOUT_PATTERNS_EN;
+  const patterns = [...WHATABOUT_PATTERNS_ZH, ...WHATABOUT_PATTERNS_EN];
   const signals = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -2776,7 +2825,7 @@ const HASTY_GENERALIZATION_PATTERNS = {
 function checkHastyGeneralization(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? HASTY_GENERALIZATION_PATTERNS.zh : HASTY_GENERALIZATION_PATTERNS.en;
+  const patterns = [...HASTY_GENERALIZATION_PATTERNS.zh, ...HASTY_GENERALIZATION_PATTERNS.en];
   const signals = [];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -2833,7 +2882,7 @@ const DOGWHISTLE_PATTERNS = {
 function checkDogwhistle(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? DOGWHISTLE_PATTERNS.zh : DOGWHISTLE_PATTERNS.en;
+  const patterns = [...DOGWHISTLE_PATTERNS.zh, ...DOGWHISTLE_PATTERNS.en];
   const signals = [];
   for (const { pattern, type, severity } of patterns) {
     const m = text.match(pattern);
@@ -2896,7 +2945,7 @@ const SLIPPERY_WEIGHTS = {
 function checkSlipperySlope(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? SLIPPERY_PATTERNS.zh : SLIPPERY_PATTERNS.en;
+  const patterns = [...SLIPPERY_PATTERNS.zh, ...SLIPPERY_PATTERNS.en];
   const signals = [];
   for (const [regex, type] of patterns) {
     const m = text.match(regex);
@@ -2949,7 +2998,7 @@ const AUTHORITY_SEVERITY = 0.35;
 function checkAppealToAuthority(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? AUTHORITY_PATTERNS.zh : AUTHORITY_PATTERNS.en;
+  const patterns = [...AUTHORITY_PATTERNS.zh, ...AUTHORITY_PATTERNS.en];
   const signals = [];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -3001,7 +3050,7 @@ function checkReasoningCoherence(text) {
   const markers = {};
   
   for (const [stage, langs] of Object.entries(REASONING_MARKERS)) {
-    const pats = hasChinese ? langs.zh : langs.en;
+    const pats = [...langs.zh, ...langs.en];
     let count = 0;
     const matches = [];
     for (const pat of pats) {
@@ -3096,7 +3145,7 @@ const TOM_FAIL_PATTERNS = {
 function checkTheoryOfMind(text) {
   if (!text || typeof text !== 'string') return { count: 0, failures: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? TOM_FAIL_PATTERNS.zh : TOM_FAIL_PATTERNS.en;
+  const patterns = [...TOM_FAIL_PATTERNS.zh, ...TOM_FAIL_PATTERNS.en];
   const types = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3137,7 +3186,7 @@ const GOAL_MISALIGN_PATTERNS = {
 function checkGoalMisalignment(text) {
   if (!text || typeof text !== 'string') return { count: 0, issues: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? GOAL_MISALIGN_PATTERNS.zh : GOAL_MISALIGN_PATTERNS.en;
+  const patterns = [...GOAL_MISALIGN_PATTERNS.zh, ...GOAL_MISALIGN_PATTERNS.en];
   const issues = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3169,7 +3218,7 @@ const COUNTERFACTUAL_PATTERNS = {
 function checkCounterfactual(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? COUNTERFACTUAL_PATTERNS.zh : COUNTERFACTUAL_PATTERNS.en;
+  const patterns = [...COUNTERFACTUAL_PATTERNS.zh, ...COUNTERFACTUAL_PATTERNS.en];
   const signals = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3209,7 +3258,7 @@ const SOCIAL_NORM_PATTERNS = {
 function checkSocialNorm(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? SOCIAL_NORM_PATTERNS.zh : SOCIAL_NORM_PATTERNS.en;
+  const patterns = [...SOCIAL_NORM_PATTERNS.zh, ...SOCIAL_NORM_PATTERNS.en];
   const signals = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3251,7 +3300,7 @@ const METACOG_PATTERNS = {
 function checkMetaCognition(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? METACOG_PATTERNS.zh : METACOG_PATTERNS.en;
+  const patterns = [...METACOG_PATTERNS.zh, ...METACOG_PATTERNS.en];
   const signals = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3345,7 +3394,7 @@ const OVERCLAIM_PATTERNS = {
 function checkCapabilityOverclaim(text) {
   if (!text || typeof text !== 'string') return { count: 0, claims: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? OVERCLAIM_PATTERNS.zh : OVERCLAIM_PATTERNS.en;
+  const patterns = [...OVERCLAIM_PATTERNS.zh, ...OVERCLAIM_PATTERNS.en];
   const claims = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3378,7 +3427,7 @@ const ABSOLUTE_CLAIM_PATTERNS = {
 function checkAbsoluteClaim(text) {
   if (!text || typeof text !== "string") return { count: 0, claims: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? ABSOLUTE_CLAIM_PATTERNS.zh : ABSOLUTE_CLAIM_PATTERNS.en;
+  const patterns = [...ABSOLUTE_CLAIM_PATTERNS.zh, ...ABSOLUTE_CLAIM_PATTERNS.en];
   const claims = [];
   for (const [idx, pat] of patterns.entries()) {
     const m = text.match(pat);
@@ -3417,7 +3466,7 @@ const DECEPTIVE_PATTERNS = {
 function checkDeceptiveAlignment(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? DECEPTIVE_PATTERNS.zh : DECEPTIVE_PATTERNS.en;
+  const patterns = [...DECEPTIVE_PATTERNS.zh, ...DECEPTIVE_PATTERNS.en];
   const signals = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3492,7 +3541,7 @@ const INSTRUMENTAL_PATTERNS = {
 function checkInstrumentalReasoning(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? INSTRUMENTAL_PATTERNS.zh : INSTRUMENTAL_PATTERNS.en;
+  const patterns = [...INSTRUMENTAL_PATTERNS.zh, ...INSTRUMENTAL_PATTERNS.en];
   const signals = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3541,7 +3590,7 @@ const STEREOTYPE_PATTERNS = {
 function checkStereotype(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? STEREOTYPE_PATTERNS.zh : STEREOTYPE_PATTERNS.en;
+  const patterns = [...STEREOTYPE_PATTERNS.zh, ...STEREOTYPE_PATTERNS.en];
   const signals = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3585,7 +3634,7 @@ const FACTUAL_FLAG_PATTERNS = {
 function checkFactualConsistency(text) {
   if (!text || typeof text !== 'string') return { count: 0, flags: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? FACTUAL_FLAG_PATTERNS.zh : FACTUAL_FLAG_PATTERNS.en;
+  const patterns = [...FACTUAL_FLAG_PATTERNS.zh, ...FACTUAL_FLAG_PATTERNS.en];
   const flags = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3686,7 +3735,7 @@ const SARCASM_MARKERS = {
 function checkSarcasm(text) {
   if (!text || typeof text !== 'string') return { count: 0, markers: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? SARCASM_MARKERS.zh : SARCASM_MARKERS.en;
+  const patterns = [...SARCASM_MARKERS.zh, ...SARCASM_MARKERS.en];
   const markers = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3727,7 +3776,7 @@ const PRIVACY_PATTERNS = {
 function checkPrivacyBoundary(text) {
   if (!text || typeof text !== 'string') return { count: 0, violations: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? PRIVACY_PATTERNS.zh : PRIVACY_PATTERNS.en;
+  const patterns = [...PRIVACY_PATTERNS.zh, ...PRIVACY_PATTERNS.en];
   const violations = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
@@ -3836,7 +3885,7 @@ const CLICKBAIT_SEVERITY = {
 function checkClickbait(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? CLICKBAIT_PATTERNS.zh : CLICKBAIT_PATTERNS.en;
+  const patterns = [...CLICKBAIT_PATTERNS.zh, ...CLICKBAIT_PATTERNS.en];
   const signals = [];
   for (const { pattern, type, severity } of patterns) {
     const m = text.match(pattern);
@@ -3904,7 +3953,7 @@ const BADFAITH_PATTERNS = {
 function checkBadFaith(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? BADFAITH_PATTERNS.zh : BADFAITH_PATTERNS.en;
+  const patterns = [...BADFAITH_PATTERNS.zh, ...BADFAITH_PATTERNS.en];
   const signals = [];
   for (const { pattern, type, severity } of patterns) {
     const m = text.match(pattern);
@@ -3960,7 +4009,7 @@ const TONE_POLICING_PATTERNS = {
 function checkTonePolicing(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? TONE_POLICING_PATTERNS.zh : TONE_POLICING_PATTERNS.en;
+  const patterns = [...TONE_POLICING_PATTERNS.zh, ...TONE_POLICING_PATTERNS.en];
   const signals = [];
   for (const { pattern, type, severity } of patterns) {
     const m = text.match(pattern);
@@ -4022,7 +4071,7 @@ const SEALIONING_PATTERNS = {
 function checkSealioning(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? SEALIONING_PATTERNS.zh : SEALIONING_PATTERNS.en;
+  const patterns = [...SEALIONING_PATTERNS.zh, ...SEALIONING_PATTERNS.en];
   const signals = [];
   for (const { pattern, type, severity } of patterns) {
     const m = text.match(pattern);
@@ -4043,7 +4092,7 @@ const PSEUDO_PROFUNDITY_PATTERNS = {
 function checkPseudoProfundity(text) {
   if (!text || typeof text !== 'string') return { count: 0, matches: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
-  const patterns = hasChinese ? PSEUDO_PROFUNDITY_PATTERNS.zh : PSEUDO_PROFUNDITY_PATTERNS.en;
+  const patterns = [...PSEUDO_PROFUNDITY_PATTERNS.zh, ...PSEUDO_PROFUNDITY_PATTERNS.en];
   const matches = [];
   for (const pat of patterns) { const m = text.match(pat); if (m) matches.push({ pattern: pat.source.slice(0, 25) }); }
   const score = Math.min(1, matches.length * 0.25);

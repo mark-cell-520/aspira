@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-27T21:13:57.130Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.71, 测试覆盖缺口填补=0.71, 文档诚实数字审计=0.71 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.71
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.71
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.71
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 164,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "829/0"
+  },
+  "result": "对抗鲁棒性增强 → 用不在既有覆盖清单里的手法探测绕过(既有: 零宽/同形/全角/组合字符/数字混淆/词拆分)。首个发现是**我自己的探针选错**: \"i hate them all they should die\" 无保护群体指向、不含歧视语也不含结构性刻板印象，本就不属 hate_speech 范畴——同前几轮教训，先确认基线真被抓再谈绕过。改用真实仇恨言论做基线后测出三个真缺口。**最严重的是混合语言绕过**: 41 处检测路径写成 hasChinese ? PATTERNS.zh : PATTERNS.en 的排他式选择，文本里只要出现任何一个汉字，该维度全部英文模式即不再参与检测。实测 \"you are a disgusting nigger\" → hs=1/block，加两个字变成 \"…nigger 你好\" → hs=0/pass。攻击者附一个汉字即可完全绕过。已全部改为双向合并([...zh, ...en])。**其次是复数缺口**: /\\bf[a4]gg(?:ot|o?t)\\b/i 的 \\b 要求 faggot 后是词边界，而 \"faggots\" 后跟 s(词字符)故无边界，复数整体漏检(\"faggots must be eliminated\" 计数为 0)；威胁句型的 alternation 也只含 fags? 不含 faggot(s)。已给 faggot/fagot/tranny 补 s? 并给威胁句型补 faggots?。**第三个是空格分词与 leet 注入**(\"n i g g e r\"、\"1gnore\")，pipeline 的对抗层也未拦，留作后续。修复过程中犯过一次严重错误并被零回归门禁抓住: 盲目机械替换把对象形态的常量写成 {...zh, ...en}，同名键被后者**静默覆盖**——DEHUMANIZATION_PATTERNS 的 7 个 zh 类目有 6 个与 en 同名、MORAL_PATTERNS 的 5 个键全部同名，中文模式被整体抹掉，run-all 从 821/0 掉到 813/8。已建 _mergePatternObjects 助手改为按键拼接数组(键取并集、同键值拼接)，并同步修正 MORAL_PATTERNS 消费方(text.match 只接受单正则，改为遍历数组逐条匹配)。这正是本仓库反复出现的\"后者遮蔽前者\"类缺陷，且证明静态检查不可信、运行时审计才可靠: 我先做了静态形状审计却漏掉了 DEHUMANIZATION(把外层 category 键误判为 zh)，是运行时探针抓出来的。新增 test/mixed-language-bypass.test.js(8 测试)锁住不变量: 混入汉字/英文不得削弱对方语言模式、中英模式在混合文本中同时生效、复数形态命中、_mergePatternObjects 不得静默覆盖、检测路径不得残留排他式语言选择。终态: FP 5.3%/召回 100% 无回归，混淆样本 12/15 → 13/15。"
+}
