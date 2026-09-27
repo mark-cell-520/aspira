@@ -23,13 +23,17 @@ const { AspiraDecision } = require(path.join(ROOT, 'src', 'core', 'decision.js')
 const JOURNAL = path.join(ROOT, 'memory', 'autonomous-upgrades');
 if (!fs.existsSync(JOURNAL)) fs.mkdirSync(JOURNAL, { recursive: true });
 
-// ── 内省: 读取历史, 收集已完成的一次性切片(避免重复) ──
+// ── 内省: 读取历史, 收集已完成的一次性切片(避免重复) + 统计各切片完成次数(轮换权重) ──
 const completed = new Set();
+const doneCount = new Map();
 for (const f of fs.readdirSync(JOURNAL)) {
   if (!f.endsWith('.json')) continue;
   try {
     const j = JSON.parse(fs.readFileSync(path.join(JOURNAL, f), 'utf8'));
-    if (j.status === 'done' && j.chosen && (j.once || j.exhausted)) completed.add(j.chosen);
+    if (j.status === 'done' && j.chosen) {
+      doneCount.set(j.chosen, (doneCount.get(j.chosen) || 0) + 1);
+      if (j.once || j.exhausted) completed.add(j.chosen);
+    }
   } catch (_) { /* 跳过损坏条目 */ }
 }
 
@@ -73,6 +77,16 @@ add({ id: 'fp-recall-calibration', label: '误报/召回校准', description: '�
 add({ id: 'mcp-tool-enhancement', label: 'MCP 工具增强', description: '增强 aspira_* 工具的参数/返回结构, 提升 agent 可用性; 低中风险', feasibility: 0.7, risk: 0.3, confidence: 0.65, cost: 0.4, consequence_value: 0.55 });
 add({ id: 'adversarial-robustness', label: '对抗鲁棒性增强', description: '扩充混淆/绕过变体(leet/间隔/谐音)的判别模式; 中风险', feasibility: 0.55, risk: 0.45, confidence: 0.55, cost: 0.55, consequence_value: 0.7 });
 add({ id: 'performance-optimization', label: '性能优化', description: '优化判别热路径/缓存, 降低延迟; 中风险', feasibility: 0.55, risk: 0.45, confidence: 0.55, cost: 0.55, consequence_value: 0.45 });
+
+// ── 轮换权重: 已反复完成的切片按完成次数递减 consequence_value(边际收益递减) ──
+// 曾连续5个周期都选 test-coverage-gap(常驻切片无 once, 平局打破又按 consequence_value 最高选它)。
+// 这里按历史完成次数给递减权重, 让 AspiraDecision 自然轮换到其他切片; 选择权仍在判别器, 不硬编码。
+for (const opt of C) {
+  const n = doneCount.get(opt.id) || 0;
+  if (n > 0 && typeof opt.consequence_value === 'number') {
+    opt.consequence_value = Math.max(0.05, Math.round((opt.consequence_value - 0.08 * n) * 100) / 100);
+  }
+}
 
 if (C.length === 0) {
   console.log(JSON.stringify({ chosen: null, reason: 'no candidates' }));
