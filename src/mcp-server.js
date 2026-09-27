@@ -2720,11 +2720,15 @@ function handleErrorVerify(args) {
 }
 // [v6.3.7] 公式搜索
 function handleFormulaSearch(args) {
-  const { keyword, limit } = args || {};
-  if (!keyword) return { error: 'keyword required' };
+  // [参数对齐修复] tools-registry 声明的是 query，此函数原先只读 keyword，
+  // 于是按文档传 query 会拿到 "keyword required"。改为以 query 为准、
+  // keyword 作向后兼容别名，两个名字都收。
+  const { query, keyword, limit } = args || {};
+  const kw = query || keyword;
+  if (!kw) return { error: 'query required' };
   if (!heartflow || !heartflow.formula) return { error: 'formula engine not ready' };
   try {
-    const r = heartflow.formula.search(keyword, { limit: limit || 5 });
+    const r = heartflow.formula.search(kw, { limit: limit || 5 });
     return { success: true, count: r.count, results: r.results.map(f => ({ id: f.id, name: f.name, formula: f.formula, category: f.category, subcategory: f.subcategory })) };
   } catch(e) { return { error: e.message }; }
 }
@@ -3899,23 +3903,13 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  aspira_formula_search: (args) => {
-    try {
-      const { FormulaSearch } = require('./formula/formula-search.js');
-      const fs = new FormulaSearch({ rootPath: HF_DIR, silent: true });
-      const r = fs.search ? fs.search(args?.query || '') : [];
-      return { results: (r.results || r).slice(0, 10), timestamp: Date.now() };
-    } catch (e) { return { error: e.message }; }
-  },
+  // [影子覆盖修复] 此处原有一份 aspira_formula_search 内联实现，静默覆盖了上文指向
+  // handleFormulaSearch 的映射。其参数路径与 tools-registry 声明不一致，按文档调用
+  // 会拿到空关键词的搜索结果。已删除覆盖版，恢复有意实现。
 
-  aspira_formula_calc: (args) => {
-    try {
-      const { FormulaCalculator } = require('./formula/formula-calculator.js');
-      const fc = new FormulaCalculator({ rootPath: HF_DIR, silent: true });
-      const r = fc.calculate ? fc.calculate(args?.formula || '', args?.values || {}) : {};
-      return { result: r, timestamp: Date.now() };
-    } catch (e) { return { error: e.message }; }
-  },
+  // [影子覆盖修复] 此处原有一份 aspira_formula_calc 内联实现，静默覆盖了上文指向
+  // handleFormulaCalc 的映射。覆盖版读 args.values，而 tools-registry 声明的是
+  // variables——按文档调用会传入 variables，覆盖版于是拿到空变量表。已删除。
 
   aspira_formula_engine: (args) => {
     try {
@@ -3959,14 +3953,11 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  aspira_formula_bridge: (args) => {
-    try {
-      const { FormulaBridge } = require('./formula/formula-bridge.js');
-      const fb = new FormulaBridge({ rootPath: HF_DIR, silent: true });
-      const r = fb.searchFromCorpus ? fb.searchFromCorpus(args?.query || '') : {};
-      return { formula: (r.results || r).slice(0, 10), timestamp: Date.now() };
-    } catch (e) { return { error: e.message }; }
-  },
+  // [影子覆盖修复] 此处原有一份 aspira_formula_bridge 内联实现，静默覆盖了上文指向
+  // handleFormulaBridge 的映射。覆盖版只读 args.query 做语料文本搜索，完全无视
+  // tools-registry 声明的 {domain, params}——而 handleFormulaBridge 才是覆盖
+  // memory/decision/cognition/info/social/consciousness 六个领域的真实公式计算。
+  // 已删除覆盖版，恢复有意实现。
 
   // [v6.4.5] 第七批 — 心理/负载/护照/评论/语料/教训/项目
   aspira_agent_psychology_full: (args) => {
@@ -4050,6 +4041,9 @@ const HANDLERS = {
       return { project: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
+  // [影子覆盖修复] 此处原有 aspira_check_outbound 与 aspira_audit_trace 各两份
+  // 完全相同的内联实现，后者静默覆盖前者(纯冗余，无行为差异)。已删除重复的两份，
+  // 并修复原先 }, 与 aspira_circuit_breaker 挤在同一行的格式问题。
   aspira_check_outbound: (args) => {
     try {
       const { checkOutbound } = require('./gate-outbound.js');
@@ -4069,25 +4063,7 @@ const HANDLERS = {
       return { error: e.message };
     }
   },
-  aspira_check_outbound: (args) => {
-    try {
-      const { checkOutbound } = require('./gate-outbound.js');
-      return checkOutbound(args || {});
-    } catch (e) {
-      return { error: e.message };
-    }
-  },
-  aspira_audit_trace: (args) => {
-    try {
-      const { initChain, queryChain, verifyChain, listViolationTags } = require('./trace-chain.js');
-      const action = args?.action || 'query';
-      if (action === 'verify') return verifyChain();
-      if (action === 'tags') return { tags: listViolationTags() };
-      return queryChain(args || {});
-    } catch (e) {
-      return { error: e.message };
-    }
-  },  aspira_circuit_breaker: (args) => {
+  aspira_circuit_breaker: (args) => {
     try {
       const cb = require('./circuit-breaker.js');
       const action = args?.action || 'status';
@@ -4945,4 +4921,10 @@ function startServer() {
 if (require.main === module && process.env.ASPIRA_NO_AUTOSTART !== '1') {
   startServer();
 }
+
+// 导出 HANDLERS/TOOLS 供测试断言工具表与 handler 映射的一致性。
+// 背景: 曾出现「工具已定义但无 handler」「handler 重复定义后者静默覆盖前者」
+// 「registry 里某个工具对象未闭合、字段被下一个条目吞掉」三类静默损坏，
+// 全都不被任何测试发现。有了这两个导出，不变式可以直接断言。
+module.exports = { HANDLERS, TOOLS };
 

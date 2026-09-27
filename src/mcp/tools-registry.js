@@ -93,6 +93,9 @@ const TOOLS = [
       },
       required: ['filePath']
     },
+  },
+
+  {
     name: 'aspira_self_heal',
 
     description: '自愈策略推荐：基于历史经验为当前场景推荐最优策略。返回策略排名、置信度和执行建议。',

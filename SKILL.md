@@ -6,7 +6,7 @@ description: |-
   Aspira is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
   it reaches a human. 54 discrimination dimensions × 14-layer pipeline × 132 modules ×
-  179 MCP tools. Zero LLM dependency.
+  180 MCP tools. Zero LLM dependency.
 
   Upgraded capabilities (v6.7.69): reasoning effort control, sparse module activation,
   discriminative result cache, async supervision layer, autonomous decision execution
@@ -155,7 +155,7 @@ from marketing copy.
 | Module init errors | 0 | `hf._initErrors.length` |
 | Dispatch routes | 1,510 | sum of entries in `hf.routes()` |
 | Discrimination dimensions | 51 | `dimMap` keys in `src/index.js` |
-| MCP tools | 179 | tool definitions exposed via `tools/list` |
+| MCP tools | 180 | tool definitions exposed via `tools/list` |
 | Pipeline layers | 12 input / 13 draft / 14 output | `checked_by.length` on `runPipeline({ input, mode, anchor })` — the anchor adds the final `intent-anchor` layer; the bare `checkInput` / `checkDraft` / `checkOutput` shortcuts run one layer fewer (11 / 12 / 13) |
 | Test suite | 740 passing / 0 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
 | Capability guard | 18 / 18 checks | `node scripts/guard-abilities.js` |
