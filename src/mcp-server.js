@@ -583,6 +583,13 @@ async function handleThink(args) {
 
   if (!input) throw new Error('input 是必填参数');
 
+  // [gate-verdict 接线] style 参数: postprocess.format 在 markdown 模式下只保留
+  // result.report，会丢弃 handleThink 精心构建的全部结构化字段(discrimination /
+  // outputChecklist / formulaCalcSummary / gateVerdict ...)。json 模式走
+  // safeStringify({ formatted, original }) 从而保住 original。
+  // 默认仍是 markdown，保持既有调用方行为不变。
+  const style = (args && args.style === 'json') ? 'json' : 'markdown';
+
   const normalizedEffort = typeof effort === 'number' ? Math.max(1, Math.min(100, Math.round(effort))) : null;
 
 
@@ -693,6 +700,22 @@ async function handleThink(args) {
         const keys = Object.keys(thoughtChain._formulaCalculations);
         result.formulaCalcSummary = keys.join(', ') + ' (' + keys.length + '个公式)';
       }
+      // [gate-verdict 接线] 后置检查散落信号的聚合判定。
+      // 遵循同一处 [v6.4.5] 的精简原则: pass 是常见情形，每次都带出去只是噪声，
+      // 故只在真的有信号(block/rewrite/verify)时才附加。
+      if (thoughtChain.gateVerdict && thoughtChain.gateVerdict.action !== 'pass') {
+        // 只保留结构化字段。不在 result.report 上追加人类可读小节——
+        // 此路径上 result.report 是由 ReportGenerator 产出的**对象**而非字符串，
+        // typeof 检查永远为假，追加代码是死分支。数据经 postprocess_format 的
+        // safeStringify 原样到达调用方(markdown 与 json 两种 style 均如此)。
+        result.gateVerdict = {
+          action: thoughtChain.gateVerdict.action,
+          reason: thoughtChain.gateVerdict.reason,
+          signals: thoughtChain.gateVerdict.signals || [],
+          guidance: thoughtChain.gateVerdict.guidance || [],
+          score: thoughtChain.gateVerdict.score,
+        };
+      }
       // 可读辨别报告
       if (thoughtChain.output && thoughtChain.output.conclusion) {
         try {
@@ -715,7 +738,7 @@ async function handleThink(args) {
 
       result = await postprocess.run('postprocess.desensitize', result);
 
-      result = await postprocess.run('postprocess.format', result, { style: 'markdown' });
+      result = await postprocess.run('postprocess.format', result, { style });
 
     } catch (_) {
 

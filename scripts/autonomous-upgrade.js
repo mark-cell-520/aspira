@@ -42,9 +42,14 @@ function readSrc(rel) { try { return fs.readFileSync(path.join(ROOT, rel), 'utf8
 const indexSrc = readSrc('src/index.js');
 const mcpSrc = readSrc('src/mcp-server.js');
 const gateSrc = readSrc('src/gate.js');
+const hfSrc = readSrc('src/core/heartflow.js');
 const textNormWired = /require\(['"]\.\/text-normalizer/.test(indexSrc) || /text-normalizer/.test(gateSrc);
 const fpFeedbackWired = /require\(['"]\.\/false-positive-feedback/.test(indexSrc) || /false-positive-feedback/.test(mcpSrc);
-const gateVerdictWired = /require\(['"]\.\/gate-verdict/.test(indexSrc) || /gate-verdict/.test(mcpSrc);
+// gate-verdict 的接线点在 src/core/heartflow.js(紧邻 runThinkPipeline，
+// 那里才是 _blockedByFirewall 等信号的产地)，不是 src/index.js。
+// 原正则只查 index.js，属于检测器指错文件: 接得再对它也永远报 false。
+// 现在两个文件都查，且要求确实是 require 形式而非注释里提到名字。
+const gateVerdictWired = /require\(['"]\.\.?\/gate-verdict/.test(hfSrc) || /require\(['"]\.\/gate-verdict/.test(indexSrc) || /require\(['"]\.\.\/gate-verdict/.test(mcpSrc);
 const dimMatch = indexSrc.match(/const dimMap = \{([\s\S]*?)\n\s*\};/);
 const dimCount = dimMatch ? [...dimMatch[1].matchAll(/([a-z_]+)\s*:/g)].length : 0;
 let testCount = 0;

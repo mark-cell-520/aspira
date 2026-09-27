@@ -4,9 +4,9 @@ const TOOLS = [
 
     name: 'aspira_think',
 
-    description: '完整思维链：分类输入→路由→推理→输出。返回结构化分析结果，包含类型、置信度和思维链。',
+    description: '完整思维链：分类输入→路由→推理→输出。style=markdown（默认）返回可读报告文本，其中的 gateVerdict 行给出后置检查聚合判定；style=json 返回完整结构化结果（含 gateVerdict/discrimination/outputChecklist 等字段）。',
 
-    inputSchema: { type: 'object', properties: { input: { type: 'string', description: '需要分析的输入文本' }, effort: { type: 'number', description: '推理努力 1-100（可选），默认 50' } }, required: ['input'] }
+    inputSchema: { type: 'object', properties: { input: { type: 'string', description: '需要分析的输入文本' }, effort: { type: 'number', description: '推理努力 1-100（可选），默认 50' }, style: { type: 'string', enum: ['markdown', 'json'], description: "输出格式：markdown（默认，可读报告）或 json（完整结构化结果，保留 gateVerdict 等所有字段）" } }, required: ['input'] }
 
   },
 

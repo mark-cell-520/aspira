@@ -4722,6 +4722,32 @@ class Aspira {
     // ─── 后置检查流水线（从 think-pipeline.js 集中管理）─────
     await require('./think-pipeline.js').runThinkPipeline(result, input, this);
 
+    // ─── [gate-verdict 接线] 把散落信号收敛成一条可执行命令 ─────
+    // 问题: runThinkPipeline 会在 result 上产出 _blockedByFirewall / _highRiskOutput /
+    // _selfContradictory / _restrainedBy / _inputCheckIssues / _verification /
+    // _outputChecklistIssues / _inputCheck / _epistemicSafety / _driftCorrected
+    // 等 10+ 个下划线辨别信号，但此前**没有任何代码消费它们**——引擎判了却没人听见，
+    // 调用方要么自己解读每个字段(等于没帮上忙)，要么干脆不读。
+    // gate-verdict.js 正是做这个聚合的唯一模块，却和 false-positive-feedback.js
+    // 同属"从未被 require 的孤儿模块"。
+    //
+    // 接线点选在这里而非 src/index.js: 这些字段由 think-pipeline 生产，而
+    // index.js 的 discriminate() 既不调用 think-pipeline 也不含任何 _ 前缀字段，
+    // 在 index.js 接线只会让聚合器永远返回 pass。autonomous-upgrade.js 的自省
+    // 原先只查 index.js，属于检测器指错文件，已一并修正为同时查 heartflow.js。
+    //
+    // 结果写在 result.gateVerdict，**不覆盖 result.gate**——两者口径不同:
+    // gate 由 src/pipeline.js 的 17 层层级判定算出，gateVerdict 由本次后置检查的
+    // 散落信号聚合算出。纯函数、零依赖、fail-open: 任何异常都不阻断主链路。
+    try {
+      if (!this._gateVerdictMod) {
+        this._gateVerdictMod = require('../gate-verdict.js');
+      }
+      const gv = this._gateVerdictMod.buildGateVerdict(result);
+      // 无信号时也记录，让调用方能区分"没有信号"与"聚合器没跑"。
+      result.gateVerdict = gv || { action: 'pass', reason: '聚合器无返回', signals: [], guidance: [], score: 1 };
+    } catch (_) { /* 聚合失败不阻断主链路，fail-open 到不记录 */ }
+
     // ─── [v6.4.6] 接线真孤儿模块：元认知执行监控 + 信号吸收 ─────
     // 1. 元认知执行功能监控（输出侧）：评估本次思考的执行功能/元认知状态
     try {

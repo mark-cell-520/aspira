@@ -1,0 +1,64 @@
+{
+  "ts": "2026-09-27T20:49:00.828Z",
+  "chosen": "assess-gate-verdict",
+  "tieBreak": null,
+  "once": true,
+  "composite": 0.72,
+  "confidence": 0.65,
+  "reasoning": "Selected: \"评估 gate-verdict 冗余性/是否接线\" (score: 0.72). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.71); \"测试覆盖缺口填补\" (0.71); \"文档诚实数字审计\" (0.71); \"对抗鲁棒性增强\" (0.71); \"误报/召回校准\" (0.7); \"MCP 工具增强\" (0.7); \"性能优化\" (0.67)",
+  "all_options": [
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "score": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.71
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.71
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.71
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 163,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "821/0"
+  },
+  "result": "评估 gate-verdict 冗余性/是否接线 → 结论: 不冗余，是真实缺失的一环。src/gate-verdict.js 导出完整的三级聚合器(BLOCK 2 / REWRITE 3 / VERIFY 5 + pass)，设计目的是把 think() 散落在 result._* 上的辨别信号收敛成一条可执行命令，却和 false-positive-feedback.js 同属\"从未被 require 的孤儿模块\"——实测单个输入的 result 上有 43 个 _ 前缀字段，消费方为零。正是模块 docstring 自己描述的\"心虫判了但没人听见\"。已接在 src/core/heartflow.js 紧邻 runThinkPipeline 之后(那里才是 _blockedByFirewall 等信号的产地)，结果写 result.gateVerdict，不覆盖 result.gate——两者口径不同: gate 由 src/pipeline.js 的 17 层算出，gateVerdict 由后置散落信号聚合算出。原自省正则只查 src/index.js 属检测器指错文件(index.js 既不调用 think-pipeline 也不含任何 _ 字段，在那边接线只会让聚合器永远返回 pass)，已改为同时查 heartflow.js。接线过程中连带查出并修复三个缺陷: (1) PostProcessHooks.run() 丢掉 opts——签名是 run(name, payload) 连 opts 都没声明，只调 handler(payload)，导致 aspira_think 传 style json 时 postprocess_format 收到 undefined、style 回落 markdown，而 markdown 模式只保留 result.report，把 handleThink 构建的 discrimination/outputChecklist/gateVerdict 全丢弃。调用方无任何报错，只是永远拿不到要的格式——静默丢弃类缺陷。已修 run(name, payload, opts) 并转发。(2) output-checklist.js 14 处 issues.push 写成 ${dims.X.field?.join(\",\")}——?. 只防\"字段不是数组\"，防不住真实形状: 实测 14 个字段中 8 个产出垃圾(7 个 discriminate() 根本不返回 → 字面 undefined，1 个是对象数组 → [object Object])。同文件另有几行的正确范式 arr?.map(x=>x.type).join(\",\") || fallback 未被这 14 行沿用。已建 _detailList 助手统一替换。(3) gate-verdict 的 _describe 同样会把 undefined/[object Object] 写进 reason——模块原有的 [v6.7.70] 兜底只加在顶层对象分支，漏了数组元素与内嵌 issues/warnings 两条路径，已补 _stringifyLeaf。另: 我在 mcp-server.js 写过一段\"把聚合判定追加进 report 正文\"的代码，因该路径上 result.report 是 ReportGenerator 产出的对象而非字符串，typeof 检查永假——看似有功能的死代码，已移除。aspira_think 新增 style 参数(markdown 默认保持兼容 / json 保留完整结构化结果)，schema 描述原先写\"返回结构化分析结果\"而实际返回 Markdown 字符串，已改正。端到端两种 style 均带出 gateVerdict(action=rewrite)且垃圾文本清零。"
+}

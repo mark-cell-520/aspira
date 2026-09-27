@@ -74,12 +74,30 @@ class PostProcessHooks {
     return this;
   }
 
-  async run(name, payload) {
+  /**
+   * 执行一个已注册的钩子。
+   *
+   * @param {string} name 钩子名，如 'postprocess.format'
+   * @param {*} payload 主数据
+   * @param {object} [opts] 该钩子的选项——**必须转发给 handler**。
+   *   三个 handler 的签名都是 (payload, opts)：
+   *   postprocess_format(result, { style }) / postprocess_desensitize(result, opts) /
+   *   postprocess_translate(result, opts)。
+   *
+   *   [bug 修复] 原实现是 run(name, payload)，连 opts 都没声明，
+   *   且只调 handler(payload)——选项被静默丢弃。后果:
+   *   mcp-server.js 的 aspira_think 传 { style: 'json' } 想拿完整结构化结果，
+   *   postprocess_format 收到的 opts 是 undefined，于是 style 回落默认 'markdown'，
+   *   而 markdown 模式只保留 result.report，把 handleThink 精心构建的
+   *   discrimination / outputChecklist / gateVerdict 等字段全部丢弃。
+   *   调用方**没有任何报错**，只是永远拿不到它要的格式——静默丢弃类缺陷。
+   */
+  async run(name, payload, opts) {
     if (!this._enabled) return payload;
     const handler = this.hooks.get(name);
     if (!handler) return payload;
     try {
-      const out = handler(payload);
+      const out = handler(payload, opts);
       return out instanceof Promise ? await out : out;
     } catch (_) {
       return payload;

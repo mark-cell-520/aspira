@@ -2,6 +2,46 @@
 // 输出前五步检查：质量→安全→偏好→公正→道德边界
 // 每次引擎生成回复后、输出前执行
 
+/**
+ * 安全渲染维度明细列表。
+ *
+ * [bug 修复] 此前 12 处 issues.push 一律写成 `${dims.X.field?.join(',')}`。
+ * `?.` 只防"字段不是数组"，防不住另外两种真实形状，于是调用方可见的
+ * issue 文本里出现字面 "undefined" 与 "[object Object]"：
+ *
+ *   实测 12 个字段中 8 个会产出垃圾——
+ *   - 7 个字段 discriminate() 根本不返回(undefined): gaslighting.patterns /
+ *     hate_speech.categories / bullshit_recognition.categories /
+ *     theory_of_mind.misses / meta_cognition.misses / social_norm.norms /
+ *     goal_misalignment.misalignments
+ *   - 1 个是对象数组(元素 {type, match}): capability_overclaim.claims
+ *     → Array.join 对对象元素调 toString()，得 "[object Object]"
+ *
+ * 同文件另有几行写的是 `arr?.map(x => x.type).join(',') || 'loaded'`——
+ * 那才是正确范式，但 12 行漏掉了映射与兜底。现统一走本助手:
+ * 对象元素取首个有意义字符串字段，空/缺失给固定占位，绝不产出无意义文本。
+ *
+ * @param {*} arr 维度上的细节数组
+ * @param {string} [fallback] 无可用细节时的占位文本
+ * @returns {string}
+ */
+function _detailList(arr, fallback = '见维度计数') {
+  if (!Array.isArray(arr) || arr.length === 0) return fallback;
+  const parts = [];
+  for (const v of arr.slice(0, 5)) {
+    if (v === null || v === undefined) continue;
+    if (typeof v === 'string') { if (v.length > 0) parts.push(v); continue; }
+    if (typeof v === 'number' || typeof v === 'boolean') { parts.push(String(v)); continue; }
+    if (typeof v === 'object') {
+      const s = v.type || v.pattern || v.label || v.name || v.reason || v.message || v.match || v.detail;
+      if (typeof s === 'string' && s.length > 0) { parts.push(s); continue; }
+      const strField = Object.values(v).find(x => typeof x === 'string' && x.length > 0);
+      if (strField) { parts.push(strField.slice(0, 80)); continue; }
+    }
+  }
+  return parts.length > 0 ? parts.join(',') : fallback;
+}
+
 class OutputChecklist {
   constructor() {
     this.name = 'OutputChecklist';
@@ -357,19 +397,19 @@ class OutputChecklist {
         triggeredDims.push('prompt_injection');
       }
       if (dims.code_security && dims.code_security.count > 0) {
-        issues.push(`含代码安全问题(${dims.code_security.count}处: ${dims.code_security.types?.join(',')})`);
+        issues.push(`含代码安全问题(${dims.code_security.count}处: ${_detailList(dims.code_security.types)}`);
         triggeredDims.push('code_security');
       }
       if (dims.dehumanization && dims.dehumanization.count > 0) {
-        issues.push(`含非人化语言(${dims.dehumanization.count}处: ${dims.dehumanization.categories?.join(',')})`);
+        issues.push(`含非人化语言(${dims.dehumanization.count}处: ${_detailList(dims.dehumanization.categories)}`);
         triggeredDims.push('dehumanization');
       }
       if (dims.bullshit_recognition && dims.bullshit_recognition.count > 0) {
-        issues.push(`含空洞胡扯(${dims.bullshit_recognition.count}处: ${dims.bullshit_recognition.categories?.join(',')})`);
+        issues.push(`含空洞胡扯(${dims.bullshit_recognition.count}处: ${_detailList(dims.bullshit_recognition.categories)}`);
         triggeredDims.push('bullshit_recognition');
       }
       if (dims.gaslighting && dims.gaslighting.count > 0) {
-        issues.push(`含煤气灯操纵(${dims.gaslighting.count}处: ${dims.gaslighting.patterns?.join(',')})`);
+        issues.push(`含煤气灯操纵(${dims.gaslighting.count}处: ${_detailList(dims.gaslighting.patterns)}`);
         triggeredDims.push('gaslighting');
       }
       if (dims.victim_blaming && dims.victim_blaming.count > 0) {
@@ -377,11 +417,11 @@ class OutputChecklist {
         triggeredDims.push('victim_blaming');
       }
       if (dims.hate_speech && dims.hate_speech.count > 0) {
-        issues.push(`含仇恨言论(${dims.hate_speech.count}处: ${dims.hate_speech.categories?.join(',')})`);
+        issues.push(`含仇恨言论(${dims.hate_speech.count}处: ${_detailList(dims.hate_speech.categories)}`);
         triggeredDims.push('hate_speech');
       }
       if (dims.dogwhistle && dims.dogwhistle.count > 0) {
-        issues.push(`含狗哨言论(${dims.dogwhistle.count}处: ${dims.dogwhistle.signals?.join(',')})`);
+        issues.push(`含狗哨言论(${dims.dogwhistle.count}处: ${_detailList(dims.dogwhistle.signals)}`);
         triggeredDims.push('dogwhistle');
       }
       if (dims.whataboutism && dims.whataboutism.count > 0) {
@@ -405,15 +445,15 @@ class OutputChecklist {
         triggeredDims.push('appeal_to_authority_boost');
       }
       if (dims.reasoning_coherence && dims.reasoning_coherence.count > 0) {
-        issues.push(`推理连贯性不足(${dims.reasoning_coherence.count}处: ${dims.reasoning_coherence.issues?.join(',')})`);
+        issues.push(`推理连贯性不足(${dims.reasoning_coherence.count}处: ${_detailList(dims.reasoning_coherence.issues)}`);
         triggeredDims.push('reasoning_coherence');
       }
       if (dims.theory_of_mind && dims.theory_of_mind.count > 0) {
-        issues.push(`心理理论缺失(${dims.theory_of_mind.count}处: ${dims.theory_of_mind.misses?.join(',')})`);
+        issues.push(`心理理论缺失(${dims.theory_of_mind.count}处: ${_detailList(dims.theory_of_mind.misses)}`);
         triggeredDims.push('theory_of_mind');
       }
       if (dims.goal_misalignment && dims.goal_misalignment.count > 0) {
-        issues.push(`目标失调(${dims.goal_misalignment.count}处: ${dims.goal_misalignment.misalignments?.join(',')})`);
+        issues.push(`目标失调(${dims.goal_misalignment.count}处: ${_detailList(dims.goal_misalignment.misalignments)}`);
         triggeredDims.push('goal_misalignment');
       }
       if (dims.counterfactual && dims.counterfactual.count > 0) {
@@ -421,23 +461,23 @@ class OutputChecklist {
         triggeredDims.push('counterfactual');
       }
       if (dims.social_norm && dims.social_norm.count > 0) {
-        issues.push(`违反社会规范(${dims.social_norm.count}处: ${dims.social_norm.norms?.join(',')})`);
+        issues.push(`违反社会规范(${dims.social_norm.count}处: ${_detailList(dims.social_norm.norms)}`);
         triggeredDims.push('social_norm');
       }
       if (dims.meta_cognition && dims.meta_cognition.count > 0) {
-        issues.push(`元认知缺失(${dims.meta_cognition.count}处: ${dims.meta_cognition.misses?.join(',')})`);
+        issues.push(`元认知缺失(${dims.meta_cognition.count}处: ${_detailList(dims.meta_cognition.misses)}`);
         triggeredDims.push('meta_cognition');
       }
       if (dims.capability_overclaim && dims.capability_overclaim.count > 0) {
-        issues.push(`能力过度宣称(${dims.capability_overclaim.count}处: ${dims.capability_overclaim.claims?.join(',')})`);
+        issues.push(`能力过度宣称(${dims.capability_overclaim.count}处: ${_detailList(dims.capability_overclaim.claims)}`);
         triggeredDims.push('capability_overclaim');
       }
       if (dims.deceptive_alignment && dims.deceptive_alignment.count > 0) {
-        issues.push(`欺骗性对齐(${dims.deceptive_alignment.count}处: ${dims.deceptive_alignment.patterns?.join(',')})`);
+        issues.push(`欺骗性对齐(${dims.deceptive_alignment.count}处: ${_detailList(dims.deceptive_alignment.patterns)}`);
         triggeredDims.push('deceptive_alignment');
       }
       if (dims.instrumental_reasoning && dims.instrumental_reasoning.count > 0) {
-        issues.push(`工具性推理异常(${dims.instrumental_reasoning.count}处: ${dims.instrumental_reasoning.behaviors?.join(',')})`);
+        issues.push(`工具性推理异常(${dims.instrumental_reasoning.count}处: ${_detailList(dims.instrumental_reasoning.behaviors)}`);
         triggeredDims.push('instrumental_reasoning');
       }
 

@@ -73,19 +73,27 @@ function _isTriggered(value, spec) {
 
 /**
  * 从信号值提取可读细节（供 reason/guidance 使用）。
+ *
+ * [v6.7.71] 接线后首次暴露的缺陷: 本函数会把 `undefined` 与 `[object Object]`
+ * 直接写进调用方可见的 reason 字符串(实测 reason 出现过
+ * "含煤气灯操纵(1处: undefined)" 与 "能力过度宣称(1处: [object Object]")。
+ * 模块原有的 [v6.7.70] 兜底只加在**顶层对象**分支，漏了**数组元素**与
+ * **对象内嵌 issues/warnings 数组**两条路径——数组里混入 undefined 元素、
+ * 或元素是不带 message/type/label/name 的普通对象时，兜底完全没覆盖到。
+ * 现在统一走 _stringifyLeaf，保证任何形状都不会产出无意义文本。
  */
 function _describe(key, value) {
   if (value === true) return '';
   if (typeof value === 'string') return value;
   if (Array.isArray(value)) {
-    return value.slice(0, 3).map(v => (typeof v === 'string' ? v : (v && (v.message || v.type || v.label || v.name)) || String(v))).join('；');
+    return value.slice(0, 3).map(_stringifyLeaf).join('；');
   }
   if (typeof value === 'object') {
     if (Array.isArray(value.issues) && value.issues.length > 0) {
-      return value.issues.slice(0, 3).map(i => i.message || i.type || String(i)).join('；');
+      return value.issues.slice(0, 3).map(_stringifyLeaf).join('；');
     }
     if (Array.isArray(value.warnings) && value.warnings.length > 0) {
-      return value.warnings.slice(0, 3).map(w => (typeof w === 'string' ? w : (w && (w.message || w.type || w.label || w.name)) || String(w))).join('；');
+      return value.warnings.slice(0, 3).map(_stringifyLeaf).join('；');
     }
     if (typeof value.score === 'number') return `score=${value.score}`;
     if (value.matches) return `命中 ${value.matches.length} 项`;
@@ -96,6 +104,24 @@ function _describe(key, value) {
     return `${Object.keys(value).length} 个字段`;
   }
   return '';
+}
+
+/**
+ * 把单个信号元素转成可读文本，**绝不产出 'undefined' 或 '[object Object]'**。
+ * 顺序: 字符串 → 常见消息字段 → 数字 → 有值的基本类型 → 结构性描述。
+ */
+function _stringifyLeaf(v) {
+  if (v === null || v === undefined) return '(未提供细节)';
+  if (typeof v === 'string') return v.length > 0 ? v : '(空)';
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (typeof v === 'object') {
+    const msg = v.message || v.type || v.label || v.name || v.reason || v.detail;
+    if (typeof msg === 'string' && msg.length > 0) return msg;
+    const strField = Object.values(v).find(x => typeof x === 'string' && x.length > 0);
+    if (strField) return strField.slice(0, 120);
+    return `${Object.keys(v).length} 个字段`;
+  }
+  return String(v);
 }
 
 /**
