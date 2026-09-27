@@ -4044,6 +4044,35 @@ const HANDLERS = {
   // [影子覆盖修复] 此处原有 aspira_check_outbound 与 aspira_audit_trace 各两份
   // 完全相同的内联实现，后者静默覆盖前者(纯冗余，无行为差异)。已删除重复的两份，
   // 并修复原先 }, 与 aspira_circuit_breaker 挤在同一行的格式问题。
+  // [误报反馈环接线] src/false-positive-feedback.js 早写好但从未被 require，
+  // engine 的 introspection.fpFeedbackWired 一直为 false。调用方被 gate 拦后
+  // 没有渠道回报"这是误报"，阈值只能靠内部样本调。
+  // 参数名与 index.js 导出对齐：schema 里叫 gateAction，report() 收 action。
+  aspira_false_positive: (args) => {
+    const action = args?.action || 'stats';
+    try {
+      const idx = require('./index.js');
+      if (action === 'report') {
+        return idx.reportFalsePositive({
+          text: args?.text,
+          action: args?.gateAction,
+          dimension: args?.dimension,
+          reason: args?.reason,
+          note: args?.note,
+          fullText: args?.fullText === true,
+          trace: args?.trace,
+        });
+      }
+      if (action === 'stats') return idx.falsePositiveStats();
+      if (action === 'suggest') return idx.falsePositiveSuggestions();
+      if (action === 'confirm') return idx.confirmFalsePositive({ id: args?.id });
+      if (action === 'clear') return idx.clearFalsePositives();
+      if (action === 'reasons') return { reasons: idx.FALSE_POSITIVE_REASONS() };
+      return { error: `unknown action: ${action}(可用: report/stats/suggest/confirm/clear/reasons)` };
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
   aspira_check_outbound: (args) => {
     try {
       const { checkOutbound } = require('./gate-outbound.js');

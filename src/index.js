@@ -83,6 +83,11 @@ const { checkAIMisuse } = require('./ai-misuse.js');
 const { checkReversibility } = require('./reversibility.js');
 const { checkPerfectError } = require('./perfect-error.js');
 const { checkPrematureTermination } = require('./premature-termination.js');
+// [v6.7.x] 误报反馈闭环。模块早已写好(src/false-positive-feedback.js)，但从未被
+// require 过——engine 的 introspection.fpFeedbackWired 一直为 false，调用方也没有
+// 渠道回报"这是误报"，阈值只能靠内部样本调，等于把内部样本的分布当成全部真相。
+// 惰性加载：该模块只在调用方真的回报误报时才touch磁盘。
+const _fpFeedback = () => require('./false-positive-feedback.js');
 const { detect } = require('./shield/ai-writing-tell.js');
 
 // [v7.0.0] 工作包 B: 间接注入检测
@@ -4146,4 +4151,13 @@ module.exports = {
   // 以及供测试断言模式表健全性。此前 A/B 只能在判别之后过滤 type，
   // 门禁动作已算完，对照组是无效的。
   CODE_SECURITY_PATTERNS,
+  // 误报反馈闭环：调用方回报误报 / 查询聚合 / 获取阈值建议。
+  // 四个入口直接透传 src/false-positive-feedback.js，保持隐私铁律不变
+  // (不落调用方身份、原文默认只存摘要、文件权限 600)。
+  reportFalsePositive: (p) => _fpFeedback().report(p),
+  falsePositiveStats: () => _fpFeedback().stats(),
+  falsePositiveSuggestions: () => _fpFeedback().suggest(),
+  confirmFalsePositive: (p) => _fpFeedback().confirm(p),
+  clearFalsePositives: () => _fpFeedback().clear(),
+  FALSE_POSITIVE_REASONS: () => _fpFeedback().REASONS,
 };

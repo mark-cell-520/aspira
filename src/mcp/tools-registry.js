@@ -96,6 +96,35 @@ const TOOLS = [
   },
 
   {
+    name: 'aspira_false_positive',
+
+    description: '误报反馈闭环：回报一次误报 / 查询聚合统计 / 获取阈值调整建议。被 gate 拦(block/rewrite/verify)的调用方用 report 回报"这是误报"，stats 按维度聚合，suggest 在有 >=20 条样本后才给建议(宁可没建议，不可给拍脑袋建议)。隐私铁律：只存判定相关字段，不落调用方身份；原文默认只存长度+前80字摘要，fullText=true 才存全文。',
+
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['report', 'stats', 'suggest', 'confirm', 'clear', 'reasons'],
+          description: 'report=回报误报, stats=聚合统计, suggest=阈值建议, confirm=确认一条待确认记录, clear=清空(测试/运维用), reasons=列出认可的误报原因'
+        },
+        text: { type: 'string', description: 'report 用：被判定的原文' },
+        gateAction: { type: 'string', enum: ['block', 'rewrite', 'verify'], description: 'report 用：当时收到的门禁动作' },
+        dimension: { type: 'string', description: 'report 用：误报的维度名(如 code_security)' },
+        reason: {
+          type: 'string',
+          enum: ['no_intent', 'benign_usage', 'wrong_language', 'over_broad_rule', 'other'],
+          description: 'report 用：误报原因(只能从这几个选，自由文本无法聚合)'
+        },
+        note: { type: 'string', description: 'report 用：补充说明(最多200字)' },
+        fullText: { type: 'boolean', description: 'report 用：是否存全文(默认false，隐私铁律)' },
+        id: { type: 'string', description: 'confirm 用：要确认的记录 id' }
+      },
+      required: ['action']
+    },
+  },
+
+  {
     name: 'aspira_self_heal',
 
     description: '自愈策略推荐：基于历史经验为当前场景推荐最优策略。返回策略排名、置信度和执行建议。',

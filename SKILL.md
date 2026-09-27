@@ -6,7 +6,7 @@ description: |-
   Aspira is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
   it reaches a human. 54 discrimination dimensions × 14-layer pipeline × 132 modules ×
-  180 MCP tools. Zero LLM dependency.
+  181 MCP tools. Zero LLM dependency.
 
   Upgraded capabilities (v6.7.69): reasoning effort control, sparse module activation,
   discriminative result cache, async supervision layer, autonomous decision execution

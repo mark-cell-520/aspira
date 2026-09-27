@@ -12,7 +12,7 @@ wrong.
 Aspira adds the discrimination layer, so your agent doesn't just *say* things — it
 says things that are *right*.
 
-**Zero LLM dependency.** 54 dimensions, 132 modules, 180 MCP tools, 1,510 dispatch
+**Zero LLM dependency.** 54 dimensions, 132 modules, 181 MCP tools, 1,510 dispatch
 routes. Pure rule engine.
 
 ## Quick start
@@ -186,7 +186,15 @@ These are the rules this codebase actually follows. Follow them when changing it
 - Not AGI, not generative, not a semantic understanding system.
 - Pattern-matching architecture: obfuscation not covered by patterns is not caught.
 - Irony, metaphor, and cultural context are invisible.
-- Baseline false-positive rate around 8%.
+- **False-positive rate is measured, not claimed.** `scripts/calibrate-fp-recall.js`
+  measures it on a hand-written labelled corpus of 38 benign / 13 malicious samples;
+  the current reading is **5.3% FP / 100% recall**. That is a *corpus-local* number,
+  not real traffic — the corpus was written by this repo's authors and will drift from
+  what real callers actually send. It replaced an earlier "around 8%" that nothing had
+  ever measured. Until `aspira_false_positive` accumulates real caller feedback
+  (`data/feedback/false-positives.jsonl`), treat 5.3% as a lower bound on honesty, not
+  a production SLO. Run the script after changing any pattern; a false positive can be a
+  false negative in disguise, so recall must be re-measured after every FP fix.
 - Chinese tokenisation in the hypothesis stage is heuristic (greedy longest-match with a
   stopword list), not dictionary-based.
 

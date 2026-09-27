@@ -1,0 +1,68 @@
+{
+  "ts": "2026-09-27T19:08:57.293Z",
+  "chosen": "wire-false-positive-feedback",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[wire-false-positive-feedback,mcp-tool-enhancement,test-coverage-gap,assess-gate-verdict,doc-honest-numbers], 按consequence_value最高选 wire-false-positive-feedback",
+  "once": true,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.73, 文档诚实数字审计=0.73, 接线 false-positive-feedback 误报反馈环=0.72 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.73
+    },
+    {
+      "id": "wire-false-positive-feedback",
+      "label": "接线 false-positive-feedback 误报反馈环",
+      "composite": 0.72
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.71
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.71
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 159,
+    "textNormWired": true,
+    "fpFeedbackWired": false,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "788/0"
+  },
+  "result": "接线 false-positive-feedback 误报反馈环 → src/false-positive-feedback.js 早写好但从未被 require 过，engine 的 introspection.fpFeedbackWired 每个周期都报 false，被 gate 拦(block/rewrite/verify)的调用方也没有渠道回报「这是误报」。后果是结构性的: 阈值只能靠内部样本调，引擎越孤立越把内部样本分布当成全部真相。该模块本身已带隐私铁律(不落调用方身份、原文默认只存长度+80字摘要、文件权限600)和刻意保守的 suggest()(样本<20 拒绝给建议，而非拍脑袋)。现已暴露为 aspira_false_positive 工具(6 个 action: report/stats/suggest/confirm/clear/reasons)+ 6 个 engine 导出，MCP 工具 180→181。参数边界是最容易静默出错的地方: schema 叫 gateAction 而 report() 收 action，handler 显式映射，并有测试断言映射字符串存在——缺了它工具会用「action 必须是 block/rewrite/verify(收到: undefined)」拒掉每个合规调用，而没有任何测试会叫。同时校正文档两处不实数字: AGENTS.md 称「误报率约 8%」而实测 5.3%(38 良性/13 恶意手写语料)，已改为明确标注这是语料本地数字、非真实流量 SLO，并说明在 aspira_false_positive 积累真实反馈前只能当下界。测试中我自己也数错一次: 阈值是 total<20 才拒，我只加 19 条却断言应 sufficient——代码是对的，测试数错了。"
+}
