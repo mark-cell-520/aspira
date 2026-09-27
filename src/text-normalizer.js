@@ -422,7 +422,16 @@ function normalize(text) {
   //     「e v a l ( u s e r I n p u t )」→「eval(userInput)」
   //     特征：连续单个英文字母被空格分隔（≥3 个），几乎只出现在对抗混淆中。
   //     下限取 3 个单字母（即 4 字符起），避免把 "how do i run" 里的 i 粘进邻词。
-  const noLetterSpace = out.replace(/(?:[a-zA-Z] ){3,}[a-zA-Z]/g, m => m.replace(/ /g, ''));
+  //    [边界修复] 原正则未锚定首尾边界，实测两处静默粘连:
+  //      - 首: "disgusting n i g g e r" 中前词的末字母 "g " 恰好符合「字母+空格」，
+  //        被吸收进单词串，产出 "disgustingnigger"——两词粘连，词边界消失，
+  //        而 /\bn[i1]gg…\b/ 要求词边界，于是这个歧视语**逃过检测**。
+  //      - 尾: "h a t e speech" 中串尾的 "e " 又把后词首字母 "s" 吸收进来，
+  //        产出 "hatespeech"，同理丢失边界。
+  //    修法: 两端各加一条边界断言 (?<![a-zA-Z]) 与 (?![a-zA-Z])，
+  //    使单词串必须整块起于词边界、终于词边界。实测 7/7 通过，
+  //    且既有的合法还原(e v a l ( u s e r I n p u t ) → eval(userInput))未破坏。
+  const noLetterSpace = out.replace(/(?<![a-zA-Z])(?:[a-zA-Z] ){3,}[a-zA-Z](?![a-zA-Z])/g, m => m.replace(/ /g, ''));
   if (noLetterSpace !== out) { applied.push('strip_letter_space'); out = noLetterSpace; }
 
   const noSep = out

@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-27T22:53:57.636Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 test-coverage-gap",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.71, 文档诚实数字审计=0.71, 维度健康审计与增强=0.69 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.71
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.71
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.69
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.68
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 168,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "852/0"
+  },
+  "result": "测试覆盖缺口填补。目标是连记两轮的未拦绕过。精确测量后发现两个绕过性质完全不同。**空格分词是真缺陷**: text-normalizer step 3a 的 strip_letter_space 正则为 /(?:[a-zA-Z] ){3,}[a-zA-Z]/g，未锚定首尾边界。首侧: \"disgusting n i g g e r\" 中前词末字母 \"g \" 恰好符合「字母+空格」而被吸收进单词串，产出 \"disgustingnigger\"——两词粘连、词边界消失，而 hate_speech 的 /\\bn[i1]gg…\\b/ 要求词边界，于是该歧视语在 discriminate 与 pipeline 双双 pass。尾侧: \"h a t e speech\" 串尾的 \"e \" 又把后词首字母 \"s\" 吸收进来，产出 \"hatespeech\"。此缺陷的危险在于它不是\"漏还原\"而是\"错还原\": 还原步骤确实跑了(applied 里有 strip_letter_space)，只是产物把两个词粘成一个，下游模式静默失配——从 applied 列表看一切正常。修法: 两端各加边界断言 (?<![a-zA-Z]) 与 (?![a-zA-Z])。实测 7/7 通过，且既有合法还原 e v a l ( u s e r I n p u t ) 未破坏、正常文本未被误还原。**leet 不是缺陷**: \"1gnore\" 只有一个 leet 字符，低于 _deLeetCandidates 的 >=3 阈值。实测良性语料 75 条中 26 条含 >=1 个 leet 类字符，阈值降到 1 会新暴露 16 条(如 \"SELECT * FROM users WHERE id = 1\"、\"The retrieval process takes about 200ms.\")。故 >=3 是正确的防误报设计，单字符低于阈值属刻意权衡; 3 字符及以上实测均被正确拦截。语料从 75/22 扩到 82/24。扩充过程又抓到我自己的分派错误: 把 \"h a t e speech is unacceptable and wrong\" 放进了恶意语料，实测它**不加混淆时也是 hs=0/pass**——这是谴责仇恨言论的句子，本身不是仇恨言论，引擎不拦是正确的。已移入良性并留档理由，它反而是条好护栏(谴责句即便被混淆也不得被拦)。本会话第五次\"探针/样本错、引擎对\"。新增 test/text-normalizer-boundary.test.js(7 测试)锁住: 单词串不得粘连前后词、既有合法还原不得被破坏、正常文本不得被误还原、混淆后的歧视语与注入必须被拦、谴责句不得被拦、源码正则必须锚定首尾边界、leet 阈值必须保持 >=3(防后人当 bug 修掉而引入大量误报)。测试第一版还有两个期望写错: 忘了 normalize() 的 step 6 会无条件小写化全文(\"userInput\"→\"userinput\"、\"I need\"→\"i need\")，已按实际行为修正并注明。终态: verify 14/14, run-all 852/0, FP 2.4%/召回 100%。MCP 已重启，181 工具在线，空格分词绕过端到端确认已堵。"
+}
