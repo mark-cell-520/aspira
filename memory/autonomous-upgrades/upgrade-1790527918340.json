@@ -1,0 +1,69 @@
+{
+  "ts": "2026-09-27T16:51:58.338Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.75,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.75). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.74); \"维度健康审计与增强\" (0.73); \"测试覆盖缺口填补\" (0.73); \"对抗鲁棒性增强\" (0.73); \"接线 false-positive-feedback 误报反馈环\" (0.72); \"评估 gate-verdict 冗余性/是否接线\" (0.72); \"误报/召回校准\" (0.72); \"性能优化\" (0.67)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.75
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.74
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.73
+    },
+    {
+      "id": "wire-false-positive-feedback",
+      "label": "接线 false-positive-feedback 误报反馈环",
+      "score": 0.72
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "score": 0.72
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.72
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 51,
+    "testCount": 155,
+    "textNormWired": true,
+    "fpFeedbackWired": false,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "757/0"
+  },
+  "result": "文档诚实数字审计 → 查出并修复一个真 bug。根因: src/index.js 的 dimMap 与 dimensions 返回对象已漂移——两个旧键名(bullshit→bullshit_recognition, appeal_to_authority→appeal_to_authority_boost)加三个漏项(evidence/unsupported_claim/clickbait)。因 findings 循环用 dimObj?.count||...||1 解析次数, 键名对不上时静默回退成 1, 这些维度的 finding 次数永远显示「1次」——条目不丢但数字是假的。已修键名+补齐漏项(dimMap 51→54, 与 dimensions 完全一致), 并在 test/dimension-health.test.js 加防漂移断言(finding 次数必须等于 dimensions 实测 count)。文档数字全量对账: 维度 51→54(README/SKILL/AGENTS 三处), 模块 132 ✓, 路由 1510 ✓, 工具 179 ✓; 维度清单旧名修正并补 tone_policing/sealioning, AGENTS.md 增补说明 pseudo_causal/soft_deflection/ai_writing_tell 进 findings 但不是 dimensions 键(故清单列 57 项、计数 54)。"
+}

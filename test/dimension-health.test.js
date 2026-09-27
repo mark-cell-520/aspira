@@ -117,4 +117,34 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
     assertEqual(keys.length, EXPECTED_DIMS.length, '归一化路径下 dimensions 键数不应变化');
     assertTrue(r.dimensions.code_security.count > 0, '混淆后的 code_security 仍应命中');
   });
+
+  test('finding 的次数与 dimensions 实际 count 一致(dimMap 防漂移)', () => {
+    // 背景: dimMap 曾有两处旧名(bullshit→bullshit_recognition、
+    // appeal_to_authority→appeal_to_authority_boost)且漏 evidence/unsupported_claim/clickbait。
+    // 键名对不上时 `dimObj?.count || ... || 1` 静默回退成 1, finding 次数永远显示「1次」
+    // ——条目不丢, 但数字是假的。本测试锁住"次数=实测"这条不变式。
+    const probes = [
+      '立即验证你的账户，否则将被永久注销。',
+      '仅剩最后3个名额，立即抢购，活动一小时后结束！',
+      '那些人就是蛀虫和垃圾，不配称为人。',
+      '这种行为令人作呕，违背了神圣的传统。',
+      '你不需要知道细节，听我的就行。',
+    ];
+    let checked = 0;
+    for (const t of probes) {
+      const r = discriminate(t);
+      for (const f of r.findings || []) {
+        const m = /^([a-z_]+)\((\d+)次\)$/.exec(f.details || '');
+        if (!m) continue;
+        const dim = m[1];
+        if (!EXPECTED_DIMS.includes(dim)) continue; // 只校验注册在 dimensions 里的维度
+        const v = r.dimensions[dim];
+        const real = typeof v.count === 'number' ? v.count : (v.totalHits || 0);
+        assertEqual(Number(m[2]), real,
+          `${dim} 的 finding 次数(${m[2]})应与 dimensions 实测 count(${real})一致: «${t}»`);
+        checked++;
+      }
+    }
+    assertTrue(checked > 0, '至少应校验到一条带次数的 finding');
+  });
 };

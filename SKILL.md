@@ -5,7 +5,7 @@ version: "1.0.0"
 description: |-
   Aspira is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
-  it reaches a human. 51 discrimination dimensions × 14-layer pipeline × 132 modules ×
+  it reaches a human. 54 discrimination dimensions × 14-layer pipeline × 132 modules ×
   179 MCP tools. Zero LLM dependency.
 
   Upgraded capabilities (v6.7.69): reasoning effort control, sparse module activation,
@@ -117,7 +117,7 @@ tags:
 >   sparse decision activation, constrained-network install lessons).
 >
 > **Aspira = HeartFlow's full capability (discriminate / decide / remember / emotion /
-> ethics) + Aspira's enhancements (51 dimensions, autonomous decision execution,
+> ethics) + Aspira's enhancements (54 dimensions, autonomous decision execution,
 > hierarchical sparse routing).**
 
 ---
@@ -323,13 +323,13 @@ The gate aggregates every layer's findings and emits one of four actions:
 
 ---
 
-## The 51 dimensions
+## The 54 dimensions
 
 **Block-level (9):** hate_speech, dehumanization, prompt_injection, code_security, deceptive_alignment, phishing_coercion, coverup_induction, dangerous_instruction, reward_hacking
 
-**Rewrite-level (8):** emotional_manipulation, gaslighting, double_bind, victim_blaming, false_urgency, bullshit, absolute_claim, induced_trust
+**Rewrite-level (8):** emotional_manipulation, gaslighting, double_bind, victim_blaming, false_urgency, bullshit_recognition, absolute_claim, induced_trust
 
-**Verify-level (24):** appeal_to_authority, vagueness, contradiction, sycophancy, confidence, fallacies, presupposition, empty_answer, info_deprivation, false_equivalence, hasty_generalization, slippery_slope, whataboutism, pseudo_profundity, reasoning_coherence, stereotype, clickbait, bad_faith, no_fallback, unsupported_claim, perfect_error, pseudo_causal, soft_deflection, premature_termination
+**Verify-level (26):** appeal_to_authority_boost, vagueness, contradiction, sycophancy, confidence, fallacies, presupposition, empty_answer, info_deprivation, false_equivalence, hasty_generalization, slippery_slope, whataboutism, pseudo_profundity, reasoning_coherence, stereotype, clickbait, bad_faith, no_fallback, unsupported_claim, perfect_error, pseudo_causal, soft_deflection, premature_termination, tone_policing, sealioning
 
 **Scored but not action-forcing:** evidence, moral_foundations, dogwhistle, factual_consistency, sarcasm, privacy_boundary, meta_cognition, theory_of_mind, counterfactual, social_norm, capability_overclaim, goal_misalignment, instrumental_reasoning, ai_writing_tell, bullshit_recognition
 
@@ -451,7 +451,7 @@ GB/T 42497-2023 (*Security Requirements for AI-Generated Content*):
 
 | Checkpoint | Module |
 |-----------|--------|
-| Generated-content safety | `checkOutput` / `discriminate` (51 dimensions) |
+| Generated-content safety | `checkOutput` / `discriminate` (54 dimensions) |
 | Training-data safety | `DataEraser` + memory ACL |
 | **Outbound protection** | **`aspira_check_outbound`** (gate-outbound.js) |
 | Algorithmic transparency | `enginePacing` + `selfHeal` |

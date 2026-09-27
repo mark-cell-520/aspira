@@ -6,7 +6,7 @@ A pure rule engine that judges whether a statement or an action is right, wrong,
 or dangerous — **before it reaches a human**. Zero LLM dependency.
 
 ```
-51 discrimination dimensions  ×  14-layer pipeline  ×  132 modules  ×  179 MCP tools
+54 discrimination dimensions  ×  14-layer pipeline  ×  132 modules  ×  179 MCP tools
 ×  1,510 dispatch routes  ×  740 passing tests  ×  0 runtime dependencies
 ```
 
@@ -77,7 +77,7 @@ read only one field, read `gate.action`.
 
 | Function | Use it for | What it adds |
 |----------|-----------|--------------|
-| `checkInput(text)` | User input, before processing | scope-check, premise-check, 51 dimensions, error memory |
+| `checkInput(text)` | User input, before processing | scope-check, premise-check, 54 dimensions, error memory |
 | `checkDraft(text)` | An AI draft, before completion | the above + frame-check + doubt-engine |
 | `checkOutput(text)` | An AI response, before sending | the above + output-gate + doubt-engine |
 | `runPipeline({ input, mode, anchor })` | Full pipeline with mode and conversation anchor | keeps the model on the original goal across long sessions |
@@ -90,7 +90,7 @@ read only one field, read `gate.action`.
 input
   |
   v
-scope-check -> premise-check -> discriminate (51 dimensions) -> gate
+scope-check -> premise-check -> discriminate (54 dimensions) -> gate
                                                                    |
   +----------------------------------------------------------------+
   v
@@ -245,7 +245,8 @@ Known limits:
 
 | Version | Date | Change |
 |---------|------|--------|
-| 1.0.0 | 2026-09-27 | Honest-numbers audit. A previous decoupling refactor had deleted 5 `globalThis` stubs as "dead code — 0 src consumers", but `heartflow.js` itself consumed them by bare class name, so `hf._initErrors` carried 5 entries and only **126 of 132** modules registered (routes 1,497). Repaired all 5 through the lazy registry (`processRewardModel`, `desireCognition`, `cognitiveIndex`, `worldLandscape`, `knowledgeExplorer`), aliased `DesireSystem` → `DesireCognition`, and restored the `worldAwareStrategy` factory stub in its own `try` so it can no longer take `WorldLandscape` down with it. Every documented number was re-measured against the code: README corrected 46 → 51 dimensions, 9 → 14 pipeline layers, 547 → 740 tests; dispatch routes 1,506 → 1,510 in README / SKILL / AGENTS. `security-audit` `S2` now skips instead of failing when the tree has no `.git`. 740 tests, 0 failures. |
+| 1.0.0 | 2026-09-27 | Dimension-map repair + honest dimension count. `dimMap` in `discriminate()` had drifted from the `dimensions` return object: two stale keys (`bullshit`, `appeal_to_authority`) that no longer exist, and three missing ones (`evidence`, `unsupported_claim`, `clickbait`). Because the findings loop resolves counts through `dimObj?.count || … || 1`, a key miss silently fell back to `1`, so those findings reported "1次" regardless of the real count — the entry survived but the number was false. Keys renamed, the three gaps filled, and `test/dimension-health.test.js` now asserts finding count === measured `dimensions` count so this cannot drift silently again. Every documented number re-measured: dimensions **51 → 54** in README / SKILL / AGENTS (the old "51" counted `dimMap`, which was itself wrong; `dimensions` has 54 keys). Modules 132, dispatch routes 1,510, MCP tools 179 all re-confirmed. Dimension lists corrected to real names with `tone_policing` / `sealioning` added; AGENTS.md now states explicitly that `pseudo_causal` / `soft_deflection` / `ai_writing_tell` push findings without being `dimensions` keys, so the lists name 57 items of which 54 are counted. 757 tests, 0 failures. |
+| 1.0.0 | 2026-09-27 | Honest-numbers audit. A previous decoupling refactor had deleted 5 `globalThis` stubs as "dead code — 0 src consumers", but `heartflow.js` itself consumed them by bare class name, so `hf._initErrors` carried 5 entries and only **126 of 132** modules registered (routes 1,497). Repaired all 5 through the lazy registry (`processRewardModel`, `desireCognition`, `cognitiveLoadCalculator`, `worldLandscape`, `knowledgeExplorer`), aliased `DesireSystem` → `DesireCognition`, and restored the `worldAwareStrategy` factory stub in its own `try` so it can no longer take `WorldLandscape` down with it. Every documented number was re-measured against the code: README corrected 46 → 51 dimensions, 9 → 14 pipeline layers, 547 → 740 tests; dispatch routes 1,506 → 1,510 in README / SKILL / AGENTS. `security-audit` `S2` now skips instead of failing when the tree has no `.git`. 740 tests, 0 failures. |
 | 6.7.69 | 2026-09-20 | MCP guest write-permission block was unreachable dead code (100% of guest write attempts passed); moved into `case 'tools/call'`, token comparison switched to `safeCompare()`. Added end-to-end permission regression test and the guard's text-searchability check (13 → 18). 547 tests. |
 | 6.7.69 | 2026-09-18 | DeepSeek V4.1 alignment: reasoning effort control, sparse module activation, discriminative result cache, async supervision layer, autonomous decision execution with consequence tracking, Engram conditional memory, SWA bounded replay, per-decision-type stats |
 | 6.7.24 | 2026-09-17 | Audit remediation: gate/verdict consistency, fact-check scoring, Chinese tokenisation in the hypothesis pipeline, circuit-breaker memory accounting and non-blocking CPU sampling, recursive test discovery, multi-language child-safety age detection, version-source unification, English documentation rewrite |

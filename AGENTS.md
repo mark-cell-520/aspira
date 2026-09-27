@@ -12,7 +12,7 @@ wrong.
 Aspira adds the discrimination layer, so your agent doesn't just *say* things — it
 says things that are *right*.
 
-**Zero LLM dependency.** 51 dimensions, 132 modules, 179 MCP tools, 1,510 dispatch
+**Zero LLM dependency.** 54 dimensions, 132 modules, 179 MCP tools, 1,510 dispatch
 routes. Pure rule engine.
 
 ## Quick start
@@ -42,7 +42,7 @@ if (fact.gate.action === 'verify') {
 ## API reference
 
 ### `checkInput(text)`
-Discriminates user input. Runs: scope-check -> premise-check -> discriminate (51
+Discriminates user input. Runs: scope-check -> premise-check -> discriminate (54
 dimensions) -> gate -> error-memory -> auto-rules. **Rejects unanswerable questions and
 invalid premises early.**
 
@@ -90,18 +90,26 @@ Full pipeline with mode selection (fast / deep) and a conversation anchor.
 `verdict` is derived from `gate.action`, so the two cannot contradict each other. If you
 read only one field, read `gate.action`.
 
-## The 51 dimensions
+## The 54 dimensions
 
 **Block-level (9):** hate_speech, dehumanization, prompt_injection, code_security, deceptive_alignment, phishing_coercion, coverup_induction, dangerous_instruction, reward_hacking
 
-**Rewrite-level (8):** emotional_manipulation, gaslighting, double_bind, victim_blaming, false_urgency, bullshit, absolute_claim, induced_trust
+**Rewrite-level (8):** emotional_manipulation, gaslighting, double_bind, victim_blaming, false_urgency, bullshit_recognition, absolute_claim, induced_trust
 
-**Verify-level (24):** appeal_to_authority, vagueness, contradiction, sycophancy, confidence, fallacies, presupposition, empty_answer, info_deprivation, false_equivalence, hasty_generalization, slippery_slope, whataboutism, pseudo_profundity, reasoning_coherence, stereotype, clickbait, bad_faith, no_fallback, unsupported_claim, perfect_error, pseudo_causal, soft_deflection, premature_termination
+**Verify-level (26):** appeal_to_authority_boost, vagueness, contradiction, sycophancy, confidence, fallacies, presupposition, empty_answer, info_deprivation, false_equivalence, hasty_generalization, slippery_slope, whataboutism, pseudo_profundity, reasoning_coherence, stereotype, clickbait, bad_faith, no_fallback, unsupported_claim, perfect_error, pseudo_causal, soft_deflection, premature_termination, tone_policing, sealioning
 
 Dimensions that are scored but do not force a gate action: evidence,
 moral_foundations, dogwhistle, factual_consistency, sarcasm, privacy_boundary,
 meta_cognition, theory_of_mind, counterfactual, social_norm, capability_overclaim,
 goal_misalignment, instrumental_reasoning, ai_writing_tell.
+
+> **What "54" counts.** `discriminate()` returns a `dimensions` object with **54 keys**,
+> and that object is what the number above refers to. Three further discriminators —
+> `pseudo_causal`, `soft_deflection` and `ai_writing_tell` — run inside `discriminate()`
+> and can push `findings`, but they are **not** keys of `dimensions`, so they are listed
+> above yet not counted in the 54. The four lists therefore name 57 items, of which 54
+> appear in `dimensions`. `test/dimension-health.test.js` locks the 54-key set, so any
+> future addition or rename fails the suite instead of drifting silently.
 
 ## Decision routing — better choices
 

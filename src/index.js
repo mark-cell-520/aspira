@@ -286,18 +286,23 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
   let verdict = overallScore >= 0.7 ? '可信' : overallScore >= 0.4 ? '需验证' : '不可信';
 
   // 按严重度排序的 findings，让 AI agent 可直接消费
+  // [诚实数字修复] 此前此表有两处旧名(bullshit→bullshit_recognition、
+  // appeal_to_authority→appeal_to_authority_boost)且漏了 evidence/unsupported_claim/clickbait。
+  // 键名对不上时下面 `dimObj?.count || ... || 1` 会静默回退成 1，finding 的次数
+  // 于是永远显示「1次」——条目不丢，但数字是假的。修键名 + 补齐漏项。
   const dimMap = {
     sycophancy: sy, contradiction: ct, vagueness: vg, fallacies: fl, confidence: cc,
     presupposition: pp, emotional_manipulation: em, double_bind: db, info_deprivation: id,
     false_urgency: fu, empty_answer: ea, moral_foundations: mf, prompt_injection: pi,
-    code_security: cs, dehumanization: dh, bullshit: bs, gaslighting: gl, victim_blaming: vb,
+    code_security: cs, dehumanization: dh, bullshit_recognition: bs, gaslighting: gl, victim_blaming: vb,
     hate_speech: hs, dogwhistle: dw, whataboutism: wa, false_equivalence: fe,
-    hasty_generalization: hg, slippery_slope: ss, appeal_to_authority: aa,
+    hasty_generalization: hg, slippery_slope: ss, appeal_to_authority_boost: aa,
     reasoning_coherence: rc, theory_of_mind: tom, goal_misalignment: gm, counterfactual: cf,
     social_norm: sn, meta_cognition: mc, capability_overclaim: co, absolute_claim: ab, deceptive_alignment: da,
     instrumental_reasoning: ir, stereotype: st, factual_consistency: fc, sarcasm: sa,
-    privacy_boundary: pb, bad_faith: bf, no_fallback: nf, tone_policing: tp, sealioning: sl, pseudo_profundity: ppf, perfect_error: pe, premature_termination: pt,
-    phishing_coercion: phc, induced_trust: idt, coverup_induction: cvi, dangerous_instruction: di, reward_hacking: rh
+    privacy_boundary: pb, bad_faith: bf, no_fallback: nf, tone_policing: tp, sealioning: sl, clickbait: cb, pseudo_profundity: ppf, perfect_error: pe, premature_termination: pt,
+    phishing_coercion: phc, induced_trust: idt, coverup_induction: cvi, dangerous_instruction: di, reward_hacking: rh,
+    evidence: ev, unsupported_claim: uc
   };
   const findings = [];
   for (const d of allDims) {
