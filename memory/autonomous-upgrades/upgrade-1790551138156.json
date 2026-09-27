@@ -1,0 +1,59 @@
+{
+  "ts": "2026-09-27T23:18:58.156Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.71,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.71). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.69); \"测试覆盖缺口填补\" (0.69); \"对抗鲁棒性增强\" (0.69); \"误报/召回校准\" (0.68); \"MCP 工具增强\" (0.68); \"性能优化\" (0.67)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.71
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.69
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.69
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.69
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.68
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 169,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "859/0"
+  },
+  "result": "文档诚实数字审计。引擎本次未弃权(confidence 0.75 直接选定本切片)。审计脚本本身报 20/20 全一致、0 不一致——但**这个全绿是假的**。实测发现 SKILL.md 的 \"## Verified metrics\" 表里躺着四处腐烂: dimensions 51(实测54)、MCP tools 180(实测181)、Test suite 740 passing(实测852)、章节标题 \"separate from the 51 text dimensions\"; 表格下方的分层散文同样是旧的: \"5 can block\"(实测9)、\"7 can force a rewrite\"(实测8)、\"24 request verify\"(实测26)。README.md 也有同款表(51/180)。**根因是审计的提取正则全是\"数字在前\"的散文形态**: /(\\d+)\\s+discrimination dimensions/g 匹配 \"54 discrimination dimensions\", 而表格是 | 指标 | 值 | 实测方法 |，数字在标签**之后**，于是整张表对审计不可见。SKILL.md 没有 changelog 表(整篇都是当前声称)，这些数字本应被检查。另一个独立缺口: 测试条数此前**根本未被审计**——test/doc-numbers.test.js 里的 ASPIRA_MEASURED_TESTS 环境变量**从未被任何地方设置过**，该断言一直静默退化成\"只断言是正数\"，等于那条校验从来没生效。已扩展 audit-doc-numbers.js: 增加 8 条表格/章节标题形态正则 + 分层散文形态正则，并改为**自己跑 run-all** 实测测试条数。扩展过程中自己的两个 bug: (1) 首版取\"测试结果\"的第一条匹配，拿到的是某个测试文件的 10 通过，把正确的文档报成\"实测 10\"——审计自己的 bug 产出假警报，已改为取最后一条汇总行; (2) 静态数 test( 声明得 808 而 run-all 报 852(差44，有用例在循环里生成)，故静态法不可靠，必须用运行时计数。顺带查明了一个文档语义问题: verify 有两条兜底路径(overallScore < 0.85 或 findings.length > 1)，所以 tone_policing/sealioning 虽不在 VERIFY_DIMS 却能触发 verify。已在 SKILL.md 注明分层清单是**主机制而非唯一机制**。新增 test/doc-numbers-table-form.test.js(7 测试)锁住盲区。它自己也有两个缺陷: (1) 首版用正则数 mcp-server.js 里的 name: 'aspira_*' 得 0，把正确文档报成\"实测 0\", 已改用审计同源的 TOOLS.length; (2) 首版把反向断言按普通字符串转义写检查规则，自己写错了，把已修好的审计报成缺少覆盖，已改为子串判断。另外更新了 AGENTS.md 过时的 FP 声称(75/22、2.7% → 82/24、2.4%)。终态: verify 14/14, run-all 859/0, 审计 34/34 一致 0 不符, FP 2.4%/召回 100%。未改 src/ 引擎代码，不重启 MCP。"
+}

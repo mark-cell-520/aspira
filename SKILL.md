@@ -154,17 +154,22 @@ from marketing copy.
 | Modules registered | 132 | `Object.keys(hf._modules).length` after `start()` |
 | Module init errors | 0 | `hf._initErrors.length` |
 | Dispatch routes | 1,510 | sum of entries in `hf.routes()` |
-| Discrimination dimensions | 51 | `dimMap` keys in `src/index.js` |
-| MCP tools | 180 | tool definitions exposed via `tools/list` |
+| Discrimination dimensions | 54 | `dimMap` keys in `src/index.js` |
+| MCP tools | 181 | tool definitions exposed via `tools/list` |
 | Pipeline layers | 12 input / 13 draft / 14 output | `checked_by.length` on `runPipeline({ input, mode, anchor })` — the anchor adds the final `intent-anchor` layer; the bare `checkInput` / `checkDraft` / `checkOutput` shortcuts run one layer fewer (11 / 12 / 13) |
-| Test suite | 740 passing / 0 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
+| Test suite | 859 passing / 0 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
 | Capability guard | 18 / 18 checks | `node scripts/guard-abilities.js` |
 | Security regression | 16 / 16 | `node test/security-audit.test.js` |
 | Runtime dependencies | 0 required by the core | the core gate loads without `npm install`; the 4 `dependencies` in `package.json` (transformers / js-yaml / mathjs / pm2) are optional and not loaded by the discriminator |
 
-Dimensions are grouped by the action they can trigger: **5 can `block`**, **7 can force
-a `rewrite`**, **24 request `verify`**. The remainder contribute to the overall score
+Dimensions are grouped by the action they can trigger: **9 can `block`**, **8 can force
+a `rewrite`**, **26 request `verify`**. The remainder contribute to the overall score
 without forcing an action.
+
+> These tier lists are the **primary** mechanism, not the only one. `verify` also fires
+> from two catch-all conditions in `src/index.js`: `overallScore < 0.85` or
+> `findings.length > 1`. That is why `tone_policing` and `sealioning` — which are not in
+> `VERIFY_DIMS` — still reach `verify` when they co-occur with any second finding.
 
 ---
 
@@ -347,7 +352,7 @@ The gate aggregates every layer's findings and emits one of four actions:
 
 > **Resistance to obfuscation:** symbol substitution (`f**k`), spaced letters (`f u c k`), homophones, and Unicode variants are covered.
 
-### Agent-facing checks (separate from the 51 text dimensions)
+### Agent-facing checks (separate from the 54 text dimensions)
 
 These judge how an AI agent behaves rather than what a sentence says — the failure
 modes where an agent reports work it did not do. Each is exposed as an MCP tool.
