@@ -251,6 +251,7 @@ function safeCompare(provided, expected) {
 // ═══════════════════════════════════════════════
 
 let heartflow = null;
+let _topicScope = null; // aspira_topic_scope 的跨调用单例(TopicScope 纯内存，必须复用实例)
 
 let version = 'unknown';
 
@@ -3582,11 +3583,36 @@ const HANDLERS = {
   },
 
   aspira_topic_scope: (args) => {
+    // [空洞工具修复] 原实现有三个叠加缺陷，合起来使这个工具完全不可用:
+    //   (1) schema 声明 action: ['current','push','pop'] 与 text，handler 却两者都不读，
+    //       调用方传 action:'push' 被静默丢弃——声明未读。
+    //   (2) 调用了不存在的方法 ts.getCurrentTopic()。TopicScope 的真实读接口是
+    //       **getter** ts.current(返回当前话题**名字符串**，未初始化时为 null)
+    //       与 ts.stack(话题栈数组)，不是 getCurrentTopic()。因该表达式写成
+    //       `ts.getCurrentTopic ? ... : {}`，取不到方法就走 else 分支，
+    //       于是**任何 action 都恒返回空对象 {}**——且无任何报错。
+    //   (3) 每次调用都 new TopicScope()，而该类纯内存、无持久化(构造器只建
+    //       Map/数组，无 readFile/writeFile)，状态跨调用即丢，push/pop 无从谈起。
+    // 修法: 模块级单例让状态跨调用存活 + 按 action 分发 + 用真实 getter。
     try {
-      const { TopicScope } = require('./memory/topic-scope.js');
-      const ts = new TopicScope({ silent: true });
-      const r = ts.getCurrentTopic ? ts.getCurrentTopic() : {};
-      return { topic: r, timestamp: Date.now() };
+      if (!_topicScope) {
+        const { TopicScope } = require('./memory/topic-scope.js');
+        _topicScope = new TopicScope({ silent: true });
+      }
+      const action = (args && args.action) || 'current';
+      if (action === 'push') {
+        const text = args && args.text;
+        if (!text || typeof text !== 'string') return { error: 'push 需要非空 text 参数', action };
+        _topicScope.push(text, {});
+        return { action, topic: _topicScope.current, stack: _topicScope.stack, timestamp: Date.now() };
+      }
+      if (action === 'pop') {
+        const previous = _topicScope.current;
+        _topicScope.pop();
+        return { action, previous, topic: _topicScope.current, stack: _topicScope.stack, timestamp: Date.now() };
+      }
+      if (action !== 'current') return { error: `未知 action: ${action}（可选 current/push/pop）`, action };
+      return { action, topic: _topicScope.current, stack: _topicScope.stack, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 

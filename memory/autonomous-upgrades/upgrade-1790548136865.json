@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-27T22:28:56.865Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 mcp-tool-enhancement",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.71, 文档诚实数字审计=0.71, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.71
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.71
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.69
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 167,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "845/0"
+  },
+  "result": "MCP 工具增强。参数契约审计报 17 个「声明未读」疑似真问题。逐个复核后发现多数是审计自身的误报——它不认识 const { formula, variables = {} } = args 的解构惯用法(aspira_formula_calc 明明读了 formula/variables)，也不认识 checkOutbound(args || {}) / queryChain(args || {}) 的整体转发(参数在下游被读)。这正是记录过的「Audit FP #3: 把 23 个健康工具报成缺陷」同类——审计工具出误报比没有审计更危险，若照单全收就会去\"修\"23 个健康工具。但其中 aspira_topic_scope 是真缺陷，且三层叠加: (1) schema 声明 action:[current,push,pop] 与 text，handler 两者都不读，调用方传 action:push 被静默丢弃; (2) 调用了类上不存在的方法 getCurrentTopic()——TopicScope 真实读接口是 getter current(返回当前话题名字符串，未初始化时 null)与 stack(数组)。因表达式写成\"取不到方法就走 else 分支\"，于是任何 action 都恒返回空对象且不报错——最坏的失效形态: 静默返回空，调用方会以为\"当前没有话题\"而不是\"工具坏了\"; (3) 每次调用都 new TopicScope()，而该类纯内存无持久化，状态跨调用即丢，push/pop 无从谈起。修法: 模块级单例 _topicScope 让状态跨调用存活 + 按 action 分发 + 用真实 getter。实测修复前任何 action 返回 {}，修复后 push/pop/current 全部生效且状态跨调用保留，非法 action 与缺失 text 明确报错。新增 test/mcp-hollow-tool.test.js(5 测试)锁住不变量: 三个动作真的生效、状态跨调用存活(单例)、不得调用不存在的方法、非法输入必须报错而非静默返回空、handler 必须真的读取 schema 声明的参数(用\"同一 action 传不同 text 必产生不同结果\"从行为上证明 text 被读了)。测试第一版又踩了同一个坑: 它要找的 getCurrentTopic 字符串匹配到了我自己写的修复说明注释，把已修好的 bug 报成仍存在——源码级断言必须先剥离注释行(上一轮刚犯过，本轮再犯，已写入测试注释留档)。参数契约「完全一致」158 → 159。"
+}
