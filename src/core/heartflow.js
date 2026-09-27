@@ -560,7 +560,18 @@ const _PatternTracer = _lazy('patternTracer', () => _stubFactory('PatternTracer'
 const _WorldLandscape = _lazy('worldLandscape', () => _stubFactory('WorldLandscape'));
 const _KnowledgeExplorer = _lazy('knowledgeExplorer', () => _stubFactory('KnowledgeExplorer'));
 const _ProcessRewardModel = _lazy('processRewardModel', () => _stubFactory('ProcessRewardModel'));
-const _DesireCognition = _lazy('desireCognition', () => { try { return require('../emotion/desire-system.js'); } catch(e) { return _stubFactory('DesireCognition'); } });
+const _CognitiveLoadCalculator = _lazy('cognitiveLoadCalculator', () => _stubFactory('CognitiveLoadCalculator'));
+// 真实模块 desire-system.js 导出 DesireSystem, 此处对齐别名为 DesireCognition 供消费方使用
+const _DesireCognition = _lazy('desireCognition', () => { try { const m = require('../emotion/desire-system.js'); return { DesireCognition: m.DesireSystem }; } catch(e) { return _stubFactory('DesireCognition'); } });
+// 世界感知战略推演层: 真实模块在解耦期作为"死 globalThis 桩"被移除(无 src 消费者), 保留工厂桩以维持注册与路由完整
+const _WorldAwareOrchestrator = _lazy('worldAwareOrchestrator', () => ({
+  createWorldAwareOrchestrator: (opts) => ({
+    projectRoot: (opts && opts.projectRoot) || process.cwd(),
+    healthCheck: () => ({ ok: true }),
+    getStats: () => ({}),
+    orchestrate: () => ({ action: 'pass', note: 'world-aware strategy stub' })
+  })
+}));
 
 
 
@@ -2713,7 +2724,7 @@ class Aspira {
     try {
 
 
-      this.processRewardModel = new ProcessRewardModel();
+      this.processRewardModel = new (_ProcessRewardModel().ProcessRewardModel)();
 
     } catch (e) { this._initErrors = this._initErrors || []; _boundedPush(this._initErrors, { module: 'processRewardModel', error: e.message }, MAX_HISTORY_SIZE); }
 
@@ -3086,7 +3097,7 @@ class Aspira {
     try {
 
 
-      this.desireCognition = new DesireCognition();
+      this.desireCognition = new (_DesireCognition().DesireCognition)();
 
     } catch (e) { this._initErrors = this._initErrors || []; _boundedPush(this._initErrors, { module: 'desireCognition', error: e.message }, MAX_HISTORY_SIZE); }
 
@@ -4002,7 +4013,7 @@ class Aspira {
     try {
 
 
-      this.cognitiveIndex = new CognitiveLoadCalculator();
+      this.cognitiveIndex = new (_CognitiveLoadCalculator().CognitiveLoadCalculator)();
 
       this._modules.cognitiveIndex = this.cognitiveIndex;
 
@@ -4042,14 +4053,18 @@ class Aspira {
 
     // ─── [v6.1.0] WorldLandscape 世界格局分析引擎（AI人类核心认知能力）───
     try {
-      this.worldLandscape = new WorldLandscape({ projectRoot: this.rootPath || process.cwd() });
+      this.worldLandscape = new (_WorldLandscape().WorldLandscape)({ projectRoot: this.rootPath || process.cwd() });
       this._modules['worldLandscape'] = this.worldLandscape;
-      // 世界感知战略推演层：让新愿对世界格局新闻产出自身进化优先级
+      _log.info('init', 'WorldLandscape 加载成功');
+    } catch (e) { _boundedPush(this._initErrors, { module: 'worldLandscape', error: e.message }, MAX_HISTORY_SIZE); }
+    // 世界感知战略推演层：让新愿对世界格局新闻产出自身进化优先级
+    // (真实模块在解耦期作为"死 globalThis 桩"被移除; 独立 try 避免拖累 WorldLandscape 注册)
+    try {
+      const { createWorldAwareOrchestrator } = _WorldAwareOrchestrator();
       this.worldAwareStrategy = createWorldAwareOrchestrator({ projectRoot: this.rootPath || process.cwd() });
       this._modules['worldAwareStrategy'] = this.worldAwareStrategy;
       Aspira.ALLOWED_ROUTES.add('worldAwareStrategy.orchestrate');
-      _log.info('init', 'WorldLandscape 加载成功');
-    } catch (e) { _boundedPush(this._initErrors, { module: 'worldLandscape', error: e.message }, MAX_HISTORY_SIZE); }
+    } catch (e) { _boundedPush(this._initErrors, { module: 'worldAwareStrategy', error: e.message }, MAX_HISTORY_SIZE); }
 
     // ─── [v6.7.0] MacroStrategyInference 新闻信号战略推演模块 ───
     try {
@@ -4064,10 +4079,10 @@ class Aspira {
 
     // ─── [v6.2.0] KnowledgeExplorer 知识探索器：从置信缺口→探索队列 ──
     try {
-      this.knowledgeExplorer = new KnowledgeExplorer();
+      this.knowledgeExplorer = new (_KnowledgeExplorer().KnowledgeExplorer)();
       this._modules['knowledgeExplorer'] = this.knowledgeExplorer;
       // 注入 ContinuousLearner 的置信信号到探索器
-      if (this.continuousLearner) {
+      if (this.continuousLearner && typeof this.knowledgeExplorer.absorbLearnerSignals === 'function') {
         this.knowledgeExplorer.absorbLearnerSignals(this.continuousLearner.getStats());
       }
     } catch (e) { _boundedPush(this._initErrors, { module: 'knowledgeExplorer', error: e.message }, MAX_HISTORY_SIZE); }

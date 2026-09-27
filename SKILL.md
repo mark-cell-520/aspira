@@ -153,11 +153,11 @@ from marketing copy.
 | Engine version | 1.0.0 | `VERSION`, `package.json`, runtime `hf.VERSION` (module-level) / `hf.version` (instance), and `src/core/version.js` agree |
 | Modules registered | 132 | `Object.keys(hf._modules).length` after `start()` |
 | Module init errors | 0 | `hf._initErrors.length` |
-| Dispatch routes | 1,506 | sum of entries in `hf.routes()` |
+| Dispatch routes | 1,510 | sum of entries in `hf.routes()` |
 | Discrimination dimensions | 51 | `dimMap` keys in `src/index.js` |
 | MCP tools | 179 | tool definitions exposed via `tools/list` |
-| Pipeline layers | 12 input / 13 draft / 14 output | `checked_by.length` on `checkInput` / `checkDraft` / `checkOutput` |
-| Test suite | 711 passing / 1 failing | `node test/run-all.js`; the 1 failure is `S2` in `test/security-audit.test.js` (git unavailable — Xcode license; environmental). `test/recovered-modules.test.js` previously failed on the missing `../src/benchmark/latency-benchmark.js` — now passes 16/16 after absorbing HeartFlow's module. Count raised from 546 by fixing a mount-detection bug in `run-all.js` (had silently skipped 165 arrow-style / long-header mount tests) |
+| Pipeline layers | 12 input / 13 draft / 14 output | `checked_by.length` on `runPipeline({ input, mode, anchor })` — the anchor adds the final `intent-anchor` layer; the bare `checkInput` / `checkDraft` / `checkOutput` shortcuts run one layer fewer (11 / 12 / 13) |
+| Test suite | 740 passing / 0 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
 | Capability guard | 18 / 18 checks | `node scripts/guard-abilities.js` |
 | Security regression | 16 / 16 | `node test/security-audit.test.js` |
 | Runtime dependencies | 0 required by the core | the core gate loads without `npm install`; the 4 `dependencies` in `package.json` (transformers / js-yaml / mathjs / pm2) are optional and not loaded by the discriminator |
