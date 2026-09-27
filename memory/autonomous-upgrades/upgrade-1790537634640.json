@@ -1,0 +1,63 @@
+{
+  "ts": "2026-09-27T19:33:54.639Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[mcp-tool-enhancement,test-coverage-gap,assess-gate-verdict,doc-honest-numbers], 按consequence_value最高选 mcp-tool-enhancement",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.73, 文档诚实数字审计=0.73, 评估 gate-verdict 冗余性/是否接线=0.72 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.73
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.71
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.71
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 160,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "796/0"
+  },
+  "result": "MCP 工具增强 → 建 scripts/audit-mcp-param-contract.js 系统排查全部 181 个工具的参数契约(handler 实际读什么 vs schema 声明什么)。动机是 aspira_formula_search 曾声明 query 而 handler 只读 keyword——调用方按文档传 query 得到的是报错；更早还有 handler 重复定义静默覆盖、对象字面量少花括号吞掉下一工具字段，三类都是静默损坏且无测试叫住。审计本身经历三轮修正才可信: 第一轮只匹配内联箭头，53 个命名函数式 handler 全报「无法定位」，实际只覆盖 125/181；第二轮不认 const { a, b } = args 解构，把 handleThink 等报成「声明未读」；第三轮不认 const input = args || {} 别名惯用法，一度把 23 个健康工具报成缺陷——若照着那份报告去改，会修坏 23 个没问题的工具。修好后覆盖 181/181，一致 158，不一致 23(其中若干为透传/嵌套读取的已知噪声)。据此修复: (1) 补齐 6 个工具「handler 读了但 schema 未声明」的隐藏参数(supervise_dao.history / supervise_uncertainty.multiSource / supervise_progress.userIntent / formula_search.keyword+limit / false_positive.trace / decision_feedback.outcome+notes)，调用方此前无从知道能传。(2) 最严重的发现是两个空壳 stub: aspira_lesson_search 实例化引擎后直接 return { lessons: [] }、aspira_memory_bank 构造完 return { result: {} }——工具声明了参数、描述声称有能力，实际什么都不做。调用方无法区分「没有匹配」和「这工具没实现」，比报错更糟。底层 LessonRetrievalEngine 有完整 TF-IDF+n-gram 检索且 _ensureLoaded 同步、MemoryBank.deposit 同步，均已真正接线。(3) 修正 aspira_dream 与 aspira_active_inference 挤在同一行导致的审计覆盖缺口。新增 test/mcp-param-contract.test.js(8 测试)，含「审计对惯用法不产假阳性」和「审计能发现故意制造的契约违背」两项元测试——前者防我重犯，后者证明审计有牙齿。"
+}

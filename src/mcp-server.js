@@ -3304,7 +3304,20 @@ const HANDLERS = {
     try {
       const { LessonRetrievalEngine } = require('./cortex/lesson-retrieval.js');
       const lr = new LessonRetrievalEngine({ rootPath: HF_DIR, silent: true });
-      return { lessons: [], note: '教训库检索', timestamp: Date.now() };
+      // [stub 修复] 此前这里直接 return { lessons: [] }——工具声明了 query 参数、
+      // 描述说"教训库检索"，却永远返回空数组。调用方无法区分"没有匹配"和
+      // "这个工具根本没实现"，比报错更糟。底层 LessonRetrievalEngine 有完整的
+      // TF-IDF + n-gram 检索(keywordSearch/retrieve)，且 _ensureLoaded() 是同步的，
+      // 在同步 handler 里可直接用。
+      const q = (args?.query || args?.keyword || '').trim();
+      const limit = typeof args?.limit === 'number' ? Math.max(1, Math.min(50, args.limit)) : 5;
+      if (!q) {
+        // 无查询词时退化为"高分教训"浏览，而不是返回空
+        const top = typeof lr.getTopN === 'function' ? lr.getTopN(limit) : [];
+        return { lessons: top, mode: 'top', count: top.length, timestamp: Date.now() };
+      }
+      const r = typeof lr.retrieve === 'function' ? lr.retrieve(q, limit) : [];
+      return { lessons: r, mode: 'search', query: q, count: r.length, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3682,8 +3695,26 @@ const HANDLERS = {
     try {
       const { MemoryBank } = require('./memory/memory-bank.js');
       const inst = new MemoryBank({ silent: true, rootPath: HF_DIR });
-      const r = {};
-      return { result: r, timestamp: Date.now() };
+      // [stub 修复] 此前这里构造完 MemoryBank 就 return { result: {} }——工具声明了
+      // memory 参数却什么都不做。底层 deposit() 是同步的，可直接接线。
+      // 注意 recall() 依赖 await load()(异步)，同步 handler 里调用只会拿到空结果，
+      // 所以这里不假装支持 recall，只接真正能工作的 deposit。
+      const action = args?.action || 'deposit';
+      if (action === 'deposit') {
+        const mem = args?.memory;
+        if (typeof mem !== 'string' || mem.trim() === '') {
+          return { error: 'memory 不能为空(要存入的记忆内容)' };
+        }
+        const importance = typeof args?.importance === 'number' ? args.importance : 10;
+        const r = typeof inst.deposit === 'function'
+          ? inst.deposit(mem, args?.source || 'mcp', importance)
+          : null;
+        return { result: r, action, timestamp: Date.now() };
+      }
+      if (action === 'stats') {
+        return { result: inst.stats || {}, action, timestamp: Date.now() };
+      }
+      return { error: `unknown action: ${action}(可用: deposit/stats；recall 依赖异步 load，同步 MCP handler 中不提供，见注释)` };
     } catch (e) { return { error: e.message }; }
   },
   aspira_memory_consolidate: (args) => {
@@ -3857,7 +3888,11 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  aspira_dream: handleDream,  aspira_active_inference: (args) => {
+  aspira_dream: handleDream,
+
+  // [参数契约审计] 此前这一条与上一行挤在同一行，虽然 JS 合法，但让
+  // 静态审计无法按行首定位它的 handler——审计的覆盖缺口本身就是缺陷。
+  aspira_active_inference: (args) => {
     try {
       const { ActiveInference } = require('./decision/active-inference.js');
       const inst = new ActiveInference({ silent: true, rootPath: HF_DIR });

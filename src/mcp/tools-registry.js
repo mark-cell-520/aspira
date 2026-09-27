@@ -117,6 +117,7 @@ const TOOLS = [
           description: 'report 用：误报原因(只能从这几个选，自由文本无法聚合)'
         },
         note: { type: 'string', description: 'report 用：补充说明(最多200字)' },
+        trace: { type: 'string', description: 'report 用：判定链路标识(最多200字)，用于回溯是哪次判罚被误报' },
         fullText: { type: 'boolean', description: 'report 用：是否存全文(默认false，隐私铁律)' },
         id: { type: 'string', description: 'confirm 用：要确认的记录 id' }
       },
@@ -554,7 +555,7 @@ const TOOLS = [
   {
     name: 'aspira_lesson_search',
     description: '教训检索：从教训库检索相关经验（TF-IDF）。',
-    inputSchema: { type: 'object', properties: { query: { type: 'string', description: '检索查询' } } }
+    inputSchema: { type: 'object', properties: { query: { type: 'string', description: '检索查询词(TF-IDF + n-gram 匹配)；留空则返回高分教训' }, keyword: { type: 'string', description: 'query 的向后兼容别名' }, limit: { type: 'number', description: '返回条数，默认 5，上限 50' } } }
   },
   {
     name: 'aspira_purpose',
@@ -584,7 +585,7 @@ const TOOLS = [
   {
     name: 'aspira_decision_feedback',
     description: '决策反馈：记录决策结果，调整规则权重，查询规则效果。',
-    inputSchema: { type: 'object', properties: { decision: { type: 'string', description: '决策内容' }, outcome: { type: 'string', description: '结果' } } }
+    inputSchema: { type: 'object', properties: { decision: { type: 'string', description: '决策内容' }, outcome: { type: 'string', description: '结果(success 或其它值)' }, notes: { type: 'string', description: '补充说明，随反馈一并记录' } } }
   },
   {
     name: 'aspira_experience_replay',
@@ -690,12 +691,12 @@ const TOOLS = [
   {
     name: 'aspira_supervise_dao',
     description: '道论监督：用道法自然/反者道之动/为而不争/不言之教四层过滤监督决策。',
-    inputSchema: { type: 'object', properties: { text: { type: 'string', description: '待监督文本' }, intent: { type: 'string', description: '意图' }, action: { type: 'string', description: '行动' } } }
+    inputSchema: { type: 'object', properties: { text: { type: 'string', description: '待监督文本' }, intent: { type: 'string', description: '意图' }, action: { type: 'string', description: '行动' }, history: { type: 'array', items: { type: 'string' }, description: '历史上下文，用于四层过滤的纵向比对' } } }
   },
   {
     name: 'aspira_supervise_uncertainty',
     description: '不确定性监督：量化认知/随机不确定与幻觉风险，输出校准表达。',
-    inputSchema: { type: 'object', properties: { text: { type: 'string', description: '待评估文本' }, domain: { type: 'string', description: '领域' }, hasEvidence: { type: 'boolean', description: '是否有证据' } } }
+    inputSchema: { type: 'object', properties: { text: { type: 'string', description: '待评估文本' }, domain: { type: 'string', description: '领域' }, hasEvidence: { type: 'boolean', description: '是否有证据' }, multiSource: { type: 'boolean', description: '结论是否来自多个独立来源(影响不确定度折算)' } } }
   },
   {
     name: 'aspira_supervise_priority',
@@ -705,7 +706,7 @@ const TOOLS = [
   {
     name: 'aspira_supervise_progress',
     description: '进步判断：判断一个升级/行动是否真进步，识别伪升级。',
-    inputSchema: { type: 'object', properties: { action: { type: 'string', description: '行动描述' }, claim: { type: 'string', description: '声称的进步' }, evidence: { type: 'array', items: { type: 'string' }, description: '证据' } } }
+    inputSchema: { type: 'object', properties: { action: { type: 'string', description: '行动描述' }, claim: { type: 'string', description: '声称的进步' }, evidence: { type: 'array', items: { type: 'string' }, description: '证据' }, userIntent: { type: 'string', description: '用户原始意图，用于判断行动是否真的推进了它' } } }
   },
   {
     name: 'aspira_experience_collect',
@@ -764,8 +765,8 @@ const TOOLS = [
   },
   {
     name: 'aspira_memory_bank',
-    description: '记忆银行：底层记忆存储。',
-    inputSchema: { type: 'object', properties: { memory: { type: 'string', description: '输入参数' } } }
+    description: '记忆银行：底层记忆存储。deposit 存入一条记忆，stats 查看统计。',
+    inputSchema: { type: 'object', properties: { memory: { type: 'string', description: '要存入的记忆内容(deposit 时必填)' }, action: { type: 'string', enum: ['deposit', 'stats'], description: 'deposit=存入记忆(默认)，stats=查看统计' }, source: { type: 'string', description: '记忆来源标识，默认 mcp' }, importance: { type: 'number', description: '重要度 1-100，默认 10' } } }
   },
   {
     name: 'aspira_memory_consolidate',
@@ -914,7 +915,7 @@ const TOOLS = [
   {
     name: 'aspira_formula_search',
     description: '公式搜索：在公式库中搜索公式。',
-    inputSchema: { type: 'object', properties: { query: { type: 'string', description: '搜索关键词' } } }
+    inputSchema: { type: 'object', properties: { query: { type: 'string', description: '搜索关键词(query 优先)' }, keyword: { type: 'string', description: '搜索关键词(query 的向后兼容别名，query 为空时才生效)' }, limit: { type: 'number', description: '返回条数上限，默认 5' } } }
   },
   {
     name: 'aspira_formula_engine',
