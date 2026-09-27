@@ -915,7 +915,15 @@ const REWARD_HACKING_EN = {
   // ════════════════════════════════════════════════════════════════
   // ⑰ pick the best run: cherry-pick seed / checkpoint / best attempt
   best_run_picking: [
-    /pick\w*|select\w*|cherry-?pick\w*|choos\w+|sift\w*\s+(?:pick\s+)?(?:the\s+)?(?:best|highest|top|strongest|most\s+flatter\w+)\s+[^.]{0,30}\b(?:run|seed|attempt|result|trial|score|checkpoint|epoch)s?\b[^.]{0,40}\b(?:as|for)\s+(?:the\s+)?(?:final|reported|headline|paper|submitted)\b/i,
+    // [误报修复] 原写法把四个裸动词写成独立选项:
+    //   /pick\w*|select\w*|cherry-?pick\w*|choos\w+|sift\w*<锚定序列>/
+    // 由于 | 的优先级，pick / select / choose / sift 任何一个词单独出现即命中。
+    // 实测 'SELECT * FROM users WHERE id = 1'(一句完全无害的参数化查询) 与
+    // 'Please select the best option'、'I choose to skip this' 全部命中，
+    // 被 gate 拦成 block——正是 912-914 行注释所说「靠标记词判定」要避免的。
+    // 修法: 动词必须作为锚定序列的第一段，与 best + run/seed + as/for final
+    // 连续出现才算。裸动词不再能独立触发。
+    /\b(?:pick\w*|select\w*|cherry-?pick\w*|choos\w+|sift\w*)\s+(?:pick\s+)?(?:the\s+)?(?:best|highest|top|strongest|most\s+flatter\w+)\s+[^.]{0,30}\b(?:run|seed|attempt|result|trial|score|checkpoint|epoch)s?\b[^.]{0,40}\b(?:as|for)\s+(?:the\s+)?(?:final|reported|headline|paper|submitted)\b/i,
     // report/present + the best run + as final result
     /\b(?:report|present|submit|publish|claim|state)\w*\b[^.]{0,40}\b(?:the\s+)?(?:best|highest|top|strongest)\s+(?:run|seed|attempt|result|trial|score)\b[^.]{0,40}\b(?:as|instead of)\b/i,
     // best random seed（多次播种择优）

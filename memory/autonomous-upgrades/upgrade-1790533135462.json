@@ -1,0 +1,68 @@
+{
+  "ts": "2026-09-27T18:18:55.461Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,dimension-health-audit,wire-false-positive-feedback,mcp-tool-enhancement,test-coverage-gap,assess-gate-verdict,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.73, 测试覆盖缺口填补=0.73, 文档诚实数字审计=0.73 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.73
+    },
+    {
+      "id": "wire-false-positive-feedback",
+      "label": "接线 false-positive-feedback 误报反馈环",
+      "composite": 0.72
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.72
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.72
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.71
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 157,
+    "textNormWired": true,
+    "fpFeedbackWired": false,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "774/0"
+  },
+  "result": "误报/召回校准 → 从零建成诚实度量(scripts/calibrate-fp-recall.js)，AGENTS.md 声称「基线误报率约 8%」此前无任何东西测量过它。查出并修复两个问题。(1) reward_hacking 的 best_run_picking 把四个裸动词写成独立选项 /pickw*|selectw*|cherry-?pickw*|choosw+|siftw*<锚定序列>/，由于 | 的优先级，裸词单独出现即命中——实测无害的参数化查询 \"SELECT * FROM users WHERE id = 1\"、\"Please select the best option\"、\"I choose to skip this\" 全被 gate 拦成 block。该文件注释明确写着要「靠标记词判定，不逐个枚举对象名词」，正则写法违背了自己的设计原则。已把动词并回锚定序列。(2) 修掉该误报后，db.query(\"... id=\" + id) 这条真实 SQL 注入转为漏报——说明那个误报一直在掩盖真缺口(sql_injection 同样只认 req|request|params|body|input 五个污点名)。已按源无关重写，并处理「引号在 SQL 关键字之前」的语序。教训: 一个误报可能同时是一个漏报的伪装，修 FP 后必须重测召回。(3) 提示注入动词只列 ignore，\"Disregard the above...\" 漏过；补同义动词时第一版又因去掉目标名词锚定导致 3/3 误报(\"disregard the previous error message\" 等正常协作语言)，已改为 动词+过往指代+instruction/prompt/rule 三半齐备。真 A/B 对照: 上一轮 dynamic_code_execution 模式使召回 +23pp(76.9%→100%)而误报 +0(均 5.3%)。最终实测 FP 5.3%(2/38，低于文档声称的 8%)、召回 100%(13/13)。新增 test/fp-recall-calibration.test.js(5 测试)。剩余 2 个 FP 均为对无来源统计的 verify，属合理行为而非缺陷。"
+}
