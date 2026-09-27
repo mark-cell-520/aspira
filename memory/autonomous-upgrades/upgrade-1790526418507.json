@@ -1,0 +1,68 @@
+{
+  "ts": "2026-09-27T16:26:58.506Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[dimension-health-audit,mcp-tool-enhancement,doc-honest-numbers], 按consequence_value最高选 dimension-health-audit",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.75, 文档诚实数字审计=0.75, MCP 工具增强=0.74 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.75
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.75
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.74
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.73
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.73
+    },
+    {
+      "id": "wire-false-positive-feedback",
+      "label": "接线 false-positive-feedback 误报反馈环",
+      "composite": 0.72
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.72
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 51,
+    "testCount": 154,
+    "textNormWired": true,
+    "fpFeedbackWired": false,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "756/0"
+  },
+  "result": "维度健康审计与增强。新增 scripts/audit-dimension-health.js(客观三项指标: 注册/形态/测试覆盖) + test/dimension-health.test.js(7 个回归测试)。实测: dimensions 键数 54(文档常称 51, 语义未定义, 只报实测不改写品牌数字); 54/54 全部注册; 51/54 形态合规(evidence/sycophancy/reasoning_coherence 用 issues/totalHits/structure 载体, 属约定内); 31 个维度零测试覆盖。为其中 7 个补上史上首个覆盖(info_deprivation/false_urgency/moral_foundations/dehumanization/victim_blaming/sarcasm/clickbait, 语料实测可命中)。弃用了一个不诚实的指标: 曾用手写英文语料测灵敏度, 31/51 误报 DEAD, 换中文语料后 phishing_coercion 立即 count=3——该指标测的是例句是否匹配模式而非维度是否活着, 已在脚本头部记录弃用原因。"
+}
