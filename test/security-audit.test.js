@@ -65,6 +65,12 @@ t('S2: smart-upgrade-engine 不再用 execSync shell 拼接', () => {
 t('S2: _verifyGitCommit 真实工作（参数化后仍命中版本）', () => {
   const pkg = require('../package.json');
   const { execFileSync } = require('child_process');
+  // 非 git 副本（如 DSH 技能副本 /Users/mm/Pictures/.dsh/skills/aspira-engine）没有 .git，
+  // git commit 版本卫生检查不适用——跳过而非失败，保持技能副本与工作副本数字一致
+  if (!fs.existsSync(path.join(PROJECT_ROOT, '.git'))) {
+    console.log('  ⏭️ S2 跳过：非 git 副本（无 .git，git commit 卫生检查不适用）');
+    return;
+  }
   const log = execFileSync('git', ['-C', PROJECT_ROOT, 'log', '--oneline', '--all'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
   const tags = execFileSync('git', ['-C', PROJECT_ROOT, 'tag', '--list'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
   const commitHit = log.split('\n').filter(l => l.includes(pkg.version) || l.includes('v' + pkg.version)).length;
