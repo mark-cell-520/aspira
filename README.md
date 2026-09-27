@@ -42,7 +42,7 @@ node bin/cli.js chat      # interactive console
 Or through npm:
 
 ```bash
-npm install @yun520-1/heartflow
+npm install @mark-cell-520/aspira
 ```
 
 ---
@@ -140,15 +140,15 @@ Measured on this repository at **v1.0.0**. Not marketing copy.
 Aspira exposes its engine as an MCP server, so any MCP-capable agent can call it.
 
 ```bash
-node src/mcp-server.js --port 8588
+node src/mcp-server.js --port 8099
 # or a Unix socket:
-node src/mcp-server.js --socket /tmp/heartflow.sock
+node src/mcp-server.js --socket /tmp/aspira.sock
 ```
 
 Then connect:
 
 ```bash
-hermes mcp add heartflow --url http://localhost:8588/mcp
+hermes mcp add aspira --url http://localhost:8099/mcp
 ```
 
 The server authenticates with a bearer token generated on first start and written to
@@ -165,8 +165,8 @@ unauthenticated caller:
 | `user` | `Aspira-OID-<16-hex>` header | read + write |
 | `admin` | valid bearer token | full |
 
-The write-protected set is `heartflow_memory_write_control`,
-`heartflow_memory_eraser`, `heartflow_decision_decide`, `heartflow_self_heal`. A guest
+The write-protected set is `aspira_memory_write_control`,
+`aspira_memory_eraser`, `aspira_decision_decide`, `aspira_self_heal`. A guest
 calling any of them gets `isError: true` with `权限不足`. This behaviour is covered by an
 end-to-end regression test that speaks real JSON-RPC over a real Unix socket
 (`test/mcp-guest-permission.test.js`), because the earlier failure mode was a permission
@@ -189,10 +189,10 @@ failure modes that show up when an agent reports work it did not do.
 | `checkForbiddenCall` | Delegating before the target, boundary, and acceptance criteria are confirmed |
 | `checkAIMisuse` | Human-side misuse patterns: oversized context dumps, errors without repro steps, adopting output unverified |
 
-Each is available as an MCP tool (`heartflow_check_completion_evidence`,
-`heartflow_check_architecture_consistency`, `heartflow_check_decision_trace`,
-`heartflow_check_plan_gate`, `heartflow_check_forbidden_call`,
-`heartflow_check_ai_misuse`).
+Each is available as an MCP tool (`aspira_check_completion_evidence`,
+`aspira_check_architecture_consistency`, `aspira_check_decision_trace`,
+`aspira_check_plan_gate`, `aspira_check_forbidden_call`,
+`aspira_check_ai_misuse`).
 
 ---
 

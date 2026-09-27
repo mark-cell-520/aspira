@@ -49,7 +49,7 @@
 - **Engram conditional memory**: sparse task-conditioned recall with TTL, persists to `data/engram-index.json`
 - **SWA bounded replay**: `recallByDecision(decisionType, limit)` replays only recent relevant memory window
 - **Per-decision-type stats**: `_decisionTypeStats` tracks success rate per decision type for bounded replay
-- **MCP tools**: `heartflow_modules_status`, `heartflow_cache_stats`, `heartflow_decision_history`
+- **MCP tools**: `aspira_modules_status`, `aspira_cache_stats`, `aspira_decision_history`
 
 ### Changed
 - `_autoDecideExecution` now uses per-decision-type success rate instead of global average
@@ -78,7 +78,7 @@
 - **Circuit breaker memory accounting**: `checkMemory()` used `heapUsed / heapTotal`,
   which sits above 0.9 during normal V8 operation and latched the breaker permanently
   into `TRIPPED` — blocking even read-only calls such as `memory.getStats` (MCP
-  `heartflow_status` reported 0 memories as a result). Switched to RSS against a memory
+  `aspira_status` reported 0 memories as a result). Switched to RSS against a memory
   budget, and added a 60-second cooldown auto-reset.
 - **Blocking busy-wait in `checkCPU()`**: a synchronous `while (Date.now() < deadline)`
   spin blocked the event loop, turning a protective component into a hang. Replaced with
@@ -115,10 +115,10 @@
 
 ### Added
 - **国标六大关口完整实现**: 出域防护 + 间接注入 + 审计证据链 + 全局熔断
-- `heartflow_check_outbound` (gate-outbound.js) - PII 识别 + 密级判定
+- `aspira_check_outbound` (gate-outbound.js) - PII 识别 + 密级判定
 - `checkIndirectInjection` (index.js) - 5类载体检测
-- `heartflow_audit_trace` (trace-chain.js) - HMAC链 + WORM + 16违规标签
-- `heartflow_circuit_breaker` (circuit-breaker.js) - 熔断 + killSwitch
+- `aspira_audit_trace` (trace-chain.js) - HMAC链 + WORM + 16违规标签
+- `aspira_circuit_breaker` (circuit-breaker.js) - 熔断 + killSwitch
 - `compliance/gb-agent-security-mapping.md` - 国标映射表
 - `.well-known/agent-card.json` - GB/Z 185.5 发现端点
 - SKILL.md 国标合规章节
@@ -142,7 +142,7 @@
 
 ### Added
 - PII 正则扩展: 邮箱 + 信用卡(16位) + 护照(P/E/G开头)
-- `src/safe-fetch.js` - 出域安全预检层 + `heartflow_safe_fetch` MCP 工具
+- `src/safe-fetch.js` - 出域安全预检层 + `aspira_safe_fetch` MCP 工具
 - 熔断 MCP handler 结果统计
 
 ### Changed
@@ -378,10 +378,10 @@
 - **过度声称模式**: 2→35
 
 ### MCP 工具新增
-- **heartflow_entropy**: 熵分析工具
-- **heartflow_cross_analyze**: 跨维度组合模式分析
-- **heartflow_bulk_discriminate**: 批量辨别工具
-- **heartflow_audit42**: 42维全量审计工具
+- **aspira_entropy**: 熵分析工具
+- **aspira_cross_analyze**: 跨维度组合模式分析
+- **aspira_bulk_discriminate**: 批量辨别工具
+- **aspira_audit42**: 42维全量审计工具
 
 ### 公式桥增强
 - `think()` 公式桥接方法覆盖更多方法
@@ -679,7 +679,7 @@
 ### v3.0.0 — 交流层架构
 - translator/agent-layer/persona-core 3模块23文件
 - thinkAsBridge() 顶层入口
-- MCP工具 +3: heartflow_translate / heartflow_agent_think / heartflow_bridge_status
+- MCP工具 +3: aspira_translate / aspira_agent_think / aspira_bridge_status
 
 ---
 

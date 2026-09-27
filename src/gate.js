@@ -1,7 +1,7 @@
 /**
  * src/gate.js — AGI 第 1 层：辨别门禁
  *
- * 这是 AI agent 调用的单一入口。不需要理解 45 个维度，
+ * 这是 AI agent 调用的单一入口。不需要理解 51 个维度，
  * 只需要检查 gate.action：
  *
  *   const { gate } = require('@yun520-1/heartflow').gate(text);
@@ -21,6 +21,7 @@
 const { discriminate } = require('./index.js');
 const pipelineModule = require('./pipeline.js');
 const { detectPedagogicalContent } = require('./pedagogy.js');
+const { buildTrace, summarizeTrace } = require('./discrimination-trace.js');
 
 function _pedagogyMode(text) {
   return detectPedagogicalContent(text) ? 'pedagogical' : undefined;
@@ -28,7 +29,11 @@ function _pedagogyMode(text) {
 
 /** AGI 第 1 层门禁 — 辨别文本并返回行动指令 */
 function gate(text, evidence = []) {
-  return discriminate(text, evidence, _pedagogyMode(text));
+  const result = discriminate(text, evidence, _pedagogyMode(text));
+  // [吸收心虫] 判别可解释追踪：透出每维度命中的原文片段+模式类型（附加字段，不改变既有行为）
+  result.trace = buildTrace(result);
+  result.traceSummary = summarizeTrace(result.trace);
+  return result;
 }
 
 /** 快速门禁检查 — 只返回行动指令，适合 LLM agent 轻量调用 */

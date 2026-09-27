@@ -128,11 +128,11 @@ AGI 系统架构：
 
 重构后暴露 5 个工具：
 ```
-heartflow_memory_store(error)       → 写入错误记忆
-heartflow_memory_query(problem)     → 检索相关历史错误
-heartflow_verify(decision, options) → 5 项验证检查
-heartflow_check_alignment(output)   → strategicRestraint 检查
-heartflow_diagnose()                → selfDiagnosis 完整报告
+aspira_memory_store(error)       → 写入错误记忆
+aspira_memory_query(problem)     → 检索相关历史错误
+aspira_verify(decision, options) → 5 项验证检查
+aspira_check_alignment(output)   → strategicRestraint 检查
+aspira_diagnose()                → selfDiagnosis 完整报告
 ```
 
 这 5 个工具任何 LLM 都可以调用。不绑定在 think() 内部。

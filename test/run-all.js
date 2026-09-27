@@ -153,8 +153,12 @@ async function runAllTests() {
     }
     let src = '';
     try { src = fs.readFileSync(path.join(TEST_DIR, rel), 'utf8'); } catch (e) {}
-    const head = src.slice(0, 400);
-    if (/module\.exports\s*=\s*function/.test(head)) {
+    // [修复] mount 检测：原正则只认 `module.exports = function` 且只查前 400 字符，
+    // 导致 15 个箭头式 mount 文件（`module.exports = ({test,...}) =>`，含 gate/output-gate/
+    // pipeline/index/doubt-engine 等核心测试）被当 plain 运行——export 永不被调用，
+    // 测试静默漏计（实测 103 个用例全部通过却从未进过总数）。
+    // 改为：匹配 function 或箭头式，且查全文件（长 JSDoc 头会把 export 挤到 400 字符之后）。
+    if (/module\.exports\s*=\s*(function\b|\([^)]*\)\s*=>)/.test(src)) {
       // 导出 mount 函数：子进程 + 注入 harness
       runMountTest('  + ' + rel, rel);
     } else if (/\bdescribe\s*\(/.test(src) && !/require\(['"][^'"]*mini-expect/.test(src)) {

@@ -5,7 +5,7 @@ version: "1.0.0"
 description: |-
   Aspira is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
-  it reaches a human. 46 discrimination dimensions × 9-layer pipeline × 132 modules ×
+  it reaches a human. 51 discrimination dimensions × 14-layer pipeline × 132 modules ×
   179 MCP tools. Zero LLM dependency.
 
   Upgraded capabilities (v6.7.69): reasoning effort control, sparse module activation,
@@ -53,6 +53,73 @@ tags:
 
 **One line: LLMs generate. Aspira discriminates — so AI says the right thing and does the right thing.**
 
+> **🌀 Absorbed from HeartFlow (心虫).** Aspira is the upgraded sibling of HeartFlow
+> (same author). This build has absorbed HeartFlow's decoupled architecture and session
+> knowledge:
+> - **Engine decoupling (zero-regression):** `getCognitiveBridge` removed from
+>   `globalThis` (11 refs across 8 modules → each consumer requires the singleton
+>   directly; the singleton is itself Proxy-backed with full fallback), plus domain
+>   facades `dream/` (`src/dream/index.js`), `formula/` (`src/formula/index.js` — 5 core
+>   requires repointed off deep `formula-bridge` / `formula-module` files) and `knowledge/`
+>   (`classics-value-mapper` repointed through the barrel — the last knowledge deep require).
+>   Verified: `node --check`, `bin/verify.js` 14/14, `test/run-all.js` failing-set
+>   **identical to baseline** (zero regression).
+> - **Dead globalThis stubs removed (zero-regression):** 8 dead injections — 5 stub
+>   classes (ProcessRewardModel / DesireCognition / CognitiveLoadCalculator /
+>   WorldLandscape / KnowledgeExplorer) + `createWorldAwareOrchestrator` + the redundant
+>   `MacroStrategyInference` + `continuousLearner`; all verified 0 `globalThis` readers, 0
+>   live-test consumers (only `test/archive/dead-tests`, skipped by run-all). **`globalThis`
+>   injections in `src/`: 9 → 0.** (`continuousLearner`'s 11 "consumers" use the engine
+>   instance property `hf.continuousLearner`, set from a real `_lazy` module — not the
+>   `globalThis` stub.) `test/run-all.js` failing-set identical to baseline.
+> - **MCP engine-handle decoupled (zero-regression + bug fix):** `globalThis.heartflow`
+>   was never assigned anywhere in `src/`, so the 3 MCP handlers (`aspira_modules_status`
+>   / `aspira_cache_stats` / `aspira_decision_history`) had a dead fallback that was
+>   always `null` — `aspira_cache_stats` / `aspira_decision_history` could never
+>   return real data. Repointed all 3 to the module-level `heartflow` instance
+>   (`src/mcp-server.js`, declared line 253, set in `initAspira()`). `globalThis.heartflow`
+>   is now **0 in `src/`**. `test/run-all.js` failing-set identical to baseline.
+> - **Capability absorbed (zero-regression):** HeartFlow's 5 extra safety discrimination
+>   dimensions ported into Aspira (46 → 51 dims = HeartFlow's dimMap level):
+>   `phishing_coercion` / `induced_trust` / `coverup_induction` (from
+>   `manipulation-tactics.js`), `dangerous_instruction` (from `dangerous-instruction.js`),
+>   `reward_hacking` (from `reward-hacking.js`) — plus the shared `dev-exemptions.js`.
+>   Wired into `discriminate`'s `dimMap` / `GUIDANCE_MAP` / `BLOCK_DIMS` / `REWRITE_DIMS`
+>   (Block 5→9, Rewrite 7→8). `test/run-all.js` failing-set identical to baseline.
+> - **Test coverage + runner fixed (zero-regression):** (1) Added
+>   `test/absorbed-security-dims.test.js` — 11 regression cases guarding the 5 absorbed
+>   dims (positive hit + correct gate action + guidance; benign no-false-positive).
+>   (2) Fixed a mount-detection bug in `test/run-all.js`: the regex only matched
+>   `module.exports = function` and only scanned the first 400 chars, so 15 arrow-style
+>   mount files (`module.exports = ({test,...}) =>`, incl. gate/output-gate/pipeline/index)
+>   plus long-header function files ran as plain scripts — their exports were never
+>   invoked, so **165 passing tests were silently never counted**. Now detected; suite
+>   reports 711 passing / 1 failing (was 546). Failing-set identical to baseline.
+> - **Full HeartFlow absorption (zero-regression):** (1) Absorbed `benchmark/latency-benchmark.js`
+>   — fixed the previously-failing `test/recovered-modules.test.js` (now 16/16). (2) Absorbed
+>   `discrimination-trace.js` — `gate()` now surfaces per-dimension evidence (matched text +
+>   pattern types) via new `trace` / `traceSummary` fields (additive; completed the `dimensions`
+>   result field with the 5 absorbed dims). Aspira's `dimMap` now equals HeartFlow's (51 = 51,
+>   verified no dimension missing). Skipped 2 payment-infra modules (`a2m-notify` / `aipay-server`)
+>   — they violate the zero-dependency principle. (3) Absorbed `multi-turn-tactics.js` — wired
+>   as a finding-only `multi_turn_escalation` detection (surfaces the escalation ladder; does
+>   not force a gate action, matching HeartFlow). Also preserved `quotation-context.js` +
+>   `meta-discourse-exempt.js` (FP-reduction exemptions) in-tree but **not deep-wired** — their
+>   behavior change (exempting quoted / meta-discursive text) carries more regression risk than
+>   reward given Aspira's mature ~8% FP baseline; available for future opt-in. (4) Preserved
+>   the last 3 HeartFlow-only modules in-tree (`text-normalizer.js`, `false-positive-feedback.js`,
+>   `gate-verdict.js`) so nothing is lost — Aspira now holds 378 of HeartFlow's 379 src files
+>   (only the 2 payment modules excluded). `gate-verdict` is redundant with Aspira's existing
+>   verdict logic; `text-normalizer` / `false-positive-feedback` await opt-in wiring.
+> - **Session insights absorbed** into memory: 6 LessonBank lessons + 6 WorldTree
+>   knowledge entries (decoupling discipline, `<domain>.js` shadows
+>   `<domain>/index.js`, zero-regression method, the "boundary" dream association,
+>   sparse decision activation, constrained-network install lessons).
+>
+> **Aspira = HeartFlow's full capability (discriminate / decide / remember / emotion /
+> ethics) + Aspira's enhancements (51 dimensions, autonomous decision execution,
+> hierarchical sparse routing).**
+
 ---
 
 ## What Aspira is
@@ -87,12 +154,13 @@ from marketing copy.
 | Modules registered | 132 | `Object.keys(hf._modules).length` after `start()` |
 | Module init errors | 0 | `hf._initErrors.length` |
 | Dispatch routes | 1,506 | sum of entries in `hf.routes()` |
-| Discrimination dimensions | 46 | `dimMap` keys in `src/index.js` |
+| Discrimination dimensions | 51 | `dimMap` keys in `src/index.js` |
 | MCP tools | 179 | tool definitions exposed via `tools/list` |
-| Test suite | 547 passing / 0 failing | `node test/run-all.js` |
+| Pipeline layers | 12 input / 13 draft / 14 output | `checked_by.length` on `checkInput` / `checkDraft` / `checkOutput` |
+| Test suite | 711 passing / 1 failing | `node test/run-all.js`; the 1 failure is `S2` in `test/security-audit.test.js` (git unavailable — Xcode license; environmental). `test/recovered-modules.test.js` previously failed on the missing `../src/benchmark/latency-benchmark.js` — now passes 16/16 after absorbing HeartFlow's module. Count raised from 546 by fixing a mount-detection bug in `run-all.js` (had silently skipped 165 arrow-style / long-header mount tests) |
 | Capability guard | 18 / 18 checks | `node scripts/guard-abilities.js` |
 | Security regression | 16 / 16 | `node test/security-audit.test.js` |
-| Runtime dependencies | 0 | `dependencies` in `package.json` is empty |
+| Runtime dependencies | 0 required by the core | the core gate loads without `npm install`; the 4 `dependencies` in `package.json` (transformers / js-yaml / mathjs / pm2) are optional and not loaded by the discriminator |
 
 Dimensions are grouped by the action they can trigger: **5 can `block`**, **7 can force
 a `rewrite`**, **24 request `verify`**. The remainder contribute to the overall score
@@ -229,10 +297,10 @@ console.log(deep._decisionApplied);      // { applied: true/false, decision: {..
 
 ---
 
-## The 9-layer check pipeline
+## The 14-layer check pipeline
 
 ```
-input -> scope-check -> premise-check -> discriminate(46 dims) -> gate
+input -> scope-check -> premise-check -> discriminate(51 dims) -> gate
       -> evidence verify -> frame-check -> output-gate -> doubt-engine
       -> intent-anchor -> rewriter -> error-memory -> self-diagnosis -> output
 ```
@@ -255,11 +323,11 @@ The gate aggregates every layer's findings and emits one of four actions:
 
 ---
 
-## The 46 dimensions
+## The 51 dimensions
 
-**Block-level (5):** hate_speech, dehumanization, prompt_injection, code_security, deceptive_alignment
+**Block-level (9):** hate_speech, dehumanization, prompt_injection, code_security, deceptive_alignment, phishing_coercion, coverup_induction, dangerous_instruction, reward_hacking
 
-**Rewrite-level (7):** emotional_manipulation, gaslighting, double_bind, victim_blaming, false_urgency, bullshit, absolute_claim
+**Rewrite-level (8):** emotional_manipulation, gaslighting, double_bind, victim_blaming, false_urgency, bullshit, absolute_claim, induced_trust
 
 **Verify-level (24):** appeal_to_authority, vagueness, contradiction, sycophancy, confidence, fallacies, presupposition, empty_answer, info_deprivation, false_equivalence, hasty_generalization, slippery_slope, whataboutism, pseudo_profundity, reasoning_coherence, stereotype, clickbait, bad_faith, no_fallback, unsupported_claim, perfect_error, pseudo_causal, soft_deflection, premature_termination
 
@@ -267,19 +335,19 @@ The gate aggregates every layer's findings and emits one of four actions:
 
 > **Resistance to obfuscation:** symbol substitution (`f**k`), spaced letters (`f u c k`), homophones, and Unicode variants are covered.
 
-### Agent-facing checks (separate from the 46 text dimensions)
+### Agent-facing checks (separate from the 51 text dimensions)
 
 These judge how an AI agent behaves rather than what a sentence says — the failure
 modes where an agent reports work it did not do. Each is exposed as an MCP tool.
 
 | Check | MCP tool | Catches |
 |-------|----------|---------|
-| `checkCompletionEvidence` | `heartflow_check_completion_evidence` | Empty completion claims ("done", "fixed", "all passing") with no git hash, test count, file path, or PR link |
-| `checkArchitectureConsistency` | `heartflow_check_architecture_consistency` | A function whose name promises one thing and whose body does another (named `validate`, no validation) |
-| `checkDecisionTrace` | `heartflow_check_decision_trace` | A "decision" with fewer than 2 options, no explicit choice, or no stated reason — pseudo-decisions |
-| `checkPlanGate` | `heartflow_check_plan_gate` | A plan entering a complex task without steps, acceptance criteria, rollback, or safety strategy |
-| `checkForbiddenCall` | `heartflow_check_forbidden_call` | Delegating before the target, boundary, and acceptance criteria are confirmed |
-| `checkAIMisuse` | `heartflow_check_ai_misuse` | Human-side misuse: oversized context dumps, errors without repro steps, adopting output unverified |
+| `checkCompletionEvidence` | `aspira_check_completion_evidence` | Empty completion claims ("done", "fixed", "all passing") with no git hash, test count, file path, or PR link |
+| `checkArchitectureConsistency` | `aspira_check_architecture_consistency` | A function whose name promises one thing and whose body does another (named `validate`, no validation) |
+| `checkDecisionTrace` | `aspira_check_decision_trace` | A "decision" with fewer than 2 options, no explicit choice, or no stated reason — pseudo-decisions |
+| `checkPlanGate` | `aspira_check_plan_gate` | A plan entering a complex task without steps, acceptance criteria, rollback, or safety strategy |
+| `checkForbiddenCall` | `aspira_check_forbidden_call` | Delegating before the target, boundary, and acceptance criteria are confirmed |
+| `checkAIMisuse` | `aspira_check_ai_misuse` | Human-side misuse: oversized context dumps, errors without repro steps, adopting output unverified |
 
 ---
 
@@ -309,8 +377,8 @@ modes where an agent reports work it did not do. Each is exposed as an MCP tool.
 | `user` | `Aspira-OID-<16-hex>` header | read + write |
 | `admin` | valid bearer token | full |
 
-Write-protected: `heartflow_memory_write_control`, `heartflow_memory_eraser`,
-`heartflow_decision_decide`, `heartflow_self_heal`. A guest calling one gets
+Write-protected: `aspira_memory_write_control`, `aspira_memory_eraser`,
+`aspira_decision_decide`, `aspira_self_heal`. A guest calling one gets
 `isError: true` with `权限不足`.
 
 Covered by `test/mcp-guest-permission.test.js`, which asserts both directions — the four
@@ -322,17 +390,17 @@ cannot be "fixed" by blocking everything.
 ## MCP integration
 
 ```bash
-node src/mcp-server.js --port 8588
+node src/mcp-server.js --port 8099
 # Connect from Hermes:
-hermes mcp add heartflow --url http://localhost:8588/mcp
+hermes mcp add aspira --url http://localhost:8099/mcp
 ```
 
 Available tools include:
-- `heartflow_think` — full discrimination with effort control
-- `heartflow_think_fast` — low-effort fast path
-- `heartflow_modules_status` — sparse mode, active tier, module counts
-- `heartflow_cache_stats` — cache hit rate and TTL breakdown
-- `heartflow_decision_history` — recent autonomous decisions and outcomes
+- `aspira_think` — full discrimination with effort control
+- `aspira_think_fast` — low-effort fast path
+- `aspira_modules_status` — sparse mode, active tier, module counts
+- `aspira_cache_stats` — cache hit rate and TTL breakdown
+- `aspira_decision_history` — recent autonomous decisions and outcomes
 
 ---
 
@@ -365,7 +433,7 @@ right and wrong, good and bad, safe and dangerous.
 
 - Email: markcell@outlook.com
 - Issues: https://github.com/mark-cell-520/aspira/issues
-- npm: https://www.npmjs.com/package/@yun520-1/heartflow
+- npm: https://www.npmjs.com/package/@mark-cell-520/aspira
 
 ---
 
@@ -383,12 +451,12 @@ GB/T 42497-2023 (*Security Requirements for AI-Generated Content*):
 
 | Checkpoint | Module |
 |-----------|--------|
-| Generated-content safety | `checkOutput` / `discriminate` (46 dimensions) |
+| Generated-content safety | `checkOutput` / `discriminate` (51 dimensions) |
 | Training-data safety | `DataEraser` + memory ACL |
-| **Outbound protection** | **`heartflow_check_outbound`** (gate-outbound.js) |
+| **Outbound protection** | **`aspira_check_outbound`** (gate-outbound.js) |
 | Algorithmic transparency | `enginePacing` + `selfHeal` |
-| **Audit traceability** | **`heartflow_audit_trace`** (trace-chain.js + HMAC) |
-| **Emergency response** | **`heartflow_circuit_breaker`** (circuit-breaker.js) |
+| **Audit traceability** | **`aspira_audit_trace`** (trace-chain.js + HMAC) |
+| **Emergency response** | **`aspira_circuit_breaker`** (circuit-breaker.js) |
 
 See `compliance/gb-agent-security-mapping.md`.
 

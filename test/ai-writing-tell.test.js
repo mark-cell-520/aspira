@@ -2,7 +2,7 @@
  * ai-writing-tell.test.js — AI 写作特征检测 e2e 验证
  *
  * 1. detect() 直接调用
- * 2. mcp-server 源码级接线验证（handleAITelling + heartflow_ai_writing_tell）
+ * 2. mcp-server 源码级接线验证（handleAITelling + aspira_ai_writing_tell）
  * 3. discriminate() 聚合 ai_writing_tell 维度
  */
 
@@ -26,12 +26,12 @@ module.exports = function ({ test, assertTrue, assertEqual, assertDefined }) {
     assertEqual(r.count, 0);
   });
 
-  test('mcp server: handleAITelling + heartflow_ai_writing_tell 已接线', () => {
+  test('mcp server: handleAITelling + aspira_ai_writing_tell 已接线', () => {
     const mcpSrc = fs.readFileSync(path.join(HF_DIR, 'src', 'mcp-server.js'), 'utf8');
     assertTrue(mcpSrc.includes('function handleAITelling'), 'handler function missing');
-    assertTrue(mcpSrc.includes('heartflow_ai_writing_tell: handleAITelling'), 'handler mapping missing');
+    assertTrue(mcpSrc.includes('aspira_ai_writing_tell: handleAITelling'), 'handler mapping missing');
     const toolsSrc = fs.readFileSync(path.join(HF_DIR, 'src', 'mcp', 'tools-registry.js'), 'utf8');
-    assertTrue(toolsSrc.includes("name: 'heartflow_ai_writing_tell'"), 'TOOL definition missing');
+    assertTrue(toolsSrc.includes("name: 'aspira_ai_writing_tell'"), 'TOOL definition missing');
   });
 
   test('discriminate: ai_writing_tell 维度出现在 findings', () => {

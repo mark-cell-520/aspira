@@ -24,7 +24,7 @@
 | # | 问题 | 位置 | 严重程度 | 建议 |
 |---|------|------|----------|------|
 | P0-1 | **公式库未签名/未哈希验证** — 若 `formulas/formulas.json` 被篡改，攻击者可注入任意 mathjs 表达式并达到代码执行效果 | `src/formula/formula-search.js`、`src/formula/formula-calculator.js` | 高 | 对公式库实施 JSON schema + 发布时哈希/签名校验；运行时拒绝异常结构或签名不匹配的公式 |
-| P0-2 | **MCP 通用路由缺乏参数白名单** — `heartflow_dispatch` 允许调用任意内部路由，若被未授权调用可能导致内部状态泄露或越权操作 | `mcp/mcp-server-stdio.js:269-274`、`src/mcp-server.js` dispatch 相关 handlers | 中高 | 对 `heartflow_dispatch` 增加路由白名单，并移除或严格限制 stdio 版本的通用路由暴露 |
+| P0-2 | **MCP 通用路由缺乏参数白名单** — `aspira_dispatch` 允许调用任意内部路由，若被未授权调用可能导致内部状态泄露或越权操作 | `mcp/mcp-server-stdio.js:269-274`、`src/mcp-server.js` dispatch 相关 handlers | 中高 | 对 `aspira_dispatch` 增加路由白名单，并移除或严格限制 stdio 版本的通用路由暴露 |
 | P0-3 | **模型加载无完整性校验** — `@xenova/transformers` 远程或本地模型文件未做 hash/signature 校验，存在供应链投毒或本地替换风险 | `src/search/semantic-search.js:354-381` | 高 | 对模型文件增加 SHA-256 校验；支持 pinned revision / localModelPath 白名单；禁止自动下载不可信来源模型 |
 
 ---
@@ -79,7 +79,7 @@
 **风险**
 - **参数注入**：多数 handler 直接透传 `args` 到 `heartflow.dispatch()`，无 schema 校验。
 - **路径遍历**：`benchmark_*`、`knowledge_*` 等工具涉及文件系统访问，需确保 confinePath 全覆盖。
-- **通用路由滥用**：`heartflow_dispatch` 暴露内部路由前缀，若 token 泄露可遍历 engine 内部 API。
+- **通用路由滥用**：`aspira_dispatch` 暴露内部路由前缀，若 token 泄露可遍历 engine 内部 API。
 - **DoS**：无 tool 级别超时；单个长时间运行的 tool 会阻塞事件循环或占用 SSE 连接。
 
 ### 3. transformers — 模型加载安全
@@ -116,7 +116,7 @@
 
 ### 立即执行 (P0)
 1. **公式库签名** — 在发布流程中对 `formulas.json` 生成 SHA-256 哈希，并在 `FormulaSearch.loadFormulas()` 时校验。
-2. **限制通用路由** — `heartflow_dispatch` 改为路由白名单，或移除 stdio 暴露。
+2. **限制通用路由** — `aspira_dispatch` 改为路由白名单，或移除 stdio 暴露。
 3. **模型文件校验** — 为默认模型记录 expected hash；加载后比对；支持 `modelPath` 白名单。
 
 ### 近期执行 (P1)

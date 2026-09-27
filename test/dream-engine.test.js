@@ -1,7 +1,7 @@
 /**
  * test/dream-engine.test.js — Dream 升华引擎回归测试
  *
- * v6.3.48 曾将 src/dream/ 误判为死模块删除，导致 MCP heartflow_dream
+ * v6.3.48 曾将 src/dream/ 误判为死模块删除，导致 MCP aspira_dream
  * 工具引用不存在的 engine.js。2026-08-01 从 git 历史恢复并重建入口。
  * 本测试保护：dream 引擎能出真实梦境，不是空壳。
  */

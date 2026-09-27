@@ -276,7 +276,7 @@ function _touchEntry(ck) {
 
 // [v5.14.1] 共享认知桥接 — 替代重复的模块级 _getBridge
 
-let _bridgeCache = (typeof globalThis !== 'undefined' && globalThis.getCognitiveBridge) ? globalThis.getCognitiveBridge() : null;
+let _bridgeCache = require('../formula/cognitive-bridge.js').getCognitiveBridge();
 
 
 

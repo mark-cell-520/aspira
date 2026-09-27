@@ -40,29 +40,16 @@ const path = require('path');
 
 const debugLog = require('../utils/debug-log');
 
-// ─── 全局桥接注入 — 供旧版模块(decision-engine等)构造函数引用 ─────
-// [v6.5.1] 修复：原来是假 bridge（只有空 estimate/getState），导致 DDM/SDT 全崩
-// 现在加载真实 cognitive-bridge（含 ddmDecisionTime/sdtDPrime/prospectValue 等）
-try {
-  const realBridge = require('../formula/cognitive-bridge.js').getCognitiveBridge();
-  globalThis.getCognitiveBridge = () => realBridge;
-} catch (e) {
-  globalThis.getCognitiveBridge = () => ({ estimate: () => ({}), getState: () => ({}), healthCheck: () => ({ok:true}) });
-}
-globalThis.ProcessRewardModel = class { constructor() { this.healthCheck = () => ({ok:true}); } };
-globalThis.DesireCognition = class { constructor() { this.healthCheck = () => ({ok:true}); } };
-globalThis.CognitiveLoadCalculator = class { constructor() { this.healthCheck = () => ({ok:true}); } };
-globalThis.WorldLandscape = class { constructor() { this.healthCheck = () => ({ok:true}); this.createWorldAwareOrchestrator = () => ({ orchestrate: () => ({}), healthCheck: () => ({ok:true}) }); } };
-globalThis.KnowledgeExplorer = class { constructor() { this.healthCheck = () => ({ok:true}); this.absorbLearnerSignals = () => {}; } };
-globalThis.continuousLearner = { getStats: () => ({ totalConfidenceGaps: 0, topGaps: [] }) };
-globalThis.MacroStrategyInference = require('../cortex/self-evolution/macro-strategy-inference').MacroStrategyInference;
-globalThis.createWorldAwareOrchestrator = ({ projectRoot } = {}) => {
-  const engine = new MacroStrategyInference({ projectRoot: projectRoot || process.cwd() });
-  return {
-    orchestrate: (text) => engine.infer(text),
-    healthCheck: () => ({ ok: !!engine, module: 'MacroStrategyInference' }),
-  };
-};
+// ─── [解耦·吸收心虫slice①] getCognitiveBridge 不再注入 globalThis ─────
+// cognitive-bridge.js 的 getCognitiveBridge() 本身是单例 + Proxy 全兜底；各消费方改为直接 require 获取（见 dream-engine-v2 / decision-router / decision-engine 等）。
+// ─── [解耦·吸收心虫] 移除 5 个死亡 globalThis 桩 ─────
+// ProcessRewardModel / DesireCognition / CognitiveLoadCalculator / WorldLandscape / KnowledgeExplorer
+// 实证死代码：0 个 src 消费者；0 个 live 测试消费者（仅 test/archive/dead-tests 引用真实模块路径，且被 run-all 跳过）；无 globalThis[] 动态访问、无 globalThis 遍历 → 安全删除。
+// ─── [解耦·吸收心虫] 移除最后一个死 globalThis 注入 continuousLearner → 顶层 globalThis 注入 1→0 ─────
+// 实证：0 处读取 globalThis.continuousLearner（11 个 continuousLearner 消费者用的是引擎实例属性 hf.continuousLearner / engine.continuousLearner，由 heartflow.js 内 _lazy 真实模块独立注入，与 globalThis 桩无关）；0 test 经 globalThis 引用；无动态访问 → 删除。
+// ─── [解耦·吸收心虫] 移除死注入 globalThis.createWorldAwareOrchestrator + 纯冗余 globalThis.MacroStrategyInference ─────
+// createWorldAwareOrchestrator：0 个 live 消费者（仅 test/archive/dead-tests 引用且被 run-all 跳过）。
+// MacroStrategyInference：实证 0 个 globalThis 消费者，8 个消费者全用真实 require（如 src/mcp-server.js:1051），0 test 经 globalThis 引用 → 注入纯冗余，删除。真实模块 self-evolution/macro-strategy-inference.js 不受影响。
 
 const { load: loadConfig } = require('./config');
 
@@ -395,9 +382,9 @@ const _SelfVerifier = _lazy('selfVerifier', () => require('../identity/self-veri
 
 const _LessonBank = _lazy('lessonBank', () => require('../cortex/lesson-bank.js'));
 // [v6.4.5] 补回被误删的 dream lazy 定义（梦境引擎曾因此降级为 stub）
-const _DreamEngine = _lazy('dreamEngine', () => require('../dream/dream.js'));
-const _DreamConsolidation = _lazy('dreamConsolidation', () => require('../dream/dream-consolidation.js'));
-const _DreamEngineV2 = _lazy('dreamEngineV2', () => require('../dream/dream-engine-v2.js'));
+const _DreamEngine = _lazy('dreamEngine', () => require('../dream'));
+const _DreamConsolidation = _lazy('dreamConsolidation', () => require('../dream'));
+const _DreamEngineV2 = _lazy('dreamEngineV2', () => require('../dream'));
 
 
 const _StrategicRestraint = _lazy('strategicRestraint', () => require('../cortex/strategic-restraint.js'));
@@ -3991,7 +3978,7 @@ class Aspira {
 
     try {
 
-      const { FormulaModule } = require('../formula/formula-module.js');  
+      const { FormulaModule } = require('../formula');  
 
       this.formula = new FormulaModule({ formulasFile: path.join(this.rootPath, 'formulas', 'formulas.json') });
 
@@ -4002,7 +3989,7 @@ class Aspira {
 
       // 注入 hf 引用到 FormulaBridge，让桥接方法可兜底查公式库
       try {
-        const { injectHfToBridge } = require('../formula/formula-bridge.js');  
+        const { injectHfToBridge } = require('../formula');  
         injectHfToBridge(this);
       } catch (_) { /* 非关键 */ }
 
@@ -4540,7 +4527,7 @@ class Aspira {
     // 对儒学/佛学/古典价值澄清文本，不强行走 generic task → "不知道"
     let result;
     try {
-      const ClassicsValueMapper = require('../knowledge/classics-value-mapper.js');
+      const ClassicsValueMapper = require('../knowledge').ClassicsValueMapper;
       const ruleOut = ClassicsValueMapper.evaluateRules(input);
       if (ruleOut.classicalRelevant) {
         const wisdomCounts = { practical_guidance: 0, value_alignment: 0, warning_sign: 0, paradox_acknowledgment: 0 };

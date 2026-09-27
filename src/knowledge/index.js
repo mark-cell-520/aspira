@@ -12,6 +12,8 @@ const { KnowledgeGraphAdapter } = require('./knowledge-graph-adapter.js');
 const { CrossDomainReasoner } = require('./cross-domain-reasoner.js');
 const { KnowledgeQuery } = require('./knowledge-query.js');
 const { SourceAnnotator } = require('./source-annotator.js');
+// [解耦·吸收心虫] classics-value-mapper 经桶导出，供 heartflow.js 古典文本路由经桶访问（收尾 knowledge 域最后 1 处直接深依）
+const ClassicsValueMapper = require('./classics-value-mapper.js');
 
 class KnowledgeSubsystem {
   constructor(options = {}) {
@@ -126,4 +128,4 @@ class KnowledgeSubsystem {
   }
 }
 
-module.exports = { KnowledgeSubsystem };
+module.exports = { KnowledgeSubsystem, ClassicsValueMapper };

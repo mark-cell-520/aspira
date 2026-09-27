@@ -97,11 +97,11 @@ class AgentCard {
   /** 构建 MCP 工具 Schema（对外描述） */
   _buildToolSchema() {
     const categories = [
-      { category: 'think', tools: ['heartflow_think', 'heartflow_think_fast'], description: '推理与分析' },
-      { category: 'emotion', tools: ['heartflow_emotion'], description: 'PAD情绪分析' },
-      { category: 'memory', tools: ['heartflow_memory_search'], description: '跨层记忆检索' },
-      { category: 'system', tools: ['heartflow_status', 'heartflow_module_health', 'heartflow_cognitive_check'], description: '系统状态与健康' },
-      { category: 'self_evolution', tools: ['heartflow_upgrade_stats', 'heartflow_self_heal'], description: '自愈与升级' },
+      { category: 'think', tools: ['aspira_think', 'aspira_think_fast'], description: '推理与分析' },
+      { category: 'emotion', tools: ['aspira_emotion'], description: 'PAD情绪分析' },
+      { category: 'memory', tools: ['aspira_memory_search'], description: '跨层记忆检索' },
+      { category: 'system', tools: ['aspira_status', 'aspira_module_health', 'aspira_cognitive_check'], description: '系统状态与健康' },
+      { category: 'self_evolution', tools: ['aspira_upgrade_stats', 'aspira_self_heal'], description: '自愈与升级' },
     ];
     return {
       schemaVersion: '1.0.0',

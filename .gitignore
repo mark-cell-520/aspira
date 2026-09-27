@@ -119,3 +119,8 @@ aspira-audit-report.md
 reports/
 .mcp-server.pid
 ecosystem.config.js
+
+# 大体积公式语料(单独存放, 不进 git) — 首次推送前补漏
+formulas-corpus/formulareasoning/
+formulas/math/
+*.tar.gz

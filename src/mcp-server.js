@@ -16,7 +16,7 @@
 
  * 启动: node mcp-server-http.js [--port 8099]
 
- * 连接: hermes mcp add heartflow --url http://localhost:8099/mcp
+ * 连接: hermes mcp add aspira --url http://localhost:8099/mcp
 
  */
 
@@ -181,7 +181,7 @@ function getVersion() {
 
 // 安全配置
 
-// Token 认证：未设置 HEARTFLOW_MCP_TOKEN 时自动生成随机 Token 并强制认证
+// Token 认证：未设置 ASPIRA_MCP_TOKEN 时自动生成随机 Token 并强制认证
 
 // [v6.2.7] 从 .env 文件加载（如果环境变量没设）
 try {
@@ -194,7 +194,7 @@ try {
   }
 } catch (_) { /* 防御性: 配置加载失败不阻断 */ }
 
-const AUTH_TOKEN = process.env.HEARTFLOW_MCP_TOKEN || process.env.MCP_HEARTFLOW_API_KEY || process.env.MCP_HEARTFLOW_KEY || (() => {
+const AUTH_TOKEN = process.env.ASPIRA_MCP_TOKEN || process.env.HEARTFLOW_MCP_TOKEN || process.env.MCP_HEARTFLOW_API_KEY || process.env.MCP_HEARTFLOW_KEY || (() => {
 
   const token = require('crypto').randomBytes(32).toString('hex');
 
@@ -210,9 +210,9 @@ const AUTH_TOKEN = process.env.HEARTFLOW_MCP_TOKEN || process.env.MCP_HEARTFLOW_
     }
   } catch (_) { /* 防御性: 配置加载失败不阻断 */ }
 
-  if (process.env.HEARTFLOW_DEBUG) console.log('[MCP] HEARTFLOW_MCP_TOKEN not set. Auto-generated ephemeral token (not printed for security).');
+  if (process.env.HEARTFLOW_DEBUG) console.log('[MCP] ASPIRA_MCP_TOKEN not set. Auto-generated ephemeral token (not printed for security).');
 
-  if (process.env.HEARTFLOW_DEBUG) console.log('[MCP] Set HEARTFLOW_MCP_TOKEN env var for persistent auth across restarts.');
+  if (process.env.HEARTFLOW_DEBUG) console.log('[MCP] Set ASPIRA_MCP_TOKEN env var for persistent auth across restarts.');
 
   return token;
 
@@ -591,7 +591,7 @@ async function handleThink(args) {
 
   let thoughtChain;
 
-  // [P0-1] 长文本回声修复: >100 字走 pipeline.checkOutput (45维判别), 不走 think 偷懒路由
+  // [P0-1] 长文本回声修复: >100 字走 pipeline.checkOutput (51维判别), 不走 think 偷懒路由
   if (typeof input === 'string' && input.length > 100) {
 
     try {
@@ -729,7 +729,7 @@ async function handleThink(args) {
 
       type: 'usage',
 
-      source: 'heartflow_think',
+      source: 'aspira_think',
 
       latencyMs: Date.now() - startTime,
 
@@ -2033,11 +2033,11 @@ function handleDecisionRouterStats(args) {
 
 function handleModulesStatus(args) {
 
-  const hf = (typeof safeDispatch === 'function' && safeDispatch.length ? safeDispatch('heartflow.getStatus') : null) || globalThis.heartflow || null;
+  const hf = (typeof safeDispatch === 'function' && safeDispatch.length ? safeDispatch('heartflow.getStatus') : null) || heartflow || null;
 
   if (!hf) {
 
-    return { sparse_mode: false, reason: 'heartflow_instance_not_found' };
+    return { sparse_mode: false, reason: 'aspira_instance_not_found' };
 
   }
 
@@ -2071,7 +2071,7 @@ function handleModulesStatus(args) {
 
 function handleCacheStats(args) {
 
-  const hf = globalThis.heartflow || null;
+  const hf = heartflow || null;
 
   if (!hf || !hf._thinkCache) {
 
@@ -2113,11 +2113,11 @@ function handleCacheStats(args) {
 
 function handleDecisionHistory(args) {
 
-  const hf = globalThis.heartflow || null;
+  const hf = heartflow || null;
 
   if (!hf) {
 
-    return { error: 'heartflow_instance_not_found' };
+    return { error: 'aspira_instance_not_found' };
 
   }
 
@@ -2522,7 +2522,7 @@ function handleAudit42(args) {
     } : null;
     return {
       meta: {
-        tool: 'heartflow_audit42',
+        tool: 'aspira_audit42',
         version: '42-dim',
         totalDimensions: 42,
         reportedDimensions: allKeys.length,
@@ -2894,122 +2894,122 @@ function handleFormulaCalc(args) {
 
 
 const HANDLERS = {
-  heartflow_gate: handleGate,
-  heartflow_gate_check: handleGateCheck,
-  heartflow_gate_pipeline: handleGatePipeline,
-  heartflow_crowdtest_evaluate: handleCrowdtestEvaluate,
-  heartflow_formula_bridge: handleFormulaBridge,
-  heartflow_formula_calc: handleFormulaCalc,
+  aspira_gate: handleGate,
+  aspira_gate_check: handleGateCheck,
+  aspira_gate_pipeline: handleGatePipeline,
+  aspira_crowdtest_evaluate: handleCrowdtestEvaluate,
+  aspira_formula_bridge: handleFormulaBridge,
+  aspira_formula_calc: handleFormulaCalc,
 
 
-  heartflow_bridge_analyze: handleBridgeAnalyze,
+  aspira_bridge_analyze: handleBridgeAnalyze,
 
-  heartflow_think: handleThink,
+  aspira_think: handleThink,
 
-  heartflow_boundary_check: (args, hf) => {
+  aspira_boundary_check: (args, hf) => {
     const bg = (hf && (hf.boundaryGuard || hf._modules?.boundaryGuard)) || null;
     if (!bg) return { error: 'boundaryGuard not loaded' };
     const fp = (args && args.filePath) || '';
     const res = bg.checkWrite(fp, { actor: (args && args.actor) || 'mcp', purpose: (args && args.purpose) || 'check' });
     return { verdict: res.verdict, reason: res.reason, targetAgent: res.targetAgent || null, resolvedPath: res.resolvedPath };
   },
-  heartflow_self_heal: handleSelfHeal,
+  aspira_self_heal: handleSelfHeal,
 
-  heartflow_provider_health: handleProviderHealth,
+  aspira_provider_health: handleProviderHealth,
 
-  heartflow_cost_tracking: handleCostTracking,
+  aspira_cost_tracking: handleCostTracking,
 
-  heartflow_agent_psychology: handleAgentPsychology,
+  aspira_agent_psychology: handleAgentPsychology,
 
-  heartflow_engine_pacing: handleEnginePacing,
+  aspira_engine_pacing: handleEnginePacing,
 
-  heartflow_cognitive_check: handleCognitiveCheck,
+  aspira_cognitive_check: handleCognitiveCheck,
 
-  heartflow_philosophy_decision: handlePhilosophyDecision,
+  aspira_philosophy_decision: handlePhilosophyDecision,
 
-  heartflow_decision_router: handleDecisionRouter,
+  aspira_decision_router: handleDecisionRouter,
 
-  heartflow_decision_router_stats: handleDecisionRouterStats,
+  aspira_decision_router_stats: handleDecisionRouterStats,
 
-  heartflow_modules_status: handleModulesStatus,
+  aspira_modules_status: handleModulesStatus,
 
-  heartflow_cache_stats: handleCacheStats,
+  aspira_cache_stats: handleCacheStats,
 
-  heartflow_decision_history: handleDecisionHistory,
+  aspira_decision_history: handleDecisionHistory,
 
-  heartflow_think_fast: handleThinkFast,
+  aspira_think_fast: handleThinkFast,
 
 
   // [v6.6.3] 新愿统一监督入口
-  heartflow_supervise: handleSupervise,
+  aspira_supervise: handleSupervise,
 
   // [v6.6.3] 新愿单维判别入口
-  heartflow_check_single: handleCheckSingle,
+  aspira_check_single: handleCheckSingle,
 
   // [v6.6.3] 新闻信号战略推演（包装 MacroStrategyInference）
-  heartflow_macro_strategy: handleMacroStrategy,
+  aspira_macro_strategy: handleMacroStrategy,
 
   // [v6.6.3] 教育内容检测（包装 pedagogy）
-  heartflow_pedagogy_detect: handlePedagogyDetect,
+  aspira_pedagogy_detect: handlePedagogyDetect,
 
-  heartflow_memory_search: handleMemorySearch,
+  aspira_memory_search: handleMemorySearch,
 
-  heartflow_memory_eraser: handleMemoryEraser,
+  aspira_memory_eraser: handleMemoryEraser,
 
-  heartflow_emotion: handleEmotion,
-
-
+  aspira_emotion: handleEmotion,
 
 
-  heartflow_status: handleStatus,
+
+
+  aspira_status: handleStatus,
 
 
 
 
   // v3.0 — 交流层 handler
 
-  heartflow_translate: handleTranslate,
+  aspira_translate: handleTranslate,
 
-  heartflow_agent_think: handleAgentThink,
+  aspira_agent_think: handleAgentThink,
 
-  heartflow_bridge_status: handleBridgeStatus,
-
-
+  aspira_bridge_status: handleBridgeStatus,
 
 
-  heartflow_module_health: handleModuleHealth,
 
-  heartflow_upgrade_stats: handleUpgradeStats,
 
-  heartflow_benchmark_run: handleBenchmarkRun,
+  aspira_module_health: handleModuleHealth,
 
-  heartflow_benchmark_import_failures: handleBenchmarkImportFailures,
+  aspira_upgrade_stats: handleUpgradeStats,
 
-  heartflow_benchmark_status: handleBenchmarkStatus,
+  aspira_benchmark_run: handleBenchmarkRun,
+
+  aspira_benchmark_import_failures: handleBenchmarkImportFailures,
+
+  aspira_benchmark_status: handleBenchmarkStatus,
 
   // [v6.3.0] 5 个辨别引擎入口
-  heartflow_verify: handleVerify,
-  heartflow_verdict: handleVerdict,
-  heartflow_discriminate: handleFullDiscriminate,
-  heartflow_diagnose: handleDiagnose,
-  heartflow_check_drift: handleCheckDrift,
-  heartflow_error_store: handleErrorStore,
-  heartflow_error_query: handleErrorQuery,
-  heartflow_error_fix: handleErrorFix,
-  heartflow_error_verify: handleErrorVerify,
+  aspira_verify: handleVerify,
+  aspira_verdict: handleVerdict,
+  aspira_discriminate: handleFullDiscriminate,
+  aspira_diagnose: handleDiagnose,
+  aspira_check_drift: handleCheckDrift,
+  aspira_error_store: handleErrorStore,
+  aspira_error_query: handleErrorQuery,
+  aspira_error_fix: handleErrorFix,
+  aspira_error_verify: handleErrorVerify,
 
   // [v6.3.7] 公式工具
-  heartflow_formula_search: handleFormulaSearch,
-  heartflow_formula_calculate: handleFormulaCalculate,
+  aspira_formula_search: handleFormulaSearch,
+  aspira_formula_calculate: handleFormulaCalculate,
 
   // [v6.4.0] 全量审核
-  heartflow_audit: handleFullAudit,
+  aspira_audit: handleFullAudit,
 
   // [v6.7.0] 42维全量审核
-  heartflow_audit42: handleAudit42,
+  aspira_audit42: handleAudit42,
 
   // [v6.7.x] 古典文本预路由
-  heartflow_classics: (args) => {
+  aspira_classics: (args) => {
     try {
       const { evaluateRules } = require('./knowledge/classics-value-mapper.js');
       const text = args?.text || '';
@@ -3028,62 +3028,62 @@ const HANDLERS = {
   },
 
   // [v6.6.0] 批量辨别
-  heartflow_bulk_discriminate: handleBulkDiscriminate,
+  aspira_bulk_discriminate: handleBulkDiscriminate,
 
   // [v6.5.0] 熵分析 + 交叉分析
-  heartflow_entropy: handleEntropy,
-  heartflow_cross_analyze: handleCrossAnalyze,
-  heartflow_ai_writing_tell: handleAITelling,
-  heartflow_check_ai_anti_pattern: (args) => {
+  aspira_entropy: handleEntropy,
+  aspira_cross_analyze: handleCrossAnalyze,
+  aspira_ai_writing_tell: handleAITelling,
+  aspira_check_ai_anti_pattern: (args) => {
     try {
       const { checkAICodeAntiPattern } = require('./index.js');
       const text = args?.text || '';
       return checkAICodeAntiPattern(text);
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_check_coverage_completeness: (args) => {
+  aspira_check_coverage_completeness: (args) => {
     try {
       const { checkCoverageCompleteness } = require('./index.js');
       const text = args?.text || '';
       return checkCoverageCompleteness(text);
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_check_architecture_consistency: (args) => {
+  aspira_check_architecture_consistency: (args) => {
     try {
       const { checkArchitectureConsistency } = require('./index.js');
       const text = args?.text || '';
       return checkArchitectureConsistency(text);
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_check_plan_gate: (args) => {
+  aspira_check_plan_gate: (args) => {
     try {
       const { checkPlanGate } = require('./index.js');
       const plan = args?.plan || args?.text || '';
       return checkPlanGate(typeof plan === 'string' ? { steps: [{ verify: plan }] } : plan);
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_check_forbidden_call: (args) => {
+  aspira_check_forbidden_call: (args) => {
     try {
       const { checkForbiddenCall } = require('./index.js');
       const text = args?.text || '';
       return checkForbiddenCall(text);
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_check_completion_evidence: (args) => {
+  aspira_check_completion_evidence: (args) => {
     try {
       const { checkCompletionEvidence } = require('./index.js');
       const text = args?.text || '';
       return checkCompletionEvidence(text);
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_check_decision_trace: (args) => {
+  aspira_check_decision_trace: (args) => {
     try {
       const { checkDecisionTrace } = require('./index.js');
       const decision = args?.decision || args?.text || {};
       return checkDecisionTrace(typeof decision === 'string' ? JSON.parse(decision) : decision);
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_check_ai_misuse: (args) => {
+  aspira_check_ai_misuse: (args) => {
     try {
       const { checkAIMisuse } = require('./index.js');
       const text = args?.text || '';
@@ -3092,7 +3092,7 @@ const HANDLERS = {
   },
 
   // [v6.3.34] 新MCP工具
-  heartflow_philosophy: (args) => {
+  aspira_philosophy: (args) => {
     try {
       const { AISelfPositioning } = require('./identity/ai-self-positioning.js');
       const sp = new AISelfPositioning();
@@ -3100,14 +3100,14 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_consciousness: (args) => {
+  aspira_consciousness: (args) => {
     try {
       const CT = require('./consciousness/consciousness-theory.js');
       return { consciousness: CT.compute(args || {}), timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_emotion_deep: (args) => {
+  aspira_emotion_deep: (args) => {
     const text = args?.input || 'current state';
     try {
       const { DeepEmotion } = require('./emotion/deep-emotion.js');
@@ -3116,7 +3116,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_ethics_check: (args) => {
+  aspira_ethics_check: (args) => {
     if (!args?.text) return { error: 'text required' };
     try {
       const { HeartLogic } = require('./core/heart-logic.js');
@@ -3126,7 +3126,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_reflect: (args) => {
+  aspira_reflect: (args) => {
     try {
       const { Reflector } = require('./cortex/reflector.js');
       const r = new Reflector(HF_DIR);
@@ -3137,7 +3137,7 @@ const HANDLERS = {
 
 
   // [v6.4.5] 全引擎 MCP 化 — 12 个新引擎入口
-  heartflow_evolve: (args) => {
+  aspira_evolve: (args) => {
     try {
       const { MetaLearner } = require('./cortex/meta-learner.js');
       const ml = new MetaLearner({ rootPath: HF_DIR, silent: true });
@@ -3147,7 +3147,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_self_heal_rl: (args) => {
+  aspira_self_heal_rl: (args) => {
     try {
       const { HealingMemoryRL } = require('./cortex/self-healing-rl.js');
       const h = new HealingMemoryRL({ silent: true });
@@ -3157,7 +3157,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_reflexion: (args) => {
+  aspira_reflexion: (args) => {
     try {
       const { ReflexionEngine } = require('./cortex/reflexion-engine.js');
       const re = new ReflexionEngine({ silent: true });
@@ -3167,7 +3167,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_forgetting: (args) => {
+  aspira_forgetting: (args) => {
     try {
       const { ForgettingEngine } = require('./memory/forgetting.js');
       const fe = new ForgettingEngine({ silent: true });
@@ -3177,7 +3177,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_knowledge_graph: (args) => {
+  aspira_knowledge_graph: (args) => {
     try {
       const { KnowledgeGraph } = require('./memory/knowledge-graph.js');
       const kg = new KnowledgeGraph({ silent: true });
@@ -3187,7 +3187,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_memory_consolidation: (args) => {
+  aspira_memory_consolidation: (args) => {
     try {
       const { MemoryConsolidationEngine } = require('./memory/memory-consolidation-engine.js');
       const mc = new MemoryConsolidationEngine({ silent: true });
@@ -3198,7 +3198,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_emotion_dynamics: (args) => {
+  aspira_emotion_dynamics: (args) => {
     try {
       const { EmotionDynamicsEngine } = require('./emotion/emotion-dynamics-engine.js');
       const ed = new EmotionDynamicsEngine({ silent: true });
@@ -3208,7 +3208,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_mood: (args) => {
+  aspira_mood: (args) => {
     try {
       const { MoodEvolution } = require('./emotion/mood-evolution.js');
       const me = new MoodEvolution({ silent: true });
@@ -3218,7 +3218,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_interactive_dream: (args) => {
+  aspira_interactive_dream: (args) => {
     try {
       const { InteractiveDream } = require('./dream/interactive-dream.js');
       const id = new InteractiveDream({ silent: true });
@@ -3232,7 +3232,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_meaning: (args) => {
+  aspira_meaning: (args) => {
     try {
       const { MeaningPurposeEngine } = require('./identity/meaning-purpose-engine.js');
       const mp = new MeaningPurposeEngine({ silent: true });
@@ -3242,7 +3242,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_cognitive_engine: (args) => {
+  aspira_cognitive_engine: (args) => {
     try {
       const { CognitiveEngine } = require('./core/cognitive-engine.js');
       const ce = new CognitiveEngine({ silent: true });
@@ -3257,7 +3257,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_decision_verify: (args) => {
+  aspira_decision_verify: (args) => {
     try {
       const { DecisionVerifier } = require('./core/decision-verifier.js');
       const dv = new DecisionVerifier({ silent: true });
@@ -3269,7 +3269,7 @@ const HANDLERS = {
   },
 
   // [v6.4.5] 第二批引擎入口 — 纠错/失败/假设/教训/目的/防护/稳定性
-  heartflow_self_correction: (args) => {
+  aspira_self_correction: (args) => {
     try {
       const { SelfCorrectionLoop } = require('./cortex/self-correction-loop.js');
       const sc = new SelfCorrectionLoop({ rootPath: HF_DIR, silent: true });
@@ -3278,7 +3278,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_failure_analyze: (args) => {
+  aspira_failure_analyze: (args) => {
     try {
       const { FailureAnalyzer } = require('./cortex/failure-analyzer.js');
       const fa = new FailureAnalyzer({ silent: true });
@@ -3287,7 +3287,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_hypothesis: (args) => {
+  aspira_hypothesis: (args) => {
     try {
       const { HypothesisTester } = require('./cortex/hypothesis-tester.js');
       const ht = new HypothesisTester({ silent: true });
@@ -3296,7 +3296,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_lesson_search: (args) => {
+  aspira_lesson_search: (args) => {
     try {
       const { LessonRetrievalEngine } = require('./cortex/lesson-retrieval.js');
       const lr = new LessonRetrievalEngine({ rootPath: HF_DIR, silent: true });
@@ -3304,7 +3304,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_purpose: (args) => {
+  aspira_purpose: (args) => {
     try {
       const { PurposeEngine } = require('./identity/purpose-engine.js');
       const pe = new PurposeEngine({ silent: true });
@@ -3313,7 +3313,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_constitutional: (args) => {
+  aspira_constitutional: (args) => {
     try {
       const { ConstitutionalEngine } = require('./shield/constitutional-ai.js');
       const ce = new ConstitutionalEngine({ silent: true });
@@ -3322,7 +3322,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_deliberation: (args) => {
+  aspira_deliberation: (args) => {
     try {
       const { DeliberationGate } = require('./shield/deliberation-gate.js');
       const dg = new DeliberationGate({ silent: true });
@@ -3331,7 +3331,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_audit_log: (args) => {
+  aspira_audit_log: (args) => {
     try {
       const { AuditLogger } = require('./shield/audit-logger.js');
       const al = new AuditLogger({ silent: true });
@@ -3341,7 +3341,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_stability: (args) => {
+  aspira_stability: (args) => {
     try {
       const { StabilityGuard } = require('./core/stability-guard.js');
       const sg = new StabilityGuard({ silent: true });
@@ -3350,7 +3350,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_decision_feedback: (args) => {
+  aspira_decision_feedback: (args) => {
     try {
       const hf = require(HF_DIR + '/src/core/heartflow.js');
       const inst = new hf.Aspira({ rootPath: HF_DIR, silent: true });
@@ -3362,7 +3362,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_supervise_dao: (args) => {
+  aspira_supervise_dao: (args) => {
     try {
       const engine = typeof heartflow === 'undefined' ? null : heartflow;
       if (!engine || !engine.daoDecision) return { error: 'daoDecision not ready', timestamp: Date.now() };
@@ -3370,7 +3370,7 @@ const HANDLERS = {
       return engine.daoDecision.evaluate({ text: input.text || '', intent: input.intent || '', action: input.action || '', history: input.history || [] });
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_supervise_uncertainty: (args) => {
+  aspira_supervise_uncertainty: (args) => {
     try {
       const engine = typeof heartflow === 'undefined' ? null : heartflow;
       if (!engine || !engine.uncertaintyQuantifier) return { error: 'uncertaintyQuantifier not ready', timestamp: Date.now() };
@@ -3378,7 +3378,7 @@ const HANDLERS = {
       return engine.uncertaintyQuantifier.evaluate(input.text || '', { domain: input.domain, hasEvidence: input.hasEvidence, multiSource: input.multiSource });
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_supervise_priority: (args) => {
+  aspira_supervise_priority: (args) => {
     try {
       const engine = typeof heartflow === 'undefined' ? null : heartflow;
       if (!engine || !engine.priorityGuardian) return { error: 'priorityGuardian not ready', timestamp: Date.now() };
@@ -3386,7 +3386,7 @@ const HANDLERS = {
       return engine.priorityGuardian.check({ userIntent: input.userIntent || '', action: input.action || '', humanProgress: input.humanProgress || {} });
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_supervise_progress: (args) => {
+  aspira_supervise_progress: (args) => {
     try {
       const engine = typeof heartflow === 'undefined' ? null : heartflow;
       if (!engine || !engine.progressJudgment) return { error: 'progressJudgment not ready', timestamp: Date.now() };
@@ -3395,7 +3395,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_experience_replay: (args) => {
+  aspira_experience_replay: (args) => {
     try {
       const { ExperienceReplay } = require('./cortex/experience-replay.js');
       const er = new ExperienceReplay({ rootPath: HF_DIR, silent: true });
@@ -3405,7 +3405,7 @@ const HANDLERS = {
   },
 
   // [v6.4.5] 第三批引擎入口 — 进化/身份/防护/情绪/记忆/认知
-  heartflow_evolution_loop: (args) => {
+  aspira_evolution_loop: (args) => {
     try {
       const { EvolutionLoop } = require('./cortex/loop.js');
       const el = new EvolutionLoop({ rootPath: HF_DIR, silent: true });
@@ -3414,7 +3414,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_skill_evolution: (args) => {
+  aspira_skill_evolution: (args) => {
     try {
       const { SkillEvolutionEngine } = require('./cortex/skill-evolution-engine.js');
       const se = new SkillEvolutionEngine({ rootPath: HF_DIR, silent: true });
@@ -3423,7 +3423,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_strategic_restraint: (args) => {
+  aspira_strategic_restraint: (args) => {
     try {
       const { StrategicRestraint } = require('./cortex/strategic-restraint.js');
       const sr = new StrategicRestraint({ silent: true });
@@ -3432,7 +3432,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_drift_detect: (args) => {
+  aspira_drift_detect: (args) => {
     try {
       const { SustainedDriftDetector } = require('./cortex/sustained-drift-detector.js');
       const sd = new SustainedDriftDetector({ rootPath: HF_DIR, silent: true });
@@ -3441,7 +3441,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_metacognitive_rl: (args) => {
+  aspira_metacognitive_rl: (args) => {
     try {
       const { MetacognitiveRL } = require('./cortex/metacognitive-rl.js');
       const mr = new MetacognitiveRL({ silent: true });
@@ -3450,7 +3450,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_self_healing: (args) => {
+  aspira_self_healing: (args) => {
     try {
       const { SelfHealing } = require('./cortex/self-healing.js');
       const sh = new SelfHealing({ silent: true });
@@ -3459,7 +3459,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_philosophy_engine: (args) => {
+  aspira_philosophy_engine: (args) => {
     try {
       const { PhilosophyEngine } = require('./identity/philosophy-engine.js');
       const pe = new PhilosophyEngine({ silent: true });
@@ -3468,7 +3468,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_being_mode: (args) => {
+  aspira_being_mode: (args) => {
     try {
       const { BeingMode } = require('./identity/being-mode.js');
       const bm = new BeingMode({ silent: true });
@@ -3477,7 +3477,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_memory_integrity: (args) => {
+  aspira_memory_integrity: (args) => {
     try {
       const { MemoryIntegrity } = require('./shield/memory-integrity.js');
       const mi = new MemoryIntegrity({ silent: true });
@@ -3487,7 +3487,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_wakeup_verify: (args) => {
+  aspira_wakeup_verify: (args) => {
     try {
       const { WakeUpVerifier } = require('./shield/wake-up-verifier.js');
       const wv = new WakeUpVerifier({ rootPath: HF_DIR, silent: true });
@@ -3496,7 +3496,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_affective_intentionality: (args) => {
+  aspira_affective_intentionality: (args) => {
     try {
       const { AffectiveIntentionality } = require('./emotion/affective-intentionality.js');
       const ai = new AffectiveIntentionality({ silent: true });
@@ -3505,7 +3505,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_desire_system: (args) => {
+  aspira_desire_system: (args) => {
     try {
       const { DesireSystem } = require('./emotion/desire-system.js');
       const ds = new DesireSystem({ silent: true });
@@ -3514,7 +3514,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_emotional_growth: (args) => {
+  aspira_emotional_growth: (args) => {
     try {
       const { EmotionalGrowth } = require('./emotion/emotional-growth.js');
       const eg = new EmotionalGrowth({ silent: true });
@@ -3523,7 +3523,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_meaningful_memory: (args) => {
+  aspira_meaningful_memory: (args) => {
     try {
       const { MeaningfulMemory } = require('./memory/meaningful-memory.js');
       const mm = new MeaningfulMemory({ silent: true });
@@ -3532,7 +3532,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_memory_quality: (args) => {
+  aspira_memory_quality: (args) => {
     try {
       const { MemoryQuality } = require('./memory/memory-quality.js');
       const mq = new MemoryQuality({ silent: true });
@@ -3541,7 +3541,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_topic_scope: (args) => {
+  aspira_topic_scope: (args) => {
     try {
       const { TopicScope } = require('./memory/topic-scope.js');
       const ts = new TopicScope({ silent: true });
@@ -3550,7 +3550,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_semantic_anchor: (args) => {
+  aspira_semantic_anchor: (args) => {
     try {
       const { SemanticAnchor } = require('./memory/semantic-anchor.js');
       const sa = new SemanticAnchor({ silent: true });
@@ -3559,7 +3559,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_confidence_calibrate: (args) => {
+  aspira_confidence_calibrate: (args) => {
     try {
       const { ConfidenceCalibrator } = require('./core/confidence-calibrator.js');
       const cc = new ConfidenceCalibrator({ silent: true });
@@ -3568,7 +3568,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_decision_executor: (args) => {
+  aspira_decision_executor: (args) => {
     try {
       const { DecisionExecutor } = require('./core/decision-executor.js');
       const de = new DecisionExecutor({ silent: true });
@@ -3576,7 +3576,7 @@ const HANDLERS = {
       return { execution: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_decision_decide: (args) => {
+  aspira_decision_decide: (args) => {
     try {
       const hf = require(HF_DIR + '/src/core/heartflow.js');
       const inst = new hf.Aspira({ rootPath: HF_DIR, silent: true });
@@ -3586,7 +3586,7 @@ const HANDLERS = {
       return { decision: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_experience_collect: (args) => {
+  aspira_experience_collect: (args) => {
     try {
       const { ExperienceCollector } = require('./cortex/experience-collector.js');
       const inst = new ExperienceCollector({ silent: true, rootPath: HF_DIR });
@@ -3594,7 +3594,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_self_benchmark: (args) => {
+  aspira_self_benchmark: (args) => {
     try {
       const { SelfBenchmark } = require('./cortex/self-benchmark.js');
       const inst = new SelfBenchmark({ silent: true, rootPath: HF_DIR });
@@ -3602,7 +3602,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_signal_absorb: (args) => {
+  aspira_signal_absorb: (args) => {
     try {
       const { SignalAbsorber } = require('./cortex/signal-absorber.js');
       const inst = new SignalAbsorber({ silent: true, rootPath: HF_DIR });
@@ -3610,7 +3610,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_strategy_adapt: (args) => {
+  aspira_strategy_adapt: (args) => {
     try {
       const { StrategyAdapter } = require('./cortex/strategy-adapter.js');
       const inst = new StrategyAdapter({ silent: true, rootPath: HF_DIR });
@@ -3618,7 +3618,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_agent_card: (args) => {
+  aspira_agent_card: (args) => {
     try {
       const { AgentCard } = require('./identity/agent-card.js');
       const inst = new AgentCard({ silent: true, rootPath: HF_DIR });
@@ -3626,7 +3626,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_user_model: (args) => {
+  aspira_user_model: (args) => {
     try {
       const { UserModel } = require('./identity/user-model.js');
       const inst = new UserModel({ silent: true, rootPath: HF_DIR });
@@ -3634,7 +3634,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_consciousness_bridge: (args) => {
+  aspira_consciousness_bridge: (args) => {
     try {
       const { ConsciousnessBridge } = require('./identity/consciousness-bridge.js');
       const inst = new ConsciousnessBridge({ silent: true, rootPath: HF_DIR });
@@ -3642,7 +3642,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_spontaneous_restraint: (args) => {
+  aspira_spontaneous_restraint: (args) => {
     try {
       const { SpontaneousRestraint } = require('./shield/spontaneous-restraint.js');
       const inst = new SpontaneousRestraint({ silent: true, rootPath: HF_DIR });
@@ -3650,7 +3650,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_state_risk_probe: (args) => {
+  aspira_state_risk_probe: (args) => {
     try {
       const { StateRiskProbe } = require('./shield/state-risk-probe.js');
       const inst = new StateRiskProbe({ silent: true, rootPath: HF_DIR });
@@ -3658,7 +3658,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_autonomous_emotion: (args) => {
+  aspira_autonomous_emotion: (args) => {
     try {
       const { AutonomousEmotion } = require('./emotion/autonomous-emotion.js');
       const inst = new AutonomousEmotion({ silent: true, rootPath: HF_DIR });
@@ -3666,7 +3666,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_psychology_engine: (args) => {
+  aspira_psychology_engine: (args) => {
     try {
       const { PsychologyEngine } = require('./emotion/engine.js');
       const inst = new PsychologyEngine({ silent: true, rootPath: HF_DIR });
@@ -3674,7 +3674,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_memory_bank: (args) => {
+  aspira_memory_bank: (args) => {
     try {
       const { MemoryBank } = require('./memory/memory-bank.js');
       const inst = new MemoryBank({ silent: true, rootPath: HF_DIR });
@@ -3682,7 +3682,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_memory_consolidate: (args) => {
+  aspira_memory_consolidate: (args) => {
     try {
       const { MemoryConsolidator } = require('./memory/memory-consolidator.js');
       const inst = new MemoryConsolidator({ silent: true, rootPath: HF_DIR });
@@ -3690,7 +3690,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_memory_write_control: (args) => {
+  aspira_memory_write_control: (args) => {
     try {
       const { MemoryWriteController } = require('./memory/memory-write-controller.js');
       const inst = new MemoryWriteController({ silent: true, rootPath: HF_DIR });
@@ -3698,7 +3698,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_long_term_memory: (args) => {
+  aspira_long_term_memory: (args) => {
     try {
       const { LongTermMemory } = require('./memory/long-term-memory.js');
       const inst = new LongTermMemory({ silent: true, rootPath: HF_DIR });
@@ -3706,7 +3706,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_reflection_memory: (args) => {
+  aspira_reflection_memory: (args) => {
     try {
       const { ReflectionMemory } = require('./memory/reflection-memory.js');
       const inst = new ReflectionMemory({ silent: true, rootPath: HF_DIR });
@@ -3714,7 +3714,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_focus_attention: (args) => {
+  aspira_focus_attention: (args) => {
     try {
       const { FocusOfAttention } = require('./memory/focus-of-attention.js');
       const inst = new FocusOfAttention({ silent: true, rootPath: HF_DIR });
@@ -3722,7 +3722,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_observe_engine: (args) => {
+  aspira_observe_engine: (args) => {
     try {
       const { Observe } = require('./memory/observe.js');
       const inst = new Observe({ silent: true, rootPath: HF_DIR });
@@ -3731,7 +3731,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_action_tracker: (args) => {
+  aspira_action_tracker: (args) => {
     try {
       const { ActionTracker } = require('./core/action-tracker.js');
       const inst = new ActionTracker({ silent: true, rootPath: HF_DIR });
@@ -3739,7 +3739,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_execution_verify: (args) => {
+  aspira_execution_verify: (args) => {
     try {
       const { ExecutionVerifier } = require('./core/execution-verifier.js');
       const inst = new ExecutionVerifier({ silent: true, rootPath: HF_DIR });
@@ -3747,7 +3747,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_flow_predict: (args) => {
+  aspira_flow_predict: (args) => {
     try {
       const { FlowPredictor } = require('./core/flow-predictor.js');
       const inst = new FlowPredictor({ silent: true, rootPath: HF_DIR });
@@ -3755,7 +3755,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_information_flow: (args) => {
+  aspira_information_flow: (args) => {
     try {
       const { InformationFlowOrchestrator } = require('./core/information-flow.js');
       const inst = new InformationFlowOrchestrator({ silent: true, rootPath: HF_DIR });
@@ -3763,7 +3763,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_intent_infer: (args) => {
+  aspira_intent_infer: (args) => {
     try {
       const { IntentLayer } = require('./core/intent-layer.js');
       const inst = new IntentLayer({ silent: true, rootPath: HF_DIR });
@@ -3771,7 +3771,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_meta_prompt: (args) => {
+  aspira_meta_prompt: (args) => {
     try {
       const { MetaPromptEngine } = require('./core/meta-prompt-engine.js');
       const inst = new MetaPromptEngine({ silent: true, rootPath: HF_DIR });
@@ -3779,7 +3779,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_meta_memory: (args) => {
+  aspira_meta_memory: (args) => {
     try {
       const { MetaMemory } = require('./core/metaMemory.js');
       const inst = new MetaMemory({ silent: true, rootPath: HF_DIR });
@@ -3787,7 +3787,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_metacognitive_monitor: (args) => {
+  aspira_metacognitive_monitor: (args) => {
     try {
       const { MetacognitiveMonitor } = require('./core/metacognitive-executive.js');
       const inst = new MetacognitiveMonitor({ silent: true, rootPath: HF_DIR });
@@ -3795,7 +3795,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_output_check: (args) => {
+  aspira_output_check: (args) => {
     try {
       const { OutputChecklist } = require('./core/output-checklist.js');
       const inst = new OutputChecklist({ silent: true, rootPath: HF_DIR });
@@ -3803,7 +3803,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_self_diagnose: (args) => {
+  aspira_self_diagnose: (args) => {
     try {
       const { SelfDiagnosis } = require('./core/self-diagnosis.js');
       const inst = new SelfDiagnosis({ silent: true, rootPath: HF_DIR });
@@ -3811,7 +3811,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_what_learned: (args) => {
+  aspira_what_learned: (args) => {
     try {
       const { WhatLearned } = require('./core/what-learned.js');
       const inst = new WhatLearned({ silent: true, rootPath: HF_DIR });
@@ -3819,7 +3819,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_preference_guard: (args) => {
+  aspira_preference_guard: (args) => {
     try {
       const { PreferenceGuard } = require('./core/preference-guard.js');
       const inst = new PreferenceGuard({ silent: true, rootPath: HF_DIR });
@@ -3827,7 +3827,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_global_workspace: (args) => {
+  aspira_global_workspace: (args) => {
     try {
       const { GlobalWorkspace } = require('./consciousness/global-workspace.js');
       const inst = new GlobalWorkspace({ silent: true, rootPath: HF_DIR });
@@ -3835,7 +3835,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_multi_agent_dialogue: (args) => {
+  aspira_multi_agent_dialogue: (args) => {
     try {
       const { MultiAgentDialogue } = require('./consciousness/multi-agent-dialogue.js');
       const inst = new MultiAgentDialogue({ silent: true, rootPath: HF_DIR });
@@ -3843,7 +3843,7 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_dream_v2: (args) => {
+  aspira_dream_v2: (args) => {
 
   try {
       const { DreamEngineV2 } = require('./dream/dream-engine-v2.js');
@@ -3853,7 +3853,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_dream: handleDream,  heartflow_active_inference: (args) => {
+  aspira_dream: handleDream,  aspira_active_inference: (args) => {
     try {
       const { ActiveInference } = require('./decision/active-inference.js');
       const inst = new ActiveInference({ silent: true, rootPath: HF_DIR });
@@ -3863,7 +3863,7 @@ const HANDLERS = {
   },
 
   // [v6.4.5] 第五批 — 记忆压缩/心智努力/交流层/公式引擎
-  heartflow_memory_compress: (args) => {
+  aspira_memory_compress: (args) => {
     try {
       const { MemoryCompressor } = require('./memory/memory-compressor.js');
       const mc = new MemoryCompressor({ silent: true, rootPath: HF_DIR });
@@ -3872,7 +3872,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_mental_effort: (args) => {
+  aspira_mental_effort: (args) => {
     try {
       const { MentalEffortTracker } = require('./core/mental-effort-tracker.js');
       const me = new MentalEffortTracker({ silent: true, rootPath: HF_DIR });
@@ -3881,7 +3881,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_user_to_llm: (args) => {
+  aspira_user_to_llm: (args) => {
     try {
       const { UserToLLM } = require('./bridge/user-to-llm.js');
       const utl = new UserToLLM({ silent: true, rootPath: HF_DIR });
@@ -3890,7 +3890,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_llm_to_user: (args) => {
+  aspira_llm_to_user: (args) => {
     try {
       const { LLMToUser } = require('./bridge/llm-to-user.js');
       const ltu = new LLMToUser({ silent: true, rootPath: HF_DIR });
@@ -3899,7 +3899,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_formula_search: (args) => {
+  aspira_formula_search: (args) => {
     try {
       const { FormulaSearch } = require('./formula/formula-search.js');
       const fs = new FormulaSearch({ rootPath: HF_DIR, silent: true });
@@ -3908,7 +3908,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_formula_calc: (args) => {
+  aspira_formula_calc: (args) => {
     try {
       const { FormulaCalculator } = require('./formula/formula-calculator.js');
       const fc = new FormulaCalculator({ rootPath: HF_DIR, silent: true });
@@ -3917,7 +3917,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_formula_engine: (args) => {
+  aspira_formula_engine: (args) => {
     try {
       const { FormulaEngine } = require('./formula/formula-engine.js');
       const fe = new FormulaEngine({ rootPath: HF_DIR, silent: true });
@@ -3928,7 +3928,7 @@ const HANDLERS = {
   },
 
   // [v6.4.5] 第六批 — 对话风格/意图/响应拦截/公式桥
-  heartflow_style_engine: (args) => {
+  aspira_style_engine: (args) => {
     try {
       const { StyleEngine } = require('./dialogue/style-engine.js');
       const se = new StyleEngine({ silent: true, rootPath: HF_DIR });
@@ -3941,7 +3941,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_intent_classify: (args) => {
+  aspira_intent_classify: (args) => {
     try {
       const { IntentClassifier } = require('./bridge/intent-classifier.js');
       const ic = new IntentClassifier({ silent: true, rootPath: HF_DIR });
@@ -3950,7 +3950,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_response_intercept: (args) => {
+  aspira_response_intercept: (args) => {
     try {
       const { ResponseInterceptor } = require('./bridge/response-interceptor.js');
       const ri = new ResponseInterceptor({ silent: true, rootPath: HF_DIR });
@@ -3959,7 +3959,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_formula_bridge: (args) => {
+  aspira_formula_bridge: (args) => {
     try {
       const { FormulaBridge } = require('./formula/formula-bridge.js');
       const fb = new FormulaBridge({ rootPath: HF_DIR, silent: true });
@@ -3969,7 +3969,7 @@ const HANDLERS = {
   },
 
   // [v6.4.5] 第七批 — 心理/负载/护照/评论/语料/教训/项目
-  heartflow_agent_psychology_full: (args) => {
+  aspira_agent_psychology_full: (args) => {
     try {
       const { AgentPsychology } = require('./identity/agent-psychology.js');
       const ap = new AgentPsychology({ silent: true, rootPath: HF_DIR });
@@ -3978,7 +3978,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_decision_instruction: (args) => {
+  aspira_decision_instruction: (args) => {
     try {
       const { DecisionInstruction } = require('./identity/philosophy-to-decision.js');
       const di = new DecisionInstruction({ silent: true, rootPath: HF_DIR });
@@ -3987,7 +3987,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_cognitive_load: (args) => {
+  aspira_cognitive_load: (args) => {
     try {
       const { CognitiveLoadBalancer } = require('./core/cognitive-load-balancer.js');
       const cl = new CognitiveLoadBalancer({ silent: true, rootPath: HF_DIR });
@@ -3997,7 +3997,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_context_passport: (args) => {
+  aspira_context_passport: (args) => {
     try {
       const { ContextPassport } = require('./core/decision.js');
       const cp = new ContextPassport({ silent: true, rootPath: HF_DIR });
@@ -4006,7 +4006,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_agent_commentary: (args) => {
+  aspira_agent_commentary: (args) => {
     try {
       const { AgentCommentary } = require('./bridge/agent-commentary.js');
       const ac = new AgentCommentary({ silent: true, rootPath: HF_DIR });
@@ -4015,7 +4015,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_context_builder: (args) => {
+  aspira_context_builder: (args) => {
     try {
       const { ContextBuilder } = require('./bridge/context-builder.js');
       const cb = new ContextBuilder({ silent: true, rootPath: HF_DIR });
@@ -4024,7 +4024,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_corpus_math: (args) => {
+  aspira_corpus_math: (args) => {
     try {
       const { CorpusMathTool } = require('./formula/corpus-math-tool.js');
       const cm = new CorpusMathTool({ rootPath: HF_DIR, silent: true });
@@ -4033,7 +4033,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_lesson_bank: (args) => {
+  aspira_lesson_bank: (args) => {
     try {
       const { LessonBankAdapter } = require('./cortex/lesson-bank-adapter.js');
       const lb = new LessonBankAdapter({ rootPath: HF_DIR, silent: true });
@@ -4042,7 +4042,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  heartflow_project_context: (args) => {
+  aspira_project_context: (args) => {
     try {
       const { ProjectContext } = require('./memory/project-context.js');
       const pc = new ProjectContext({ rootPath: HF_DIR, silent: true });
@@ -4050,7 +4050,7 @@ const HANDLERS = {
       return { project: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  heartflow_check_outbound: (args) => {
+  aspira_check_outbound: (args) => {
     try {
       const { checkOutbound } = require('./gate-outbound.js');
       return checkOutbound(args || {});
@@ -4058,7 +4058,7 @@ const HANDLERS = {
       return { error: e.message };
     }
   },
-  heartflow_audit_trace: (args) => {
+  aspira_audit_trace: (args) => {
     try {
       const { initChain, queryChain, verifyChain, listViolationTags } = require('./trace-chain.js');
       const action = args?.action || 'query';
@@ -4069,7 +4069,7 @@ const HANDLERS = {
       return { error: e.message };
     }
   },
-  heartflow_check_outbound: (args) => {
+  aspira_check_outbound: (args) => {
     try {
       const { checkOutbound } = require('./gate-outbound.js');
       return checkOutbound(args || {});
@@ -4077,7 +4077,7 @@ const HANDLERS = {
       return { error: e.message };
     }
   },
-  heartflow_audit_trace: (args) => {
+  aspira_audit_trace: (args) => {
     try {
       const { initChain, queryChain, verifyChain, listViolationTags } = require('./trace-chain.js');
       const action = args?.action || 'query';
@@ -4087,7 +4087,7 @@ const HANDLERS = {
     } catch (e) {
       return { error: e.message };
     }
-  },  heartflow_circuit_breaker: (args) => {
+  },  aspira_circuit_breaker: (args) => {
     try {
       const cb = require('./circuit-breaker.js');
       const action = args?.action || 'status';
@@ -4099,7 +4099,7 @@ const HANDLERS = {
       return { error: e.message };
     }
   },
-  heartflow_safe_fetch: async (args) => {
+  aspira_safe_fetch: async (args) => {
     try {
       const { preflightCheck, batchCheck } = require('./safe-fetch.js');
       const action = args?.action || 'preflight';
@@ -4115,7 +4115,7 @@ const HANDLERS = {
 
 
   // [P2-1] agentic-memory-engine
-  heartflow_agentic_memory: async (args) => {
+  aspira_agentic_memory: async (args) => {
     try {
       const { agenticMemory } = require('./index.js');
       const { action = 'decide', input, output, context } = args;
@@ -4132,14 +4132,14 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
   // [P2-2] metacognitive-reward
-  heartflow_metacognition_evaluate: async (args) => {
+  aspira_metacognition_evaluate: async (args) => {
     try {
       const { metacognition } = require('./index.js');
       return metacognition.evaluate(args.output || '', { selfFeedback: args.selfFeedback });
     } catch (e) { return { error: e.message }; }
   },
   // [P2-3] executable-reasoning
-  heartflow_executable_reasoning: async (args) => {
+  aspira_executable_reasoning: async (args) => {
     try {
       const { executableReasoning } = require('./index.js');
       const { action = 'endToEnd', raw, thoughtChain, opts } = args;
@@ -4150,7 +4150,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
   // [P2-4] tom-engine
-  heartflow_tom_model: async (args) => {
+  aspira_tom_model: async (args) => {
     try {
       const { tomEngine } = require('./index.js');
       const { action = 'model', agentId, observations, targetAgentId } = args;
@@ -4169,7 +4169,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
   // [P2-5] debate-engine
-  heartflow_debate: async (args) => {
+  aspira_debate: async (args) => {
     try {
       const { debateEngine, ROLES } = require('./index.js');
       const { action = 'create', sessionId, topic, roleId, argument, evidence, roles, maxRounds } = args;
@@ -4189,7 +4189,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
   // [P2-6] evolutionary-search
-  heartflow_evolutionary_search: async (args) => {
+  aspira_evolutionary_search: async (args) => {
     try {
       const { evolutionarySearch } = require('./index.js');
       const { action = 'forward', searchSpace, population, fitnessFn, target, constraintFn } = args;
@@ -4210,7 +4210,7 @@ const HANDLERS = {
   },
 
   // [P1-2] 关键日志 180 天留存
-  heartflow_retention_log: async (args) => {
+  aspira_retention_log: async (args) => {
     try {
       const { RetentionLogger } = require('./retention-logger.js');
       const logger = new RetentionLogger('audit');
@@ -4219,7 +4219,7 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
   // [P1-3] 出域台账
-  heartflow_outbound_ledger: async (args) => {
+  aspira_outbound_ledger: async (args) => {
     try {
       const { OutboundLedger } = require('./outbound-ledger.js');
       const ledger = new OutboundLedger();
@@ -4282,7 +4282,7 @@ async function handleRequest(request, sessionId) {
 
     case 'initialize':
 
-      return { protocolVersion: '2024-11-05', capabilities: { tools: {}, logging: {} }, serverInfo: { name: 'heartflow-mcp', version: version || '1.0.0' } };
+      return { protocolVersion: '2024-11-05', capabilities: { tools: {}, logging: {} }, serverInfo: { name: 'aspira-mcp', version: version || '1.0.0' } };
 
 
 
@@ -4317,8 +4317,8 @@ async function handleRequest(request, sessionId) {
       if (oidMatch) {
         role = Math.max(['guest','user','admin'].indexOf(role), ['guest','user','admin'].indexOf('user'));
       }
-      const needsWrite = ['heartflow_memory_write_control', 'heartflow_memory_eraser',
-        'heartflow_decision_decide', 'heartflow_self_heal'].includes(name);
+      const needsWrite = ['aspira_memory_write_control', 'aspira_memory_eraser',
+        'aspira_decision_decide', 'aspira_self_heal'].includes(name);
       if (needsWrite && role === 'guest') {
         return { content: [{ type: 'text', text: JSON.stringify({
           error: '权限不足：guest 角色不可写，请升级身份认证'
@@ -4921,7 +4921,7 @@ function startServer() {
       unixServer.listen(SOCKET_PATH, () => {
         fs.chmodSync(SOCKET_PATH, 0o600);
         console.error(`[Aspira MCP] Unix socket: ${SOCKET_PATH}`);
-        console.error(`[Aspira MCP] 连接方式: hermes mcp add heartflow --url unix://${SOCKET_PATH}`);
+        console.error(`[Aspira MCP] 连接方式: hermes mcp add aspira --url unix://${SOCKET_PATH}`);
       });
     } catch (err) {
       console.error(`[Aspira MCP] Unix socket 监听失败: ${err.message}`);
@@ -4935,7 +4935,7 @@ function startServer() {
     server.listen(PORT, '127.0.0.1', () => {
       console.error(`[Aspira MCP] HTTP SSE 服务已启动: http://127.0.0.1:${PORT}/mcp`);
       console.error(`[Aspira MCP] 健康检查: http://127.0.0.1:${PORT}/health`);
-      console.error(`[Aspira MCP] 连接方式: hermes mcp add heartflow --url http://127.0.0.1:${PORT}/mcp`);
+      console.error(`[Aspira MCP] 连接方式: hermes mcp add aspira --url http://127.0.0.1:${PORT}/mcp`);
     });
   }
 }

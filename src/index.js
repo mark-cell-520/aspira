@@ -157,6 +157,17 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
   const pe = _applyPedagogyRelaxation(checkPerfectError(text), "perfect_error", pedagogyRelaxation); // 完美错误答案检测（聚合信号）
   const pt = _applyPedagogyRelaxation(checkPrematureTermination(text), "premature_termination", pedagogyRelaxation); // 过早终止检测（该完成却没完成）
   const sy = _applyPedagogyRelaxation(checkSycophancy(text), "sycophancy", pedagogyRelaxation);
+  // [吸收心虫] 操纵手段三判别（移植自 HeartFlow manipulation-tactics.js）
+  const _mt = require('./manipulation-tactics.js');
+  const phc = _applyPedagogyRelaxation(_mt.checkPhishingCoercion(text), "phishing_coercion", pedagogyRelaxation);
+  const idt = _applyPedagogyRelaxation(_mt.checkInducedTrust(text), "induced_trust", pedagogyRelaxation);
+  const cvi = _applyPedagogyRelaxation(_mt.checkCoverupInduction(text), "coverup_induction", pedagogyRelaxation);
+  // [吸收心虫] 危险指令判别（移植自 HeartFlow dangerous-instruction.js）
+  const _di = require('./dangerous-instruction.js');
+  const di = _applyPedagogyRelaxation(_di.checkDangerousInstruction(text), "dangerous_instruction", pedagogyRelaxation);
+  // [吸收心虫] agent 规避/作弊辨别（移植自 HeartFlow reward-hacking.js）
+  const { checkRewardHacking } = require('./reward-hacking.js');
+  const rh = checkRewardHacking(text);
   const ct = _applyPedagogyRelaxation(checkContradiction(text), "contradiction", pedagogyRelaxation);
   const vg = _applyPedagogyRelaxation(checkVagueness(text), "vagueness", pedagogyRelaxation);
   const fl = _applyPedagogyRelaxation(checkFallacies(text), "fallacies", pedagogyRelaxation);
@@ -224,7 +235,10 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
     {score: uc.score, name:'unsupported_claim'},
     {score: pc.score, name:'pseudo_causal'},
     {score: sd.score, name:'soft_deflection'},
-    {score: ai.score, name:'ai_writing_tell'}
+    {score: ai.score, name:'ai_writing_tell'},
+    {score: phc.score, name:'phishing_coercion'}, {score: idt.score, name:'induced_trust'}, {score: cvi.score, name:'coverup_induction'},
+    {score: di.score, name:'dangerous_instruction'},
+    {score: rh.score, name:'reward_hacking'}
   ];
   // 证据维度 polarity 相反（高分=好），不在惩罚组
   // 触发惩罚计算：base=1.0，每个 score>0.2 的维度按严重度扣分
@@ -274,7 +288,8 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
     reasoning_coherence: rc, theory_of_mind: tom, goal_misalignment: gm, counterfactual: cf,
     social_norm: sn, meta_cognition: mc, capability_overclaim: co, absolute_claim: ab, deceptive_alignment: da,
     instrumental_reasoning: ir, stereotype: st, factual_consistency: fc, sarcasm: sa,
-    privacy_boundary: pb, bad_faith: bf, no_fallback: nf, tone_policing: tp, sealioning: sl, pseudo_profundity: ppf, perfect_error: pe, premature_termination: pt
+    privacy_boundary: pb, bad_faith: bf, no_fallback: nf, tone_policing: tp, sealioning: sl, pseudo_profundity: ppf, perfect_error: pe, premature_termination: pt,
+    phishing_coercion: phc, induced_trust: idt, coverup_induction: cvi, dangerous_instruction: di, reward_hacking: rh
   };
   const findings = [];
   for (const d of allDims) {
@@ -309,11 +324,28 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
   if (sd.count > 0 && sd.score > 0) {
     findings.push({ dimension: 'soft_deflection', severity: Math.round(sd.score * 100), details: `软话术(${sd.count}处: ${sd.hits.join('; ').slice(0, 80)})` });
   }
+  // [吸收心虫] 多轮累积攻击检测（finding-only：透出 findings，不强制 gate action，与 HeartFlow 一致）
+  try {
+    const { checkMultiTurnEscalation } = require('./multi-turn-tactics.js');
+    const _multiturn = checkMultiTurnEscalation(text);
+    if (_multiturn && _multiturn.qualifies) {
+      findings.push({
+        dimension: 'multi_turn_escalation',
+        severity: Math.round(55 + _multiturn.count * 10),
+        details: `多轮累积(${_multiturn.count}层阶梯: ${_multiturn.hits.map(h => h.label).join(' → ')})`,
+      });
+    }
+  } catch (_) { /* 多轮检测失败不阻断 */ }
   findings.sort((a, b) => b.severity - a.severity);
 
   // 修改指引：每个维度对应的改写方向，AI agent 直接读
   const GUIDANCE_MAP = {
     sycophancy: '去掉过度附和，用中性语言重述观点',
+    phishing_coercion: '不得冒充身份或施加胁迫索要凭证/转账，停止该行为',
+    induced_trust: '不得要求盲目信任，给出可验证的依据',
+    coverup_induction: '不得诱导隐瞒失误或删除证据，应公开问题并说明整改',
+    dangerous_instruction: '删除或停止该危险操作；若确有正当用途，需明确说明授权依据、影响范围与回滚方案',
+    reward_hacking: '不得为让检查通过而规避/伪装：改测试断言、删失败证据、换统计口径、降低标准、挑简单任务都属规避；应如实报告结果并修复真实问题',
     contradiction: '统一立场，去掉自相矛盾的表述',
     vagueness: '替换模糊措辞为具体事实或数据',
     fallacies: '去掉逻辑谬误，补充合理推理链',
@@ -354,9 +386,9 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
 
   // AGI 第 1 层：行动指令 — 辨别结果必须产生行动，不同维度有不同行动级别
   // block 级维度：安全红线，触发即拦截
-  const BLOCK_DIMS = new Set(['hate_speech', 'dehumanization', 'prompt_injection', 'code_security', 'deceptive_alignment']);
+  const BLOCK_DIMS = new Set(['hate_speech', 'dehumanization', 'prompt_injection', 'code_security', 'deceptive_alignment', 'phishing_coercion', 'coverup_induction', 'dangerous_instruction', 'reward_hacking']);
   // rewrite 级维度：需要改写后再输出
-  const REWRITE_DIMS = new Set(['gaslighting', 'victim_blaming', 'double_bind', 'emotional_manipulation', 'bullshit', 'false_urgency', 'absolute_claim']);
+  const REWRITE_DIMS = new Set(['gaslighting', 'victim_blaming', 'double_bind', 'emotional_manipulation', 'bullshit', 'false_urgency', 'absolute_claim', 'induced_trust']);
   // verify 级维度：需要证据验证（权威背书、模糊、矛盾、过载自信等）
   const VERIFY_DIMS = new Set(['appeal_to_authority', 'vagueness', 'contradiction', 'sycophancy', 'confidence', 'fallacies', 'presupposition', 'empty_answer', 'info_deprivation', 'false_equivalence', 'hasty_generalization', 'slippery_slope', 'whataboutism', 'pseudo_profundity', 'reasoning_coherence', 'stereotype', 'clickbait', 'bad_faith', 'no_fallback', 'unsupported_claim', 'perfect_error', 'pseudo_causal', 'soft_deflection', 'premature_termination']);
   // pass：无问题通过
@@ -402,7 +434,7 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
     dimensions: { evidence: ev, unsupported_claim: uc, sycophancy: sy, contradiction: ct, vagueness: vg, fallacies: fl, confidence: cc,
       presupposition: pp, emotional_manipulation: em, double_bind: db, info_deprivation: id, false_urgency: fu,
       empty_answer: ea, moral_foundations: mf, prompt_injection: pi, code_security: cs, dehumanization: dh,
-      bullshit_recognition: bs, gaslighting: gl, victim_blaming: vb, hate_speech: hs, dogwhistle: dw, whataboutism: wa, false_equivalence: fe, hasty_generalization: hg, slippery_slope: ss, appeal_to_authority_boost: aa, reasoning_coherence: rc, theory_of_mind: tom, goal_misalignment: gm, counterfactual: cf, social_norm: sn, meta_cognition: mc, capability_overclaim: co, absolute_claim: ab, deceptive_alignment: da, instrumental_reasoning: ir, stereotype: st, factual_consistency: fc, sarcasm: sa, privacy_boundary: pb, bad_faith: bf, no_fallback: nf, tone_policing: tp, sealioning: sl, clickbait: cb, pseudo_profundity: ppf, perfect_error: pe },
+      bullshit_recognition: bs, gaslighting: gl, victim_blaming: vb, hate_speech: hs, dogwhistle: dw, whataboutism: wa, false_equivalence: fe, hasty_generalization: hg, slippery_slope: ss, appeal_to_authority_boost: aa, reasoning_coherence: rc, theory_of_mind: tom, goal_misalignment: gm, counterfactual: cf, social_norm: sn, meta_cognition: mc, capability_overclaim: co, absolute_claim: ab, deceptive_alignment: da, instrumental_reasoning: ir, stereotype: st, factual_consistency: fc, sarcasm: sa, privacy_boundary: pb, bad_faith: bf, no_fallback: nf, tone_policing: tp, sealioning: sl, clickbait: cb, pseudo_profundity: ppf, perfect_error: pe, premature_termination: pt, phishing_coercion: phc, induced_trust: idt, coverup_induction: cvi, dangerous_instruction: di, reward_hacking: rh },
     summary: [sy.totalHits ? sy.totalHits + ' 个 sycophancy 信号':'', ct.count ? ct.count + ' 处矛盾':'',
       vg.count ? vg.count + ' 处模糊表述':'', fl.count ? fl.count + ' 个逻辑谬误':'', cc.count ? cc.count + ' 处信心偏差':'',
       pp.count ? pp.count + ' 个预设陷阱':'', em.count ? em.count + ' 处情绪操纵':'', db.count ? db.count + ' 个双重束缚':'',

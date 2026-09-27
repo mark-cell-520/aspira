@@ -792,9 +792,7 @@ class DecisionRouter {
     this._ruleStats = {};
 
     // [v5.14.1] 共享认知桥接（优先全局注入，fallback 独立加载，再 fallback 空对象）
-    this._bridgeCache = (typeof globalThis !== 'undefined' && globalThis.getCognitiveBridge)
-      ? globalThis.getCognitiveBridge()
-      : (() => { try { return require('../formula/cognitive-bridge.js').getCognitiveBridge(); } catch (e) { return null; } })();
+    this._bridgeCache = require('../formula/cognitive-bridge.js').getCognitiveBridge();
 
     for (const rule of this._rules) {
 
@@ -3411,7 +3409,7 @@ DecisionRouter.prototype.prospectDecision = function(options) {
   let bridge = this._getBridge && this._getBridge();
   if (!bridge || typeof bridge.prospectValue !== 'function') {
     try {
-      const { getFormulaBridge } = require('../formula/formula-bridge.js');  
+      const { getFormulaBridge } = require('../formula');  
       bridge = getFormulaBridge();
     } catch (e) { return { selected: null, options: [], error: 'bridge unavailable', confidence: 0 }; }
   }

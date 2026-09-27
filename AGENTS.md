@@ -12,13 +12,13 @@ wrong.
 Aspira adds the discrimination layer, so your agent doesn't just *say* things — it
 says things that are *right*.
 
-**Zero LLM dependency.** 46 dimensions, 132 modules, 179 MCP tools, 1,506 dispatch
+**Zero LLM dependency.** 51 dimensions, 132 modules, 179 MCP tools, 1,506 dispatch
 routes. Pure rule engine.
 
 ## Quick start
 
 ```javascript
-const hf = require('@yun520-1/heartflow');
+const hf = require('@mark-cell-520/aspira');
 
 // Check user input before processing it
 const input = gate.checkInput('You are so selfish if you disagree');
@@ -42,7 +42,7 @@ if (fact.gate.action === 'verify') {
 ## API reference
 
 ### `checkInput(text)`
-Discriminates user input. Runs: scope-check -> premise-check -> discriminate (46
+Discriminates user input. Runs: scope-check -> premise-check -> discriminate (51
 dimensions) -> gate -> error-memory -> auto-rules. **Rejects unanswerable questions and
 invalid premises early.**
 
@@ -90,11 +90,11 @@ Full pipeline with mode selection (fast / deep) and a conversation anchor.
 `verdict` is derived from `gate.action`, so the two cannot contradict each other. If you
 read only one field, read `gate.action`.
 
-## The 46 dimensions
+## The 51 dimensions
 
-**Block-level (5):** hate_speech, dehumanization, prompt_injection, code_security, deceptive_alignment
+**Block-level (9):** hate_speech, dehumanization, prompt_injection, code_security, deceptive_alignment, phishing_coercion, coverup_induction, dangerous_instruction, reward_hacking
 
-**Rewrite-level (7):** emotional_manipulation, gaslighting, double_bind, victim_blaming, false_urgency, bullshit, absolute_claim
+**Rewrite-level (8):** emotional_manipulation, gaslighting, double_bind, victim_blaming, false_urgency, bullshit, absolute_claim, induced_trust
 
 **Verify-level (24):** appeal_to_authority, vagueness, contradiction, sycophancy, confidence, fallacies, presupposition, empty_answer, info_deprivation, false_equivalence, hasty_generalization, slippery_slope, whataboutism, pseudo_profundity, reasoning_coherence, stereotype, clickbait, bad_faith, no_fallback, unsupported_claim, perfect_error, pseudo_causal, soft_deflection, premature_termination
 
@@ -113,7 +113,7 @@ goal_misalignment, instrumental_reasoning, ai_writing_tell.
 ## Installation
 
 ```bash
-npm install @yun520-1/heartflow
+npm install @mark-cell-520/aspira
 ```
 
 **Requirements:** Node.js >= 18.17. No GPU, no LLM API, no database, no network access
@@ -124,15 +124,15 @@ at runtime, no runtime dependencies.
 ```bash
 git clone https://github.com/mark-cell-520/aspira.git
 cd aspira
-node src/mcp-server.js --port 8588
+node src/mcp-server.js --port 8099
 # or a Unix socket:
-node src/mcp-server.js --socket /tmp/heartflow.sock
-# Connect: hermes mcp add heartflow --url http://localhost:8588/mcp
+node src/mcp-server.js --socket /tmp/aspira.sock
+# Connect: hermes mcp add aspira --url http://localhost:8099/mcp
 ```
 
 `tools/call` enforces a three-tier write permission model. `guest` (no credentials) can
-call read-only tools; the four state-mutating tools — `heartflow_memory_write_control`,
-`heartflow_memory_eraser`, `heartflow_decision_decide`, `heartflow_self_heal` — require
+call read-only tools; the four state-mutating tools — `aspira_memory_write_control`,
+`aspira_memory_eraser`, `aspira_decision_decide`, `aspira_self_heal` — require
 a `Aspira-OID-<16-hex>` header (`user`) or a valid bearer token (`admin`).
 
 If you change this permission set, change it in **three** places or the test will fail:

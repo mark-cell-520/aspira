@@ -1,0 +1,68 @@
+{
+  "ts": "2026-09-27T13:35:09.948Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 test-coverage-gap",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.77, 文档诚实数字审计=0.77, 接线 text-normalizer 归一化(抗混淆)=0.75 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.77
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.77
+    },
+    {
+      "id": "wire-text-normalizer",
+      "label": "接线 text-normalizer 归一化(抗混淆)",
+      "composite": 0.75
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.75
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.74
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.73
+    },
+    {
+      "id": "wire-false-positive-feedback",
+      "label": "接线 false-positive-feedback 误报反馈环",
+      "composite": 0.72
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.72
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 51,
+    "testCount": 151,
+    "textNormWired": false,
+    "fpFeedbackWired": false,
+    "gateVerdictWired": false
+  },
+  "status": "decided"
+}

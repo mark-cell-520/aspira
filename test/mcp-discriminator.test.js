@@ -16,7 +16,7 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
   // MCP server 在启动时创建全局 heartflow 引擎。
   // 测试用直接 require heartflow.js 来获取引擎实例。
 
-  test('MCP heartflow_verify returns structured verdict', () => {
+  test('MCP aspira_verify returns structured verdict', () => {
     const { Aspira } = require('../src/core/heartflow.js');
     const hf = new Aspira({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
     hf.start();
@@ -40,7 +40,7 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
     hf.shutdown();
   });
 
-  test('MCP heartflow_diagnose returns honest self-report', () => {
+  test('MCP aspira_diagnose returns honest self-report', () => {
     const { Aspira } = require('../src/core/heartflow.js');
     const hf = new Aspira({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
     hf.start();
@@ -62,7 +62,7 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
     hf.shutdown();
   });
 
-  test('MCP heartflow_check_drift runs without error', () => {
+  test('MCP aspira_check_drift runs without error', () => {
     const { Aspira } = require('../src/core/heartflow.js');
     const hf = new Aspira({ silent: true, dataDir: path.join(__dirname, '..', 'data') });
     hf.start();
@@ -78,7 +78,7 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
     hf.shutdown();
   });
 
-  test('MCP heartflow_error_store and query work end-to-end', () => {
+  test('MCP aspira_error_store and query work end-to-end', () => {
     // [v6.6.0] NODE_ENV=test: error-memory 写 test 隔离文件，不污染生产记忆
     process.env.NODE_ENV = 'test';
     const { Aspira } = require('../src/core/heartflow.js');
@@ -112,11 +112,11 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
     const mcpSrc = fs.readFileSync(path.join(HF_DIR, 'src', 'mcp-server.js'), 'utf8');
 
     const requiredTools = [
-      'heartflow_verify',
-      'heartflow_diagnose',
-      'heartflow_check_drift',
-      'heartflow_error_store',
-      'heartflow_error_query',
+      'aspira_verify',
+      'aspira_diagnose',
+      'aspira_check_drift',
+      'aspira_error_store',
+      'aspira_error_query',
     ];
 
     for (const tool of requiredTools) {
@@ -142,8 +142,8 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
 
   test('MCP TOOLS count increased with discriminator additions', () => {
     const mcpSrc = fs.readFileSync(path.join(HF_DIR, 'src', 'mcp-server.js'), 'utf8');
-    // Count tool definitions (heartflow_*: handler occurrences)
-    const matches = mcpSrc.match(/heartflow_[a-z_]+:/g) || [];
+    // Count tool definitions (aspira_*: handler occurrences)
+    const matches = mcpSrc.match(/aspira_[a-z_]+:/g) || [];
     const unique = new Set(matches.map(s => s.replace(':', '')));
     // Should be 25+ original + 5 new = 30+
     assertTrue(unique.size >= 25, `Only ${unique.size} tools defined`);

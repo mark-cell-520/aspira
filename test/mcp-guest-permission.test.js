@@ -22,22 +22,22 @@ const ROOT = path.join(__dirname, '..');
 const SOCK = path.join(os.tmpdir(), `hf-perm-test-${process.pid}.sock`);
 
 const WRITE_TOOLS = [
-  'heartflow_memory_write_control',
-  'heartflow_memory_eraser',
-  'heartflow_decision_decide',
-  'heartflow_self_heal',
+  'aspira_memory_write_control',
+  'aspira_memory_eraser',
+  'aspira_decision_decide',
+  'aspira_self_heal',
 ];
 
 const READ_TOOLS = [
-  'heartflow_think',
-  'heartflow_check_output',
+  'aspira_think',
+  'aspira_check_output',
 ];
 
 function argsFor(tool) {
-  if (tool === 'heartflow_self_heal') return { context: 'test' };
-  if (tool === 'heartflow_decision_decide') return { task: 't', options: [] };
-  if (tool === 'heartflow_think') return { input: 'test' };
-  if (tool === 'heartflow_check_output') return { text: 'test' };
+  if (tool === 'aspira_self_heal') return { context: 'test' };
+  if (tool === 'aspira_decision_decide') return { task: 't', options: [] };
+  if (tool === 'aspira_think') return { input: 'test' };
+  if (tool === 'aspira_check_output') return { text: 'test' };
   return { action: 'stats' };
 }
 
