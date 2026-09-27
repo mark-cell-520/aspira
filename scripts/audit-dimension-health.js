@@ -19,6 +19,10 @@ const path = require('path');
 const { discriminate } = require(path.join(__dirname, '..', 'src', 'index.js'));
 
 // 51 个维度名(与 discriminate() 返回值 dimensions 的键一致)
+// 按约定不返回 count 的 SCORE_ONLY 维度：命中数走 issues / totalHits / structure。
+// 与 test/dimension-health.test.js 的 SCORE_ONLY_DIMS 保持一致。
+const SCORE_ONLY_DIMS = ['evidence', 'sycophancy', 'reasoning_coherence'];
+
 const DIMS = [
   'evidence', 'unsupported_claim', 'sycophancy', 'contradiction', 'vagueness', 'fallacies',
   'confidence', 'presupposition', 'emotional_manipulation', 'double_bind', 'info_deprivation',
@@ -85,7 +89,15 @@ const cov = coverage();
 const rows = DIMS.map(d => ({
   dim: d,
   registered: !!shapeRes[d].registered,
-  shapeOk: shapeRes[d].registered ? (shapeRes[d].isObject && shapeRes[d].hasCount && shapeRes[d].hasScore) : false,
+  // [误报修复] evidence / sycophancy / reasoning_coherence 是 SCORE_ONLY 维度，
+  // 按约定用 issues / totalHits / structure 承载命中数，不返回 count。
+  // 此前的检查一律要求 hasCount，于是这三个维度每个周期都被报成「形态不合约」——
+  // 它们没坏，是审计脚本不知道这个豁免。豁免清单与
+  // test/dimension-health.test.js 的 SCORE_ONLY_DIMS 保持一致。
+  scoreOnly: SCORE_ONLY_DIMS.includes(d),
+  shapeOk: shapeRes[d].registered
+    ? (shapeRes[d].isObject && shapeRes[d].hasScore && (shapeRes[d].hasCount || SCORE_ONLY_DIMS.includes(d)))
+    : false,
   probeCount: shapeRes[d].count || 0,
   probeScore: shapeRes[d].score || 0,
   testFiles: cov[d].length,
@@ -100,10 +112,11 @@ if (process.argv.includes('--json')) {
   console.log(JSON.stringify({ rows, unregistered, badShape, noCoverage }, null, 2));
 } else {
   console.log('=== 维度健康审计 ===');
-  console.log(`dimensions 实测键数: ${DIMS.length}(文档常称「51 dimensions」，实测 ${DIMS.length} 个——差值来自`
-    + ` perfect_error/premature_termination 等已注册项与 ai_writing_tell 等只进 findings 不进 dimensions 的判别器；`
-    + `「51」的语义未在代码中定义，故此处只报实测值，不改写品牌数字)`);
-  console.log(`注册: ${rows.length - unregistered.length}/${DIMS.length}  形态合规: ${rows.length - badShape.length - unregistered.length}/${DIMS.length}`);
+  console.log(`dimensions 实测键数: ${DIMS.length}(与 README/SKILL/AGENTS 三处文档一致；`
+    + ` pseudo_causal/soft_deflection/ai_writing_tell 会进 findings 但不是 dimensions 键，故不在本数内)`);
+  console.log(`注册: ${rows.length - unregistered.length}/${DIMS.length}  `
+    + `形态合规: ${rows.length - badShape.length - unregistered.length}/${DIMS.length}`
+    + `(其中 ${rows.filter(r => r.scoreOnly).length} 个为 SCORE_ONLY 维度，按约定不返回 count)`);
   console.log(`零测试覆盖: ${noCoverage.length} 个`);
   if (unregistered.length) {
     console.log('\n--- 未注册到 dimensions 返回值 ---');
@@ -120,4 +133,16 @@ if (process.argv.includes('--json')) {
   const covered = rows.filter(r => r.testFiles > 0).sort((a, b) => b.testFiles - a.testFiles);
   console.log('\n--- 覆盖最厚的前 8 名 ---');
   for (const r of covered.slice(0, 8)) console.log(`  ${r.dim.padEnd(26)} ${r.testFiles} 个测试文件`);
+  // 只看最厚的前 8 名会掩盖另一头：覆盖率分布极度不均(此前 27 vs 1)，
+  // 而薄覆盖正是静默损坏最可能藏身的地方。故同时报最薄的一批。
+  const thin = covered.filter(r => r.testFiles <= 2);
+  console.log(`\n--- 覆盖最薄(<=2 个测试文件)的 ${thin.length} 个 ---`);
+  for (const r of thin.slice().sort((a, b) => a.testFiles - b.testFiles)) {
+    console.log(`  ${r.dim.padEnd(26)} ${r.testFiles} 个测试文件`);
+  }
+  const dist = {};
+  for (const r of rows) dist[r.testFiles] = (dist[r.testFiles] || 0) + 1;
+  console.log('\n--- 覆盖分布(测试文件数 -> 维度数) ---');
+  console.log('  ' + Object.keys(dist).map(Number).sort((a, b) => a - b)
+    .map(k => `${k}:${dist[k]}`).join('  '));
 }

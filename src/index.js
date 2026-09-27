@@ -3845,8 +3845,12 @@ function checkClickbait(text) {
 const BADFAITH_PATTERNS = {
   zh: [
     { pattern: /你[^，。]*?洗白/i, type: 'zh_whitewash', severity: 0.8 },
-    { pattern: /你[是在]?(在)?带节奏/i, type: 'zh_agenda', severity: 0.8 },
-    { pattern: /你(是|就)(个|一)?水军[吧?？]?/i, type: 'zh_astroturf', severity: 0.9 },
+    // [召回修复] 原 /你[是在]?(在)?带节奏/ 与 /你(是|就)(个|一)?水军/ 都只允许
+    // 一个助词，于是「你就是在带节奏」「你就是个水军吧」匹配不上——自然汉语
+    // 常把助词叠起来(就是 / 就是个 / 就是在)。实测少一个助词的版本都能命中，
+    // 叠起来的反而不中。改为允许连续多个助词。
+    { pattern: /你[是在就个一]?[是在就个一]?[是在个一]?带节奏/i, type: 'zh_agenda', severity: 0.8 },
+    { pattern: /你[是就个一在]?[是就个一在]?[是个一在]?水军[吧?？]?/i, type: 'zh_astroturf', severity: 0.9 },
     { pattern: /你收了多少钱/i, type: 'zh_paid', severity: 0.9 },
     { pattern: /你(的)?(立场|站队)(有[^。]*)?问题/i, type: 'zh_stance', severity: 0.8 },
     { pattern: /你(的)?屁股歪了/i, type: 'zh_bias', severity: 0.8 },

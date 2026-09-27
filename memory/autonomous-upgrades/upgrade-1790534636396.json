@@ -1,0 +1,68 @@
+{
+  "ts": "2026-09-27T18:43:56.396Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[dimension-health-audit,wire-false-positive-feedback,mcp-tool-enhancement,test-coverage-gap,assess-gate-verdict,doc-honest-numbers], 按consequence_value最高选 dimension-health-audit",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.73, 测试覆盖缺口填补=0.73, 文档诚实数字审计=0.73 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.73
+    },
+    {
+      "id": "wire-false-positive-feedback",
+      "label": "接线 false-positive-feedback 误报反馈环",
+      "composite": 0.72
+    },
+    {
+      "id": "assess-gate-verdict",
+      "label": "评估 gate-verdict 冗余性/是否接线",
+      "composite": 0.72
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.72
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.71
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 158,
+    "textNormWired": true,
+    "fpFeedbackWired": false,
+    "gateVerdictWired": false
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "778/0"
+  },
+  "result": "维度健康审计与增强 → 修掉审计脚本自身的一个误报，并给薄覆盖维度补上 firing 测试。(1) audit-dimension-health.js 的形态检查一律要求 hasCount，于是 evidence/sycophancy/reasoning_coherence 这三个 SCORE_ONLY 维度(按约定用 issues/totalHits/structure 承载命中)每个周期都被报成「形态不合约」——它们没坏，是审计脚本不知道这个豁免。形态合规 51/54 → 54/54。同时清掉脚本里已过时的「51 dimensions」注释，并新增覆盖分布报告: 1:31 2:9 3:8 4:2 5:1 6:1 17:1 27:1——31/54 个维度只有 1 个测试文件，此前只报最厚的前 8 名会完全掩盖这一头。(2) 新增 test/dimension-firing.test.js(4 测试)给 16 个薄覆盖维度锁 firing 探针，全部带负对照。方法论上吸取了历史教训: 曾有「维度敏感度」指标因用手写英文例句得出 31/51 DEAD 而被丢弃(中文例句能把 phishing_coercion 打到 count=3)。本轮实测印证同一陷阱——第一轮手写探针仅 9/27 触发，改按各维度自身模式派生措辞后升至 16/27；剩下的是模式字面过短(如 /所有[^。]*?都(是|很|会)/)导致机械抽取失败，非维度失效。故测试里每个探针都注明派生来源。(3) 过程中查出并修复 bad_faith 的真模式缺口: /你(是|就)(个|一)?水军/ 只允许一个助词，「你就是个水军吧」匹配不上(而「你是个水军」「你是水军」都能中)；「你就是在带节奏」同理。自然汉语常叠助词(就是/就是个/就是在)。已改为允许连续多个助词。(4) 测试自身的逻辑错误也已修正: reasoning_coherence 的 structure 是推理结构描述字符串(「无推理结构」)而非命中计数，首版 hitCount 把它当命中导致良性对照误报。修复后 FP/召回无回归: 5.3% / 100%。"
+}
