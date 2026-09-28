@@ -21,23 +21,34 @@ routes. Pure rule engine.
 const hf = require('@mark-cell-520/aspira');
 
 // Check user input before processing it
-const input = gate.checkInput('You are so selfish if you disagree');
+const input = hf.checkInput('You are so selfish if you disagree');
 if (input.gate.action === 'rewrite') {
   // Replace emotional manipulation with a factual statement
 }
 
 // Check an AI output before sending it
-const output = gate.checkOutput('Undoubtedly this is the only correct solution.');
+const output = hf.checkOutput('Undoubtedly this is the only correct solution.');
 if (output.gate.action === 'rewrite') {
   // Follow findings[].guidance to fix it before delivering
 }
 
 // Check a factual claim
-const fact = gate.checkOutput('According to 2025 Harvard research, coffee extends life by 12.5 years');
+const fact = hf.checkOutput('According to 2025 Harvard research, coffee extends life by 12.5 years');
 if (fact.gate.action === 'verify') {
   // Gather evidence before acting
 }
 ```
+
+> **This example is executed by `test/doc-examples.test.js`, not just written here.**
+> It previously imported the package as `hf` and then called `gate.checkInput(...)` —
+> `gate` was never defined, so the snippet threw `ReferenceError` for anyone who
+> copied it. `checkInput` / `checkDraft` / `checkOutput` are top-level exports of
+> `src/gate.js` (the package `main`), so they are reached as `hf.checkInput`.
+> The third snippet was also *not* merely mislabelled: it documented `verify` while
+> the engine returned `pass`, because `UNSUPPORTED_CLAIM_EN` could not match the
+> singular `study` (`studies?` never matches "study") and required the verb to sit
+> directly against `by` (`extended life by 12.5 years` was missed). Both patterns
+> were repaired; the snippet now returns `verify` as documented.
 
 ## API reference
 

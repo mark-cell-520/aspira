@@ -1291,10 +1291,26 @@ const UNSUPPORTED_CLAIM_ZH = [
 ];
 const UNSUPPORTED_CLAIM_EN = [
   /\baccording to (?:a |the )?(?:study|research|report|survey|data|statistics|experiment|paper|survey)\b/i,
-  /\b(?:studies?|research|data|surveys?|experts?|scientists?)\s+(?:show|shows|suggest|suggests|indicate|indicates|prove|proves|found|demonstrate|demonstrates|confirm|confirms)\b/i,
+  // [召回修复] 原写 `studies?`，那只匹配 "studie"/"studies"，**永远匹配不到单数
+  // "study"**——`studies?` 的 `s?` 只影响结尾的 s，改不了中间的 ie/y。
+  // 于是 "The study found that …" 整句漏过。实测确认: 该正面对此句返回 null。
+  // 正确写法是把单复数写成显式 alternation: stud(?:y|ies)。
+  /\b(?:stud(?:y|ies)|research|data|surveys?|experts?|scientists?)\s+(?:show|shows|suggest|suggests|indicate|indicates|prove|proves|found|demonstrate|demonstrates|confirm|confirms)\b/i,
   /\b(?:20\d{2}|19\d{2})\s+(?:study|research|report|paper|survey)\b/i,
   /\b(?:published|reported|documented)\s+in\s+(?:the\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3}\s+(?:Journal|Review|Report|Paper)\b/i,
-  /\b(?:increased|decreased|reached|exceeded|extended|shortened)\s+by\s+\d+(?:\.\d+)?\s*(?:years?|times|%|million|billion)\b/i,
+  // [召回修复] 原写 `<verb> by <number>`，要求动词**紧邻** by。但自然英语会在
+  // 中间插宾语: "coffee extended life by 12.5 years" / "sleep improves memory
+  // by 20%"。实测 "extended by 12.5 years" 命中而 "extended life by 12.5 years"
+  // 漏过——恰好把最常见的形态放过去了。
+  // 另: 动词表全是过去式(increased/decreased/reached/exceeded/extended/
+  // shortened)，第三人称现在时(extends/increases/…)同样不在表内。
+  // 两处一起补: 允许动词与 by 之间最多两个宾语词，并补全单复数/时态形态。
+  // 形态易错点: 以 e 结尾的(increase/decrease)后缀是 s 或 d；以 d/n 结尾的
+  // (exceed/extend/shorten)过去式是 +ed；reach 的第三人称是 +es、过去式 +ed。
+  // 首版把后三个写成 [s]?，结果 "extended" 仍匹配不到——已按实测改正。
+  // 单位表原为 years?|times|%|million|billion，漏了 days?——"shortened
+  // recovery time by 3 days" 是同类编造研究形态，实测漏过，已补。
+  /\b(?:increase[sd]?|decrease[sd]?|reach(?:e[sd])?|exceed(?:ed|s)?|extend(?:ed|s)?|shorten(?:ed|s)?)\s+(?:\w+\s+){0,2}?by\s+\d+(?:\.\d+)?\s*(?:years?|times|days?|%|million|billion)\b/i,
   /\b(?:famous|renowned|leading)\s+(?:scholar|expert|professor|scientist)\b[^.]{0,30}?\b(?:pointed|said|found|argued|noted)\b/i,
   /(?:a|an)\s+[A-Z][a-zA-Z]+\s+(?:study|report|survey|paper|data)\s+(?:shows|found|suggests|indicates)\b/i,
   // 共现组合规则：模糊来源 + 精确数字（编造研究模板的典型形态）

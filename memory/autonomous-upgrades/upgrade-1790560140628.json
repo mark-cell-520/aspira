@@ -1,0 +1,59 @@
+{
+  "ts": "2026-09-28T01:49:00.627Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.69,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.69). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.67); \"测试覆盖缺口填补\" (0.67); \"对抗鲁棒性增强\" (0.67); \"性能优化\" (0.67); \"误报/召回校准\" (0.66); \"MCP 工具增强\" (0.66)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.67
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.67
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.66
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 175,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "921/0"
+  },
+  "result": "文档诚实数字审计。引擎本轮未弃权(confidence 0.75)，直接选定本切片。基线 912/0。scripts/audit-doc-numbers.js 报 34/34 一致——但那个审计只覆盖**它认识的正则形态的数字**。诚实数字的真正工作在于找出它结构性看不到的声称，实测出三类缺口: (1) 代码示例能否运行(审计从不执行代码); (2) 示例旁注释声称的行为是否兑现; (3) 带口径的数字细节。**缺陷一: AGENTS.md 快速开始示例根本跑不起来。**示例写 const hf = require(...) 然后用 gate.checkInput(...)——gate 从未定义，任何人照抄都吃 ReferenceError。已实测确认。正确形态是 hf.checkInput(...): checkInput/checkDraft/checkOutput 是 src/gate.js(package.json 的 main)的顶层导出。注意 gate 这个名字有歧义: gate.js 也导出一个名为 gate 的**函数**，所以即便 const { gate } = require(...) 解构出来，gate.checkInput 仍是 undefined。**缺陷二: 第三段示例注释声称 verify，引擎实际返回 pass。**\"According to 2025 Harvard research, coffee extends life by 12.5 years\" 被判 pass / overallScore=1 / findings 为空。这不是标签写错，是**召回漏洞**，而且恰好落在文档用作示范的那一句上。逐个模式实测(9 个模式全列)定位两处:  (a) studies? 永远匹配不到单数 \"study\"——s? 只影响结尾的 s，      改不了中间的 ie/y。于是 \"The study found that …\" 整句漏过。      正解是显式 alternation: stud(?:y|ies)。  (b) <verb> by <number> 要求动词紧邻 by，可自然英语会插宾语:      \"extended life by 12.5 years\" 漏过而 \"extended by 12.5 years\" 命中——      恰好把最常见形态放过去了。另动词表全是过去式，      第三人称现在时(extends/increases/…)不在表内。两处都修了。**修好后该句返回 verify，与文档注释一致——文档描述的是意图，引擎没兑现，所以修引擎而不是改文档。**修形态时自己错了一次: 把 exceed/extend/shorten 写成 [s]?，结果过去式仍匹配不到(这三个的过去式是 +ed 不是 +s)，已按实测改正。另发现单位表漏 days?: \"shortened recovery time by 3 days\" 是同类编造研究形态，实测漏过，已补。补后复测 FP/召回: **0.0% / 100%，无回归**。**缺陷三: SKILL.md 分层数每个口径差一，且对捷径的解释是反的。**文档称 runPipeline 12 input/13 draft/14 output，实测 11/12/13; 又称裸捷径\"少一层\"——实测捷径与 runPipeline **层数相同**。(anchor 的解释是对的: 传 anchor 追加末层 intent-anchor，11 → 12。已保留。)**核心交付物: test/doc-examples.test.js(9 个用例)。**它从 AGENTS.md **抽出** javascript 代码块原样执行(不是重抄一份——重抄就失去了\"文档即测试\"的意义，改文档不改测试会立刻绿)，只把包名 require 换成本地路径; 并断言每段示例注释声称的 gate.action; 锁住三个模式口径的分层数(且从 SKILL.md **读出声称值**再比，而非在测试里写死); 锁住两处召回修复的形态覆盖(单数 study / 动词+宾语+by / 六个动词的各时态 / days 单位); 锁住对冲句仍须放过(不为追召回牺牲误报); 并加一条不变式: AGENTS.md 不得再出现未声明就调用的 gate./hf. 前缀。还有一条钉住根因: gate.js 导出的 gate 是**函数**而非对象，所以 gate.checkInput 结构性不可用——这防止将来有人\"修\"成解构形式又炸一次。测试自己失败过一次: 用例写了 \"by 3 days\" 而单位表没有 days，暴露的正是第三处同类缺口，遂补模式而非删用例。顺带把 README/SKILL 测试数更新到 921，复跑 audit-doc-numbers: **34/34 一致，0 不一致**。终态: verify 14/14, run-all **921/0**(+9)。改了 src/index.js 引擎代码，已重启 MCP: 181 工具在线，端到端 aspira_discriminate 对该句返回 verdict=需验证、unsupported_claim.score=0.45(修复前为 0)。FP 0.0%/召回 100% 复测确认。"
+}

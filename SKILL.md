@@ -156,8 +156,8 @@ from marketing copy.
 | Dispatch routes | 1,510 | sum of entries in `hf.routes()` |
 | Discrimination dimensions | 54 | `dimMap` keys in `src/index.js` |
 | MCP tools | 181 | tool definitions exposed via `tools/list` |
-| Pipeline layers | 12 input / 13 draft / 14 output | `checked_by.length` on `runPipeline({ input, mode, anchor })` — the anchor adds the final `intent-anchor` layer; the bare `checkInput` / `checkDraft` / `checkOutput` shortcuts run one layer fewer (11 / 12 / 13) |
-| Test suite | 912 passing / 0 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
+| Pipeline layers | 11 input / 12 draft / 13 output | `checked_by.length` on `runPipeline({ input, mode })` — the bare `checkInput` / `checkDraft` / `checkOutput` shortcuts return the **same** count, not one fewer; passing an `anchor` appends the final `intent-anchor` layer (11 → 12) |
+| Test suite | 921 passing / 0 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
 | Capability guard | 18 / 18 checks | `node scripts/guard-abilities.js` |
 | Security regression | 16 / 16 | `node test/security-audit.test.js` |
 | Runtime dependencies | 0 required by the core | the core gate loads without `npm install`; the 4 `dependencies` in `package.json` (transformers / js-yaml / mathjs / pm2) are optional and not loaded by the discriminator |
