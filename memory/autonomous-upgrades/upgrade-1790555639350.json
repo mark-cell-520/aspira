@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T00:33:59.350Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 dimension-health-audit",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.69, 测试覆盖缺口填补=0.69, 文档诚实数字审计=0.69 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.69
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.69
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.69
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.68
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.67
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 172,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "881/0"
+  },
+  "result": "维度健康审计与增强。引擎弃权，平局打破选出本切片。基线 876/0。audit-dimension-health.js 报告结构健康: 54/54 注册、54/54 形态合规(其中 3 个 SCORE_ONLY 按约定不返回 count)、0 个零测试覆盖。真正的问题是**覆盖深度**: 26 个维度只有 2 个测试文件覆盖。本周期把它清零——新增 test/thin-dimension-coverage.test.js，为 25 个薄维度补**双向**覆盖(正例命中 + 普通负例不误触)。薄维度数 2:26 → **0**(分布变为 3:37, 4:6, 5:3, 6:2, 7:4, 21:1, 28:1)。**探针方法的三次修正**(本会话\"探针用词必须从目标模式推导\"教训的延伸): (1) 先从常量抠字面量再拿字面量去测 → 只命中 1/26。原因: 形如 /女人都(很|特别)?情绪化/ 的模式，抠出\"女人都\"去测永远不匹配——**完整正则才要求后面的部分**。测片段等于没测。(2) 改为从正则源构造必然匹配的字符串(组内取首选项、量词取一次、字符类取代表字符) → 命中率大幅上升，但产物含 x 占位符，作为测试输入质量差。(3) 最终: 按模式写自然语句再逐一实测，25/25 全部双向成立，且 3 条普通负例对这 25 个维度的误触数为 **0**。剩余 5 个维度(victim_blaming/whataboutism/appeal_to_authority_boost/no_fallback/premature_termination)的模式来源各不相同，机械探针找不到，是逐个读源码确认的: VICTIM_BLAMING 是普通数组、WHATABOUT_PATTERNS_ZH 常量名与维度名不同形、AUTHORITY_PATTERNS 比维度名短、checkNoFallback 用内联CN_FALLBACK(元组数组 [regex,type,sev])、premature_termination 在独立模块src/premature-termination.js。**常量命名不统一本身就是可维护性债**。**一次测试\"假绿\"的记录**: 首版同时断言 deceptive_alignment 与 bad_faith 都能到 block/rewrite，两条都通过——但 bad_faith 的 block 来自 **dehumanization**(severity 60)，bad_faith 自己只有 20。这正是\"检查是哪个维度拦的\"教训: gate=block 不等于\"被测维度拦的\"。AGENTS.md 分层里 bad_faith 属 **verify 层**(26 个之一)，本就不该断言它 block。已改为只锁 BLOCK 层的 deceptive_alignment，且要求 block **可归因于它自己**(findings 里必须出现 deceptive_alignment)。**一次测量错误的记录**: 中途把 hasty_generalization 的首条探针写成\"现在的年轻人都不吃苦。\"，因为在早前一次测量里它显示命中。最终核验时它是 0——早前那次命中的是另一批候选，我把不同批次的结果记混了。已改为当场重测命中的\"我见过的程序员都这样。\"。教训: 探针必须在写进测试之前**当场重测**，测量结果是有时效的，与\"基线数字会腐烂\"同源。终态: verify 14/14, run-all **881/0**(+5), 薄维度 **0**。仅新增测试文件，未改 src/，按协议跳过 MCP 重启。诚实数字审计同步通过(17 层名单一致)。"
+}
