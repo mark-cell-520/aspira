@@ -49,15 +49,36 @@ function readsOf(body) {
   // 第三步：解构，两个方向都要覆盖：
   //   const { a, b } = args;      ← 花括号在 = 之前(handleThink 就是这种)
   //   const { a, b } = input;     ← 花括号在 = 之前 + 别名
-  for (const m of body.matchAll(new RegExp(`\\{([^{}]{0,300})\\}\\s*=\\s*(?:${aliasAlt})\\b`, 'g'))) {
+  // [假阳性修复] 首版用 `\{([^{}]{0,300})\}`，`[^{}]` **无法跨越嵌套花括号**。
+  // 于是 `const { domain, params = {} } = args || {}`(handleFormulaBridge)
+  // 整条解构匹配失败，reads 为空，domain/params 被报成"声明未读"。
+  // 带默认值的解构在 JS 里极其常见(`params = {}` 防 undefined)，
+  // 漏掉它等于把最标准的一种写法判成缺陷。
+  // 修法: 允许一层嵌套——`[^{}]*(?:\{[^{}]*\}[^{}]*)*`。
+  // 变量名提取时用 `=` 切分，故 `params = {}` 仍能正确取到 `params`。
+  for (const m of body.matchAll(new RegExp(`\\{([^{}]*(?:\\{[^{}]*\\}[^{}]*)*)\\}\\s*=\\s*(?:${aliasAlt})\\b`, 'g'))) {
     for (const part of m[1].split(',')) {
       const name = part.split(':')[0].split('=')[0].trim();
       if (/^[A-Za-z_$][\w$]*$/.test(name)) reads.add(name);
     }
   }
 
-  // 整体转发: someFn(args) —— 无法静态判断，标记为透传
-  const passthrough = new RegExp(`\\b(?:require\\([^)]*\\)|[A-Za-z_$.]+)\\s*\\(\\s*(?:${aliasAlt})\\s*(?:\\|\\||\\?\\?|\\?\\.[A-Za-z_$]+)?\\s*[,)]`).test(body);
+  // 整体转发: someFn(args) / someFn(args || {}) / someFn(args ?? {})
+  // [假阳性修复] 首版的正则只允许 `||`/`??` 之后**紧跟** `,` 或 `)`:
+  //     (?:\|\||\?\?|\?\.[A-Za-z_$]+)?\s*[,)]
+  // 于是 aspira_check_outbound 的 `checkOutbound(args || {})` 匹配失败——
+  // `||` 后面跟着 ` {}` 才到 `)`。参数其实**在转发的模块里被读取**，
+  // 却被报成"声明未读 text,classification"。
+  // aspira_consciousness 的 `CT.compute(args || {})` 同样中招
+  // (报 neuralStates,content 未读)。
+  // `|| {}` / `?? {}` 是整体转发最常见的兜底写法(防 args 为 undefined)，
+  // 漏掉它等于把最标准的一种透传形态判成缺陷。
+  // 修法: 在别名之后允许可选的 `?.x`、可选的 `||`/`??`、
+  // 以及可选的对象字面量兜底，然后才要求 `,` 或 `)`。
+  const passthrough = new RegExp(
+    `\\b(?:require\\([^)]*\\)|[A-Za-z_$.]+)\\s*\\(\\s*(?:${aliasAlt})\\s*` +
+    `(?:\\?\\.[A-Za-z_$]+)?\\s*(?:\\|\\||\\?\\?)?\\s*(?:\\{[^{}]*\\})?\\s*[,)]`
+  ).test(body);
   return { reads, passthrough };
 }
 

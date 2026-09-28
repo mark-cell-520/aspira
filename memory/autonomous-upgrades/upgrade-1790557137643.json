@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T00:58:57.642Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 mcp-tool-enhancement",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.69, 文档诚实数字审计=0.69, MCP 工具增强=0.68 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.69
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.69
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.68
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.67
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 173,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "888/0"
+  },
+  "result": "MCP 工具增强。引擎弃权，平局打破选出本切片。基线 881/0。跑 audit-mcp-param-contract.js，报告 16 个\"疑似真问题\"。逐个定性后发现其中 5 个是**审计自己失明**，不是引擎缺陷。修审计比修引擎更要紧——一个产出假阳性的审计比没有审计更危险: 它会让人去\"修\"没坏的工具。**盲区一: 透传正则漏掉 args || {}**。首版 (?:\\|\\||\\?\\?|\\?\\.[A-Za-z_$]+)?\\s*[,)] 要求 || 之后紧跟 , 或 )，于是 checkOutbound(args || {}) 匹配失败——参数其实**在转发的模块里被读取**，却被报成\"声明未读 text,classification\"。aspira_consciousness 的 CT.compute(args || {}) 同样中招。`|| {}` 是整体转发最常见的兜底写法(防 args 为 undefined)，漏掉它等于把最标准的一种透传判成缺陷。**盲区二: 解构正则的 [^{}] 无法跨越嵌套花括号**。const { domain, params = {} } = args || {}(handleFormulaBridge) 里 params = {} 自带花括号，[^{}] 跨不过去，整条解构匹配失败、reads 为空。带默认值的解构在 JS 里极其常见。修法: 允许一层嵌套。修完审计后疑似真问题 16 → 11，剩下的是真问题，逐个修:**三个是桩**——声明了参数、从不读、恒返回空对象: aspira_psychology_engine {\"result\":{}}、aspira_long_term_memory {\"result\":{}}、aspira_semantic_anchor {\"anchor\":{\"initialized\":true}}(只检查方法存在、从不调用)。经 MCP 实测确认(不是只读代码): 三个都返回空。PsychologyEngine.analyzePsychology / LongTermMemory.add / SemanticAnchor.processMessage 本就存在，接上即修好\"死参数+桩\"两个问题。**一个更微妙**: aspira_knowledge_graph 读了 action 却**只把它回声回去**(return { action, ... })从不分支，query 更是完全没读。回声让 action 看起来\"生效了\"，比完全不读更误导。已按 KnowledgeGraph 的 query/searchEntities/getRelated/findPath/addEdge 真正分派。**剩下七个**是 action 声明未读(constitutional/experience_replay/skill_evolution/desire_system/emotional_growth/confidence_calibrate/emotion_dynamics)，查引擎后确认都支持多操作，按 action 接上而非删声明——接上是真实增强，删声明只是让文档不再撒谎。**本轮新增的设计约束**: 三个桩修好后空参数改为**显式报错**而非返回空对象，这正是审计要防的失败模式的反面: 让\"参数没传\"变成可观测的失败。**修 knowledge_graph 时踩了自己一个坑**: 曾写成 action===\"stats\" || !q 就返回 stats，于是未知 action 在没传 query 时**静默回退**成 stats——那正是本轮要消灭的形态。已改为先校验 action 白名单再判 query。**一次严重失误: 覆盖了已有测试文件**。首版把新测试直接写进 test/mcp-param-contract.test.js，而那个文件**原有 8 个测试**(锁审计脚本正确性 + 两个已修 stub 不退化成空壳，用的是独立实现的 detectReads 做交叉校验)。覆盖后 run-all 从 881 掉到 **879**。不是失败，是**测试凭空消失**——所以没有红色信号。修正: git checkout 恢复原文件(8 个测试仍全绿)，新测试放到独立的 test/mcp-param-contract-wired.test.js，并加一条测试钉住\"原文件必须仍有至少 8 个用例\"防再次覆盖。恢复后 888/0(881+7)。教训: **往已有测试文件写内容前必须先读它**; 测试数不升反降时，第一反应应是\"我是不是覆盖了东西\"，而不是\"是不是有测试被跳过\"。本会话已多次遇到同类\"静默丢失\": 对象展开同名键互相覆盖、handler 重复定义后者静默覆盖前者、影子覆盖版工具静默覆盖映射。**新测试自身也改了三次**: (1) 断言合成句 gate=pass 之类过强的问题本次未犯，但 hasError 只查 r.result.error，漏了顶层 r.error 与 r.principles.error——这些工具的载荷键名各不相同，逐个枚举必然漏，改为扫描所有顶层对象值; (2) 源码定位正则写成 \\n {2}, 而实际结尾是 \\n  },(箭头函数右花括号在后)，三个 handler 一个都定位不到; (3) 相应地把断言改为兼容两种错误形态。终态: 审计疑似真问题 **0**(原 16)，完全一致 169 个(原 161)。verify 14/14, run-all **888/0**。MCP 已重启，181 工具在线，端到端: 三个原桩返回真实结果、空参数明确报错、未知 action 明确报错。FP 0.0%/召回 100% 未受影响(本轮未改判别模式)。"
+}

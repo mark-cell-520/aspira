@@ -3210,8 +3210,42 @@ const HANDLERS = {
       const { KnowledgeGraph } = require('./memory/knowledge-graph.js');
       const kg = new KnowledgeGraph({ silent: true });
       const action = args?.action || 'stats';
+      const q = typeof args?.query === 'string' ? args.query.trim() : '';
+      // [契约修复] 此前这里读了 action 却**只把它回声回去**(return { action, ... })
+      // 从不分支，query 更是完全没读——两个参数都是死的，
+      // 而回声让 action 看起来"生效了"，比完全不读更误导。
+      // KnowledgeGraph 有 query/searchEntities/getRelated/findPath/addEdge，
+      // 按 action 真正分派。
+      // 注意: 先校验 action 再判 query。曾写成 `action==='stats' || !q` 就返回 stats，
+      // 于是未知 action 在没传 query 时**静默回退**成 stats——那正是
+      // 本轮要消灭的"静默失败"形态，由 test/mcp-param-contract.test.js 钉住。
+      const ACTIONS = ['stats', 'query', 'search', 'related', 'path', 'add'];
+      if (!ACTIONS.includes(action)) {
+        return { action, error: `未知 action: ${action}(可用 ${ACTIONS.join('/')})`, timestamp: Date.now() };
+      }
       const stats = kg.getStats ? kg.getStats() : {};
-      return { action, stats, timestamp: Date.now() };
+      if (action === 'stats') return { action, stats, timestamp: Date.now() };
+      if (!q) return { action, error: `action=${action} 需要 query 参数`, stats, timestamp: Date.now() };
+      let result;
+      switch (action) {
+        case 'query':      result = kg.query ? kg.query({ keyword: q }) : null; break;
+        case 'search':     result = kg.searchEntities ? kg.searchEntities(q) : null; break;
+        case 'related':    result = kg.getRelated ? kg.getRelated(q) : null; break;
+        case 'path': {
+          const [from, to] = String(q).split(/\s*(?:->|→|,|\s)\s*/).filter(Boolean);
+          result = (from && to && kg.findPath) ? kg.findPath(from, to) : { error: 'path 需要 from→to 两个实体' };
+          break;
+        }
+        case 'add': {
+          const parts = String(q).split(/\s*(?:->|→|,)\s*/).filter(Boolean);
+          result = (parts.length >= 3 && kg.addEdge)
+            ? kg.addEdge(parts[0], parts[1], parts.slice(2).join(' '))
+            : { error: 'add 需要 "主语,谓语,宾语" 三段' };
+          break;
+        }
+        default: result = { error: `未知 action: ${action}(可用 stats/query/search/related/path/add)` };
+      }
+      return { action, query: q, result, stats, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3230,9 +3264,26 @@ const HANDLERS = {
     try {
       const { EmotionDynamicsEngine } = require('./emotion/emotion-dynamics-engine.js');
       const ed = new EmotionDynamicsEngine({ silent: true });
-      const input = args?.input || '';
-      const pad = ed.updatePAD ? ed.updatePAD({}, input) : {};
-      return { pad, timestamp: Date.now() };
+      // [契约修复] 此前声明了 input/action 却只读 input，action 从未使用。
+      // EmotionDynamicsEngine 有 updatePAD / regulate / computeResilience /
+      // conditionize / emotionContagion，按 action 分支。
+      const action = args?.action || 'pad';
+      const input = typeof args?.input === 'string' ? args.input.trim() : '';
+      let r;
+      switch (action) {
+        case 'pad':        r = ed.updatePAD ? ed.updatePAD({}, input) : { error: 'updatePAD 不可用' }; break;
+        case 'regulate':   r = ed.regulate ? ed.regulate(input || 'reappraisal', Number(args?.intensity) || 0.5)
+                                            : { error: 'regulate 不可用' }; break;
+        case 'resilience': r = ed.computeResilience ? ed.computeResilience() : { error: 'computeResilience 不可用' }; break;
+        case 'condition': {
+          const [stimulus, us] = String(input).split(/\s*(?:->|→|,|\s)\s*/).filter(Boolean);
+          r = (stimulus && ed.conditionize) ? ed.conditionize(stimulus, Number(us) || 0.5)
+                                            : { error: 'condition 需要 input 传入 "刺激→非条件刺激"' };
+          break;
+        }
+        default: r = { error: `未知 action: ${action}(可用 pad/regulate/resilience/condition)` };
+      }
+      return { pad: r, action, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3358,8 +3409,26 @@ const HANDLERS = {
     try {
       const { ConstitutionalEngine } = require('./shield/constitutional-ai.js');
       const ce = new ConstitutionalEngine({ silent: true });
-      const r = ce.getPrinciples ? ce.getPrinciples().slice(0, 10) : [];
-      return { principles: r, timestamp: Date.now() };
+      // [契约修复] 此前声明了 action/text 两个参数却一个都不读，
+      // 恒返回前 10 条原则。ConstitutionalEngine 有 getPrinciples /
+      // getPrincipleById / addPrinciple / removePrinciple / critique 五个入口，
+      // 按 action 真正分支，text 依 action 分别当作 id / 待评判输出 / 原则内容。
+      const action = args?.action || 'list';
+      const text = typeof args?.text === 'string' ? args.text.trim() : '';
+      let r;
+      switch (action) {
+        case 'list':    r = ce.getPrinciples ? ce.getPrinciples().slice(0, 10) : []; break;
+        case 'get':     r = text ? (ce.getPrincipleById ? ce.getPrincipleById(text) : null)
+                                       : { error: 'get 需要 text 传入原则 id' }; break;
+        case 'critique': r = text ? (ce.critique ? ce.critique(text) : { error: 'critique 不可用' })
+                                        : { error: 'critique 需要 text 传入待评判输出' }; break;
+        case 'add':     r = text ? (ce.addPrinciple ? ce.addPrinciple(text) : { error: 'addPrinciple 不可用' })
+                                       : { error: 'add 需要 text 传入原则内容' }; break;
+        case 'remove':  r = text ? (ce.removePrinciple ? ce.removePrinciple(text) : { error: 'removePrinciple 不可用' })
+                                       : { error: 'remove 需要 text 传入原则 id' }; break;
+        default: r = { error: `未知 action: ${action}(可用 list/get/critique/add/remove)` };
+      }
+      return { principles: r, action, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3440,8 +3509,18 @@ const HANDLERS = {
     try {
       const { ExperienceReplay } = require('./cortex/experience-replay.js');
       const er = new ExperienceReplay({ rootPath: HF_DIR, silent: true });
-      const r = er.getStats ? er.getStats() : {};
-      return { replay: r, timestamp: Date.now() };
+      // [契约修复] 此前声明了 action 却从不读，恒返回 getStats()。
+      // ExperienceReplay 有 getStats / loadPatterns / validateReportIntegrity /
+      // selfHealCorruptedFile，按 action 真正分支。
+      const action = args?.action || 'stats';
+      let r;
+      switch (action) {
+        case 'stats': r = er.getStats ? er.getStats() : {}; break;
+        case 'load':  r = er.loadPatterns ? er.loadPatterns() : { error: 'loadPatterns 不可用' }; break;
+        case 'heal':  r = er.selfHealCorruptedFile ? er.selfHealCorruptedFile('patterns') : { error: 'selfHealCorruptedFile 不可用' }; break;
+        default: r = { error: `未知 action: ${action}(可用 stats/load/heal)` };
+      }
+      return { replay: r, action, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3459,8 +3538,23 @@ const HANDLERS = {
     try {
       const { SkillEvolutionEngine } = require('./cortex/skill-evolution-engine.js');
       const se = new SkillEvolutionEngine({ rootPath: HF_DIR, silent: true });
-      const r = se.registerSkill ? se.registerSkill(args?.skill || '') : {};
-      return { skill: r, timestamp: Date.now() };
+      // [契约修复] 此前声明了 skill/action 却只读 skill，action 从未使用。
+      // SkillEvolutionEngine 有 registerSkill / evaluate / distillSkills / compose，
+      // 按 action 真正分支。
+      const action = args?.action || 'register';
+      const skill = typeof args?.skill === 'string' ? args.skill.trim() : '';
+      let r;
+      switch (action) {
+        case 'register': r = skill ? (se.registerSkill ? se.registerSkill(skill) : { error: 'registerSkill 不可用' })
+                                    : { error: 'register 需要 skill 传入技能名' }; break;
+        case 'evaluate': r = skill ? (se.evaluate ? se.evaluate(skill, args?.execution || {}) : { error: 'evaluate 不可用' })
+                                     : { error: 'evaluate 需要 skill 传入技能 id' }; break;
+        case 'distill':  r = se.distillSkills ? se.distillSkills() : { error: 'distillSkills 不可用' }; break;
+        case 'compose':  r = skill ? (se.compose ? se.compose(skill.split(/[,，\s]+/).filter(Boolean)) : { error: 'compose 不可用' })
+                                    : { error: 'compose 需要 skill 传入逗号分隔的技能 id 列表' }; break;
+        default: r = { error: `未知 action: ${action}(可用 register/evaluate/distill/compose)` };
+      }
+      return { skill: r, action, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3550,8 +3644,20 @@ const HANDLERS = {
     try {
       const { DesireSystem } = require('./emotion/desire-system.js');
       const ds = new DesireSystem({ silent: true });
-      const r = ds.process ? ds.process(args?.text || '') : {};
-      return { desire: r, timestamp: Date.now() };
+      // [契约修复] 此前声明了 text/action 却只读 text，action 从未使用。
+      // DesireSystem 有 process(input, context) 与 getStatus()，按 action 分支。
+      const action = args?.action || 'process';
+      const text = typeof args?.text === 'string' ? args.text.trim() : '';
+      let r;
+      if (action === 'status') {
+        r = ds.getStatus ? ds.getStatus() : { error: 'getStatus 不可用' };
+      } else if (action === 'process') {
+        r = text ? (ds.process ? ds.process(text, {}) : { error: 'process 不可用' })
+                 : { error: 'process 需要 text 传入输入' };
+      } else {
+        r = { error: `未知 action: ${action}(可用 process/status)` };
+      }
+      return { desire: r, action, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3559,8 +3665,19 @@ const HANDLERS = {
     try {
       const { EmotionalGrowth } = require('./emotion/emotional-growth.js');
       const eg = new EmotionalGrowth({ silent: true });
-      const r = eg.process ? eg.process(args?.text || '') : {};
-      return { growth: r, timestamp: Date.now() };
+      // [契约修复] 同 desire_system: action 声明未读。按 action 分支。
+      const action = args?.action || 'process';
+      const text = typeof args?.text === 'string' ? args.text.trim() : '';
+      let r;
+      if (action === 'status') {
+        r = eg.getStatus ? eg.getStatus() : { error: 'getStatus 不可用' };
+      } else if (action === 'process') {
+        r = text ? (eg.process ? eg.process(text, {}) : { error: 'process 不可用' })
+                 : { error: 'process 需要 text 传入输入' };
+      } else {
+        r = { error: `未知 action: ${action}(可用 process/status)` };
+      }
+      return { growth: r, action, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3620,7 +3737,14 @@ const HANDLERS = {
     try {
       const { SemanticAnchor } = require('./memory/semantic-anchor.js');
       const sa = new SemanticAnchor({ silent: true });
-      const r = sa.initializePatterns ? { initialized: true } : {};
+      // [契约修复] 此前这里是 `sa.initializePatterns ? { initialized: true } : {}`
+      // ——只检查方法是否存在、**从不调用**，也从不读声明的 text 参数，
+      // 恒返回 { initialized: true }。initializePatterns 其实是构造函数内部
+      // 调用的私有初始化，作为对外入口没有意义。
+      // SemanticAnchor.processMessage(userMessage, context) 才是对外入口，接上。
+      const text = typeof args?.text === 'string' ? args.text.trim() : '';
+      if (!text) return { error: 'text 是必填参数(非空字符串)' };
+      const r = sa.processMessage ? sa.processMessage(text, {}) : { error: 'processMessage 不可用' };
       return { anchor: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
@@ -3629,8 +3753,26 @@ const HANDLERS = {
     try {
       const { ConfidenceCalibrator } = require('./core/confidence-calibrator.js');
       const cc = new ConfidenceCalibrator({ silent: true });
-      const r = cc.assess ? cc.assess(args?.text || '') : {};
-      return { confidence: r, timestamp: Date.now() };
+      // [契约修复] 此前声明了 text/action 却只读 text，action 从未使用。
+      // ConfidenceCalibrator 有 assess / calibrate / recordFeedback /
+      // generateDistribution / scoreEvidenceCoverage，按 action 分支。
+      const action = args?.action || 'assess';
+      const text = typeof args?.text === 'string' ? args.text.trim() : '';
+      let r;
+      switch (action) {
+        case 'assess':    r = text ? (cc.assess ? cc.assess(text, {}) : { error: 'assess 不可用' })
+                                        : { error: 'assess 需要 text 传入待评估文本' }; break;
+        case 'calibrate': r = text ? (cc.calibrate ? cc.calibrate(text, {}) : { error: 'calibrate 不可用' })
+                                         : { error: 'calibrate 需要 text 传入文本' }; break;
+        case 'feedback':  r = text ? (cc.recordFeedback ? cc.recordFeedback(text, args?.correct ?? null) : { error: 'recordFeedback 不可用' })
+                                         : { error: 'feedback 需要 text 传入原文本' }; break;
+        case 'evidence':  r = text ? (cc.scoreEvidenceCoverage ? cc.scoreEvidenceCoverage(text, {}) : { error: 'scoreEvidenceCoverage 不可用' })
+                                        : { error: 'evidence 需要 text 传入文本' }; break;
+        case 'distribution': r = cc.generateDistribution ? cc.generateDistribution(Number(text) || 0.5)
+                                                           : { error: 'generateDistribution 不可用' }; break;
+        default: r = { error: `未知 action: ${action}(可用 assess/calibrate/feedback/evidence/distribution)` };
+      }
+      return { confidence: r, action, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -3736,7 +3878,13 @@ const HANDLERS = {
     try {
       const { PsychologyEngine } = require('./emotion/engine.js');
       const inst = new PsychologyEngine({ silent: true, rootPath: HF_DIR });
-      const r = {};
+      // [契约修复] 此前这里是 `const r = {}`——工具声明了 text 参数却从不读它，
+      // 恒返回空对象。调用方按文档传入 text，拿到 {} 而不是报错，
+      // 正是参数契约审计要防的"最危险失败模式"。
+      // PsychologyEngine.analyzePsychology(input, context) 本就存在，接上即可。
+      const text = typeof args?.text === 'string' ? args.text.trim() : '';
+      if (!text) return { error: 'text 是必填参数(非空字符串)' };
+      const r = inst.analyzePsychology ? inst.analyzePsychology(text, {}) : { error: 'analyzePsychology 不可用' };
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
@@ -3786,7 +3934,11 @@ const HANDLERS = {
     try {
       const { LongTermMemory } = require('./memory/long-term-memory.js');
       const inst = new LongTermMemory({ silent: true, rootPath: HF_DIR });
-      const r = {};
+      // [契约修复] 此前这里是 `const r = {}`——声明了 memory 参数却从不读它，
+      // 恒返回空对象。LongTermMemory.add(memory) 本就存在，接上即可。
+      const memory = typeof args?.memory === 'string' ? args.memory.trim() : '';
+      if (!memory) return { error: 'memory 是必填参数(非空字符串)' };
+      const r = inst.add ? inst.add(memory) : { error: 'add 不可用' };
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
