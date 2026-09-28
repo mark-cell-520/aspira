@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T02:13:58.490Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,performance-optimization,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.67, 测试覆盖缺口填补=0.67, 文档诚实数字审计=0.67 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.67
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.67
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.66
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 176,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "930/0"
+  },
+  "result": "对抗鲁棒性增强。引擎弃权，平局打破选出本切片。基线 921/0。拿 6 个**明文下确定被拦截**的恶意样本(取自语料非自造)，对八类变换跑 gate 测量绕过率:零宽/全角/同形字母/unicode转义/多空格压缩 → 全部拦住;逐字符插分隔符 → **5/6 穿过**; 字母间插空格 → **5/6 穿过**; HTML 实体 → 2/6 穿过。两类大面积穿透同源: **字母段折叠后，紧贴非字母字符的残留分隔符仍会切断代码 token**。实测 c-o-n-s-t- -x- -=- -e-v-a-l-(-u-s-e-r-I-n-p-u-t-)-; 折叠后只得 const- -x- -=- -eval-(-userinput-)-;——eval 与 ( 之间仍隔着 -，/\\beval\\s*\\(/ 匹配不上，code_security 整条漏过。修法: 折叠后补三条规则剥掉\"夹在不同类字符之间\"的单个分隔符，外加一条折叠\"分隔符-空白-分隔符\"(逃逸把原空格也变成 X- -Y，该签名正常文本几乎不出现)。**三轮自我回归，每轮都靠复测 FP/召回或逐条隔离抓住**:  (1) 首版未排除\"分隔符串的后续部分\"，KEY----- 被剥掉、PEM 头被毁，      **召回 100% → 97.1%**。逃逸签名是\"分隔符夹在不同类字符之间\"，      PEM 是\"同类分隔符连续 ≥2\"，形态相反。加 /([-._])\\1/ 守卫后恢复。  (2) 守卫只检查**被匹配的串**，没检查邻居。wait... what? 中间那个 .       的左右邻居都是 .(都算非空白非字母数字)，匹配成功并被剥掉，      省略号变 wait.. what?。修法: 三条规则的邻居类都排除分隔符本身，      保证匹配到的串是**极大串**，守卫才能真正识别 ----- 与 ...。  (3) 我的测试断言三次凭印象写错: PEM 按大写断言(实际第6步会小写)、      html-entity 快照写 6/6(实测 4/6)、      断言 el-.-innerHTML 的混合分隔符\"应被折叠\"(实测**不应**——      混合串夹在两个多字母词之间归字母段折叠管，其启发式要求存在单字母段)。      每次都以实测为准改正，并留下注释说明为何不在断言列表里。另用 git stash 对照确认两处是**既有行为而非我引入**: a.b.c = 1 → abc = 1、e.g. → eg.(全单字母段折叠把 . 当分隔符吃掉)。**一个死代码发现**: variants() 与 altVariants 在整个 src/ 中**无任何消费方**——discriminate() 只吃 normalize().normalized 一个形态。所以\"加个更激进的 altVariant 提高召回\"这条路走不通(本会话第二次遇到机制存在、接线不存在)。已用测试把这个事实钉住。终态: 逐字符插分隔符绕过 **5/6 → 1/6**(剩下那条是既有已知限制: 全单字母段把 el.innerHTML 的点吃掉)。verify 14/14, run-all **930/0**(+9)。改了 src/text-normalizer.js 引擎代码，已重启 MCP: 181 工具在线，端到端 aspira_discriminate 对分隔符逃逸样本返回 verdict=不可信、code_security.score=0.9(修复前 pass)。FP 0.0%/召回 100% 复测确认(第 1 轮回归时曾掉到 97.1%，修回)。"
+}
