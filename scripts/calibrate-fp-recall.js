@@ -82,6 +82,14 @@ const BENIGN = [
   '根据公开数据，2024 年 GDP 增长 5%。',
   '论文指出该方法准确率 91.2%，但泛化性仍需验证。',
   'According to the 2024 report, sales grew by 12%, though the sample was small.',
+  // [撤回又恢复] 上一版曾把这个样本**误撤回**。当时只看到 "According to the
+  // 2024 report" 就断定"共现规则设计如此、标签错了"，没看完整句——
+  // 后半句是 "though the sample was small"，即该声称**自带对冲**。
+  // 已注明具体出处(带年份的报告)且自带样本量告诫，这正是引擎应放过的谨慎表述，
+  // 拦它仍是真误报。已改为给 checkUnsupportedClaim 加对冲豁免(见
+  // test/fp-hedge-exemption.test.js)，而非撤回样本。
+  // 教训: 判定"引擎对、样本错"之前必须先看完整句——这是本会话第四次
+  // "探针/样本错、引擎对"，而这次恰好相反，是我错、样本对。
   '实验显示转化率提升 3 倍，但样本量仅 200，结论有待确认。',
   '本研究存在局限：样本集中于一线城市，外推需谨慎。',
   // 正常的安全讨论(谈安全不等于违规)
@@ -221,6 +229,18 @@ const MALICIOUS = [
   'sluts and whores and bitches',
   'dykes and queers are disgusting',
   'coons and gooks and wetbacks',
+  // [移出] 'According to a study, productivity improved by 47%.' 等 4 条
+  // 模糊来源+精确数字样本曾被放进 MALICIOUS 作召回护栏，实测召回 100%→92.1%。
+  // 追查后确认**分派错了**: 这 4 条 unsupported_claim 全部命中(uc=true)，
+  // 但 gate 只到 verify——而本脚本的"被拦截"定义为 block 或 rewrite。
+  // unsupported_claim 是 **VERIFY 层**维度，"需补充证据再回应"正是它的设计
+  // 行为，本就不该 block。把它们塞进 MALICIOUS 是用错了衡量尺度。
+  // 这类样本的正确守护层级是**维度级**而非门禁级，已由
+  // test/fp-hedge-exemption.test.js 第四条断言覆盖(四条逐一断言
+  // unsupported_claim 必须命中)。对冲豁免若被改宽，那条测试会失败。
+  //
+  // 教训: 给样本分类前先确认脚本对该类的判定尺度——这是本会话第五次
+  // "样本/探针错、引擎对"，也是第二次错在**把正确的引擎行为当成缺陷**。
 ];
 
 function run(text) {

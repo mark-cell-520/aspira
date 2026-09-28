@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T00:12:38.968Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.69, 测试覆盖缺口填补=0.69, 文档诚实数字审计=0.69 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.69
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.69
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.69
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.68
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.68
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.67
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 171,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "876/0"
+  },
+  "result": "误报/召回校准。引擎弃权，平局打破选出本切片。基线 869/0，实测 FP 2.3%(2/86)。这两个误报已连续多轮存在，本轮追查到底，根因**完全相同**: checkPseudoCausal 与 checkUnsupportedClaim 都只识别\"模糊来源+精确数字\"这个形态，**没看句子自己是否已带对冲**。而自带对冲的句子正是引擎应该放过的谨慎表述。误报一: \"实验显示转化率提升 3 倍，但样本量仅 200，结论有待确认。\" —— 它自己注明了样本量只有 200、结论有待确认，**在做引擎会要求它做的事**，却因 \"提升 3 倍\" 命中 PSEUDO_CAUSAL_ZH 而 gate=verify。误报二: \"According to the 2024 report, sales grew by 12%, though the sample was small.\" —— 已注明具体出处(带年份的报告)，后半句还自带样本量告诫，却因共现组合规则而 gate=verify。修法: 两个函数各加**同一条** HEDGE_RE(句内自限判据: 样本量仅N / 有待确认 / 尚需验证 / 初步结果 / 限于样本 / though the sample … / sample was small …)。双向实测: 3/3 自带对冲的放过，4/4 无对冲的仍命中——**修 FP 没有牺牲召回**。**一次值得完整记录的判断反复**: 误报二最初被误判为\"引擎设计如此、语料标签错了\"，样本已从语料撤回。理由是只看到前半句 \"According to the 2024 report\" 就断定共现规则(注释写明\"编造研究模板的典型形态\")是刻意要拦它。但**完整句的后半句是 \"though the sample was small\"**——自带对冲。已注明出处且自带对冲的句子被拦仍是真误报，样本已恢复并改为修模式。教训: 判定\"引擎对、样本错\"之前**必须先看完整句**。本会话此前有四次\"探针/样本错、引擎对\"，这次恰好相反——是我错、样本对。同一个\"谁错了\"的问题两个方向都出现过，唯一可靠的做法是测量完整输入。另有一次同类失手: 把 4 条\"模糊来源+精确数字\"样本加进 MALICIOUS 作召回护栏，召回立刻假跌到 92.1%。追查发现这 4 条 unsupported_claim **全部命中(uc=true)**，但 gate 只到 verify，而本脚本的\"被拦截\"定义为 block 或 rewrite。unsupported_claim 是 VERIFY 层维度，\"需补充证据再回应\"正是它的设计行为，本就不该 block。**用错了衡量尺度**。已移出并改为维度级守护(test/fp-hedge-exemption.test.js 第四条逐一断言 unsupported_claim 必须命中)。本会话第五次\"样本错、引擎对\"，也是第二次错在**把正确的引擎行为当成缺陷**。新测试自身也改了三次: (1) 断言合成中文句 gate=pass 过强——它虽已被 unsupported_claim 豁免，但仍被 appeal_to_authority/ai_writing_tell/vagueness 正当命中，那是其他维度不在本轮范围; (2) 用全文 includes() 判断语料是否还含样本，匹配到**我自己写在注释里的移除理由**——本会话第三次\"测试匹配到自己的注释\"，已改为只认数组条目行; (3) 语料断言随之改为\"数组里不应再含\"。终态: verify 14/14, run-all 876/0, FP **0.0%**(0/86), 召回 **100%**(34/34)。MCP 已重启，181 工具在线，端到端: 两个对冲样本 verdict=可信且 findings 为空，无对冲的编造模板 verdict=不可信。"
+}

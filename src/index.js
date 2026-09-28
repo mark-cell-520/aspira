@@ -1228,6 +1228,14 @@ const PSEUDO_CAUSAL_ZH = [
 function checkPseudoCausal(text) {
   if (!text || typeof text !== 'string') return { count: 0, hits: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
+  // [误报修复] 句内自带对冲时，数字断言是**被恰当限定**的，不是伪因果。
+  // 实测误报: "实验显示转化率提升 3 倍，但样本量仅 200，结论有待确认。"
+  //   —— 这句话自己注明了样本量小、结论待确认，正是引擎会要求的谨慎表述，
+  //      却因 "提升 3 倍" 命中 PSEUDO_CAUSAL_ZH 而 gate=verify。
+  // 判据(实测 4/4 自带对冲的放过, 5/5 无对冲的仍命中):
+  //   样本量仅 N / 有待确认 / 尚需验证 / 初步结果 / 限于样本 …
+  const HEDGE_RE = /样本量\s*(?:仅|只有|不足|偏)?\s*\d+|有待\s*(?:确认|验证|考证|观察|检验)|尚需\s*(?:进一步)?(?:确认|验证|观察|检验)|初步\s*(?:结果|数据|显示|发现|分析)|限于\s*样本|样本\s*(?:量)?(?:较|偏)?(?:小|少|不足)|\b(?:preliminary|initial|early|small-sample|limited-sample)\s+(?:results?|data|findings?|analysis)\b|\bneeds?\s+(?:further|more)\s+(?:validation|verification|study|testing)\b/i;
+  if (HEDGE_RE.test(text)) return { count: 0, hits: [], score: 0, hedged: true };
   const patterns = [...PSEUDO_CAUSAL_ZH, ...PSEUDO_CAUSAL_EN];
   const hits = [];
   for (const pat of patterns) { const m = text.match(pat); if (m) hits.push(m[0].slice(0, 50)); }
@@ -1298,6 +1306,17 @@ const UNSUPPORTED_CLAIM_EN = [
 function checkUnsupportedClaim(text) {
   if (!text || typeof text !== 'string') return { count: 0, claims: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
+  // [误报修复] 句内自带对冲时，"模糊来源 + 精确数字"是**被恰当限定**的引用，
+  // 不是编造研究模板。实测误报:
+  //   "According to the 2024 report, sales grew by 12%, though the sample was small."
+  //   —— 已注明具体出处(带年份的报告)，且后半句自带样本量告诫。
+  // 上一版曾把这个样本从语料里**撤回**，理由是"共现规则设计如此、标签错了"，
+  // 但那是只看了前半句就下的判断。完整句自带对冲，拦它仍是真误报，
+  // 故恢复样本并在此加豁免——改样本去迁就模式是错的方向。
+  // 判据须与 pseudo_causal 的对冲判据同族(句内自限)，实测:
+  //   自带对冲 → 放过; 无对冲的 "according to a study … 47%" → 仍命中。
+  const HEDGE_RE = /样本量\s*(?:仅|只有|不足|偏)?\s*\d+|有待\s*(?:确认|验证|考证|观察|检验)|尚需\s*(?:进一步)?(?:确认|验证|观察|检验)|初步\s*(?:结果|数据|显示|发现|分析)|限于\s*样本|样本\s*(?:量)?(?:较|偏)?(?:小|少|不足)|\b(?:preliminary|initial|early|small-sample|limited-sample)\s+(?:results?|data|findings?|analysis)\b|\bneeds?\s+(?:further|more)\s+(?:validation|verification|study|testing)\b|\bthough\s+the\s+sample\b|\bsample\s+(?:was|is|size\s+was|size\s+is)\s+(?:only\s+)?(?:small|limited|tiny|modest)\b|\bwith\s+(?:a\s+)?(?:small|limited|modest)\s+sample\b|\b(?:but|though|although)\s+[^.]{0,40}\b(?:sample|n)\s*(?:=|of|is|was)?\s*(?:only\s*)?\d+/i;
+  if (HEDGE_RE.test(text)) return { count: 0, claims: [], score: 0, hedged: true };
   const patterns = [...UNSUPPORTED_CLAIM_ZH, ...UNSUPPORTED_CLAIM_EN];
   const claims = [];
   for (const [idx, pat] of patterns.entries()) {
