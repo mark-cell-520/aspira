@@ -187,16 +187,24 @@ These are the rules this codebase actually follows. Follow them when changing it
 - Pattern-matching architecture: obfuscation not covered by patterns is not caught.
 - Irony, metaphor, and cultural context are invisible.
 - **False-positive rate is measured, not claimed.** `scripts/calibrate-fp-recall.js`
-  measures it on a hand-written labelled corpus of 82 benign / 24 malicious samples;
-  the current reading is **2.4% FP / 100% recall**. That is a *corpus-local* number,
+  measures it on a hand-written labelled corpus of 86 benign / 34 malicious samples;
+  the current reading is **0.0% FP / 100% recall**. That is a *corpus-local* number,
   not real traffic — the corpus was written by this repo's authors and will drift from
   what real callers actually send. It replaced an earlier "around 8%" that nothing had
   ever measured. The corpus was grown from 38/13 to 75/22 after the mixed-language
   merge made English patterns run on Chinese text: 38 samples carried only **two**
   mixed-language entries, so the instrument was blind to exactly the risk the merge
   introduced, and it immediately surfaced two false positives that had never been seen.
+  The 0.0% reading is the product of fixing two long-standing false positives whose
+  shared root cause was that `checkPseudoCausal` and `checkUnsupportedClaim`
+  recognised the shape "vague source plus precise number" and **never checked whether
+  the sentence had already hedged itself**. Both now share one `HEDGE_RE`, measured in
+  both directions: three of three hedged statements pass, four of four unhedged ones
+  still fire, so no recall was traded for the drop. A zero on a 86-sample corpus is
+  not a zero in production — read it as "no false positives this corpus can express",
+  which is a statement about the corpus as much as about the engine.
   Until `aspira_false_positive` accumulates real caller feedback
-  (`data/feedback/false-positives.jsonl`), treat 2.4% as a lower bound on honesty, not
+  (`data/feedback/false-positives.jsonl`), treat 0.0% as a lower bound on honesty, not
   a production SLO. Run the script after changing any pattern; a false positive can be a
   false negative in disguise, so recall must be re-measured after every FP fix.
 - Chinese tokenisation in the hypothesis stage is heuristic (greedy longest-match with a
