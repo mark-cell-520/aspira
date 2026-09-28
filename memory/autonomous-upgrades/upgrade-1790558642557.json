@@ -49,5 +49,10 @@
     "fpFeedbackWired": true,
     "gateVerdictWired": true
   },
-  "status": "decided"
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "912/0"
+  },
+  "result": "测试覆盖缺口填补。引擎弃权，平局打破选出本切片。基线 888/0。先说测量方法的一次修正: 首版按\"测试文件里是否出现模块 basename\"算覆盖，得出 133 个无覆盖模块——但那是错的。src/pipeline.js 里的 priority-guardian/progress-judgment/uncertainty-quantifier/dao-decision 都被流水线间接跑到，只是没有测试直接点名。用 basename 匹配会把**间接覆盖算成缺口**。改为**实测加载**: 在 require 链上挂钩子记录引擎启动时真正 require 到的 src/ 文件。378 个模块中引擎只加载 245 个，133 个从未加载; 剔除 archive/ 与 <80 行空壳后，剩 100 个实质模块从未被加载。先确认它们不是坏的: 逐个 node --check，语法错误 0 个; 98 个有 module.exports。所以它们是**可加载但从未接线**的代码。曾尝试逐个 require 验证，触发重量级初始化，400s 超时被杀——说明\"能加载\"和\"能安全加载\"是两件事，静态检查才是可规模化的手段。100 个不可能一个周期做完(约定: 单次周期聚焦一个切片，不贪多)。挑选标准是**被文档承诺过却从未接线**——那比单纯\"没测\"更危险:src/core/action-tracker.js 被 AGENTS.md 决策路由表点名(\"Did it actually work? … assessEffectiveness() checks the effect, not the action.\")，文档把调用方指向一个引擎从不加载的模块;src/core/meta-calibration.js 头部写着职责是\"把校准结果转成调用方可读的诚实声明\"，对齐\"缺事实就说不知道——不编造\"，诚实外显是 Aspira 核心价值却无测试锁定行为。新增 test/unwired-module-coverage.test.js，24 个用例全部通过: MetaCalibration 10 个(低置信显式声明不确定/高置信不假装不确定/medium 区间/originalConfidence 回退/都缺默认 0.3/子系统缺口只算 adjusted 且 calibrated<0.5 的项/needsUncertaintyMarker 兜底且不重复/自定义阈值/note 边界始终存在); ActionTracker 14 个(commit→execute 成功与失败路径/未知 id 一律返回失败而非抛异常/act→reportResult 无承诺路径/assessEffectiveness 优先取 result.effectiveness 否则按 success 兜底/assessQuality 三维平均+指数平滑(0.7*0.9+1*0.1=0.73)/意图行为对齐度与缺口严重度/变革阶段只能前进到 maintenance 并停住/learnFromAction 分诊/逾期标记/initialState 注入)。最后加一条**元测试**锁住缺口本身: 断言这两个模块仍未出现在 pipeline.js/index.js/heartflow.js 的 require 里——若将来有人接线，该测试失败，那正是想要的: 覆盖缺口的消失应是一个**有意识的决定**，而不是无声发生。一次我的期望写错: 断言缺口类型为 intent_behavior_gap，源码实为 intention_behavior_gap。按记忆里的简称写而没看源码，已改。顺带修了 AGENTS.md 的诚实数字: 它写着 82 benign/24 malicious/2.4% FP，而实测已是 86/34/0.0%。已更新，并补记 0.0% 的来由(两个对冲豁免修复)与一句限定: 86 样本语料上的 0 不是生产环境的 0，应读作\"这个语料所能表达的误报为 0\"——那既是关于引擎的陈述，也是关于语料的陈述。更新测试数后复跑 audit-doc-numbers: 34/34 一致，0 不一致。终态: verify 14/14, run-all 912/0(+24)。未改 src/ 引擎代码(仅新增测试与文档)，按协议跳过 MCP 重启。FP 0.0%/召回 100% 未受影响。"
 }
