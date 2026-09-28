@@ -646,7 +646,17 @@ class ThoughtChain {
         // [P2-T2-WF] 人格化润色：根据任务类型和用户认知档案调整语气/粒度
         let personalityPolish = null;
         try {
-          const adaptiveLearning = hf.adaptiveLearning || (require('../cortex/adaptive-learning.js') && new (require('../cortex/adaptive-learning.js').AdaptiveLearningEngine)({ memory: hf.memory }));
+          // [契约修复] adaptive-learning.js 是**默认导出**
+          // (module.exports = AdaptiveLearningEngine)，
+          // 而这里写的是 require(...).AdaptiveLearningEngine → undefined，
+          // new undefined(...) 恒抛 TypeError。
+          // 与本仓已记录六次的"契约错配"族同型:
+          // 类对象调实例方法 / 字符串传给期望对象的方法 /
+          // 解构默认导出的命名导出。
+          // 修法: 兼容两种导出形态。
+          const _AL = require('../cortex/adaptive-learning.js');
+          const _ALClass = (_AL && _AL.AdaptiveLearningEngine) || _AL;
+          const adaptiveLearning = hf.adaptiveLearning || new _ALClass({ memory: hf.memory });
           if (adaptiveLearning) {
             const profile = adaptiveLearning.getProfile ? await adaptiveLearning.getProfile('anonymous') : (adaptiveLearning.profiles?.get('anonymous') || {});
             const nudge = adaptiveLearning.nextNudge ? adaptiveLearning.nextNudge('anonymous') : null;

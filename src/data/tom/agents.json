@@ -1,0 +1,55 @@
+{
+  "agent-1": {
+    "agentId": "agent-1",
+    "belief": [],
+    "desire": [],
+    "intention": {
+      "plan": "会",
+      "confidence": 0.6
+    },
+    "emotion": {
+      "primary": "neutral",
+      "intensity": 0.5
+    },
+    "knowledge": {
+      "facts": []
+    },
+    "updatedAt": 1790617548472
+  },
+  "probe-agent": {
+    "agentId": "probe-agent",
+    "belief": [],
+    "desire": [],
+    "intention": {
+      "plan": "会",
+      "confidence": 0.6
+    },
+    "emotion": {
+      "primary": "neutral",
+      "intensity": 0.5
+    },
+    "knowledge": {
+      "facts": []
+    },
+    "updatedAt": 1790626187294
+  },
+  "__ASPIRA_SENTINEL_agentId__": {
+    "agentId": "__ASPIRA_SENTINEL_agentId__",
+    "belief": [],
+    "desire": [],
+    "intention": {
+      "plan": "unknown",
+      "confidence": 0.1
+    },
+    "emotion": {
+      "primary": "neutral",
+      "intensity": 0.5
+    },
+    "knowledge": {
+      "facts": [
+        "__ASPIRA_SENTINEL_array__"
+      ]
+    },
+    "updatedAt": 1790618447630
+  }
+}

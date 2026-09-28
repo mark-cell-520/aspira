@@ -78,10 +78,39 @@ test('G3-2: 身份证号 → rewrite', () => {
   assert.ok(r.sanitized, '应脱敏');
 });
 
-test('G3-3: 机密合同 → rewrite', () => {
-  // 实际: rewrite(脱敏放行)
+test('G3-3: 机密合同 → block', () => {
+  // [期望修正] 这里原先是 `→ rewrite`，注释写"实际: rewrite(脱敏放行)"。
+  // 那个"实际"是**缺陷的产物**，不是设计意图:
+  // checkOutbound 的 forcedLevel 是 MCP schema 传来的中文字符串，
+  // 而 estimateClassification() 返回 CLASSIFICATION 对象，
+  // 于是 `forcedLevel || estimate(...)` 让 classification 变成字符串，
+  // 下面每个 `classification.level` 都是 undefined ——
+  // `undefined >= 3` 为 false，密级 block 分支整个失效，
+  // 只能掉进 PII 分支得 rewrite。
+  // CLASSIFICATION 表自己写明了意图: CONFIDENTIAL/SECRET 的 action 就是 'block'。
+  // 修复后按设计返回 block。测试的期望跟着设计走，不跟着缺陷走。
   const r = checkOutbound({ text: '合同金额 500万元', classification: '机密' });
-  assert.strictEqual(r.action, 'rewrite', 'action=' + r.action);
+  assert.strictEqual(r.action, 'block', 'action=' + r.action);
+  assert.strictEqual(r.classificationLevel, 3, 'level=' + r.classificationLevel);
+  assert.ok(r.reason.includes('密级过高'), 'reason=' + r.reason);
+});
+
+test('G3-3b: 绝密 → block，公开 → 不因密级被拦', () => {
+  // 密级阶梯必须真的分级，不能一拦全拦(修复前两种取值判定完全相同)
+  const secret = checkOutbound({ text: '合同金额 500万元', classification: '绝密' });
+  assert.strictEqual(secret.action, 'block', 'action=' + secret.action);
+  assert.strictEqual(secret.classificationLevel, 4, 'level=' + secret.classificationLevel);
+  const pub = checkOutbound({ text: '合同金额 500万元', classification: '公开' });
+  assert.notStrictEqual(pub.action, 'block', '公开不应因密级被 block');
+  assert.strictEqual(pub.classificationLevel, 0, 'level=' + pub.classificationLevel);
+});
+
+test('G3-3c: 非法密级值不得静默变成 undefined', () => {
+  // 修复前的另一个面向: 传个枚举外的值，classification 就是那个字符串，
+  // 返回体里 classification/classificationLevel 全是 undefined。
+  const r = checkOutbound({ text: '合同金额 500万元', classification: '不存在的级别' });
+  assert.ok(typeof r.classificationLevel === 'number', 'level 必须是数字，实测 ' + r.classificationLevel);
+  assert.ok(r.classification, 'label 必须有值，实测 ' + r.classification);
 });
 
 test('G3-4: 公开内容 → rewrite(脱敏)', () => {

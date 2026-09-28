@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T19:40:13.583Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 216,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1178/0",
+    "baseline": "1175/0",
+    "delta": "+3"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1175/0。\n\n═══ 起因 ═══\n上轮 next-step (c): 缓存现已生效但 hit/miss 尚未实测 ——\n相同输入连续 think 两次应出现 hits>0，作为本轮验证点。\n\n═══ 先排除一个自己的探针错误 ═══\n首版探针没 await(think 是 async)，\nObject.keys(Promise) 为空 → 误以为 think 返回空对象。\n加 await 后正常。**探针自己犯了错，不是引擎缺陷。**\n\n═══ 验证结果: 缓存真的生效 ═══\n  相同输入 think 两次 → hits=1, size=1   ✅\n  但第三次不同输入 → misses 仍 0, size=2 ⚠️\n\n═══ 抓到第 8 处: 行为修好了, 指标仍是假的 ═══\n_cacheGet 只在 **TTL 过期** 时 misses++，\n`if (!entry) return null`(未命中)这条最常见路径**不计数**。\n\n后果: misses 几乎恒为 0，\nhitRate = hits/(hits+misses) 恒接近 1，\naspira_cache_stats 报的命中率是**假的**。\n\n这是\"只修指标不改行为\"的**反面**:\n  **修了行为，指标仍是假的。**\n\n═══ 本轮自造的坑(第 24 次仪器失效) ═══\n第一版我在 _cacheGet **和** _cachePut **两处**都加了 misses++，\n注释里明明写了\"只在一处计\"，代码却两处都计。\n\nthink() 是\"先 get 未命中、再 put\"的顺序，\n于是每次未命中计 2 次 —— 两次相同输入得 misses=2(应为 1)。\n\n**想清楚的和写下来的不一致时, 实测是唯一的裁判。**\n当场撤掉 _cachePut 那处。\n\n这一轮的仪器和缺陷**都是我自己的**:\n不是引擎错、不是探针错, 是我手滑。\n如实记录。\n\n═══ 修复后实测 ═══\n  两次相同输入 → hits=1, misses=1   ✅\n  第三次不同输入 → misses=2, size=2 ✅\n  hitRate 真实: 此时 = 0.5(不再是恒接近 1 的假数)\n\n═══ 新测试 ═══\ntest/think-cache-counting.test.js(3 例):\n  · _thinkCache 构造后必须即存在\n  · 相同输入第二次必须 hits+1, 首次必须计 1 次 miss,\n    hitRate 必须真的约 0.5(不是被零分母钉在 1)\n  · 不同输入必须 miss 且 size 增长\n\n═══ 门禁 ═══\nverify 14/14；run-all **1178/0**(基线 1175，+3)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/core/heartflow.js，**已重启 MCP**，181 工具在线，\naspira_cache_stats 复测正常(hitRate=null 因尚无 think, 语义正确)。\nREADME/SKILL/CURRENT_STATE 同步为 1178；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) test-coverage-gap 已连续 10 周期。\n    无参数工具已全覆盖、缓存已实测、B 类已抽样 ——\n    **该切片确已枯竭，下轮必须轮换。**\n(b) 建议轮换到「维度健康审计」(54 维里仍有维度\n    无法被 corpus 触发)或「对抗鲁棒性」(字母空格召回仅 39%)。\n(c) 决策引擎连续 4 轮选同一切片且分数持平(0.63)，\n    轮换机制可能需要人工介入 —— 已在 journal 记录该现象。"
+}

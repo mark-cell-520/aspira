@@ -24,15 +24,33 @@ const JOURNAL = path.join(ROOT, 'memory', 'autonomous-upgrades');
 if (!fs.existsSync(JOURNAL)) fs.mkdirSync(JOURNAL, { recursive: true });
 
 // ── 内省: 读取历史, 收集已完成的一次性切片(避免重复) + 统计各切片完成次数(轮换权重) ──
+// [契约修复] `exhausted` 曾是**永久单向阀**: 一旦某轮 journal 标了 exhausted: true，
+// `completed.add()` 让它从此退出候选空间，**再也不会回来**。
+// 实测后果: `doc-honest-numbers` 在第 N 轮因"当时确已枯竭"被标 exhausted，
+// 但"枯竭"是可恢复的 —— 文档数字会随代码增长再次出现偏差，
+// 而该切片已永久消失，候选空间从 7 个降到 6 个，**轮换能力反而被削弱**。
+// （这也解释了为何 test-coverage-gap 连续被选: 最能制衡它的那个选项不在了。）
+//
+// 修法: 把 exhausted 从"永久移除"改为"**冷却期**"——
+// 按自标记起经过的周期数衰减，期满后重新进入候选空间。
+// `once`(真正的一次性工作，如"接线 text-normalizer")仍是永久移除：
+// 接线做完了就是做完了，不存在"再次需要接线"。
 const completed = new Set();
 const doneCount = new Map();
-for (const f of fs.readdirSync(JOURNAL)) {
+const exhaustedAt = new Map();   // chosen → 标记 exhausted 时的累计周期序号
+let cycleSeq = 0;                // 递增周期序号(按 journal 文件名排序后的位置近似)
+for (const f of fs.readdirSync(JOURNAL).sort()) {
   if (!f.endsWith('.json')) continue;
+  cycleSeq++;
   try {
     const j = JSON.parse(fs.readFileSync(path.join(JOURNAL, f), 'utf8'));
     if (j.status === 'done' && j.chosen) {
       doneCount.set(j.chosen, (doneCount.get(j.chosen) || 0) + 1);
-      if (j.once || j.exhausted) completed.add(j.chosen);
+      if (j.once) {
+        completed.add(j.chosen);           // 真正一次性: 永久移出
+      } else if (j.exhausted) {
+        exhaustedAt.set(j.chosen, cycleSeq); // 记下标记位置, 冷却期后自动恢复
+      }
     }
   } catch (_) { /* 跳过损坏条目 */ }
 }
@@ -57,7 +75,23 @@ try { testCount = fs.readdirSync(path.join(ROOT, 'test')).filter(f => f.endsWith
 
 // ── 生成候选升级切片(新愿的机会空间) ──
 const C = [];
-const add = (opt) => { if (!completed.has(opt.id)) C.push(opt); };
+// [契约修复] exhausted 的冷却期语义:
+//   `once`  → 永久移出(一次性工作, 做完即完)
+//   `exhausted` → 冷却 EXHAUST_COOLDOWN 个周期后自动恢复
+// "枯竭"几乎总是**暂时**的: 文档数字会随代码增长重新偏差、
+// 测试覆盖会随新模块重新出现缺口。永久移除一个可恢复的选项，
+// 只会让候选空间单调收缩、轮换能力逐轮下降。
+const EXHAUST_COOLDOWN = 6;
+const add = (opt) => {
+  if (completed.has(opt.id)) return;                       // once: 永久
+  const at = exhaustedAt.get(opt.id);
+  if (at !== undefined) {
+    const elapsed = cycleSeq - at;
+    if (elapsed < EXHAUST_COOLDOWN) return;                // 冷却中: 暂不参选
+    // 冷却期满: 恢复参选(不再把它当 exhausted 处理)
+  }
+  C.push(opt);
+};
 // 一次性切片(once:true, 完成后移出候选空间)
 if (!textNormWired) add({
   id: 'wire-text-normalizer', label: '接线 text-normalizer 归一化(抗混淆)',

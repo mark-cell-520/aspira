@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T15:30:14.607Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 206,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1135/0",
+    "baseline": "1132/0",
+    "delta": "+3"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1132/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 本轮三个端到端探针是手工设计的，\n未固化成测试 —— 回归时不会重跑，会腐烂。\n本轮把它们写进 mcp-passthrough-contract.test.js(4 → 7 例)。\n\n═══ 固化第一轮就抓到真缺陷(且在我上上轮的修复里) ═══\n探针只是测量，不是回归守卫 —— 没跑的测试保护不了任何东西。\n写进去后首次运行即失败:\n  aspira_outbound_ledger 的 record 分支 `ledger.record(args)`\n  把整个 args 透传，而 record(entry) 取 entry.action 作为\n  **要记录的门禁动作**(pass/rewrite/block)，\n  args.action 在 handler 顶层却是**操作名** 'record'。\n  → 每条经 MCP 记录的出域调用，action 字段全是 'record'，\n    **真实门禁动作整个丢失**。\n  实测落库: {\"tool\":\"ptc-probe-…\",\"action\":\"record\"}\n  (textPreview 也是 undefined，因为 args 里没有 text 字段名匹配)\n\n根因: 我上轮只给 query 分支做了\"操作键剥离 + action_filter 翻译\"，\nrecord 分支仍是整体透传。读路径修对了，写路径没修。\n教训: **一个键有两义时，每个转发该对象的分支都需要同一套翻译 ——\n只修你刚好探到的那一个分支，它的孪生分支就是坏的。**\n\n═══ 修法 ═══\nrecord 分支与 query 一致: 构造 entry 时删掉 action，\n把 action_filter 映射成 action。\n断言用唯一 tool 标记写后读回 —— ledger 是 append-only，\n全局计数器会让断言依赖执行顺序，故不用计数而用标记。\n\n═══ 三个探针同时加固(不是照抄) ═══\n① classification: 断言两级别判定不同 **且** level 是数字而非 undefined。\n② runGate: 先断言自己的触发文本真的产出 block 红线，\n   再断言 runGate:false 跳过它 —— 上轮那版探针是假警报，\n   正因输入从未到达它要测的分支。\n③ outbound_ledger: 按 tool 标记读回，不依赖全局计数。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1135/0**(基线 1132，+3)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/mcp-server.js，**已重启 MCP**。\n端到端复测: 以 action_filter:\"block\" 记录，落库 action 现为 'block'\n(修复前恒为 'record')。测试连跑两次结果一致(可重复)。\nREADME/SKILL/CURRENT_STATE 测试数同步为 1135；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 6 个透传工具现已全部有固化的生效性测试。\n    但**同族风险仍在别处**: 还有哪些 handler 也整体透传 args？\n    param-contract 只标记了 6 个 passthrough 工具，\n    应全量扫 `record(args)` / `log(args)` / `f(args)` 形态，\n    逐一核对底层是否也有\"操作键与数据键同名\"的冲突。\n(b) 152 个无 action enum 的工具仍无端到端契约检查。\n(c) 同形状还剩 7 个 B 类挂 MCP 模块未逐个探。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

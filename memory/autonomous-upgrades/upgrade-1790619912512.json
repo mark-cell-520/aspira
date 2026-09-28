@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T18:25:12.511Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 213,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1167/0",
+    "baseline": "1163/0",
+    "delta": "+4"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1163/0。\n\n═══ 起因 ═══\n上轮 next-step (b): 上轮为修 aspira_bridge_analyze 而\n**新实现**的 stance-detector / conflict-resolver\n从未被测量过 —— 没有一条测试覆盖它们，\nsuite 的增长也不含它们。\n\n═══ 首测: StanceDetector 8/14 ═══\n14 条手写标注用例，6 处 FAIL。最严重一处:\n  「我并不认同这种做法」→ **support**(期望 oppose)\n\n**把否定判成支持。** 根因是词表不对称:\n  SUPPORT 收 (完全|非常)?(认同|赞同) —— 主语限定可选\n  OPPOSE  只收 (不|并非|并不)(完全)?(同意|赞成|支持)\n于是否定句里的「认同」被支持类吃掉。\n\n═══ 修它时连带撞出四处 ═══\n(a) 「我完全不同意」→ neutral(漏)\n    否定式优先级低于宽松的支持类。\n    修: 否定式**先**匹配，且支持/反对类只在\n        「否定片段挖空后的残文」上跑(否则双计)。\n\n(b) 「虽然可行，但是成本太高了」→ neutral(漏)\n    **首版完全没有 mixed 信号源** ——\n    schema 承诺四个 stance 值，其中一个代码永远返回不了。\n    修: 增加 MIXED 模式集(虽然…但是/一方面…另一方面/\n        有…也有/好处…坏处/but…however)，\n        并置于 neutral 分支**之前**。\n\n(c) 补了 MIXED 后**仍然漏**:\n    const total = support + oppose + neutral;\n    **漏加 mixed。** 纯转折句 mixed>0 而三类全 0 →\n    total===0 → 走早退分支，刚收集的信号被整段丢弃。\n    与 _loadStats「只在异常路径设默认值」同一类缺陷:\n    **代码算出了值，却没把它计入决定答案的那个汇总。**\n\n(d) MIXED 正则用 [^。，] 跨分句，\n    而中文分句用**全角逗号** `，` → 永远跨越不过去。\n    改为 [^。！？；]。\n\n═══ ConflictResolver 4/5 ═══\n所有 SELF_CONTRADICT 规则都要求句子**必须**以\n虽然/尽管/虽说 开头，于是\n「这个方法效率很高，然而维护成本极高」\n这种不带引导词的自我矛盾永远检不出。\n补两条不要求引导词的(转折+负面评价词 / 转折+显式否定)。\n\n═══ 终测 ═══\nStanceDetector **14/14**(原 8/14)\nConflictResolver **5/5**(原 4/5)\n\n═══ 新测试也自抓了一次 ═══\n结构性断言把注释里说明缺陷的 [^。，] 当成真代码报了假阳性。\n已改为先剥注释再匹配。\nAGENTS.md 已记录四次同一失效模式:\n  **仪器把自己的说明文字当成引擎缺陷。**\n\n═══ 门禁 ═══\nverify 14/14；run-all **1167/0**(基线 1163，+4)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/bridge，**已重启 MCP**，aspira_bridge_analyze\n四条探针端到端复测: oppose / mixed+conflict / support / conflict。\nREADME/SKILL/CURRENT_STATE 同步为 1167；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 哨兵法剩余 ~16 个跳过项: 多为仪器噪声(enum/evidence/texts[]\n    类型不匹配)与 9 个无参数工具。无参数工具需另设探针。\n(b) 新测出的两个模块只有 18 条标注样本，\n    覆盖面仍窄(无英文混合、无反讽、无长上下文)。\n(c) B 类 stub 模块(mood-evolution 等)仍是空壳。\n(d) ThoughtNode.prune() 仍 0 调用点。\n(e) test-coverage-gap 已连续 7 周期，边际收益明显递减，\n    下轮应轮换到「维度健康审计」或「对抗鲁棒性」。"
+}

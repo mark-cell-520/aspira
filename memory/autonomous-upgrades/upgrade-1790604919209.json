@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T14:15:19.208Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 205,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1128/0",
+    "baseline": "1123/0",
+    "delta": "+5"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1123/0。\n\n═══ 起因 ═══\n上轮 next-step 留了两条:\n  (a) mcp-echo-audit 只认字面 `return { action`，先赋值再返回或\n      查找表分派都能逃过 —— 最终判据是端到端冒烟。\n  (b) mcp-param-contract.test.js 仍只覆盖 2 个工具。\n本轮两条都做。\n\n═══ (a) 端到端冒烟脚本 ═══\n写 scripts/mcp-action-smoke.js: 真起 server(socket 模式)，\n对全部 29 个有 action enum 的工具，把每个 action 都调一遍，\n比较返回的结构签名。**0 处可疑**。\n反向静态检查也 0: 29 个工具的 handler 全都真的读 action。\n→ 静态盲区实际未藏缺陷(至少这 29 个)。\n盲区写在脚本头(5 条)，含\"会真的执行有副作用的 action\"。\n\n═══ (b) 把 param-contract 从 2 个工具扩到 181 个 ═══\n那个测试名不副实: 名字叫 param-contract，8 个断言里只有\n2 个真比 schema 与实现，工具清单只有 lesson_search/memory_bank。\n后果: 前两轮的真实缺陷(knowledge_graph 的 action 回声、\nforgetting 的 action 回声 + 8 参数未声明)从它眼前走过，\n**两个工具都不在它的清单里**，而文件头声称它钉住这个形状。\n扩为三项全量检查:\n  ① schema 声明的参数，handler 必须读\n  ② handler 读的参数，schema 必须声明(否则被中央校验静默丢弃)\n  ③ 有 action enum 的，handler 必须真分支\n\n═══ 扩量让仪器又错了五次(第 12-17 次同型故障) ═══\n一次报出 25 + 7 + 4 + 4 = 40 处，**逐个人工复现后\n全部是假阳性或定位错误，没有一个是引擎缺陷**:\n① 不认 `const { a, b } = args` 解构 → 23 个健康工具被报\"声明未读\"\n② 不认 `const input = args || {}` 别名\n③ 把 decision.type(对象字段)、String(x).trim()(原型方法)当参数\n④ 解构正则 `[^{}]{0,300}` 匹配不到\n   `const { domain, params = {} } = args`\n   —— 默认值本身是对象字面量(formula_bridge/formula_calc 4 处)\n⑤ 别名收集把 `const decision = args?.decision || {}` 也算别名，\n   于是 decision 的 4 个字段全被当成 args 参数\n另有独立缺陷: handlerBodyOf 用朴素 {}/{} 配平，与\nmcp-echo-audit 首版同款 —— 把 handleDecisionRouter 测成\n**125,732 字符**(字符串/模板/正则/注释里的花括号带偏)。\n两个脚本现已统一用词法状态扫描。\n五处修正各由一个测试锁住: 故意制造该假阳性，断言扫描器现在拒识。\n另有反向测试: 必须能抓到故意制造的违背 —— 审计要有牙。\n\n═══ 踩过的两个自己的坑 ═══\n① 批量把调用点 detectReads( 换成 readsOf( 时，把 readsOf\n   定义体里的 detectReads(body) 也换了 → 无限递归\n   \"Maximum call stack size exceeded\"。批量替换不看上下文必踩。\n② AGENTS.md 审计从 44 掉到 43，一度以为引入回归。实为\n   上一条目把\"17 layers (11 for mode:'fast')\"当可核对声明，\n   本轮修正后不再是一项数字声称 —— **下降是预期的**。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1128/0**(基线 1123，+5)；审计 **43/43**、0 不符；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n端到端冒烟 0 处可疑；echo-audit 两形态仍为 0。\n**本轮未改 src/ 引擎代码**(只改 test/ 与文档)，\n故按周期规则未重启 MCP; server 仍在跑，181 工具在线。\nREADME/SKILL/CURRENT_STATE 测试数同步为 1128；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) param-contract 的残余盲区: 整对象透传\n    (CT.compute(args || {}) / logger.log(args)) 静态无法核对，\n    已跳过。应对这 7 个透传工具补端到端冒烟。\n(b) mcp-action-smoke 只覆盖 29 个有 action enum 的工具，\n    另 152 个无 enum 的工具没有端到端契约检查。\n(c) 同形状还剩 7 个 B 类挂 MCP 模块未逐个探。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

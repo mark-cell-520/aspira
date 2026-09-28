@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T18:00:13.366Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 212,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1163/0",
+    "baseline": "1159/0",
+    "delta": "+4"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1159/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 哨兵法仍跳过 18 个工具，\n而那些\"基线即报错\"的工具正是哨兵法查不到的覆盖缺口。\n\n═══ 重新导出跳过清单: 24 个 ═══\n分类判读:\n  · 仪器噪声(哨兵污染 enum action / evidence / texts[]): 多数\n  · 权限类(guest 不可写): 预期行为，非缺陷\n  · 无参数工具: 9 个，无法走哨兵法\n  · **真缺陷: 2 个**\n\n═══ 两个真缺陷(用合法参数复现) ═══\n① aspira_multi_agent_dialogue\n   报 \"Cannot read properties of undefined (reading 'role')\"\n② aspira_flow_predict\n   报 \"Cannot read properties of undefined (reading 'includes')\"\n\n═══ 成因: 与上轮同族的反向错配 ═══\n上轮是\"在类对象上调实例方法\"；\n本轮是\"**把字符串传给期望对象的方法**\"。\n\n  registerAgent(name, agent) ← 模块读 agent.role\n    handler 传 args?.message(字符串) ← 抛\n\n  recordError(errorEvent) ← 模块读 errorEvent.message\n    handler 传 args?.event(字符串) ← 抛\n\n后果与 Promise 泄漏、类对象调用**同一族**:\n  **try/catch 把 TypeError 吞成结构合法的 { error }，\n    调用方看得见的地方没有任何一处失败，\n    而工具自上线起从未工作。**\n\n═══ 修法 ═══\n按\"补声明而非删参数\": 把字符串包装成模块要求的对象。\nmulti_agent_dialogue: message 作代理名，另建 { role, persona }；\nflow_predict: 包装成 { message, location }。\n两者都用 globalThis 惰性缓存实例 ——\n否则每次调用 new 会让已注册代理/行为模式清零。\n\n═══ 本周期被自己的门禁抓到一次 ═══\n新读的 role/persona/agent/location 未在 schema 声明，\n而中央校验按 schema.properties 建白名单，\n**未声明参数会被静默剥掉**。\n全量 run-all 立刻以 2 个失败报警(mcp-echo-audit 形态二)。\n补声明 4 个参数后仍剩 1 处 ——\nhandler 还读了 args?.name 作 fallback，\n而 message 本就是已声明的名字参数。删掉该冗余读取。\n\n这条纪律 AGENTS.md 早有记录:\n  **加一个参数要动三处**(schema / 映射 / handler)。\n抓住它的不是复查，是门禁。\n\n═══ 新测试 ═══\ntest/handler-arg-shape-audit.test.js(4 例):\n  · 两 handler 必须做形状适配\n  · 新读参数必须已在 schema 声明\n  · 端到端两工具合法参数不得返回 error\n  · 底层方法签名确实要求对象(锁住缺陷成因)\n\n═══ 门禁 ═══\nverify 14/14；run-all **1163/0**(基线 1159，+4)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/，**已重启 MCP**，两处修复端到端复测通过。\nREADME/SKILL/CURRENT_STATE 同步为 1163；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 哨兵法剩余 ~16 个跳过项仍需判读:\n    flow_predict/multi_agent_dialogue 已修；\n    余下多为仪器噪声(enum/evidence/texts[] 类型不匹配)\n    与 9 个无参数工具。无参数工具需另设计探针方案。\n(b) 上轮新增的 stance-detector / conflict-resolver\n    只有基本规则，召回/精度尚未测量(无标注样本)。\n(c) B 类 stub 模块(mood-evolution 等)仍是空壳。\n(d) ThoughtNode.prune() 仍 0 调用点。\n(e) test-coverage-gap 切片已连续 6 周期，边际收益递减，\n    建议下次轮换到\"维度健康审计\"或\"对抗鲁棒性\"。"
+}

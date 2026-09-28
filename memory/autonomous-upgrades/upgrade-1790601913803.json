@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T13:25:13.802Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 201,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1112/0",
+    "baseline": "1097/0",
+    "delta": "+15"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1097/0。\n\n═══ 选模块 ═══\n先跑 coverage-sweep(B 类 105→103)。\n再从 B 类里筛「同时被 MCP 处理器使用」的 —— 价值最高:\n用户可见却无任何测试约束。筛出 8 个:\n  forgetting(845) experience-collector(757) lesson-bank(720)\n  meta-learner(694) semantic-anchor(669) deep-emotion(573)\n  topic-scope(570) sustained-drift-detector(549)\n挑 src/memory/forgetting.js(845 行，挂在 aspira_forgetting 上)。\n\n═══ 一个 875 行文件里抓出 4 个真缺陷 ═══\n\n**(a) aspira_forgetting 的 action 参数是死的。**\n处理器读 action 却只回声回去、从不分支:\n    const action = args?.action || 'status';\n    const stats = fe.getStats();\n    return { action, stats, ... };\n请求 action:\"compress\" 拿到一份 totalCompressions:0 的 stats，\n什么都没做，而回声让 action 看起来\"生效了\"。\n这正是 aspira_knowledge_graph 已修的形状，那里甚至留着注释\n说明\"此前读了 action 却只把它回声回去\"。而\ntest/mcp-param-contract.test.js 声称钉住这个模式，\n**但它的工具清单里既没有 knowledge_graph 也没有 forgetting**，\n所以两处都漏了过去。该测试只做静态源码分析\n(参数是否被读)，从不检查 action 是否被分派。\n已改为真正分派 14 个 action，未知 action 显式报错。\n\n**(b) 补全 action 后参数仍然到不了处理器。**\nMCP 中央参数校验([AUDIT-FIX I-2])按 inputSchema.properties\n建白名单，**静默丢弃未声明的参数**。而 aspira_forgetting 的\nschema 只声明了 action(enum 还只有 ['status','consolidate'])，\n于是 memory/memories/text/threshold/timestamp/updates\n全部被丢在处理器之外。实测: 传了 memory 仍报\"需要 memory\"。\n这是\"声明未读\"的镜像 —— **\"读了但没声明\"同样致命，\n而且同样是静默的**: 调用方以为传了，处理器永远收不到。\n已补全全部 8 个参数。\n\n**(c) getField 在全文件从未定义。**\nisReferenceProtected() 两处调用 getField(...)，但函数不存在，\n于是**每一次** checkForget() 都抛\nReferenceError: getField is not defined。\n实测 15 个公开方法，**只有 checkForget 挂掉**，其余 14 个正常\n—— 这正是它能一直藏着的理由: 表面上引擎\"基本能用\"。\n已补上 getField。语义上只在 undefined/null 时回退，\n**不用 ||** —— referenceCount:0 是合法值，会被 || 误判成缺省。\n这条边界由测试专门锁住。\n\n**(d) _validateThreshold 是死代码。**\n定义在 433 行，从未被调用。于是 clamp() 自带的\n`typeof val !== 'number' → return min` 静默吞掉非法 threshold:\n'x' 变 0、NaN 变 0、2/-1 被夹到边界。\n调用方拿到的是一个**看起来正常的 shouldForget:false**，\n没有任何迹象表明参数没生效。\n模块头自称 \"Input validation for all public methods\"，已接上。\n\n═══ 测试自身的两次失误(记录) ═══\n① teardown 只 await setup 就 conn.destroy()+kill server，\n   测试还在跑连接就被拆了 → 5 条全 timeout。\n   改为 teardown 等待**所有测试**结算。\n② socket 客户端每次新开连接: harness 并发跑测试，\n   server 只服务其中一个，其余全 timeout。\n   改为**单条持久连接 + 请求队列**。\n③ 我断言 stats.totalCompressions>=1 来证明 compress 执行过，\n   实测恒为 0 —— 因为处理器每次调用都 new ForgettingEngine()，\n   是无状态新实例。**我的断言错了，不是引擎错。**\n   改为断言 compress 返回引擎真实产物。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1112/0**(基线 1097，+15)；审计 43/43、0 不符；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/ 引擎代码，**已重启 MCP**: 181 工具在线，\naspira_forgetting 端到端复测 compress/check/未知action/stats 全部符合预期。\n新增 test/memory-forgetting.test.js(10 例)与\ntest/mcp-forgetting-dispatch.test.js(5 例，真起 server 走 socket)。\nREADME/SKILL/CURRENT_STATE 测试数 1097→1112；AGENTS.md 新增条目。\n契约审计仍 0 处不匹配。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) **同一形状还剩 7 个**: 另外 7 个 B 类且挂 MCP 的模块\n    (experience-collector / lesson-bank / meta-learner /\n     semantic-anchor / deep-emotion / topic-scope /\n     sustained-drift-detector)，很可能有同类\"action 只回声\"、\n     \"schema 未声明\"、\"helper 未定义\"缺陷；\n(b) **mcp-param-contract.test.js 应扩到全部 181 个工具**\n    并增加\"action 是否被分派\"的检查，而不只是\"参数是否被读\"；\n(c) ThoughtNode.prune() 从未被调用仍未修。"
+}

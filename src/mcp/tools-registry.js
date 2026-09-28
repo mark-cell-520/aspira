@@ -449,6 +449,9 @@ const TOOLS = [
     description: '意识理论分析：IIT整合信息+GWT全局工作空间+HOT高阶思维+预测加工',
     inputSchema: { type: 'object', properties: {
       neuralStates: { type: 'array', items: { type: 'number' } },
+        priors: { type: 'number', description: '预测编码: 先验(默认 0.5)' },
+        sensoryInput: { type: 'number', description: '预测编码: 感官输入(默认 0.5)' },
+        self: { type: 'object', description: '自我意识四分量 { preReflective, reflective, forMeNess, selfEvident }' },
       content: { type: 'number' },
     }},
   },
@@ -493,8 +496,26 @@ const TOOLS = [
   },
   {
     name: 'aspira_forgetting',
-    description: '遗忘引擎：计算记忆保留率/遗忘概率（艾宾浩斯曲线），检测记忆振荡。',
-    inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['status', 'consolidate'], description: '查询或巩固' } } }
+    description: '遗忘引擎：计算记忆保留率/遗忘概率（艾宾浩斯曲线），检测记忆振荡；支持 compress/retrieve/check/consolidate 等 action。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['stats', 'compress', 'retrieve', 'check', 'consolidate',
+                 'compressBatch', 'consolidateBatch', 'level', 'abstract',
+                 'health', 'reset', 'config', 'updateConfig', 'oscillation'],
+          description: 'stats=统计(默认) compress=压缩单条 retrieve=检索 check=遗忘判断 consolidate=巩固 compressBatch/consolidateBatch=批量 level=衰减层级 abstract=抽象 health=健康检查 reset=重置 config=读配置 updateConfig=改配置 oscillation=振荡检测'
+        },
+        memory: { type: 'object', description: '记忆对象 { id, content, timestamp }（compress/retrieve/check 必填）' },
+        memories: { type: 'array', description: '记忆对象数组（consolidate/compressBatch/consolidateBatch 必填）' },
+        text: { type: 'string', description: '待抽象文本（abstract 必填）' },
+        compression: { type: 'string', description: '压缩档位（abstract 可选）' },
+        threshold: { type: 'number', description: '遗忘阈值 0-1（check 可选）' },
+        timestamp: { type: 'number', description: '时间戳 ms（level 可选，默认当前）' },
+        updates: { type: 'object', description: '要更新的配置项（updateConfig 必填）' }
+      }
+    }
   },
   {
     name: 'aspira_knowledge_graph',
@@ -509,7 +530,7 @@ const TOOLS = [
   {
     name: 'aspira_emotion_dynamics',
     description: '情绪动力学：PAD状态更新、情绪调节、心理韧性计算。',
-    inputSchema: { type: 'object', properties: { input: { type: 'string', description: '情绪文本' }, action: { type: 'string', enum: ['analyze', 'regulate'], description: '分析或调节' } } }
+    inputSchema: { type: 'object', properties: { input: { type: 'string', description: '情绪文本' }, action: { type: 'string', enum: ['analyze', 'regulate'], description: '分析或调节' }, intensity: { type: 'number', description: '调节强度 0-1（action=regulate 可选，默认 0.5）' } } }
   },
   {
     name: 'aspira_mood',
@@ -601,7 +622,7 @@ const TOOLS = [
   {
     name: 'aspira_skill_evolution',
     description: '技能进化：注册/评估技能进化（含评分标准）。',
-    inputSchema: { type: 'object', properties: { skill: { type: 'string', description: '技能名' }, action: { type: 'string', enum: ['evaluate', 'register'], description: '评估或注册' } } }
+    inputSchema: { type: 'object', properties: { skill: { type: 'string', description: '技能名' }, action: { type: 'string', enum: ['evaluate', 'register'], description: '评估或注册' }, execution: { type: 'object', description: '执行记录（action=evaluate 可选）' } } }
   },
   {
     name: 'aspira_strategic_restraint',
@@ -696,7 +717,7 @@ const TOOLS = [
   {
     name: 'aspira_confidence_calibrate',
     description: '置信度校准：评估/校准置信度，记录反馈。',
-    inputSchema: { type: 'object', properties: { text: { type: 'string', description: '待评估文本' }, action: { type: 'string', enum: ['assess', 'calibrate'], description: '评估或校准' } } }
+    inputSchema: { type: 'object', properties: { text: { type: 'string', description: '待评估文本' }, action: { type: 'string', enum: ['assess', 'calibrate'], description: '评估或校准' }, correct: { type: 'boolean', description: '该判断是否正确（action=feedback 用，缺省 null）' } } }
   },
   {
     name: 'aspira_decision_executor',
@@ -838,8 +859,11 @@ const TOOLS = [
   },
   {
     name: 'aspira_flow_predict',
-    description: '流程预测：预测编辑/错误流。',
-    inputSchema: { type: 'object', properties: { event: { type: 'string', description: '输入参数' } } }
+    description: '流程预测：记录错误事件并检测错误循环。event 为错误信息文本；可用 location 指明出错位置。',
+    inputSchema: { type: 'object', properties: {
+      event: { type: 'string', description: '错误信息(recordError 的 errorEvent.message)' },
+      location: { type: 'string', description: '出错位置(如 文件:行号)' }
+    } }
   },
   {
     name: 'aspira_information_flow',
@@ -893,8 +917,13 @@ const TOOLS = [
   },
   {
     name: 'aspira_multi_agent_dialogue',
-    description: '多代理对话：代理间对话。',
-    inputSchema: { type: 'object', properties: { message: { type: 'string', description: '输入参数' } } }
+    description: '多代理对话：注册代理并发起对话。message 作为代理名；可用 role/persona 指定代理角色与人设，或用 agent 传完整代理对象。',
+    inputSchema: { type: 'object', properties: {
+      message: { type: 'string', description: '代理名(registerAgent 的第一个参数)' },
+      role: { type: 'string', description: '代理角色(如 participant / critic / facilitator)' },
+      persona: { type: 'string', description: '代理人设描述' },
+      agent: { type: 'object', description: '完整代理对象(含 role/persona/respond)，优先级高于 role/persona' }
+    } }
   },
   {
     name: 'aspira_dream_v2',
@@ -1087,7 +1116,8 @@ const TOOLS = [
       type: 'object',
       properties: {
         text: { type: 'string', description: '待检测文本' },
-        evidence: { type: 'array', description: '可选证据链' }
+        evidence: { type: 'array', description: '可选证据链' },
+        mode: { type: 'string', enum: ['input', 'output', 'draft', 'fast', 'deep'], description: '管线模式：input=11 层(默认)，draft=12 层，output=13 层；fast/deep 为兼容别名(分别映射 input/output)' }
       },
       required: ['text']
     }
@@ -1334,9 +1364,12 @@ const TOOLS = [
       properties: {
         action: { type: 'string', enum: ['log', 'query'] },
         event: { type: 'string' },
-        severity: { type: 'string', enum: ['info', 'warning', 'error', 'critical'] },
+        severity: { type: 'string', enum: ['info', 'warning', 'error', 'critical'], description: '按严重级别过滤（query 时生效）' },
+        actor: { type: 'string', description: '操作者标识(log 时写入；缺省 system)' },
+        details: { type: 'object', description: '附加明细（随日志一并写入，query 原样返回）' },
+        
         traceId: { type: 'string' },
-        details: { type: 'object' },
+        
         start: { type: 'string', format: 'date-time' },
         end: { type: 'string', format: 'date-time' },
         limit: { type: 'number' },
@@ -1353,7 +1386,8 @@ const TOOLS = [
         action: { type: 'string', enum: ['record', 'query', 'stats'] },
         tool: { type: 'string' },
         traceId: { type: 'string' },
-        action_filter: { type: 'string', enum: ['pass', 'rewrite', 'block'] },
+        action: { type: 'string', enum: ['query', 'record', 'stats'], description: '操作: 查询(默认)/记录/统计' },
+        action_filter: { type: 'string', enum: ['pass', 'rewrite', 'block'], description: '按门禁动作过滤(query 时生效)' },
         start: { type: 'string', format: 'date-time' },
         end: { type: 'string', format: 'date-time' },
         limit: { type: 'number' },
@@ -1466,6 +1500,8 @@ const TOOLS = [
         materialIds: { type: 'array', items: { type: 'string' }, description: '合法材料编号，如 ["M1","M2"]；用于校验引用编号' },
         requiredDeliverables: { type: 'array', items: { type: 'string' }, description: '本题必须出现的交付物关键词' },
         minCitations: { type: 'number', description: '【依据】最少材料引用条数，默认 3' },
+        requiredCounts: { type: 'object', description: '各区块必须出现的次数要求，如 { "结论": 1 }' },
+        runGate: { type: 'boolean', description: '是否跑 gate 合规兜底，默认 true；传 false 可关闭' },
       },
       required: ['answer'],
     },

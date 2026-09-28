@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T13:00:13.500Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 200,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1097/0",
+    "baseline": "1093/0",
+    "delta": "+4"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1093/0。\n\n═══ 先验证上轮留下的方向，其中一个已枯竭 ═══\n上轮说「契约审计只覆盖 new X(...)，X.create() 与缓存实例看不见，\n可扩到这两类」。先实测: mcp-server.js 里\n  · X.create() / getInstance 形态: **0 处**\n  · _lazy 注册: **0 处**\n  · Object.create / Reflect.construct: **0 处**\n  · new X(...): **144 处**\n→ 实例化形态已被完全覆盖，该方向确认枯竭，不强做。\n\n═══ 转向上轮另一遗留: 垃圾目录的产生入口 ═══\nGitHub 同步周期发现 git add -A 收进了 10 个运行时垃圾文件，\n它们位于一个字面名为\n    '\"/var/folders/.../T/aspira-mx-D4BRqZ\"'\n的目录下(名字带引号)。本周期查清了根因:\n\n**resolveHFDir() 有两个副本**(src/mcp-server.js 与\nmcp/mcp-server-http.js)，两处都写成\n    if (process.env.HEARTFLOW_DIR) return process.env.HEARTFLOW_DIR;\n即**原样返回、零校验**。当 HEARTFLOW_DIR 被设成带引号的值时，\n后续所有 path.join(HF_DIR, 'data', ...) 就把引号当成目录名的一部分，\n静默创建出整棵带引号的目录树。\n\n═══ 修法 ═══\n两处都新增 sanitizeHFDir(): 含引号/反引号/NUL/控制字符，\n或以 ~ 开头 → 返回 null，让 resolveHFDir 继续走自动检测\n与 $HOME fallbacks(那条路可靠)。\n**故意不 strip 引号** —— 引号可能是路径的真实组成部分\n(macOS/Linux 都允许文件名含引号)，猜意图比不猜更危险。\n\n═══ 过程中的两次仪器/工具失误(记录) ═══\n① python 补丁锚点没匹配上: 源码的空行里含 4 个空格而非真空行，\n   我按真空行写锚点 → AssertionError，补丁未应用。\n   (这是本仓反复出现的\"空行不是空行\"问题，已改用 read+edit。)\n② 先想用 sed 把 sanitizeHFDir 插到 resolveHFDir 前，锚点\n   '    function resolveHFDir() {' 带 4 空格缩进也没匹配上。\n   read 后发现实际是顶层 0 缩进，改用 edit 工具一次成功。\n\n═══ 测试 ═══\n新增 test/hf-dir-sanitize.test.js(4 例，全绿):\n  · 两个副本都必须有 sanitizeHFDir **且行为一致**\n    (只改一个是最容易发生的失败，故专门断言)\n  · 完整拒绝表(双引号/单引号/反引号/NUL/控制字符/~/空/纯空白)\n  · /tmp/a b/c 必须仍被接受 —— 路径含空格是合法的\n  · 端到端: 子进程设脏 HEARTFLOW_DIR，断言不产生名字带引号的目录\n\n═══ 门禁 ═══\nverify 14/14；run-all **1097/0**(基线 1093，+4)；审计 43/43、0 不符；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/ 引擎代码，**已重启 MCP**: 181 工具在线。\nREADME/SKILL/CURRENT_STATE 测试数 1093→1097；AGENTS.md 新增条目。\n契约审计仍 0 处不匹配。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) ThoughtNode.prune() 从未被调用仍未修(接入探索循环会改变\n    搜索结果，需单独评估)；\n(b) B 类仍有约 100 个「活着但没测」模块；\n(c) 4 个 leet 残余、CYRILLIC_HOMOGLYPH 15 个缺失项、\n    evasion 39% 召回等对抗项。"
+}

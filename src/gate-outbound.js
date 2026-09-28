@@ -138,7 +138,24 @@ function checkOutbound({ text, context = '', classification: forcedLevel }) {
   const startTime = Date.now();
   const traceId = `out-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   
-  const classification = forcedLevel || estimateClassification(text);
+  // [契约修复] forcedLevel 是 MCP schema 传下来的**中文字符串**
+  // ('公开'/'内部'/'敏感'/'机密'/'绝密')，而 estimateClassification()
+  // 返回的是 CLASSIFICATION **对象**({ level, label })。
+  // 原先直接 `forcedLevel || estimate(...)`，于是强制密级生效时
+  // classification 是个字符串，下面所有 `classification.level`
+  // 全是 undefined —— `undefined >= 3` 为 false，
+  // 密级 block 分支**整个失效**，且返回的 classification/classificationLevel
+  // 也是 undefined。实测: 传 '绝密' 与传 '公开' 判定完全相同。
+  // 修法: 按 label 反查 CLASSIFICATION 表，查不到才回退估计。
+  let classification = estimateClassification(text);
+  if (typeof forcedLevel === 'string' && forcedLevel) {
+    const byLabel = Object.values(CLASSIFICATION).find(c => c.label === forcedLevel);
+    if (byLabel) classification = byLabel;
+    // 查不到(非法值)保持估计结果，不静默变成 undefined
+  } else if (forcedLevel && typeof forcedLevel === 'object') {
+    // 兼容直接传对象的内部调用方
+    classification = forcedLevel;
+  }
   const piiFindings = scanPII(text);
   
   // 按密级决定动作

@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T20:07:12.947Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 217,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1182/0",
+    "baseline": "1178/0",
+    "delta": "+4"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1178/0。\n\n═══ 起因: 上轮提出的疑点 ═══\n上轮记录: 决策引擎连续 4 轮选同一切片且分数持平(0.63)，\n**轮换机制可能需要人工介入**。本轮就查这个。\n\n═══ 先排除一个错误猜测 ═══\n猜\"递减权重没生效\"——**错**。\n实测: test-coverage-gap 已完成 28 次，\nconsequence_value 已被压到 0.05 下限，递减**确实在工作**。\n\n它仍胜出是因为 composite 公式里 consequence_value 只占 0.25，\n而它 feasibility 0.75 / risk 0.2 / confidence 0.7 都很高——\n**低风险高可行性的优势盖过了后果价值的劣势。**\n这是设计使然，不是缺陷。\n\n═══ 真缺陷: exhausted 是永久单向阀 ═══\n但 debug 时发现候选只有 **6 个**，\ndoc-honest-numbers **根本不在列表里**。\n\n根因: scripts/autonomous-upgrade.js\n  if (j.once || j.exhausted) completed.add(j.chosen);\n  const add = (opt) => { if (!completed.has(opt.id)) C.push(opt); };\n\n→ **一条 journal 标了 exhausted: true，该切片永久退出候选空间。**\n\n当时那轮的判断没错(doc-honest-numbers 那时确已枯竭)，\n但**\"枯竭\"是可恢复的** —— 文档数字会随代码增长再次偏差，\n而该切片在那之后又完成了 9 次也回不来。\n\n═══ 后果: 一个为轮换而加的机制破坏了轮换 ═══\ndoc-honest-numbers 是唯一能压过 test-coverage-gap 的选项\n(feasibility 0.85 / risk 0.15，三项全优)。\n它消失后，候选空间 7 → 6，\ntest-coverage-gap 连续 28 次被选中。\n\n═══ 修法 ═══\n区分两种语义:\n  once      → 永久移出。一次性工作\n              (如\"接线 text-normalizer\")，做完即完。\n  exhausted → **冷却期** 6 个周期后自动恢复参选。\n\n修后立即复测: **引擎改选 doc-honest-numbers(0.65 > 0.63)**，\n候选空间恢复为 7 个。\n\n═══ 过程中的自查 ═══\n调试时多跑了 2 次脚本，产生 2 个 status=decided 的空 journal，\n已删除(只保留本轮正式条目)。\n\n═══ 新测试 ═══\ntest/exhausted-cooldown.test.js(4 例):\n  · once 仍是永久移出(冷却期逻辑不得误用)\n  · exhausted 冷却期内不参选\n  · exhausted **冷却期满后恢复参选并胜出**\n  · 源码级: 不得再把 once/exhausted 混为一谈\n\n═══ 门禁 ═══\nverify 14/14；run-all **1182/0**(基线 1178，+4)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n本轮**只改 scripts/ + test/ + 文档，未改 src/ 引擎代码**，\n故未重启 MCP(181 工具在线，已确认)。\nREADME/SKILL/CURRENT_STATE 同步为 1182；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 轮换已修好，下轮应能看到引擎选到不同切片。\n(b) 若仍连续选同一切片，需查 composite 公式权重\n    (consequence_value 仅 0.25，低风险项有系统性优势)。\n(c) 历史遗留 8 个 status=decided 未完成条目不影响 doneCount，\n    但会让 cycleSeq 偏大(冷却期判断偏松)，可择机清理。"
+}

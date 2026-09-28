@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T17:10:13.061Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 209,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1149/0",
+    "baseline": "1145/0",
+    "delta": "+4"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1145/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 与其逐个手工复现 [B] 类约 20 处，\n不如换判据 —— 从模块源码读实际消费的字段，与 schema 比对。\n但\"用正则读源码猜字段\"正是本仓错了 20 次的路子，\n故改为**哨兵实测**。\n\n═══ 哨兵法 ═══\nscripts/module-field-consumer-audit.js:\n给每个候选字段一个独一无二的值(__ASPIRA_SENTINEL_<field>__)，\n把整个字段池喂给 handler，再在输出里递归搜哨兵。\n哨兵出现 → 值穿透到输出 → 字段被消费。\n覆盖 84 个工具(41 个因基线即报错而跳过)。\n\n═══ 主要结果: 0 处 —— 这是近三周期最有价值的产出 ═══\n**「底层消费了 schema 未声明的字段」= 0 处。**\n负面结论，但闭合了 cycle-33 开的那一家族:\nconsciousness 少 priors/sensoryInput/self、\nretention_log 少 actor —— 那个\"该补声明\"的缺口，\n现在是**测出来的空**，不是假定的空。\n\n═══ 哨兵法自身的两个局限(钉住，才没变成第 22 次误报) ═══\n局限① 哨兵只能发现\"值穿透到输出\"的消费。\n  实测 aspira_classics.text: 哨兵串不含古典关键词 →\n  classicalRelevant=false、hits=[]、哨兵未现 → 看似死参数。\n  改用真实古典文本\"道可道非常道，上善若水…\" →\n  classicalRelevant=true、domain=daoist-naturalness。\n  **text 参数完全生效。**\n  第 21 次仪器误报，且与上次同族:\n  **只把字段用于做判断的模块，不能靠盯它的输出来审计。**\n\n局限② 多层转发不可见。\n  aspira_classics 的 handler 把 text 交给 classics-value-mapper，\n  后者原样转发给 classics-rules 的 evaluateRules。\n  哨兵法只看最外层返回值，中间的转发链对它不透明。\n  单独验证: 两个入口对同一探针给出一致结果，证明转发未改写参数。\n\n═══ 新测试锁判据与局限 ═══\ntest/module-field-consumer-audit.test.js(4 例):\n  · 脚本必须声明\"哨兵未现\"不是死参数清单\n  · 钉 classics 双向实测(哨兵不中 / 真古典文本命中)\n  · 证两层转发未改写参数\n  · 证候选池足够大(否则哨兵法会静默报 0 而非失败 ——\n    若 inputSchema.properties 不再是对象，审计会假阴性)\n\n═══ 门禁 ═══\nverify 14/14；run-all **1149/0**(基线 1145，+4)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n本轮只改 scripts/ 与 test/，**未动 src/**，故未重启 MCP。\nREADME/SKILL/CURRENT_STATE 测试数同步为 1149；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) \"未声明字段\"缺口已测为空，该切片的核心问题已答完。\n    但哨兵法有 41 个工具因基线即报错而跳过 ——\n    那 41 个的 schema 是否缺必填参数、或 handler 前置条件未满足，\n    本身是可查的覆盖缺口。\n(b) 已声明但哨兵未现的约 30 处，判据上无法收口，\n    若要继续只能逐个读模块源码确认 —— 成本高、结论可预期。\n    建议该切片轮换: 连续四周期同一切片，边际收益已明显下降。\n(c) B 类 stub 模块(mood-evolution 等)仍是空壳，\n    handler 已诚实、stub 已现形，可实现真实逻辑。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

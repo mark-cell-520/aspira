@@ -1,0 +1,11 @@
+{
+  "id": "48df02ed",
+  "topic": "__ASPIRA_SENTINEL_topic__",
+  "roles": [
+    "__ASPIRA_SENTINEL_array__"
+  ],
+  "maxRounds": 0.5,
+  "rounds": [],
+  "status": "active",
+  "createdAt": 1790618447630
+}

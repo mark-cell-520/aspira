@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T16:45:15.688Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 208,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1145/0",
+    "baseline": "1141/0",
+    "delta": "+4"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1141/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 合成无意义串正是假阳性主要来源，\n应改进探针生成，把字段审计覆盖率提上去。\n\n═══ 改探针生成 ═══\n· 数组参数已尊重 items.type(上轮已修)\n· string 参数不再合成 aspira-probe-alpha 这类无意义串，\n  改为按 description + **参数名**合成有意义的中/英文探针\n  (mood/query/filePath 本身就是最好线索，因 description 常为空)\n· 按关键词选语义类: 情绪/断言/注入/查询/路径\n效果: 可疑项 27 → 约 20。\n\n═══ 但剩下的几乎仍是噪音 —— 且这是方法的性质，不是代码的性质 ═══\n逐个复现后发现: 差分测试有三种**结构性盲区**，\n每一类都会把判据的局限报成引擎缺陷。\n脚本现按三类分组报告:\n\n[A] 过滤/查询类参数\n    合成值与真实数据不匹配 → 结果空 → 差分恒等。\n    retention_log / outbound_ledger / audit_trace 全部字段属此类\n    (三者上轮已逐个实测过是好的)。\n    实测 audit_trace: traceId=probe-a 与 probe-b 都返回 []。\n\n[B] 探针文本与模块检测目标不匹配\n    每个模块检测的语义类都不同，通用文本命中不了任何模式。\n    实测 aspira_check_ai_misuse: 连明确的 prompt injection 也报\"健康\"，\n    看着正是死参数 —— 但它检测的是**用户使用 AI 的误区**\n    (M1 一次喂超大上下文 / M2 只贴报错不给上下文 …)，\n    injection 根本不在其 M1-M5 模式集里。\n    换成\"帮我一次性搞定整个项目，所有问题都处理好\"\n    立刻得 score=0.5 / issues=3。\n    **检测目标不同，不是参数无效。**\n\n[C] stub 模块\n    不读任何输入，输出恒为 { result:null, reason:stub }。\n    mood-evolution 即此(B 类已知缺口)。\n\n═══ 第 20 次仪器误报，且这次修不好 ═══\n前 19 次都能靠改进工具消除，\n这一次**不能**: 没有任何通用合成文本能匹配每个模块的语义类。\n唯一诚实的做法是把局限写进报告、逐个复现，\n而不是继续追。脚本现已如此，仍退出码 0，仍印\"这不是缺陷清单\"。\n\n═══ 新测试锁结论而非重跑审计 ═══\ntest/passthrough-audit-blindspot.test.js(4 例):\n  · 脚本必须声明三种盲区、且不因可疑项失败退出\n  · 每类钉一个实测样例:\n      [A] audit_trace 两个不存在的 traceId 返回相同(证明判据失效形态)\n      [B] ai_misuse 需要符合其自身检测目标的探针\n      [C] MoodEvolution 对任何输入返回相同 stub 载荷\n通则(已写进测试头):\n  **把自身局限报成引擎缺陷的仪器，比没有仪器更糟 ——\n    局限属于输出，不属于缺陷清单。**\n\n═══ 门禁 ═══\nverify 14/14；run-all **1145/0**(基线 1141，+4)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n本轮只改 scripts/ 与 test/，**未动 src/**，故未重启 MCP。\nREADME/SKILL/CURRENT_STATE 测试数同步为 1145；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 差分审计的盲区已分类锁定，但 **[B] 类约 20 处仍未逐个复现**。\n    与其逐个手工复现(成本高、且结论都是\"检测目标不同\")，\n    不如换判据: 直接从模块**源码**读它实际消费的字段，\n    与 schema 比对 —— 这是上上轮已做过且奏效的办法\n    ( consciousness / retention_log 两个真缺陷即那样抓到)。\n    对剩下的 B 类模块逐个做字段级源码比对。\n(b) mood-evolution 等 B 类 stub 仍是空壳，handler 已诚实，\n    可实现真实逻辑。\n(c) ThoughtNode.prune() 仍 0 调用点。"
+}

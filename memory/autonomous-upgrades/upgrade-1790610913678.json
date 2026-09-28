@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T15:55:13.677Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 206,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1138/0",
+    "baseline": "1135/0",
+    "delta": "+3"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1135/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 同族风险仍在别处 ——\n全量扫 record(args)/log(args)/f(args) 形态，\n核对底层是否有\"操作键与数据键同名\"的冲突。\n\n═══ 扫描结果: 盲区不是 6 个工具深，是字段深 ═══\n扫 `f(args)` 形状只找回已知的那 6 个 —— 缺口看着像闭合了，\n其实没有: 透传工具的字段是在**底层模块**里被读的，\n扫 handler 体**结构上就看不见**。\n改为把 6 个模块的真实读写与 schema 逐一比对，\n又抓到两个缺陷，都是新形态:\n  **模块读/写的字段，schema 根本没声明。**\n参数能到 handler(透传嘛)，随后被中央校验剥掉，\n模块静默用默认值。\n\n缺陷一: aspira_consciousness 少三个参数\n  ConsciousnessTheory.compute(input) 读 **5 个**顶层字段:\n  neuralStates / content / priors / sensoryInput / self\n  schema 只声明前两个。\n  端到端实测 priors:0.1 与 priors:0.9 返回**完全相同**，\n  predictionError 恒为 0 —— 因为\n  predictionError = sensoryInput - priors = 0.5 - 0.5 = 0，\n  两个值都退回默认了。**已发布工具 5 个输入里 3 个不可达。**\n\n缺陷二: aspira_retention_log 少 actor\n  RetentionLogger.log(entry) 从 entry.actor 写 actor，\n  缺省 'system'。schema 未声明 → 调用方无法指明操作者，\n  **每一行审计都归属到 system**。\n  这个比算错数更糟: 归属丢了，而输出看着毫无异常。\n\n═══ 修法: 都是\"补声明\"，不是删参数 ═══\n这已是本族缺陷连续第三个周期靠删参数修掉，\n而正确做法是补上声明。AGENTS.md 已明确写下这条。\n\n═══ 新测试锁\"类\"而非\"实例\" ═══\ntest/mcp-passthrough-fields.test.js(3 例):\nrequire 真实模块 + 探针对象驱动，\n**先断言改字段能改结果，再断言 schema 声明它** ——\n将来若 compute() 不再读 priors，测试会以\"探针失效\"失败，\n而不是静默通过。\n这是对本仓\"用正则猜字段名\"习惯(已致 18 次仪器错误)的\n明确背离: 字段清单是**测出来的，不是推出来的**。\n\n═══ 顺带一个自我修正 ═══\n该模块导出的是**对象字面量**而非类\n(const ConsciousnessTheory = {)，handler 也是\nCT.compute(...) 不 new。我第一版测试按构造函数写，失败。\n同一条规则用在测试上: **先看真实形状再断言。**\n\n═══ 门禁 ═══\nverify 14/14；run-all **1138/0**(基线 1135，+3)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/mcp/tools-registry.js(引擎 schema)，**已重启 MCP**。\n端到端复测: priors 现可产出 predictionError 0.8(此前恒 0)；\nactor=agent-verify 已落库。\nREADME/SKILL/CURRENT_STATE 测试数同步为 1138；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 6 个透传模块的字段级比对已做完，但**其余 175 个工具**\n    同样可能有\"底层读的字段 schema 未声明\"——\n    param-contract 只覆盖 handler 体能看见的那些。\n    应把这个字段级比对推广到所有走 require 外部模块的 handler。\n(b) 152 个无 action enum 的工具仍无端到端契约检查。\n(c) 同形状还剩 7 个 B 类挂 MCP 模块未逐个探。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

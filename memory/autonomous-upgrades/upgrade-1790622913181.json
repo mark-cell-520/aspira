@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T19:15:13.180Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 215,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1175/0",
+    "baseline": "1172/0",
+    "delta": "+3"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1172/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 哨兵法剩余跳过项中 9 个无参数工具需另设探针。\n\n═══ 先确认另一项已闭环 ═══\nnext-step (d) ThoughtNode.prune() 0 调用点 ——\n查证: prunedNodes 计数已在早前周期修好(真实计数)，\nprune() 的 0 调用点是**刻意不修**(避免改变搜索行为)，\ntest/dead-counter-audit.test.js 已锁定该边界。**该项闭环。**\n\n═══ 无参数工具: 哨兵法为何看不见 ═══\n哨兵法靠\"给字段灌哨兵值\"工作，\ninputSchema 无参数 → 无可注入字段 → 直接跳过。\n但\"无参数\"不等于\"不可测\": **直接调用就能测。**\n共 19 个无参数工具。\n\n═══ 直接调用 19 个, 抓到 7 处真缺陷 ═══\n\n【6 处同型】result 全是空对象(字节级相同)\n  aspira_self_benchmark / aspira_agent_card /\n  aspira_memory_consolidate / aspira_meta_memory /\n  aspira_self_diagnose / aspira_what_learned\n\n六个 handler 同一形状:\n  const inst = new SelfBenchmark({...});\n  const r = {};                      // ← 从未调用 inst 的任何方法\n  return { result: r, timestamp: Date.now() };\n\n**模块被实例化后丢弃。** 而每个模块都有真实入口:\n  self-benchmark.js      → assess()\n  agent-card.js          → loadOrCreate()\n  self-diagnosis.js      → run()\n  what-learned.js        → report()\n  metaMemory.js          → getMemoryStats()\n  memory-consolidator.js → getStats()\n\n与 Promise 泄漏、模块缺失、字符串传对象**同一族**(第 4 轮):\n  **调用成功、不抛错、返回结构合法 —— 但内容是空的。**\n  调用方无法区分\"工具返回空\"和\"工具从未接线\"。\n\n═══ 第 7 处: 缓存从未生效 ═══\naspira_cache_stats 恒报 cache_not_initialized。\n根因: src/core/heartflow.js 在 think() 里**读** this._thinkCache\n(_cacheGet / _cachePut)，却**从未赋值**。\n\n两处 helper 都有 `if (!cache || !cache.map ...) return` 保护，于是:\n  _cacheGet 恒返回 null(永远 miss)\n  _cachePut 恒直接 return(永远写不进)\n\n**缓存功能自上线起从未生效，且不抛任何错。**\n**让代码能安全调用的那个 guard，正是让故障不可见的那个 guard。**\n已在构造函数初始化。\n\n═══ 当场排除一次误报 ═══\naspira_meta_memory 修好后返回\n{error:\"No meta-memory data available\"} ——\n这是模块**诚实地报告自己没有数据**，不是缺陷，保留。\n\n═══ 新测试 ═══\ntest/handler-no-param-wiring.test.js(3 例):\n  · 六个 handler 必须调用入口方法(禁止 const r = {})\n  · _thinkCache 构造后必须即存在\n  · 端到端七个工具 result 不得为空 + cache_stats 不得报错\n\n═══ 门禁 ═══\nverify 14/14；run-all **1175/0**(基线 1172，+3)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/(含 heartflow.js 核心)，**已重启 MCP**，\n**19 个无参数工具全部复测: 0 异常**(原 1 error + 6 空对象)。\nREADME/SKILL/CURRENT_STATE 同步为 1175；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) test-coverage-gap 已连续 9 周期。\n    本轮 19 个无参数工具已全覆盖，哨兵法跳过项基本清零，\n    **该切片确已枯竭，建议置 exhausted: true。**\n(b) 下轮应轮换到\"维度健康审计\"或\"对抗鲁棒性\"。\n(c) 缓存现已生效但 hit/miss 尚未实测 ——\n    相同输入连续 think 两次应出现 hits>0，可作为下轮验证点。"
+}

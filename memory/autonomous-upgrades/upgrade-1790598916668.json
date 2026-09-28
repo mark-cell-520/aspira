@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T12:35:16.667Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 199,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1093/0",
+    "baseline": "1088/0",
+    "delta": "+5"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1088/0。\n\n═══ 做什么 ═══\n上轮结论里写着「MCP 处理器与模块契约不一致已是第三例，值得写脚本\n全量核对每个 aspira_* 工具的 new X({...}) 调用与对应构造函数签名」。\n本周期就做这个: 新增 scripts/mcp-contract-audit.js，\n静态核对 src/mcp-server.js 里全部 108 个 new X(...) 调用点。\n\n═══ 结论: 0 处约定不匹配 ═══\nexperience_replay 那个缺陷确实已修，同形状的没有第二例。\n**但本周期真正的价值不是这个 0，而是仪器自己先错了四次，\n每次都把正常代码报成缺陷。**\n\n① **仪器崩溃**: constructor() 无参时 ctorParams 返回裸 []，\n   params.form 与 params.names 都是 undefined，判定分支一进 else 就\n   TypeError: Cannot read properties of undefined。\n② **94/143 处假阳性**: 只按「形参是不是对象解构」分类，于是把\n   options 对象传给 constructor(options) 也报「形参要标量却传对象」。\n   真缺陷的形状不是「传了对象」，而是**构造体把形参当字符串用**\n   (typeof projectRoot !== 'string')。改为读构造体后才对准。\n③ **32 处「找不到类定义」** 是 new Map()/new Error(...)/new Date()\n   这类内置类；另有 new ToneAnalyzer().analyze(input, {}) 的惰性匹配\n   跨越到方法调用，把**方法实参**当成了构造实参。\n④ **DreamEngine 假阳性**: new DreamEngine(memory, null) 是**正确代码**。\n   DreamEngine 在两个文件里都有声明 ——\n   src/dream/engine.js 是 constructor(memory = null, opts = null)，\n   src/dream/dream-engine.js 是 constructor(options = {})。\n   按遍历顺序取第一个就取错。更麻烦的是调用点写的是\n   require(DreamEnginePath) **变量**，而\n   path.join(HF_DIR, 'src', 'dream', 'engine.js') 里第一个引号串是\n   'src'，朴素提取会解析到错误路径。\n   改为跟随调用点自己的 require(字面量或一级变量赋值)、\n   优先取 .js 段、且只采纳真正声明了该类的文件。\n\n这是 AGENTS.md 已记录的「仪器把自己的局限说成引擎缺陷」\n这一故障模式的第 4–7 次(dimension-health-audit 两次、\ndead-counter-audit 两次之后)。收敛路径 193 → 94 → 8 → 3 → 1 → 0。\n\n═══ 测试 ═══\n新增 test/mcp-contract-audit.test.js(5 例，全绿)。\n**它锁的是仪器，不是那个数字**:\n  · 必须跑通不崩\n  · 必须认得真缺陷形状(构造体 typeof X !== 'string' 却传对象)\n  · 不得把内置类或 new X().method() 当调用点\n  · 不得报 DreamEngine\n  · object-into-scalar 类别必须保持为 0 —— 这一条**是**断言，\n    将来再出现同类缺陷它必须响\n  总数**故意不断言**。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1093/0**(基线 1088，+5)；审计 43/43、0 不符；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n本轮只新增 scripts/ 与 test/，**未改 src/ 引擎代码**，\n按规则跳过 MCP 重启。\nREADME/SKILL/CURRENT_STATE 测试数 1088→1093；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 契约审计只覆盖 new X(...) 形态，**X.create() 与缓存实例看不见**，\n    可扩到这两类；\n(b) 上轮遗留: 仓库里有个字面名为 '\"/var/folders/.../aspira-mx-*\"' 的\n    垃圾目录(运行时误建)，.gitignore 已挡住复发，但**产生它的入口\n    还没找到**；\n(c) ThoughtNode.prune() 从未被调用仍未修；\n(d) B 类仍有约 100 个「活着但没测」模块。"
+}

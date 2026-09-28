@@ -188,7 +188,10 @@ function _cacheKeyFor(input, effort) {
 function _cacheGet(cache, key, now) {
   if (!cache || !cache.map || !key) return null;
   const entry = cache.map.get(key);
-  if (!entry) return null;
+  // [计数修复] 未命中(entry 不存在)此前**不计数** —— 只有 TTL 过期才 misses++。
+  // 于是 misses 几乎恒为 0，hitRate = hits/(hits+misses) 恒接近 1，
+  // aspira_cache_stats 报的命中率是假的。补上最常见的这条未命中路径。
+  if (!entry) { cache.stats.misses++; return null; }
   const ttl = CACHE_TTL_BY_EFFORT[entry.mode];
   if (ttl && now - entry.ts > ttl) {
     cache.map.delete(key);
@@ -1195,6 +1198,17 @@ class Aspira {
     // [v5.4.6] LLM 兜底回调 — 任务分类置信度 < 0.7 时调用
 
     this._llmFallback = null;
+      // [契约修复] `_thinkCache` **从未被赋值**。
+      // heartflow.js 只在 think() 里读它:
+      //   _cacheGet(this._thinkCache, ck, now)
+      //   _cachePut(this._thinkCache, ck, effortMode, result, now)
+      // 而两处 helper 都有 `if (!cache || !cache.map ...) return` 保护，
+      // 于是: _cacheGet 恒返回 null(永远 miss)、
+      // _cachePut 恒直接 return(永远写不进)。
+      // **缓存功能自上线起从未生效，且不抛任何错。**
+      // 连带 `aspira_cache_stats` 永远报 cache_not_initialized。
+      // 与"方法存在、调用成功、返回结构合法，但功能是空的"同族。
+      this._thinkCache = { map: new Map(), stats: { hits: 0, misses: 0 } };
 
 
 

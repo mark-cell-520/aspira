@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T16:20:14.340Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 207,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1141/0",
+    "baseline": "1138/0",
+    "delta": "+3"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1138/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 6 个透传模块的字段级比对已做完，\n但其余 175 个工具同样可能\"底层读的字段 schema 未声明\"——\n应把字段级比对推广到所有走 require 外部模块的 handler。\n\n═══ 写测量式审计脚本 ═══\nscripts/passthrough-field-audit.js:\n不再用正则猜字段名(该习惯已致 18 次仪器错误)，\n改为 require 真实模块 + 合成探针驱动 + 逐字段差分。\n覆盖 105 个工具、184 次字段差分、0 次调用失败。\n\n═══ 报告 27 处\"参数不改变输出\"，多数是假阳性 ═══\n脚本自己的头就写明这点，且退出码为 0(不断言失败)。\n逐个人工复现:\n· consciousness.neuralStates 看似失效 —— 实则首版探针\n  给所有 array 参数都合成**字符串**数组，\n  calculatePhi 对非数字输入退回默认，两个值效果相同。\n  探针生成器已改为尊重 items.type。**仪器缺陷，非引擎缺陷。**\n· 其余多处是\"参数只影响次要字段\"/\"合成值恰好同效\"。\n\n═══ 但其中一处是真缺陷，且是本仓迄今最危险的形态 ═══\naspira_mood 的 handler 是**同步**箭头函数，\n却调用 async 的 MoodEvolution.process()。\n没 await(也不可能 await，因为 handler 不是 async)，\n于是 mood 拿到的是一个 **Promise**，\nJSON.stringify(Promise) 得 {}。\n实测任何输入(含\"我非常开心今天太棒了\")都返回 { mood: {} }。\n\n为什么最危险: **没有任何一处会报错。**\n  · 方法存在\n  · 调用成功\n  · try/catch 从不触发\n  · `me.process ? ... : {}` 守卫通过\n  · 返回对象结构合法\n三重保护都认定工具正常，而它什么都没做。\n\n═══ 修法 ═══\nhandler 改 async 并 await。\ntest/mcp-async-handler.test.js(3 例)锁住该形态:\n  · 先断言模块方法真的返回 Promise(将来若改同步，\n    测试以\"探针失效\"失败，而非静默通过)\n  · 断言 handler 声明 async 且 await\n  · 端到端断言 mood 不再是空对象\n  · 第三例全仓扫\"非 async handler 内用 await\"\n\n═══ 第三例也踩了本仓惯犯(第 19 次) ═══\n首版把 aspira_memory_bank 报成违例 ——\n它唯一的 await 在一句**注释**里，\n那句注释正是在解释这个陷阱:\n\"recall() 依赖 await load()…同步 handler 里调用只会拿到空结果\"。\n把自己的说明文字当违例，正是仪器故障模式。\n已改为先剥注释再找 await。\n\n═══ 一处如实记录的局限 ═══\n修复后 aspira_mood 能透出底层真实返回:\n  {\"result\":null,\"reason\":\"mood-evolution stub: not implemented\"}\nhandler 现在诚实了，但模块本身仍是未实现的 stub\n(B 类已知缺口之一)。\n**修好泄漏让 stub 现形，但没有实现该功能。**\n\n═══ 门禁 ═══\nverify 14/14；run-all **1141/0**(基线 1138，+3)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/mcp-server.js，**已重启 MCP**，aspira_mood 复测通过。\nREADME/SKILL/CURRENT_STATE 测试数同步为 1141；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 字段级审计已扩到 105 个工具，剩 76 个未覆盖\n    (基线调用即报错或无法合成参数的)。\n    应改进探针生成(按 description 提示合成有意义的中文文本)，\n    把覆盖率提上去 —— 现在的合成值是 aspira-probe-alpha 之类\n    无意义串，正是假阳性的主要来源。\n(b) 审计报出的 27 处可疑里，只复现了少数几处。\n    剩余未逐一复现，不应视为已清白。\n(c) mood-evolution 等 B 类 stub 模块仍是空壳，\n    现在泄漏已修、stub 已现形，可实现真实逻辑。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

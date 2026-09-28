@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T15:05:20.885Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 206,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1132/0",
+    "baseline": "1132/0",
+    "delta": "+0"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1132/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 另 5 个透传工具只验了\"参数不被拦\"，\n未验证参数真的生效。本轮逐个设计探针。\n\n═══ 抓到两个真缺陷 + 我自己上轮那个修复只修了一半 ═══\n\n缺陷一: aspira_check_outbound.classification 空转(变体形态)\n  checkOutbound({ text, context, classification: forcedLevel })\n  随后 `forcedLevel || estimateClassification(text)`。\n  MCP schema 传的是**中文字符串**('绝密')，\n  而 estimateClassification() 返回 **CLASSIFICATION 对象**\n  ({ level, label })。强制密级生效时 classification 是裸字符串，\n  下面每个 classification.level 都是 undefined，\n  `undefined >= 3` 为 false —— **密级 block 分支整个失效**，\n  返回的 classification/classificationLevel 也是 undefined。\n  实测 '绝密' 与 '公开' 判定完全相同。\n  修法: 按 label 反查 CLASSIFICATION 表，查不到回退估计，\n  不再静默变 undefined。\n\n缺陷二(我上轮那个修复只修了一半)\n  上轮我把 schema 的 action_filter 改名 action 以对齐底层\n  OutboundLedger.query() —— 名字是对上了，却让 action\n  **一名两用**: handler 顶层拿它选**操作**\n  (query/record/stats)，query() 解构的 action 却是\n  **门禁动作过滤值**(pass/rewrite/block)，\n  record() 也把 args.action 当要记录的门禁动作。三处抢一个键。\n  更糟: schema 的 action enum 原是\n  [pass, rewrite, block] —— **那是门禁动作，不是操作**。\n  调用方照文档 enum 传值，永远到不了 record/stats，\n  全部静默落进 query 分支。\n  修法: enum 改为真实操作；action 专作操作；\n  过滤字段回到 action_filter；handler 显式翻译给底层。\n  教训: **参数改名对齐被调方不是修复，\n  如果同一个键还是操作选择器 ——\n  定名之前先数一数这个键有几处读者。**\n\n═══ 两个探针是仪器误报(都记下，因为它们花了真时间) ═══\n① crowdtest_evaluate.runGate 看似失效: 两种取值 verdict 相同。\n   但其 gate 层明确标注\"红线，不作评分\"，且我挑的答案\n   只升到 rewrite。换提示注入文本重测:\n   runGate:true → gateRedline.action=block 且进 hardFail；\n   runGate:false → skipped 且无 hardFail。**完全生效**。\n② audit_trace 看似丢了 stage/agentId: 全 0 条。\n   根因: appendEntry() 只在 initChain(filePath) 调用后才落盘，\n   我的播种进程写进了 MCP server 永远看不到的内存。\n   **探针设计错误**，非缺陷。\n→ 两个探针两次假警报，第三个才是真的。\n\n═══ 三个既有断言已更新(不是删除，每次更新本身是记录) ═══\n① compliance G3-3 断言\"机密合同 → rewrite\"，注释称\"实际如此\"。\n   那个\"实际\"是**缺陷的产物**; CLASSIFICATION 表自己写明\n   CONFIDENTIAL/SECRET 的 action 就是 'block'。\n   已改为断言 block + level 3 + 密级过高 reason，\n   并补 2 个测试: 密级阶梯(绝密 block、公开不因密级被拦)、\n   非法值不得变 undefined。\n② mcp-param-contract 的分支判据只认字面 action，\n   把改用 `const op = args.action` 的 handler 误报成\"只回声\"\n   (仪器故障模式第 18 次)。已改为收集所有\n   \"从 args.action 取值的变量名\"，任一出现在分支里即算分派。\n③ mcp-passthrough-contract 断言\"不得再声明 action_filter\"\n   —— 那锁的是我上轮的中间态。已改为锁定新契约:\n   action 只作操作、action_filter 专作过滤。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1132/0**(基线 1132，+0: 新增 3 例、\n修正 1 个期望，该文件净持平)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/(gate-outbound.js / mcp-server.js / tools-registry.js)，\n**已重启 MCP**，三项修复均经活服务器端到端复测:\n  密级阶梯 0→rewrite、2→block、3/4→block 且 reason 正确；\n  outbound_ledger action=stats 正常分派；\n  severity=critical 只回 critical。\nAGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 6 个透传工具现已全部有探针覆盖参数生效性，\n    但探针是手工设计的，未固化成测试 —— 应把本轮三个\n    端到端探针写进 mcp-passthrough-contract.test.js\n    (现在那里只锁了 schema 与 severity 两件)。\n(b) 152 个无 action enum 的工具仍无端到端契约检查。\n(c) 同形状还剩 7 个 B 类挂 MCP 模块未逐个探。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

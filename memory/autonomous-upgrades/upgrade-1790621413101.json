@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T18:50:13.100Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 214,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1172/0",
+    "baseline": "1167/0",
+    "delta": "+5"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1167/0。\n\n═══ 起因 ═══\n上轮 next-step (c): B 类模块(从未被任何 test require)仍是空壳。\n\n═══ 先量化 ═══\nsrc 模块 382 个；test require 的不同 basename 237 个；\n按 basename 未被任何 test 引用: **169 个**。\n\n═══ 静态判据误判(第 22 次仪器失效) ═══\n用\"固定返回数/方法数 > 0.6\"挑出 20 个疑似空壳。\n该判据在最大的两个条目上**错了**:\n  · dream.js(17/21)实际有 Fisher-Yates 洗牌、状态哈希、种子渗透\n  · experience-replay.js(15/21)实际有完整性校验、自愈、振荡检测\n**比例分不清\"精心设计的 getter\"和\"空壳\"。**\nclassics-value-mapper 只是 re-export 转发层，heartbeat 是兼容桩 ——\n都不是空壳。\n\n═══ 改用行为测量 ═══\n直接实例化并调用，看返回值。立刻抓到两个真缺陷:\n\n① src/cortex/adaptive-learning.js 是**默认导出**\n   (module.exports = AdaptiveLearningEngine)，\n   而 src/workflow/thought-chain.js:649 写的是\n   require(...).AdaptiveLearningEngine → undefined\n   → new undefined(...) 恒抛 TypeError。\n   契约错配族**第 7 处**(前六处: 类对象调实例方法 ×6、\n   字符串传给期望对象 ×2)。\n   已改为兼容两种导出形态。\n\n② src/cortex/benchmark-external-anchor.js 是纯 stub:\n   setAnchor(x) 接收值后**丢弃**，getAnchor() 恒返回 null。\n   实测 setAnchor(1); getAnchor() → null。\n   **写进去读不出来。**\n   这种形态比抛异常更难发现: 方法存在、调用成功、不抛错，\n   只是**没有效果**。\n   已补内存存储 + 临时文件 rename 原子落盘。\n\n═══ 当场排除一次仪器误报(第 23 次) ═══\n探针用字符串调 encryptJSON('hello') 报\n\"refusing silent plaintext fallback\"，看着像真缺陷。\n但该函数签名**与文档**都要求 JSON-serializable **object**。\n用 {a:1} 复测往返正常。\n拒绝是**正确行为**: 该模块严禁无标记明文落盘。\n**探针自己不遵守被探函数的契约。**\n\n═══ 新测试 ═══\ntest/b-class-module-behavior.test.js(5 例):\n  · benchmark-external-anchor 写后必须能读\n  · adaptive-learning 两种导出形态都可取到类\n  · thought-chain 实例化路径可用\n  · memory-encrypt 以对象往返正常(锁住探针须守契约)\n  · **方法论**: 把 dream.js / experience-replay.js 钉为真实现，\n    防止将来有人再推导同一把比例尺去\"修\"没坏的代码\n\n═══ 门禁 ═══\nverify 14/14；run-all **1172/0**(基线 1167，+5)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/，**已重启 MCP**，181 工具在线，\naspira_dream_v2 / aspira_experience_replay 复测正常。\naspira_benchmark_run 报\"未找到数据包\"是预期行为\n(需 data/benchmark/ 下 JSONL 数据包)，非缺陷。\nREADME/SKILL/CURRENT_STATE 同步为 1172；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) B 类余下 167 个模块未做行为测量，\n    但\"实测一个抓两个\"的命中率已明显下降，\n    且逐个测量的成本高于收益。\n(b) test-coverage-gap 已连续 8 周期，\n    **下轮必须轮换**，建议\"维度健康审计\"或\"对抗鲁棒性\"。\n(c) 哨兵法剩余 ~16 个跳过项中 9 个无参数工具需另设探针。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

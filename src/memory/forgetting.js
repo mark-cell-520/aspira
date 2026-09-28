@@ -137,6 +137,28 @@ function safeString(val) {
   if (val === null || val === undefined) return '';
   return String(val);
 }
+/**
+ * 读取 memory 上的字段，缺省时回退到 fallback。
+ *
+ * ═══ 为什么补这个 ═══
+ * `isReferenceProtected()`(下面)两处调用 `getField(memory, 'referenceCount', 0)`
+ * 与 `getField(memory, 'layer', 'learned')`，但这个 helper **在全文件里从未定义**。
+ * 于是 `checkForget()` 只要走到 isReferenceProtected 就抛
+ * `ReferenceError: getField is not defined` —— 实测 15 个公开方法中
+ * **只有 checkForget 挂掉**，其余 14 个全部正常，所以这个缺陷极易漏过:
+ * 表面上引擎"基本能用"。
+ * 该模块在 coverage-sweep 里是 B 类(活着但没有任何测试引用)，
+ * 这正是它能一直藏着的理由。
+ *
+ * ═══ 语义 ═══
+ * 只在字段为 undefined/null 时回退;0、false、'' 都是合法值，原样返回。
+ * 不用 `||` —— `memory.referenceCount = 0` 会被 `||` 误判成缺省。
+ */
+function getField(obj, key, fallback) {
+  if (obj === null || obj === undefined) return fallback;
+  const v = obj[key];
+  return (v === undefined || v === null) ? fallback : v;
+}
 
 // ============ REFERENCE COUNT PROTECTION ============
 
@@ -563,6 +585,20 @@ class ForgettingEngine {
       this._stats.errorCount++;
       this._lastError = validation.error;
       return { shouldForget: true, level: null, precision: 0, error: validation.error, errorCode: validation.errorCode };
+    }
+
+    // [契约修复] 此前这里**从不调用 _validateThreshold**，那个方法(433 行)
+    // 是死代码。于是非法 threshold 被 clamp() 静默吞掉: clamp 自带
+    // `typeof val !== 'number' || isNaN(val) → return min`，
+    // 所以 'x' 变成 0、NaN 变成 0，而 2/-1 被夹到 [0,1] 边界。
+    // 调用方传错类型时拿到的是一个**看起来正常的 shouldForget:false**，
+    // 没有任何迹象表明参数没生效 —— 这正是本仓反复在消灭的静默失败。
+    // 模块头自称 "Input validation for all public methods"，这里补上。
+    const threshErr = this._validateThreshold(threshold);
+    if (threshErr) {
+      this._stats.errorCount++;
+      this._lastError = threshErr.error;
+      return { shouldForget: false, level: null, precision: 0, error: threshErr.error, errorCode: threshErr.errorCode };
     }
 
     if (isReferenceProtected(memory, this._config)) {

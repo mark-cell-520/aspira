@@ -29,7 +29,25 @@ class MetacognitiveReward {
   }
 
   _ensureDir() { if (!fs.existsSync(this.bufferDir)) fs.mkdirSync(this.bufferDir, { recursive: true }); }
-  _loadStats() { try { if (fs.existsSync(this.statsFile)) Object.assign(this, JSON.parse(fs.readFileSync(this.statsFile, 'utf-8'))); } catch (_) { this.stats = { total: 0, avgReward: 0.5, avgConfidence: 0.5, avgQuality: 0.5 }; } }
+  // [契约修复] 原实现只在**异常路径**设默认值:
+  //   try { if (fs.existsSync(statsFile)) Object.assign(this, JSON.parse(...)); }
+  //   catch (_) { this.stats = {...默认...}; }
+  // 首次运行时 statsFile **不存在**，if 不成立 → 不走 catch →
+  // this.stats 从未被赋值 → 恒为 undefined。
+  // 实测 evaluate() 随即抛 "Cannot read properties of undefined (reading 'total')"
+  // (在 _recordExperience 的 this.stats.total++)。
+  // 这是"默认值只在异常分支"的典型缺陷: 正常路径反而没有默认值。
+  // 改为先设默认值，再用文件内容覆盖。
+  _loadStats() {
+    this.stats = { total: 0, avgReward: 0.5, avgConfidence: 0.5, avgQuality: 0.5 };
+    try {
+      if (fs.existsSync(this.statsFile)) {
+        const loaded = JSON.parse(fs.readFileSync(this.statsFile, 'utf-8'));
+        if (loaded && typeof loaded === 'object') Object.assign(this, loaded);
+      }
+    } catch (_) { /* 保留已设好的默认值 */ }
+    if (!this.stats) this.stats = { total: 0, avgReward: 0.5, avgConfidence: 0.5, avgQuality: 0.5 };
+  }
   _saveStats() { fs.writeFileSync(this.statsFile, JSON.stringify(this.stats, null, 2), 'utf-8'); }
 
   /**

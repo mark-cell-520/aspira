@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T14:40:19.667Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 205,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1132/0",
+    "baseline": "1128/0",
+    "delta": "+4"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1128/0。\n\n═══ 起因 ═══\n上轮 next-step (a): param-contract 的残余盲区 ——\n整对象透传工具(CT.compute(args || {}) / logger.log(args))\n静态无法核对，已跳过。应补端到端。\n\n═══ 定位 ═══\n全库扫出 **6 个**透传工具(journal 上轮写 7，实测 6):\n  consciousness / check_outbound / audit_trace /\n  retention_log / outbound_ledger / crowdtest_evaluate\n\n═══ 抓到两个真缺陷(本仓前所未有的新形态) ═══\n形态: **schema 声明的参数名 ≠ 底层消费的参数名**。\n参数**能到** handler(中央校验不拦)，却在底层被静默忽略。\n比\"未声明\"更危险 —— 调用方看不到任何错误，\n只会拿到一份看起来正常的结果。\n\n缺陷一: aspira_retention_log.severity 是空转的\n  schema 声明 severity，handler 透传 args 给\n  RetentionLogger.query(args)，而 query() 只解构\n  { start, end, traceId, event, limit } —— **没有 severity**。\n  实测 severity:\"critical\" 与 severity:\"info\"\n  返回**字节级相同**的结果。\n  讽刺处: log() 明明写了 severity 字段(还有 actor/details)，\n  数据里有，只有查询路径不认。\n\n缺陷二: aspira_outbound_ledger 参数名写错\n  schema 声明 action_filter，而 OutboundLedger.query()\n  解构的是 action。文档写的永不过滤，\n  能用的那个反而没写进文档。\n\n═══ 我先改错了边(本仓反复记录的错误) ═══\n第一版补丁把 severity 和 details 从 schema **删掉**\n—— 那是降能力，不是修复。随后读 log() 才发现它\n**写** severity / actor / details 三个字段，\ndetails 从来就是好的。\n正确修法在消费侧: query() 解构并过滤 severity，\nschema 参数全保留，action_filter 改名 action 与底层一致。\n新增规则: **参数看似失效时，先读消费它的那一层，\n再决定改哪边 —— 删参数几乎总是错的，\n因为它把 bug 变成功能缺失。**\n\n═══ 验证 ═══\n改了 src/retention-logger.js 与 src/mcp/tools-registry.js，\n**已重启 MCP**。端到端复测:\n  先 log 一条 critical 一条 info，再按 severity 查 ——\n  critical 只回 critical、info 只回 info(修复前两者全量)。\n  另: 复测时首轮返回 0 条，原因是当时日志里唯一的\n  那条 severity 字段值是字符串 'smoke'(早前探测误传)，\n  两个过滤都匹配不上 —— **这反而证明过滤真的在工作**。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1132/0**(基线 1128，+4)；审计 **43/43**、0 不符；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n三个仪器均 0: echo-audit 两形态、action-smoke 全同签名。\n新增 test/mcp-passthrough-contract.test.js(4 例)，\n含\"先种两条不同 severity 再断言各自只回自己级别\"的端到端探针。\nREADME/SKILL/CURRENT_STATE 测试数同步为 1132；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 另 5 个透传工具只验了\"参数不被拦\"，**未验证参数真的生效**。\n    应逐个设计探针(如 check_outbound 的 classification\n    是否真的改变判定、crowdtest 的 runGate=false 是否真的关门禁)。\n(b) 152 个无 action enum 的工具仍无端到端契约检查。\n(c) 同形状还剩 7 个 B 类挂 MCP 模块未逐个探。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

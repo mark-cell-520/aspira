@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T17:35:13.075Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 210,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1159/0",
+    "baseline": "1149/0",
+    "delta": "+10"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1149/0。\n\n═══ 起因 ═══\n上轮 next-step (a): 哨兵法有 41 个工具因基线即报错而跳过，\n那 41 个本身是可查的覆盖缺口。\n\n═══ 先修仪器: 类型感知哨兵 ═══\n首版对所有字段都用同一个**字符串**哨兵，\n于是 number 参数(effort/threshold/age/limit/priors/importance)\n被中央校验拦下报\"参数类型错误\"，enum 参数(action)被报\n\"unknown action\" —— 52 个工具因此跳过，覆盖面仅 84/136。\n修正: 哨兵按 schema 类型生成；enum 参数取**合法枚举值**。\n理由: 哨兵法要测的是\"字段是否被消费\"，\n不是\"非法值是否被拒\"。\n覆盖面 84 → 107。**「schema 未声明字段」仍为 0 处。**\n\n═══ 主发现: 六个工具从未工作过，同一行错了六遍 ═══\nindex.js 导出的是 { MetacognitiveReward } / { DebateEngine } /\n{ ToMEngine } / { ExecutableReasoning } / { AgenticMemoryEngine } /\n{ EvolutionarySearch } —— **全是类**。\n而 handler 在**类对象**上直接调实例方法:\n  metacognition.evaluate / debateEngine.createSession /\n  tomEngine.modelAgent / executableReasoning.parseThoughtChain /\n  agenticMemory.store / evolutionarySearch.initPopulation\n每一处都恒抛 X.method is not a function，\n被 try/catch 吞成 { error }，调用方看到的是一个结构合法的响应。\n\n与 cycle-36 的 Promise 泄漏同族:\n  **调用方看得见的地方没有任何一处报错，\n    而工具自上线起就从未工作。**\n\n═══ 修法 ═══\n六处均改为先实例化。\n有状态的引擎(debate/tom/agentic/evo)用 globalThis 惰性缓存 ——\n否则每次调用 new 会让已存会话/记忆立刻丢失。\n\n═══ 修的过程中又撞出两个缺陷 ═══\n(a) aspira_bridge_analyze 引用的 StanceDetector 与 ConflictResolver\n    **既未被 require，也从未存在**。\n    schema 承诺\"综合语气/立场/置信度/冲突/需求分析\"五类，\n    其中两类是空头承诺。\n    按\"补声明而非删参数\"原则，**实现了这两个模块**\n    (src/bridge/stance-detector.js、conflict-resolver.js)，\n    而非从 schema 删功能。\n    StanceDetector 首版还复现了本仓记录过的缺陷:\n    SUPPORT 用 我(完全)?(同意|…)、OPPOSE 用 我(不|完全)(同意|…)，\n    于是「我完全同意」同时命中两者 ——\n    **否定类把程度副词\"完全\"当成了否定词**，实测 stance=mixed、置信度 0。\n    否定限定词已收紧为只收 不/并非/并不。\n\n(b) MetacognitiveReward._loadStats() 的默认值**只在异常路径设置**:\n    try { if (existsSync(statsFile)) Object.assign(this, …) }\n    catch (_) { this.stats = {…默认…} }\n    首次运行时文件不存在 → if 不成立 → 不走 catch →\n    this.stats 恒为 undefined → evaluate() 死在 this.stats.total++。\n    **正常路径没有默认值，异常路径反倒有。**\n    已改为先设默认值再加载覆盖。\n\n═══ 新测试锁\"族\"而非\"六个实例\" ═══\ntest/class-vs-instance-handlers.test.js(5 例):\n  · 四个 handler 必须实例化\n  · 端到端四工具不得返回 error\n  · **全仓回归防线**: require index.js，\n    对每个\"唯一键为首字母大写类名\"的导出，\n    检查没有 handler 在它上面调实例方法\n  · 两个新 bridge 模块可独立加载\n  · 第 5 处(agentic_memory)也已实例化\n\n═══ 回归防线当场立功 ═══\n它抓出 agenticMemory.store 与 evolutionarySearch.initPopulation ——\n本轮尚未发现的另外两处同型缺陷，\n端到端实测确认损坏(agenticMemory.store is not a function)，已修。\n防线现归零。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1159/0**(基线 1149，+10)；审计 **43/43**、0 不符。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/，**已重启 MCP**，六处修复全部端到端复测通过。\nREADME/SKILL/CURRENT_STATE 测试数同步为 1159；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 类对象调实例方法的族已清零且有全仓防线，\n    但哨兵法仍跳过 18 个工具。剩余失败原因:\n    flow_predict / multi_agent_dialogue 抛\n    \"Cannot read properties of undefined\"，\n    audit/discriminate/audit42 的 evidence 类型，\n    bulk_discriminate 的 texts[] 数组 ——\n    需逐个判读是仪器问题还是真缺陷。\n(b) 新增的两个 bridge 模块只有基本规则，\n    其召回/精度尚未测量(无标注样本)。\n(c) B 类 stub 模块(mood-evolution 等)仍是空壳。\n(d) ThoughtNode.prune() 仍 0 调用点。"
+}

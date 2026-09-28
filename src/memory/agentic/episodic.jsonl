@@ -1,0 +1,22 @@
+[
+  {
+    "ts": 1790617548897,
+    "input": "测试输入",
+    "output": "测试输出",
+    "context": {
+      "type": "episodic"
+    },
+    "id": "2dd94ebe-3f4d-49b6-945f-854de3aee58a"
+  },
+  {
+    "ts": 1790618447629,
+    "input": "__ASPIRA_SENTINEL_input__",
+    "output": "__ASPIRA_SENTINEL_output__",
+    "context": {
+      "__aspiraSentinel": "object",
+      "memoryType": "episodic",
+      "type": "episodic"
+    },
+    "id": "8b441119-146b-4035-8388-15f6f8800b54"
+  }
+]

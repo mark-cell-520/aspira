@@ -81,8 +81,14 @@ class RetentionLogger {
   /**
    * 查询：按时间范围（start/end ISO）返回日志条目
    */
+  // [契约修复] log() 一直写入 severity / actor / details 三个字段，但 query()
+  // 只按 start/end/traceId/event 过滤 —— severity 声明在
+  // aspira_retention_log 的 inputSchema 里、调用方也真的在传，却在底层
+  // 被完全忽略。实测传 severity:"critical" 与 severity:"info"
+  // 返回**完全相同**的结果。这是"参数能到 handler、却在底层静默失效"
+  // 的形态 —— 比未声明更隐蔽，因为调用方看不到任何错误。
   query(opts = {}) {
-    const { start, end, traceId, event, limit = 100 } = opts;
+    const { start, end, traceId, event, severity, limit = 100 } = opts;
     const startMs = start ? new Date(start).getTime() : 0;
     const endMs = end ? new Date(end).getTime() : Date.now();
     const results = [];
@@ -96,6 +102,7 @@ class RetentionLogger {
             if (obj.ts < startMs || obj.ts > endMs) continue;
             if (traceId && obj.traceId !== traceId) continue;
             if (event && obj.event !== event) continue;
+            if (severity && obj.severity !== severity) continue;
             results.push(obj);
             if (results.length >= limit) return results;
           } catch (_) { /* skip corrupt line */ }
