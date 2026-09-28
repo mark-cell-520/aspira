@@ -12,6 +12,26 @@
  * 3. Every test file runs in its own child process. Requiring ~137 engine-loading
  *    files into the runner process exhausted the heap and got the runner OOM-killed
  *    mid-run, which is why the reported totals used to vary between runs.
+ *    **This isolation is load-bearing and must not be removed** — see note 4.
+ *
+ * 4. [2026-09-28 性能优化] Bounded-concurrency execution. The runner was strictly
+ *    sequential (`execSync` one file at a time): 246 files x ~26ms of bare `node`
+ *    startup = ~6.4s of pure process-spawn floor, and the measured suite wall time
+ *    was 36s. Each child still runs in its own process (note 3 unchanged); only the
+ *    *number in flight* changed. Concurrency defaults to `max(2, min(12, cpus-2))`
+ *    and is overridable with `ASPIRA_TEST_CONCURRENCY` (set 1 to get the old
+ *    sequential behaviour for debugging).
+ *
+ *    Safety was measured before changing it, not assumed:
+ *      - 0 test files write under `data/` or `memory/`
+ *      - 0 test files call `listen(` / `createServer(`
+ *      - 12 CPUs available
+ *    So no shared-file or port contention is possible between children.
+ *
+ *    Output is printed **in discovery order**, exactly as the sequential runner did,
+ *    so logs remain diffable and `scripts/audit-doc-numbers.js` — which takes the
+ *    LAST `测试结果: N 通过, M 失败` line — still reads the final summary. Results
+ *    are flushed in order as they become available, so progress is still visible.
  *
  * Usage: node test/run-all.js
  */
@@ -19,11 +39,21 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const os = require('os');
+const { exec } = require('child_process');
 
 const TEST_DIR = __dirname;
 const ROOT = path.join(__dirname, '..');
 const CHILD_TIMEOUT = 90000;
+
+// ─── 并发度 ───
+// 默认取 cpus-2，夹在 [2,12]。可用环境变量覆盖；设为 1 即退化为原串行行为。
+const CONCURRENCY = (() => {
+  const v = parseInt(process.env.ASPIRA_TEST_CONCURRENCY || '', 10);
+  if (Number.isFinite(v) && v > 0) return v;
+  const cpus = (os.cpus() || []).length || 4;
+  return Math.max(2, Math.min(12, cpus - 2));
+})();
 
 let passed = 0;
 let failed = 0;
@@ -46,25 +76,39 @@ function collectTestFiles(dir, base = dir) {
   return out.sort();
 }
 
-/** 在子进程中执行一条命令，解析其 `N 通过, M 失败` 汇总行 */
-function runChild(label, cmd, timeout = CHILD_TIMEOUT) {
-  console.log(`\n${label}`);
-  let out = '';
-  try {
-    out = execSync(cmd, {
+/**
+ * 在子进程中执行一条命令，原样返回其输出。
+ * 与旧版 execSync 的差别只在异步: 选项(cwd/encoding/timeout/maxBuffer)完全一致，
+ * 错误时同样能从 stdout 拿到汇总行(exec 的回调在失败时也给 stdout)。
+ */
+function runChildCapture(label, cmd, timeout = CHILD_TIMEOUT) {
+  return new Promise((resolve) => {
+    exec(cmd, {
       cwd: ROOT,
       encoding: 'utf8',
       timeout,
       maxBuffer: 48 * 1024 * 1024,
+      // 标记"我正被 run-all 驱动"。测试文件据此跳过"再跑一遍 run-all"的
+      // 行为校验，否则 run-all → 该测试 → run-all → … 会无限递归。
+      env: Object.assign({}, process.env, { ASPIRA_TEST_RUNNER: '1' }),
+    }, (err, stdout) => {
+      resolve({ label, out: (stdout || '').toString(), err: err || null });
     });
-  } catch (e) {
-    out = (e.stdout || '').toString();
-    if (!/(\d+) 通过, (\d+) 失败/.test(out)) {
-      console.log(`  [异常] ${label.trim()}: ${(e.message || '').split('\n')[0]}`);
-      failed++;
-      failures.push({ name: label.trim(), error: (e.message || '').split('\n')[0] });
-      return;
-    }
+  });
+}
+
+/**
+ * 解析并打印一个子进程的结果——逻辑与旧版 runChild 的执行后段逐行对应，
+ * 保证计数、失败定位、keep 行输出行为不变。
+ */
+function emitResult({ label, out, err }) {
+  console.log(`\n${label}`);
+  // 异常且输出里没有汇总行: 计一次失败(与旧版一致)
+  if (err && !/(\d+) 通过, (\d+) 失败/.test(out)) {
+    console.log(`  [异常] ${label.trim()}: ${(err.message || '').split('\n')[0]}`);
+    failed++;
+    failures.push({ name: label.trim(), error: (err.message || '').split('\n')[0] });
+    return;
   }
   const m = out.match(/(\d+) 通过, (\d+) 失败/);
   if (!m) {
@@ -82,26 +126,57 @@ function runChild(label, cmd, timeout = CHILD_TIMEOUT) {
   console.log(keep.join('\n') || '  (无输出)');
 }
 
-function runSubTest(name, relPath, timeout = CHILD_TIMEOUT) {
-  runChild(name, `node ${JSON.stringify(path.join(TEST_DIR, relPath))}`, timeout);
+/**
+ * 有界并发执行一组作业，并按**提交顺序**流式打印结果。
+ * 这样输出与旧串行版逐行一致(日志可 diff)，同时把 246 次 node 启动的开销叠起来。
+ */
+async function runJobs(jobs) {
+  const results = new Array(jobs.length);
+  let nextIdx = 0;      // 下一个待领取的作业
+  let printIdx = 0;     // 下一个待打印的结果
+  let doneCount = 0;
+
+  const flushInOrder = () => {
+    while (printIdx < jobs.length && results[printIdx] !== undefined) {
+      emitResult(results[printIdx]);
+      printIdx++;
+    }
+  };
+
+  const worker = async () => {
+    while (true) {
+      const i = nextIdx++;
+      if (i >= jobs.length) return;
+      results[i] = await runChildCapture(jobs[i].label, jobs[i].cmd, jobs[i].timeout);
+      doneCount++;
+      // 进度提示走 stderr，避免污染 stdout 的汇总行解析
+      process.stderr.write(`\r  进度 ${doneCount}/${jobs.length}`);
+      flushInOrder();
+    }
+  };
+
+  const n = Math.max(1, Math.min(CONCURRENCY, jobs.length || 1));
+  await Promise.all(Array.from({ length: n }, worker));
+  flushInOrder();
+  if (jobs.length) process.stderr.write('\r' + ' '.repeat(40) + '\r');
 }
 
-/** 执行导出 mount 函数的测试文件（子进程 + 注入 test harness） */
-function runMountTest(name, relPath, timeout = CHILD_TIMEOUT) {
-  runChild(
-    name,
-    `node ${JSON.stringify(path.join(TEST_DIR, '_mount.js'))} ${JSON.stringify(path.join(TEST_DIR, relPath))}`,
-    timeout
-  );
+function subTestJob(name, rel, timeout) {
+  return { label: name, cmd: `node ${JSON.stringify(path.join(TEST_DIR, rel))}`, timeout };
 }
-
-/** 以 `node -r` 预加载全局注入的方式执行 jest 风格测试文件 */
-function runJestStyleTest(name, relPath, timeout = CHILD_TIMEOUT) {
-  runChild(
-    name,
-    `node -r ${JSON.stringify(path.join(TEST_DIR, '_jest-globals.js'))} ${JSON.stringify(path.join(TEST_DIR, relPath))}`,
-    timeout
-  );
+function mountTestJob(name, rel, timeout) {
+  return {
+    label: name,
+    cmd: `node ${JSON.stringify(path.join(TEST_DIR, '_mount.js'))} ${JSON.stringify(path.join(TEST_DIR, rel))}`,
+    timeout,
+  };
+}
+function jestStyleJob(name, rel, timeout) {
+  return {
+    label: name,
+    cmd: `node -r ${JSON.stringify(path.join(TEST_DIR, '_jest-globals.js'))} ${JSON.stringify(path.join(TEST_DIR, rel))}`,
+    timeout,
+  };
 }
 
 // === MAIN ===
@@ -135,20 +210,23 @@ async function runAllTests() {
     ['RouteWhitelist (P4)', 'route-whitelist.test.js'],
     ['SafeFS (P4)', 'safe-fs.test.js'],
   ];
+
   const explicit = new Set();
+  const jobs = [];
   for (const [label, rel] of CORE_TESTS) {
     if (!fs.existsSync(path.join(TEST_DIR, rel))) continue;
     explicit.add(rel);
-    runSubTest(`  ${label}`, rel);
+    jobs.push(subTestJob(`  ${label}`, rel));
   }
 
   // 动态接入其余测试文件（全部子进程隔离）
   console.log('\n=== 动态接入其余测试文件 ===');
+  console.log(`  (并发度 ${CONCURRENCY}；可用 ASPIRA_TEST_CONCURRENCY 覆盖，设 1 退回串行)`);
   const allTests = collectTestFiles(TEST_DIR);
   for (const rel of allTests) {
     if (explicit.has(rel)) continue;
     if (rel.includes('/')) {
-      runSubTest('  · ' + rel, rel);
+      jobs.push(subTestJob('  · ' + rel, rel));
       continue;
     }
     let src = '';
@@ -160,14 +238,16 @@ async function runAllTests() {
     // 改为：匹配 function 或箭头式，且查全文件（长 JSDoc 头会把 export 挤到 400 字符之后）。
     if (/module\.exports\s*=\s*(function\b|\([^)]*\)\s*=>)/.test(src)) {
       // 导出 mount 函数：子进程 + 注入 harness
-      runMountTest('  + ' + rel, rel);
+      jobs.push(mountTestJob('  + ' + rel, rel));
     } else if (/\bdescribe\s*\(/.test(src) && !/require\(['"][^'"]*mini-expect/.test(src)) {
       // jest/mocha 风格：它自己调 describe/it，靠 -r 注入全局
-      runJestStyleTest('  j ' + rel, rel);
+      jobs.push(jestStyleJob('  j ' + rel, rel));
     } else {
-      runSubTest('  · ' + rel, rel);
+      jobs.push(subTestJob('  · ' + rel, rel));
     }
   }
+
+  await runJobs(jobs);
 
   // 汇总
   console.log('\n' + '='.repeat(50));

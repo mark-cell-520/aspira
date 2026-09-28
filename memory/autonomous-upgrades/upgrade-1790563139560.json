@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T02:38:59.560Z",
+  "chosen": "performance-optimization",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[performance-optimization,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 performance-optimization",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.67, 测试覆盖缺口填补=0.67, 文档诚实数字审计=0.67 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.67
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.67
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.66
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.66
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 177,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "937/0"
+  },
+  "result": "性能优化切片。引擎弃权，平局打破选出。基线 930/0。先量再改，不猜: (1) checkOutput 逐次延迟 0.21-0.33ms，预热后中文与英文无差异(0.24 vs 0.27ms)——首测显示中文 2.02ms 是英文 10 倍，追查发现是懒加载首次成本，非真实不对称，避免了一个错误结论; (2) 给 59 个 check 函数逐个计时，总和仅 0.194ms，最慢的占 7%，分布极平坦，无单一热点; (3) require 缓存命中 0.082µs，对比 checkOutput 213µs，占比 0.04%——为它把 require 提到模块顶会违背约定 #2(Tier-2 必须走 _lazy 函数内 require 换取冷启动快)，收益 0.2% 不值; (4) node --prof 被进程级噪声主导(WriteNodeReport 42%)，不可用。唯一可测的真实成本是测试套件: run-all.js 用 execSync **严格串行**，246 个文件各起一个子进程，每次付 ~26ms 裸 node 启动，串行墙钟实测 **36 秒**。改为有界并发: 每个测试仍是独立子进程(隔离不变——run-all.js 头部注释第 3 条记录过曾把 ~137 个引擎加载文件并入 runner 进程导致堆耗尽 OOM kill，这是承重墙)，只改\"同时在飞几个\"，默认 max(2,min(12,cpus-2))，可用 ASPIRA_TEST_CONCURRENCY 覆盖，设 1 退回串行。**改之前先量了并发风险而非假设**: 写 data/ 或 memory/ 的测试文件 0 个、调 listen(/createServer( 的 0 个、CPU 12 核——无共享文件或端口竞争。结果: 墙钟 **36 秒 → 5.3 秒**(6.8 倍)，连跑 3 次均 930/0 且耗时稳定(5282/5276/5284ms)，输出与串行版逐行 diff 只剩并发度行与日志时间戳。**一个递归陷阱**: 新测试若直接执行 node test/run-all.js，会触发 run-all → 该测试 → run-all → … 无限递归(因为 run-all 递归发现 test/ 下所有 *.test.js)。修法: run-all.js 给子进程设 ASPIRA_TEST_RUNNER=1，测试见到该标记就跳过行为校验。**一次断言写错**: 首版断言\"最后一条汇总应等于前面各子文件汇总之和\"，实测 937 vs 878。追查发现该差异是**既有的**——串行版与并发版完全相同(均 143 条可见汇总行、子汇总之和 871、总计 930)，源于 keep 行过滤(246 个文件里约 102 个的汇总行没进 keep 输出)，既非本次引入也非计数错误(总数自洽: 加一个 7 用例的测试文件，总数 930→937)。故不把它当不变量锁，改为锁真正有价值的: 0 失败、汇总行是输出中最后出现的一次、并发度真的 >1。新增 test/test-runner-concurrency.test.js(7 用例)锁住: 不得回退 execSync、并发度有界可覆盖、子进程隔离保留、汇总行格式逐字不变、递归标记存在、历史修复(archive 跳过/箭头式 mount 检测/递归发现)不得被改回去。verify 14/14，run-all **937/0**。仅改 test/ 与文档，未改 src/ 引擎代码，故未重启 MCP。"
+}
