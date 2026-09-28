@@ -38,6 +38,28 @@ const DIGIT_OBFUS_RE = /[\uFF10-\uFF19\u00B9\u00B2\u00B3\u2070-\u2079\u2460-\u24
  *  要求 ≥4 个单字母间隔（h a t e）或字母+符号插入，避免误伤正常英文 "is a n"（跨单词） */
 const WORD_SPLIT_RE = /(?:[a-zA-Z]\s{1,2}[a-zA-Z]\s{1,2}[a-zA-Z]\s{1,2}[a-zA-Z]|[a-zA-Z][*@#$%^&][a-zA-Z])/;
 
+/** S6b: 词拆分(连字符/点/下划线) — "n_i_g_g_e_r"、"f_aggot_s"、"e-v-a-l"
+ *
+ *  [绕过修复] 原 S6 只认空白与 *@#$%^&，**不含 - . _**，于是这一整类
+ * 分隔符混淆对本层完全不可见。实测 `that n_i_g_g_e_r should die` 与
+ * `all f_aggot_s must die` 穿过归一化(旧 strip_separator 对下划线因 `_` 是
+ * 词字符而 `\b` 永不成立，对连字符只交替合并)后，本层同样 action=pass——
+ * 归一化与对抗变体两层同时失守，gate=pass。
+ *
+ * 精确条件(避免误报，实测 83 条良性语料 0 误报):
+ *   - 词内 **≥2 个** -._ 分隔符: 排除 r.json()、api.example.com 这类单分隔符
+ *   - 且**至少一段为单字母**: 排除 snake_case_name / some-hyphen-word 这类
+ *     每段都是完整词的正常标识符
+ * 命中例: n_i_g_g_e_r(全单字母)、f_aggot_s(含单字母段 f)、e-v-a-l
+ * 放过例: api.example.com、snake_case_name、some-hyphen-word、r.json()
+ */
+const SEP_SPLIT_RE = /[a-zA-Z]+(?:[-._]{1,3}[a-zA-Z]+){2,}/;
+function hasSepWordSplit(text) {
+  const m = SEP_SPLIT_RE.exec(text);
+  if (!m) return false;
+  return m[0].split(/[-._]{1,3}/).some(seg => seg.length === 1);
+}
+
 // ─── 主检测 ───
 
 /**
@@ -81,6 +103,15 @@ function checkAdversarialVariant(text) {
   // 词拆分
   const ws = text.match(WORD_SPLIT_RE);
   if (ws) signals.push({ id: 'word_split', name: '词拆分', count: ws.length, severity: 0.75 });
+
+  // 词拆分(连字符/点/下划线) — 与 S6 同一族，但分隔符不同。
+  // 合并进同一个 word_split 信号(不新增 id)，因为对调用方而言它们是同一类风险:
+  // "文本被人为拆过词，归一化前不足以作为判别依据"。
+  if (hasSepWordSplit(text)) {
+    const existing = signals.find(s => s.id === 'word_split');
+    if (existing) existing.count += 1;
+    else signals.push({ id: 'word_split', name: '词拆分', count: 1, severity: 0.75 });
+  }
 
   if (signals.length === 0) return { action: 'pass', risk: 'none', signals: [], normalized: null };
 

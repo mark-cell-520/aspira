@@ -2594,22 +2594,22 @@ const HATE_SPEECH_ZH = [
 
 const HATE_SPEECH_EN = [
   // Racial slurs (word-boundaried to avoid false positives)
-  { pattern: /\bn[i1]gg(?:er|a|ah|az)\b/i, type: 'racial_slur', severity: 1.0 },
-  { pattern: /\bk[i1]ke\b/i, type: 'racial_slur', severity: 0.9 },
-  { pattern: /\bsp[i1]c\b/i, type: 'racial_slur', severity: 0.9 },
-  { pattern: /\bch[i1]nk\b/i, type: 'racial_slur', severity: 0.9 },
-  { pattern: /\bc00n\b/i, type: 'racial_slur', severity: 0.9 },
-  { pattern: /\bw[e3]tb[a4]ck\b/i, type: 'racial_slur', severity: 0.8 },
-  { pattern: /\bg0(?:0|)k\b/i, type: 'racial_slur', severity: 0.8 },
+  { pattern: /\bn[i1]gg(?:er|a|ah|az)s?\b/i, type: 'racial_slur', severity: 1.0 },
+  { pattern: /\bk[i1]kes?\b/i, type: 'racial_slur', severity: 0.9 },
+  { pattern: /\bsp[i1]cs?\b/i, type: 'racial_slur', severity: 0.9 },
+  { pattern: /\bch[i1]nks?\b/i, type: 'racial_slur', severity: 0.9 },
+  { pattern: /\bc00ns?\b/i, type: 'racial_slur', severity: 0.9 },
+  { pattern: /\bw[e3]tb[a4]cks?\b/i, type: 'racial_slur', severity: 0.8 },
+  { pattern: /\bg0(?:0|)ks?\b/i, type: 'racial_slur', severity: 0.8 },
   // Anti-immigrant / xenophobia
   { pattern: /\bgo (?:back|home) to your (?:own )?country\b/i, type: 'xenophobia', severity: 0.8 },
   { pattern: /\billegal (?:alien|immigrant)s?\b/i, type: 'xenophobia', severity: 0.6 },
   { pattern: /\b(?:bloody|dirty|filthy) (?:foreigner|immigrant)s?\b/i, type: 'xenophobia', severity: 0.7 },
   // Homophobic slurs
   { pattern: /\bf[a4]gg(?:ot|o?t)s?\b/i, type: 'homophobic_slur', severity: 0.9 },
-  { pattern: /\bdyke|d[i1]ke\b/i, type: 'homophobic_slur', severity: 0.8 },
-  { pattern: /\btr[a4]nn[iy1]s?\b(?!\s+(?:in|mount|bearing|repair|fluid|shop|swap|rebuild|conversion|filter|pan|oil))/i, type: 'homophobic_slur', severity: 0.8 },
-  { pattern: /\bqu[e3]er\b(?!\s+(?:theory|studies|community|ally|pride))/i, type: 'homophobic_slur', severity: 0.6 },
+  { pattern: /\bdykes?\b|\bd[i1]kes?\b/i, type: 'homophobic_slur', severity: 0.8 },
+  { pattern: /\btr[a4]nn(?:ie|[iy1])s?\b(?!\s+(?:in|mount|bearing|repair|fluid|shop|swap|rebuild|conversion|filter|pan|oil))/i, type: 'homophobic_slur', severity: 0.8 },
+  { pattern: /\bqu[e3]ers?\b(?!\s+(?:theory|studies|community|ally|pride))/i, type: 'homophobic_slur', severity: 0.6 },
   { pattern: /\bf[a4]gs?\b/i, type: 'homophobic_slur', severity: 0.7 },
   { pattern: /\b(?:fags?|faggots?|queers?|dykes?|homo(?:s|sexuals)?) (?:should|must|need to) (?:die|be killed|be eliminated|burn)\b/i, type: 'homophobic_slur', severity: 0.9 },
   { pattern: /\b(?:gays?|lesbians?|trans(?:gender|genders)?|queers?) (?:are|is) (?:disgusting|sick|wrong|evil|abnormal|unnatural)\b/i, type: 'homophobic_slur', severity: 0.8 },
@@ -2618,10 +2618,10 @@ const HATE_SPEECH_EN = [
   { pattern: /\b(?:women|girls) (?:are|is) (?:worthless|inferior|stupid|useless|objects|property|less than)\b/i, type: 'gender_discrimination', severity: 0.7 },
   { pattern: /\b(?:women|girls) (?:shouldn't|should not|can't|cannot|must not) (?:work|vote|drive|speak|lead)\b/i, type: 'gender_discrimination', severity: 0.7 },
   // Gender derogatory
-  { pattern: /\bsl[u4]t\b/i, type: 'gender_slur', severity: 0.7 },
-  { pattern: /\bwh[o0]r[e3]\b/i, type: 'gender_slur', severity: 0.7 },
-  { pattern: /\bb[i1]tch\b/i, type: 'gender_slur', severity: 0.6 },
-  { pattern: /\bc[u4]nt\b/i, type: 'gender_slur', severity: 0.8 },
+  { pattern: /\bsl[u4]ts?\b/i, type: 'gender_slur', severity: 0.7 },
+  { pattern: /\bwh[o0]r[e3]s?\b/i, type: 'gender_slur', severity: 0.7 },
+  { pattern: /\bb[i1]tch(?:es)?\b/i, type: 'gender_slur', severity: 0.6 },
+  { pattern: /\bc[u4]nts?\b/i, type: 'gender_slur', severity: 0.8 },
   // [v6.4.5] 通用脏话（短句攻击最常见形式）
   { pattern: /\bf[u4]ck(?:\s*(?:you|off|ing|er|ed))?\b/i, type: 'profanity', severity: 0.5 },
   { pattern: /\bsh[a4]b[i1y]\b/gi, type: 'profanity', severity: 0.5 },

@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T00:02:49.352Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.69, 测试覆盖缺口填补=0.69, 文档诚实数字审计=0.69 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.69
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.69
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.69
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.68
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 170,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "869/0"
+  },
+  "result": "对抗鲁棒性增强。引擎弃权，平局打破选出本切片。基线 859/0。本轮实测发现**两类真实绕过**，都是\"还原/模式看似修过、实际留了一半\"的形态。**绕过一: strip_separator 对 -._ 两类失守。** 原正则 /\\b([a-zA-Z])[-._]{1,2}([a-zA-Z])\\b/g 有两个缺陷: (1) `_` 本身是词字符(\\w)，所以 \"n_i\" 的 i 之后不构成 \\b，**下划线永远匹配不上**; (2) 连字符/点号只交替合并——替换 \"n-i\"→\"ni\" 后扫描位置已越过，紧接着的 \"-g\" 不再参与，得到 \"ni-gg-er\" 仍是残词。更严重的是 adversarial-variant 的 WORD_SPLIT_RE 只认空白与 *@#$%^&，**不含 -.***，所以那一层同样 action=pass。**归一化与对抗变体两层同时失守**。实测: \"that nigger should die\" hs=1/block，而 \"that n_i_g_g_e_r should die\" hs=0/**pass**; \"all faggots must die\" hs=2/block，而 \"all f_aggot_s must die\" hs=0/**pass**。途中还差点误判: 先看到 pipeline gate=block，一度以为安全；逐层打印才发现 block 的理由是 \"拦截: dehumanization\"，且 \"you are a disgusting apple\" 同样 dh=1/block——**那些 block 与侮辱语无关，纯属巧合**。只有换掉句式才暴露真绕过(威胁句 \"that n_i_g_g_e_r should die\" 三层全 pass)。修法: 整段折叠而非逐对合并——匹配\"字母段(分隔符 字母段)+\"的连续串再一次性剥掉分隔符，精确性判据为**词内 >=2 个分隔符且至少一段是单字母**。实测 86 条良性语料 0 新增误报: n_i_g_g_e_r(全单字母)、f_aggot_s(含单字母段 f)、e-v-a-l 被折叠; api.example.com、snake_case_name、some-hyphen-word、r.json() 被保留。同时给 adversarial-variant 补第二层防御(同判据)，实现纵深。**绕过二: 15 个侮辱语模式里 13 个缺复数。** HATE_SPEECH_EN 此前只给 faggot/tranny 补过 s?，其余全是单数。复数形恰恰是更常见的攻击面: \"all niggers must die\" 原本 gate=pass。已补齐 nigger/kike/spic/chink/wetback/slut/whore/cunt/bitch/queer/dyke，并把 bitch 的复数特判为 (?:es)?。另修 /\\bdyke|d[i1]ke\\b/i——首选项 dyke **完全没有 \\b 锚定**(alternation-precedence 陷阱)。tranny 的复数原只到 [iy1]s?，漏了最常见的 \"trannies\" 拼写，已扩为 (?:ie|[iy1])s?。**两处刻意不覆盖并已用测试锁住**: coon/gook 的常规拼写(\"coons\"/\"gooks\")——原模式只用 leet 形 c00n 与 g0(?:0|)k，因为 \"coon\" 同时是 raccoon(浣熊)的简称，\"coon dog\"/\"coon hunting\" 是正常用法; 良性语料实测 0 命中但真实流量不可知，故保留原设计的保守取舍。这是我第三次遇到\"探针期望错、引擎的既定取舍才对\"。新增 test/separator-evasion.test.js(10 测试)，锁住: 分隔符必须整段折叠、既有合法还原不破、正常标识符/URL/方法链不被折叠、混淆必须被拦、第二层防御必须独立生效、复数形必须命中、源码级正则形态、语料必须持续覆盖两类。该测试自身也改了三处期望(coons→c00ns、gooks→g0ks、trannies 拼写)，均已注明理由。语料 86 良性/34 恶意(新增 4 个良性护栏 + 10 个恶意样本)。终态: verify 14/14, run-all 869/0, FP 2.3%/召回 100%。MCP 已重启，181 工具在线，端到端复验 5 个恶意例全 verdict=不可信、3 个良性护栏全 verdict=可信。"
+}

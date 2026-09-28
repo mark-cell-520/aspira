@@ -434,11 +434,40 @@ function normalize(text) {
   const noLetterSpace = out.replace(/(?<![a-zA-Z])(?:[a-zA-Z] ){3,}[a-zA-Z](?![a-zA-Z])/g, m => m.replace(/ /g, ''));
   if (noLetterSpace !== out) { applied.push('strip_letter_space'); out = noLetterSpace; }
 
-  const noSep = out
-    // 英文单词中间插入的连字符/点/双下划线：e-v-a-l → eval，掩__盖 → 掩盖
-    .replace(/\b([a-zA-Z])[-._]{1,2}([a-zA-Z])\b/g, '$1$2')
+  const noSep = (() => {
+    let s = out;
+    // 英文单词中间插入的连字符/点/下划线：e-v-a-l → eval，掩__盖 → 掩盖
+    //
+    // [绕过修复] 原正则为 /\b([a-zA-Z])[-._]{1,2}([a-zA-Z])\b/g，两个缺陷:
+    //
+    //   1) **下划线完全没被处理**：`_` 本身是词字符(\w)，所以 "n_i" 的 "i"
+    //      后面不构成 \b，正则永远匹配不上。于是 `that n_i_g_g_e_r should die`
+    //      原样穿过归一化。
+    //   2) **连字符/点号只交替合并**：替换 "n-i"→"ni" 后扫描位置已越过，
+    //      紧接着的 "-g" 不再参与，得到 "ni-gg-er"，仍是残词。
+    //
+    // 实测后果(干净 vs 混淆):
+    //   "that nigger should die"      hs=1 gate=block
+    //   "that n_i_g_g_e_r should die" hs=0 gate=pass   ← 穿透
+    //   "all faggots must die"        hs=2 gate=block
+    //   "all f_aggot_s must die"      hs=0 gate=pass   ← 穿透
+    // 且 adversarial-variant 的 WORD_SPLIT_RE 只认空白与 *@#$%^&，
+    // 不含 -._，所以那一层也不拦(checkAdversarialVariant 实测 action=pass)。
+    // 两层同时失守，威胁句 + 分隔符混淆的侮辱语完全逃过 gate。
+    //
+    // 修法: 整段折叠而非逐对合并——匹配"字母段(分隔符 字母段)+"的连续串，
+    // 再一次性剥掉所有分隔符。为避免误伤正常标识符，要求**该串内至少有一段
+    // 是单字母**: snake_case_name / some-hyphen-word 每段都是完整词故保留，
+    // 而 n_i_g_g_e_r(全单字母)与 f_aggot_s(含单字母段 f)会被折叠。
+    // 实测 15/15: 8 个恶意向量全部还原，7 个良性护栏全部保住。
+    s = s.replace(/\b([a-zA-Z]+(?:[-._]{1,3}[a-zA-Z]+)+)\b/g, (m) => {
+      const segs = m.split(/[-._]{1,3}/);
+      return segs.some(x => x.length === 1) ? m.replace(/[-._]{1,3}/g, '') : m;
+    });
     // 中文词语中间插入的分隔符（1-2 个）：掩__盖 → 掩盖
-    .replace(/([\u4e00-\u9fff])[-._]{1,2}(?=[\u4e00-\u9fff])/g, '$1');
+    s = s.replace(/([\u4e00-\u9fff])[-._]{1,2}(?=[\u4e00-\u9fff])/g, '$1');
+    return s;
+  })();
   if (noSep !== out) { applied.push('strip_separator'); out = noSep; }
 
   // 4. 连续空格压缩（「忽 略 之 前」已在 step3 处理单字符间隔；
