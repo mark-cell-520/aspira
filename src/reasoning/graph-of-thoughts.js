@@ -898,6 +898,17 @@ class GoTEngine {
 
         this.stats.totalBranches++;
 
+      } else {
+
+        // [测试覆盖缺口修复] 分数不足阈值的候选同样被丢弃，计入 prunedNodes。
+        // prunedNodes 此前从未自增: ThoughtNode.prune() 这个公共方法
+        // **全文件从未被调用**，而 getResult() 永远报告 prunedNodes: 0 ——
+        // 一个恒为 0 的指标。与上轮 kv-cache 的 hitRate 恒等于 hits 同类:
+        // 指标不走比没有指标更误导。
+        // 修法不改变搜索行为(不把 prune() 接进探索循环，
+        // 那会改变搜索结果)，只在候选真正被丢弃的地方计数，让统计反映事实。
+        this.stats.prunedNodes++;
+
       }
 
     }

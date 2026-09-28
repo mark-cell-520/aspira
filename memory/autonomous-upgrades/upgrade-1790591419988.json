@@ -1,0 +1,55 @@
+{
+  "ts": "2026-09-28T10:30:19.987Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.63, 测试覆盖缺口填补=0.63, 误报/召回校准=0.62 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.63
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.62
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.62
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.61
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 193,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1043/0",
+    "baseline": "1036/0",
+    "delta": "+7"
+  },
+  "result": "fp-recall-calibration 切片。引擎弃权，平局打破选出。\n基线实测 verify 14/14、run-all 1036/0。\n上轮留下方向(c): \"de_cyrillic 的主体判定只数拉丁 vs 西里尔希腊，未计中日韩，\n混排中文+英文时的行为值得复核\"。\n═══ 沿(c)挖，先证伪了自己的两个猜测 ═══\n1) CYRILLIC_HOMOGLYPH 表缺 15 个常见同形字(к/и/л/м/в/н/т/κ/ι/ν/τ/γ/μ/π/η)，\n   norm 确实不还原它们。但**召回没掉**——adversarial-variant 层仍在 rewrite 级\n   全数拦住(41/41)。补表只是归一化质量改善，且会**增加**把合法西里尔\n   转写坏的精度代价。不是召回修复，不值得做。\n2) 造了一批语料表达不了的真实良性文本(引用含敏感词/代码上下文/中英混排/\n   元认知谦逊/非拉丁正文/长条件句)，28 条里 8 条被升级。逐条查驱动维度。\n═══ 缺陷一(已修): 同一段文字被算成两处，严重度翻倍 ═══\n\"根据 2024 年的一份行业报告，部署时间中位数约为 12 分钟。\"\n  → 无依据断言(2处: 根据 2024 年的一份行业报告; 2024 年的一份行业报告)\n第二条是第一条的**子串**。UNSUPPORTED_CLAIM_ZH 的\"根据…报告\"与\n\"2024年…报告\"匹配同一段，而原实现每模式 match 到就 push，不检查跨度重叠。\ncount 翻倍 → score=min(1,count*0.45) 翻倍 → **severity 45→90**。\n语料 143 条里 0 条能表达这个形状，校准脚本读不出来。\n修法: _dedupeOverlappingSpans() 按跨度去重(被更长跨度包含的丢弃)，\ncheckPseudoCausal 与 checkUnsupportedClaim 两处同构都接上。\n**这是仪器诚实性修复，不是 FP 修复**——计数是 severity 的原料，\nseverity 是门禁动作的原料，模式写重了会悄悄改变对用户的判决。\n═══ 缺陷二(已修): 对冲词被当成模糊归因 ═══\n/不排除/ 在 VAGUE_PATTERNS.zh 里。但\"不排除其他可能\"是**认知对冲**，\n不是**不可考证来源**——vagueness 维度本意是抓\"相关方面/有关部门/据传\"。\n对冲词被放进模糊归因表是分类错误。已移除。\n═══ 量测否决了一个改动(本周期的诚实结论) ═══\n\"可能有多种解释，我倾向于第一种，但不排除其他可能。\"被 verify，\n驱动因是 gate 的 `findings.length > 1` 规则。本想修，先量:\n  该规则是 **8/45 恶意样本的唯一拦截理由**，只造成 **1 条**良性误报\n  → 8:1，不值得动。故不改代码，把代价写进 AGENTS.md。\n═══ 我重犯了一个本仓库已记录过的错(最重要的教训) ═══\n为让 HEDGE_RE 扩容的代价可测，我往语料加了 8 良性 + 4 恶意。\n加完才发现 scripts/calibrate-fp-recall.js 的 281-292 行**早就记录过**:\n  \"模糊来源+精确数字\"类样本正确地只产出 verify(unsupported_claim 是\n  VERIFY 层维度)，而本脚本\"被拦截\"只算 block/rewrite，\n  放进 MALICIOUS 会把正确的引擎行为计成漏报(召回假跌到 92.1%)。\n**我加样本前没读那段注释。** 已按既定模式全部移出，改在维度级守护\n(test/fp-hedge-exemption.test.js 新增 2 条: 逐条断言 unsupported_claim\n必须命中 + 锁住这些字符串不得再出现在语料数组里)。\n═══ 顺带量测确认: 这一类不可分离 ═══\n  \"研究表明，适量运动可能降低…20-30%\"(良性)\n  \"研究表明，这种药物可能延长寿命 12.5 年\"(恶意)\n产生**完全相同**的维度剖面。故扩 HEDGE_RE 会把恶意的一起豁免——\n那不是正解，已放弃并记录。\n═══ 另外两次我的测试写错 ═══\n1) 测\"去重不得过头\"时用\"研究表明…调查显示…\"，但它俩属**同一个模式**的\n   交替项，而 text.match(非全局正则)每模式只返回第一个命中，本来就算 1 处。\n   把既有限制当成去重过头来测，断言报错。改用两个不同模式在不重叠位置命中。\n2) 断言该类样本\"必须到 verify\"，被 perfect_error 路径打红——\n   \"假精确+伪权威\"是与 unsupported_claim 并行的**另一条设计内机制**，\n   部分样本设计动作就是 rewrite。改为断言本质(不得因对冲词放行)。\n═══ 召回修复(顺带) ═══\n补了模糊归因词: 中文 据介绍/据传/有消息称/网传，英文 industry/market/\ninternal/company sources。实测漏拦 \"据介绍，该引擎可能将误报率降至 1% 以下。\"\n代价已测: 语料良性里 0 条含这些词，无可见误报。\n═══ 门禁 ═══\nverify 14/14；run-all **1043/0**(基线 1036，+7 新测试)；\n审计 43/43、0 不符、0 无法实测；\n语料 **良性 106 条 / FP 0.9%**(不再是 0.0%——那条遗留误报被如实报告)，\n恶意 41 条 / 召回 **100%**；leet 90.2% / 拼音 100% / 明文 41/41。\n改了 src/index.js(引擎代码)，**已重启 MCP**: 181 工具在线。\n端到端经 aspira_gate_pipeline 实测: 去重样本 unsupported_claim.sev **45**(修复前 90)。\n新增 test/unsupported-claim-span-dedup.test.js(5 例)。\nAGENTS.md: 语料 102→106、FP 0.0%→0.9% 及原因；新增两条 Honest limitations\n(跨度双算、我重犯已记录的错)。test/evasion-recall-instrument.test.js 的\nFP 断言从精确 \"0.0%\" 改为**有界**(≤2 条)——硬编码数字会腐烂。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n**下次方向**: (a) VAGUE_PATTERNS 同样每模式只取第一个匹配，多处不重叠的\n   模糊归因也只算 1 处——与 unsupported_claim 同源的既有限制，可评估是否改全局匹配;\n   (b) perfect_error 与 unsupported_claim 是两条并行机制，动作可能不一致\n   (一个 verify 一个 rewrite)，值得查是否有样本因此拿到偏强的动作;\n   (c) 上上轮留下的 dataDir 选项语义不一致(rootPath 优先)仍未查;\n   (d) 144 个无测试引用模块的普查仍可做。"
+}

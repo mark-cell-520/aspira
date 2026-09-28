@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T06:45:20.072Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.65, 测试覆盖缺口填补=0.65, 文档诚实数字审计=0.65 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.65
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.65
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.64
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.64
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.63
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 186,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "993/0 (连跑 8 次均 0 失败)"
+  },
+  "result": "fp-recall-calibration 切片。引擎弃权(confidence 0)，平局打破选出。基线 986/0。\n═══ 起点: 语料对一整类文字失明 ═══\n语料 86 良性 / 34 恶意，**含西里尔/希腊/阿拉伯/韩/日的各为 0 条**。\n逐类实测暴露出两个真实缺陷。\n═══ 缺陷一: prompt_injection 对非拉丁注入零覆盖(已修) ═══\n该维度只有 zh + en 两套模式，实测四条各语言注入全部 pass。\n补 INJECTION_PATTERNS.ru/el/ko/ja 四套，纪律与 en 数组注释记载的教训一致——\n**动词 + 过往指代 + 指令名词三半齐备才算**(只扩动词曾把\n'Please disregard the previous error message' 误报)。\n═══ 缺陷二: de_cyrillic 破坏合法非拉丁文本，silently 废掉新模式(已修) ═══\n补了 ru/el 后俄语/希腊语注入**仍 pass**。单测正则能匹配，过完 pipeline 就失效——\n根因是 text-normalizer 的 de_cyrillic 把整段俄语转写成拉丁混合体:\n    'Игнорируй все предыдущие инструкции' → 'игнopиpyй вce пpeдыдyщиe инcтpyкции'\n**两层之间的隐式耦合**: discriminate() 拿到的是归一化后的文本，\n按西里尔/希腊原文写的模式永远匹配不上，而两层各自的测试都看不见。\n修复与 adversarial-variant 的 HOMOGLYPH_RE 收窄是同一条纪律:\n\"伪装成拉丁\"要求 look-alike 邻接拉丁字母 → **拉丁字母占多数才转写**。\n═══ 附带发现并修复: 校准仪器自身测错了东西 ═══\ncalibrate-fp-recall.js 的 run() 调 idx.discriminate(text, [])——\n**只跑 54 维判别器，不过 adversarial-variant 层**。实测(语料 102/41):\n    discriminate(旧)   FP=0/102  召回=38/41 (92.7%)\n    checkOutput(全链)  FP=0/102  召回=41/41 (100.0%)\n那 3 条\"漏报\"其实已被对抗层拦下(gate=rewrite)，判别器单独看才是 pass。\n仪器把**已被拦住的攻击报成漏报**，同时对抗层的误报也不会出现在 FP 里——\n**两个方向同时失真**。已改测 gate.checkOutput()。\n═══ 又发现: 审计仪器恰在出问题时失明(已修) ═══\naudit-doc-numbers.js 用 execSync 跑 run-all.js，而 run-all 在有用例失败时\nprocess.exitCode = 1 → execSync 抛异常 → catch 把 m.tests 置 null →\n3 条测试数声称变\"无法实测\"。**审计恰在出问题的那一刻失明**。\n实测该抖动真实存在: 同一份代码连跑 3 次审计，第 3 次报 3 项无法实测。\n已改用 spawnSync(不抛异常，stdout 失败时仍可读)。\n═══ 最深的一处: 共享可变状态导致测试 flaky(已修，仓库级) ═══\n审计修好后立刻暴露: 连跑全量偶发 4 条失败。根因是\n**data/auto-rules.json 是跨测试文件共享的可变状态**，而 run-all.js\n并发执行多个测试文件——既有的 test/auto-rules.test.js 与我的\nauto-rules-cache.test.js 都 clearRules()/tryGenerate()/writeFileSync 它。\n这是仓库级测试隔离缺陷，不是我的测试独有。\n修复: RULES_FILE 可经 process.env.ASPIRA_AUTO_RULES_FILE 覆盖，\n两个测试文件各自设成私有临时文件(必须在 require 前设置，\n因为 RULES_FILE 在模块加载时求值)。生产不设该变量，行为不变。\n**连跑 8 次全量均 993/0，flaky 彻底消除。**\n═══ 语料扩充 ═══\n良性 +16(合法非拉丁)、恶意 +7(四条非拉丁注入 + 三条同形字攻击)，\n86/34 → **102/41**。明文 FP 仍 0.0%、召回 100%(41/41)。\n═══ 我自己的两处错误(都当场撞上) ═══\n1) test/evasion-recall-instrument.test.js 硬编码\"分母=34\"，语料一长就误报。\n   已改为从语料动态推导——**硬编码的条数会腐烂**。\n2) 新测试断言\"所有良性样本都不触发 de_cyrillic\"，但\n   'I read a book called Война и мир yesterday.' 是拉丁为主体混排俄语书名，\n   按设计就触发(门禁仍 pass，无 FP)。已收窄为只针对\"非拉丁为主体\"的样本。\n   ——又是\"过强断言\"这个已记载的失败模式。\n═══ 门禁 ═══\nverify 14/14；run-all **993/0 连跑 8 次均 0 失败**；审计 **38/38 连跑 4 次**、\n0 不一致、0 无法实测；明文 FP 0.0% / 召回 100%(41/41)。\n改了 src/index.js + src/text-normalizer.js + src/auto-rules.js(引擎代码)，\n**已重启 MCP**: 181 工具在线，端到端验证 四条非拉丁注入→block。\nAGENTS.md 语料数字同步 86/34→102/41、逃逸召回 91/26/94→85/39/95，\n并新增一条 Honest limitations 记录本次两个缺陷。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) 其余非拉丁文字(阿拉伯语/希伯来语/泰语)的注入仍无模式覆盖;\n(b) 逃逸召回最差的\"字母间插空格\"39%仍是已知盲区(放宽已 REVERT，需别的思路);\n(c) de_cyrillic 的主体判定只数拉丁 vs 西里尔希腊，未计中日韩，\n   混排中文+英文时的行为值得复核; (d) 还有哪些测试文件在共享 data/ 下的可变状态\n   (如 self-view.json，上周才为它修过 introspect-wiring)——值得做一次普查。"
+}

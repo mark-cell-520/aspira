@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T06:20:27.023Z",
+  "chosen": "performance-optimization",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[performance-optimization,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 performance-optimization",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.65, 测试覆盖缺口填补=0.65, 文档诚实数字审计=0.65 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.65
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.65
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.65
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.64
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.64
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.63
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 185,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "986/0 (连跑3次均 0 失败)"
+  },
+  "result": "performance-optimization 切片。引擎弃权(confidence 0)，平局打破选出。基线 981/0。\n═══ 找热点的方法 ═══\n先实测各入口耗时(0.13–1.03ms，本身很快)，下钻发现 normalize 只占 discriminate 的\n3–14%、require 可忽略(0.0001ms)，故改用 **--cpu-prof** 做 3000 次混合判别的\nCPU profile 再按 self time 聚合——热点自己浮出来。\n═══ 发现并修复: auto-rules 每次门禁都付一次同步文件 IO ═══\nprofile 里 readFileUtf8 占 1.5%(120.7ms / 8248.5ms)，是最大的非正则单项。\n追查: checkAutoRules(text) 每次调用都 loadRules() → existsSync + readFileSync\n+ JSON.parse。而它是 pipeline 的 auto-rules 层，**每次 checkInput/checkOutput/\nrunPipeline 都跑它**——即每次门禁都付一次同步文件 IO；同步 IO 还会阻塞\nMCP server 事件循环，并发下代价高于单次测量。\n实测(2000 次): checkAutoRules 0.0086ms/次，裸 readFileSync 0.0067ms，**IO 占 78%**。\n**修复**: 按 (mtimeMs, size) 缓存解析结果；saveRules() 里主动清缓存\n(连续写入可能落在同一 mtime 刻度内，只靠 mtime 会读到旧缓存)；\n文件不存在时不缓存，以便立刻发现新建文件。\n**修复后 0.0012ms/次，提速 7.2 倍**。\n新增 test/auto-rules-cache.test.js(5 用例)，**双向锁定**:\n  - 缓存必须真的省掉重复 IO(间谍数 readFileSync，50 次调用应 ≤1 次读)\n  - 且不得因此变瞎: 外部改动、进程内经 saveRules 写入、新建文件，三种情况都必须立刻可见\n  (只锁前者会奖励一个\"永远返回旧数据\"的假优化)\n═══ 附带修掉一个既有 flaky 测试(三次误判根因，记录全过程) ═══\n全量门禁首次报 2 失败，全在 introspect-wiring.test.js 的\n\"think 后 self-view.json 计数递增\"。按协议本应 REVERT，先定位:\n连跑 3 次得 985/1、986/0、986/0 —— 偶发，且回退我的源码改动后仍复现，\n确认与本次改动无关，是**既有**缺陷。\n**误判一**: 以为是并发测试重置了计数 → 用 mkdtemp 隔离 dataDir。\n  无效且有害: heartflow.js:4947 写 self-view.json 用的是 **this.rootPath**，\n  根本不看 dataDir 选项，隔离后的临时目录里不产生该文件，after 读取直接失败。\n**误判二**: 以为 before 读取得太早(在 start() 前、空等 2500ms) → 把 before\n  挪到 think() 前一刻。结果从\"偶发失败\"变成\"**稳定失败**\"(3/3)——反而更糟。\n**正解**: 根因是**共享文件上的读-改-写无锁**。并发实例把自己内存里的旧\n  thinkCount 写回文件时，会把全局计数写回一个**更低的值**，计数在并发下并非单调，\n  `after > before` 本质竞态。隔离 **rootPath**(不是 dataDir)到临时目录后，\n  self-view.json 随之落到 <tmpRoot>/data/，与并发测试彻底隔离。\n  **连跑 3 次全量均 986/0，转为确定性。**\n═══ 我的编辑曾吞掉一个用例(自查发现) ═══\n替换 introspect-wiring.test.js 的测试块时，把第一个用例\n\"heartflow.introspect 路由可用\"一起覆盖掉了(用例数从 3 变 2)。\n 是靠\"单独跑显示共 2 个\"发现的，已恢复。这与既往教训同族:\n用 edit 替换一段含多个用例的代码时，必须核对用例总数。\n═══ 门禁 ═══\nverify 14/14；run-all **986/0，连跑 3 次均 0 失败**(基线 981，+5)；\n审计 38/38 一致。改了 src/auto-rules.js(引擎代码)，**已重启 MCP**:\n181 工具在线。按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) self-view.json 的读-改-写无锁是**引擎级**缺陷(不只是测试问题)，\n生产并发下计数会回退，值得加文件锁或改为 append-only 日志;\n(b) dataDir 选项对 self-view 不生效(rootPath 优先)，是选项语义不一致;\n(c) profile 里 classics-rules.js:1099 占 2.7% 为最大单项，可继续下钻。"
+}

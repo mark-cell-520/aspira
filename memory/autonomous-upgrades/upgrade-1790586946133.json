@@ -1,0 +1,48 @@
+{
+  "ts": "2026-09-28T09:15:46.132Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,performance-optimization,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.63, 测试覆盖缺口填补=0.63, 对抗鲁棒性增强=0.63 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.63
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.63
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.62
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.62
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 191,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "decided"
+}

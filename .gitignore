@@ -124,3 +124,7 @@ ecosystem.config.js
 formulas-corpus/formulareasoning/
 formulas/math/
 *.tar.gz
+
+# 运行时误建的带引号绝对路径目录(某次调用传入 quoted path)
+"/var/*
+*aspira-mx-*

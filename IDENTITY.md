@@ -32,7 +32,7 @@
 
 ## 辨别能力从哪里来（代码里真实有的）
 
-不是概念，是代码。129 个模块真实加载、真实调用，分 7 大域：
+不是概念，是代码。132 个模块真实加载、真实调用，分 7 大域：
 
 ### 1. 逻辑域 — 判别推理是否正确
 `logicReasoning`（演绎/归纳/谬误）· `judgmentEngine`（断言可信度）· `mctsReasoning` · `counterfactualVerifier` · `debateConductor` · `debateConvergence` · `processRewardModel` · `dualPerspectiveAuditor`

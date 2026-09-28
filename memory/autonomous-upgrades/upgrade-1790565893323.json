@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T03:24:53.323Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.67, 测试覆盖缺口填补=0.67, 文档诚实数字审计=0.67 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.67
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.66
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.66
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.65
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 178,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "941/0"
+  },
+  "result": "误报/召回校准切片。引擎弃权，平局打破选出。基线 937/0。读校准脚本后发现一个真实的仪器盲区: scripts/calibrate-fp-recall.js 只把 MALICIOUS **原样**喂给门禁，量的是明文召回——**逃逸绕过完全不让数字变动**。实证: 上一轮把逐字符插分隔符的绕过从 5/6 修到 1/6，召回率前后都是 100%，仪器对一次 5/6 的失守毫无感知。这与 AGENTS.md 记录的既有盲区同源(那次是仪器对合并引入的混合语言风险视而不见，一补语料就浮出两个从未见过的 FP)。共同教训: 指标测不到的风险等于不存在。在脚本里补了逃逸召回小节(三类变换作用到同一批 34 条恶意样本上)，保持既有明文 FP/召回语义完全不变。补上后浮出的差距很大: 明文 100% vs 逐字符插分隔符 91%、**字母间插空格 26%**、HTML 实体 94%。最差一类能 6/6 全绕代码样本: 它把 const 变成 \"c on st\"——replace 的替换串 \"c o\" 与下一处 \"n s\" 拼接成 \"c on s\"，残留 on/st 等双字母段，正好破坏 strip_letter_space 要求的「≥3 个连续单字母」。**一次试错并 REVERT**: 曾把该规则放宽到允许 1-2 字母 token。放宽前先量命中面(逃逸作用后): 良性 14→67 条、恶意 8→31 条。命中面不能推断 FP，必须实测门禁动作——实测明文 FP/召回确实保住(0.0%/100%)，但逃逸召回只从 26% 升到 29%(+1/34): 折叠把原本分开的词也粘起来(const x → constx)，丢失词边界。用「多折叠 53 条良性文本」换「多还原 1 条恶意文本」是糟糕的交易，且 FP 没涨只是因为折叠后的良性文本恰好不匹配任何模式——那是运气不是设计。已 git checkout REVERT，并加测试锁住不得再放宽。新增 test/evasion-recall-instrument.test.js(4 用例): 脚本必须含逃逸度量、逃逸度量必须真跑起来且分母等于语料总数、strip_letter_space 不得放宽、必须报出明文vs逃逸的差距警示。AGENTS.md「Honest limitations」补记该盲区与实测数字。verify 14/14，run-all **941/0**(+4)，审计 34/34 一致。仅改脚本/测试/文档，src/ 引擎代码未动(试错已 REVERT)，故未重启 MCP。按职责边界未做 rsync、未 git commit/push——交由同步任务与 GitHub 同步任务。"
+}

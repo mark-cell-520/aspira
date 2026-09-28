@@ -1,0 +1,59 @@
+{
+  "ts": "2026-09-28T05:30:22.230Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.67,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.67). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.65); \"测试覆盖缺口填补\" (0.65); \"对抗鲁棒性增强\" (0.65); \"性能优化\" (0.65); \"误报/召回校准\" (0.64); \"MCP 工具增强\" (0.64)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.67
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.65
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.65
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.65
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.64
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.64
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 182,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "970/0"
+  },
+  "result": "文档诚实数字审计切片。**这次引擎真正做出了决策**(无弃权、无平局打破)，confidence 0.75。基线 962/0。核心发现: **审计仪器本身有盲点——它只扫 3 个文件**。scripts/audit-doc-numbers.js 的 DOCS 长期硬编码 const DOCS = ['README.md', 'SKILL.md', 'AGENTS.md']，而仓库有 21 个 markdown，**其余 18 个从未进入审计视野**。后果已实测发生(三处陈旧 claim，全是现在时陈述):  CONTRIBUTING.md  \"The 45 discrimination dimensions\"  实测 54  CURRENT_STATE.md \"128 modules, 119 tests, v6.0.65\"   实测 132 / 962 / v1.0.0  CURRENT_STATE.md \"382 formulas\"                       实测 1286而审计一直报 34/34 全绿——**绿不是没问题，是它看不见那 18 个文件**。这与已记录的\"逃逸召回盲点\"同根: 仪器看不见的风险等于不存在。修复:1) DOCS 改为 readdirSync 扫描全部 markdown，仅显式豁免 7 份\"整份用途就是记录过去\"的历史文档，且每条豁免把理由写在值里(比行尾注释更结构化)，防止豁免成为藏污之处。2) 补 (\\d+) tests passed 散文模式——CURRENT_STATE.md 的形态是\"962 tests passed / 0 failed\"，既不是表格也不是 \"Test suite ... passing\"，原有模式一条都匹配不上，该文件的测试数声称因此不受审计。3) 修掉三处陈旧 claim。**公式数 382→1286 的依据**: 引擎加载日志两次独立运行均报\"85 个文件，1286 条公式\"，FormulaSearch 与 FormulaEngine 两个模块一致。(中途我自己数出 1783 是数错形状——把 object 的 key 当公式数，以引擎日志为准。)**负向控制(关键一步)**: 全绿不能证明仪器没瞎，故手工把两个文件改回陈旧值，确认审计报出 3 处不符并正确指名文件，再恢复。测试里用只读方式固化该能力:从脚本源码取出正则，验证它能匹配 CURRENT_STATE.md 的真实 claim 文本。**踩到并记录一个测试自身的坑**: 在测试里用正则 /tests\\?\\s+passed/ 去搜源码，而源码里是字面量 \\s+(反杠+s)，正则把 \\s 解释成空白符所以搜不到。改为字符串包含匹配(l.includes('tests?\\\\s+passed'))。新增 test/audit-doc-coverage.test.js(8 用例): DOCS 不得硬编码、全部非历史 md 必须入范围、豁免必须附理由、tests passed 模式必须存在且必须真的匹配文档文本(只读负向控制)、CURRENT_STATE/CONTRIBUTING 的维度与模块数必须等于实测、版本号必须等于 VERSION、CURRENT_STATE 与 README 的测试数必须跨文档一致。审计覆盖面 34 → **37 条 claim**。本周期只改 scripts/ + 2 个 md + 1 个新测试，**未碰 src/ 引擎代码**，故未重启 MCP(在线 181 工具正常)。verify 14/14，run-all **970/0**(+8)，审计 37/37 一致。按职责边界未 rsync、未 git commit/push。**下次方向**: 仍未被审计覆盖的 claim 形态——公式数(仪器不测，只能靠引擎日志，可考虑把公式计数接入 measure()); 以及其余 md 里未被现有模式表达的 claim(模式集本身也是盲点，本次只补了 tests passed 一种)。"
+}

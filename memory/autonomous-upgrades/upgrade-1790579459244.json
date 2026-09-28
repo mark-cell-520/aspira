@@ -1,0 +1,60 @@
+{
+  "ts": "2026-09-28T07:10:59.244Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 dimension-health-audit",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.65, 测试覆盖缺口填补=0.65, 文档诚实数字审计=0.65 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.65
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.65
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.64
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.62
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 187,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "999/0",
+    "baseline": "993/0",
+    "delta": "+6"
+  },
+  "result": "dimension-health-audit 切片(维度健康审计与增强)。引擎弃权(confidence 0)，平局打破选出。\n本轮基线 verify 14/14、run-all 993/0(实测，非硬编码)。\n═══ 审计一: 54 个维度在语料上只有 14 个产生过 finding ═══\n155 条语料(102 良性 + 41 恶意 + 12 探针)实测:\n    注册维度 54、产生过 finding 的仅 14、从未命中的 40。\n逐维度写针对性探针后 **39/40 可被触发**，唯一触不发的是 evidence。\n═══ 审计二(我的探针两次报错，都当场纠正) ═══\n1) 首版探针只测 findings，把 AGENTS.md 列明的 14 个**只打分型维度**\n   (evidence/moral_foundations/dogwhistle/factual_consistency/sarcasm/\n   privacy_boundary/meta_cognition/counterfactual/social_norm/\n   goal_misalignment/instrumental_reasoning/…)误判成死维度。\n   **那是设计，不是缺陷**——改用 dimensions[k] 分值重测。\n2) 二版要求 Object.keys(sc).length > 2，把 evidence(恰好 2 键)又误判一次。\n   改为看 sc.score > 0。\n3) 三版纠正后，dogwhistle/stereotype/sealioning 等返回\n   {\"count\":0,\"signals\":[],\"score\":0}——空结果，说明是我的探针文本没匹配上\n   (dogwhistle 的真实模式是 深层政府/大取代/全球主义精英/捍卫传统价值观…)。\n   **盲区在探针文本，不在引擎**，故\"24 个死维度\"的结论不予采信、未写入文档。\n═══ 真正修好的缺陷: evidence 维度不看证据方向 ═══\n实测 143 条语料(不传 evidence)分值恒为 0.5、issues 恒为空——常量。\n而传了 evidence 时，原实现**只数条数、完全不看方向**:\n    [{supports:true}]  → 0.6\n    [{supports:false}] → 0.6   ← 反证与正证同分!\n一个\"已被证据推翻\"的论断与\"有证据支持\"的论断得分一样。\n已改为按方向计分: 正证加分(上限 0.3 不变)，反证降分(上限 0.4)并报\nevidence_contradicts issue。修复后:\n    无证据 0.5 / 1正 0.6 / 1反 0.3(+issue) / 1正1反 0.4(+issue) / 3正 0.8\n═══ 为什么这个缺陷一直没被发现 ═══\nevidence 是 54 个维度里**唯一由调用方数据驱动**的: 它只在调用方显式传\nevidence 时工作(函数注释明说)。语料是文本、不传 evidence，\n于是这条路径在任何文本语料上都测不到——**仪器看不见的风险**又一例。\n═══ 我的断言又错了两次(都是当场撞上) ═══\n1) 断言反证\"严格单调降分\"，但惩罚有 0.4 上限，第 3 条起饱和\n   (0.1 == 0.1)。有界惩罚与正证加分上限 0.3 对称，本就是设计。\n   已改为显式锁住上限。\n2) 断言 s3 === 0.1，浮点下 0.5-0.4 = 0.09999999999999998。改用容差。\n═══ 我的编辑 bug 被跨文档一致性测试当场抓住 ═══\n更新文档测试数时，Python 循环每次都从**原始内容**替换后写回，\n第一次的替换被第二次覆盖——README 留 993、CURRENT_STATE 变 999。\ntest/doc-numbers.test.js 的\"CURRENT_STATE.md 的测试数必须与 README 一致\"\n立刻失败。改为读一次、全改完、写一次。\n═══ 门禁 ═══\nverify 14/14；run-all **999/0**(基线 993，+6 新测试)；\n语料 FP 0.0% / 召回 100%(41/41) 不变；审计 38/38、0 不符、0 无法实测。\n改了 src/index.js(引擎代码)，**已重启 MCP**: 181 工具在线，\n端到端验证非拉丁注入仍 block。\n新增 test/dimension-evidence-direction.test.js(6 例)锁住证据方向计分。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) 其余 40 个维度里，只打分型维度的分值是否真能区分\n   正负输入(本次只查了 evidence，其余 13 个未逐一验证);\n(b) 找一个不依赖手写探针文本的维度健康仪器——例如直接从各维度的模式表\n   自动生成输入，消除\"探针文本没匹配上\"这个盲区; (c) 既有上次提的\n   data/ 共享可变状态普查(如 self-view.json)仍未做。"
+}

@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "index": 0,
+      "timestamp": "2026-09-28T12:14:11.777Z",
+      "title": "Dream",
+      "fragmentCount": 1,
+      "noiseRatio": 0,
+      "scores": {
+        "actionability": 0,
+        "coherence": 1,
+        "novelty": 0,
+        "specificity": 0,
+        "overall": 0.25
+      },
+      "issues": 4,
+      "conflicts": 0,
+      "promotedCount": 0
+    }
+  ],
+  "lastEntryIndex": 1
+}

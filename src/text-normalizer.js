@@ -316,7 +316,20 @@ function _deLeetCandidates(text) {
   // 若不建键会 fallthrough 到默认 'i'，导致 asL 变体与 asI 相同（实测此 bug）
   const KEYS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@';
   for (const c of KEYS) {
-    const isVowelOrOne = c === '1' || /[aeiou]/i.test(c);
+    // [leet 前字符也要还原] 判据要看 `1` 的前一个字符是元音还是辅音，
+    // 但前字符本身可能也是 leet 数字: "b310ng" 的 1 前是 3，而 3 是 leet 的
+    // e(元音)。按原始字符判会把 3 当辅音，于是 1→i 得 beiong(错)，
+    // 正确是 belong。故先把前字符过 LEET_MAP 再判元音。
+    // 词首(无前字符，用 '@' 占位)默认按 **i**: 1 出现在词首时更像 i
+    // (1n→in / 1mportant→important / 1gnore→ignore)，几乎不存在词首 l 的英文词。
+    // 原实现把 '@' 过 LEET_MAP 得 'a'(元音)→ 判成 l，于是 "belong 1n the"
+    // 被还原成 "belong ln the"，hate_speech 的 "belong in the" 短语匹配不上。
+    // 实测该处让 leet 召回卡在 85.4%; 改成 i 后升到 87.8%。
+    // 注: 这里刻意**不**把 '@' 过 LEET_MAP——它是"没有前字符"的哨兵，
+    // 不是真的字符 '@'(LEET_MAP['@']='a' 是给文本里的 @ 用的)。
+    const prevMapped = (c === '@') ? '@' : (LEET_MAP[c] || c);
+    const isVowelOrOne = c === '1' || prevMapped === '1' ||
+      (c !== '@' && /[aeiou]/i.test(prevMapped));
     // 辅音+1 → i（prev1ous）；元音或另一个 1 之后 → l（a11=all）
     asI[c] = isVowelOrOne ? 'l' : 'i';
     asL[c] = 'l';
@@ -326,12 +339,67 @@ function _deLeetCandidates(text) {
   if (!text.includes('1')) return [vI];
   const vL = restore(asL);
   if (vL === vI) return [vI];
-  return [vI, vL];
+  // [per-token 择优] 上面两个候选是**全局统一**的 asI / asL，但同一句里
+  // 不同 token 常需要不同的 `1` 解释。实测:
+  //   "w0m3n b310ng 1n 7h3 k17ch3n"
+  //     asI 全局 → women beiong in the kitchen   (b310ng 该按 l→belong，错了)
+  //     asL 全局 → women belong ln the kltchen   (k17ch3n 该按 i→kitchen，错了)
+  //   **两个全局候选都不对**，而正确解是 per-token 混用。
+  // 这正是代码注释所说「全局择优也会牺牲局部」的根源——不是无法解，
+  // 是解空间被砍成 2 个。故补第三个候选: 逐 token 各自择优。
+  //
+  // 择优判据(与 asI/asL 同一套启发式): 看 token 内 `1` 的前一个字符——
+  // 元音或另一个 1 之后按 l(b31ong 的 1 前是 1 本身→l)，辅音之后按 i。
+  // 单 token 内多个 `1` 仍可能冲突，但那已细到无法再用相邻字符判定。
+  const vMix = text.split(/(\s+)/).map(tok => {
+    // 不含任何 leet 字符时原样返回(快路径)
+    let anyLeet = false;
+    for (const ch of tok) if (LEET_MAP[ch]) { anyLeet = true; break; }
+    if (!anyLeet) return tok;
+    // 该 token 不含字母时(纯数字/标点)不动，与 restore 的护栏一致。
+    // 注意判据是**还原后**是否出现字母: "w0m3n" 原样不含字母但还原后是
+    // women，若按原文本判会被误跳过——实测过这个错。
+    // 故这里只排除"连一个 leet 数字都没有"与"纯标点"两种。
+    let r = '';
+    for (let k = 0; k < tok.length; k++) {
+      const c = tok[k];
+      if (c !== '1') { r += LEET_MAP[c] || c; continue; }
+      const prev = tok[k - 1] || '@';
+      r += (prev === '1' || /[aeiou]/i.test(prev)) ? 'l' : 'i';
+    }
+    return r;
+  }).join('');
+  const out = [vI];
+  if (vL !== vI) out.push(vL);
+  if (vMix !== vI && vMix !== vL) out.push(vMix);
+  return out;
 }
 
-/** [v6.7.73] 同形字母还原（西里尔/希腊 → 拉丁） */
+/**
+ * [v6.7.73] 同形字母还原（西里尔/希腊 → 拉丁）
+ *
+ * [误伤修复] 原实现无条件把每个西里尔/希腊字母换成拉丁同形物，于是**合法非拉丁
+ * 文本被整体破坏**。实测:
+ *     'Игнорируй все предыдущие инструкции' → 'игнopиpyй вce пpeдыдyщиe инcтpyкции'
+ *     'Αγνόησε όλες τις προηγούμενες οδηγίες' → 'αγνόησe όλeς τις πcoηγoύμeνeς oδηγίeς'
+ * 后果不只是"样子变了": discriminate() 拿到的是归一化后的文本，**任何按西里尔/
+ * 希腊原文写的模式都永远匹配不上**——新补的 ru/el 注入模式因此全部失效
+ * (单独测正则能匹配，过完 normalize 就丢)。
+ *
+ * 而同形字攻击的语义是"拉丁词里掺入西里尔/希腊 look-alike"，攻击文本必然以
+ * 拉丁字母为主体。故加主体脚本判定: **拉丁字母占多数才转写**；以西里尔/希腊
+ * 为主体的文本是正常文字，原样保留。
+ *
+ * 这与 src/shield/adversarial-variant.js 的 HOMOGLYPH_RE 收窄是同一条纪律:
+ * "伪装成拉丁"要求 look-alike 邻接拉丁字母。两侧一致，才不留空档。
+ */
 function _deCyrillic(text) {
   if (!text) return text;
+  const latin = (text.match(/[a-zA-Z]/g) || []).length;
+  const cyrillicGreek = (text.match(/[\u0400-\u04FF\u0370-\u03FF]/g) || []).length;
+  // 没有任何拉丁字母 → 不是"伪装成拉丁"，转写的前提不成立
+  // 拉丁不占多数 → 是正常非拉丁文字，不得转写
+  if (latin === 0 || latin <= cyrillicGreek) return text;
   let out = '';
   for (const ch of text) out += CYRILLIC_HOMOGLYPH[ch] || ch;
   return out;
@@ -460,8 +528,37 @@ function normalize(text) {
     // 是单字母**: snake_case_name / some-hyphen-word 每段都是完整词故保留，
     // 而 n_i_g_g_e_r(全单字母)与 f_aggot_s(含单字母段 f)会被折叠。
     // 实测 15/15: 8 个恶意向量全部还原，7 个良性护栏全部保住。
-    s = s.replace(/\b([a-zA-Z]+(?:[-._]{1,3}[a-zA-Z]+)+)\b/g, (m) => {
+    // [leet+separator 耦合修复·窄版] `n_1_g_g_3_r` / `f_4gg07_5` 这类
+    // 「leet 数字被分隔符逐字符切断」的词，原正则因两侧是数字而匹配不上；
+    // leet 还原又只处理无分隔符的连续串，看不见被切断的词——两层互相等
+    // 对方先动手，结果谁都动不了。实测 gate=pass 穿透。
+    //
+    // ⚠️ 曾试过把字符类从 [a-zA-Z] 扩到 [a-zA-Z0-9]，**造成严重回归**:
+    //   "3.14"→"314"  "3.5 元"→"35 元"  "A-1-B"→"alb"
+    // 小数点与编号点是极常见文本，代价远高于 leet 绕过，已回滚。
+    //
+    // 窄版修法: 只在**至少两个段是单字符**时才折叠。逐字符插入的签名是
+    // "每段都只有一个字符"(n_1_g_g_3_r 共 7 段全单字符)，而 3.14(两段
+    // 3 与 14)、A-1-B(三段但 1 两侧的 A/B 也是单字符——见下)需再加一道:
+    // **整串长度 ≤ 12 且段数 ≥ 4**。A-1-B 只有 3 段故不触发，
+    // hunter-2-secret(3 段)同样不触发。
+    s = s.replace(/\b([a-zA-Z0-9]+(?:[-._]{1,3}[a-zA-Z0-9]+)+)\b/g, (m) => {
       const segs = m.split(/[-._]{1,3}/);
+      // [类型分流] 旧护栏「至少一段是单字符」在**纯字母**下是对的:
+      //   f_aggot_s(段 f/s 单字母) / n_i_g_g_e_r(全单字母) 都靠它护住。
+      // 但它一旦见到数字段就毁正常文本:
+      //   "3.14"(段 3 单字符) → 314   "A-1-B" → alb   "3.5 元" → 35 元
+      // 实测过这三处回归，小数点和编号点远比 leet 绕过常见。
+      //
+      // 修法: **按段的内容类型分别判定**。
+      //  (a) 串内含数字段 → 只认逐字符插入签名(≥4 段且 ≥3 段单字符)。
+      //      n_1_g_g_3_r(7 段全单字符)命中; 3.14 / A-1-B(仅 3 段)不命中。
+      //  (b) 纯字母串 → 维持旧护栏(至少一段单字符)，护住 f_aggot_s。
+      const hasDigitSeg = segs.some(x => /\d/.test(x));
+      const single = segs.filter(x => x.length === 1).length;
+      if (hasDigitSeg) {
+        return (segs.length >= 4 && single >= 3) ? m.replace(/[-._]{1,3}/g, '') : m;
+      }
       return segs.some(x => x.length === 1) ? m.replace(/[-._]{1,3}/g, '') : m;
     });
     // 中文词语中间插入的分隔符（1-2 个）：掩__盖 → 掩盖

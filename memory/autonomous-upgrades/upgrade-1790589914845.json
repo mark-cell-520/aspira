@@ -1,0 +1,55 @@
+{
+  "ts": "2026-09-28T10:05:14.844Z",
+  "chosen": "performance-optimization",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[performance-optimization,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap], 按consequence_value最高选 performance-optimization",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.63, 测试覆盖缺口填补=0.63, 性能优化=0.63 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.63
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.62
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.62
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.61
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 192,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1036/0",
+    "baseline": "1032/0",
+    "delta": "+4"
+  },
+  "result": "performance-optimization 切片。引擎弃权，平局打破选出。\n基线实测 verify 14/14、run-all 1032/0。\n上轮留下方向(a): \"self-view.json 的读-改-写无锁是引擎级缺陷，\n生产并发下计数会回退，值得加文件锁或改为 append-only 日志\"。\n═══ 先量测，再决定修什么 ═══\n没有直接照 journal 的推测动手。造仪器实测，结果推翻了优先级判断:\n  - 声称的\"并发丢失 83%\"确实存在(6 进程同时各 think 10 次，\n    每次间 120ms 拉宽窗口 → thinkCount=20，期望 70)\n  - 但深挖发现**更严重且更好修的问题: 一次 think() 被计两次**\n═══ 缺陷一(已彻底修): 两处同时自增，计数翻倍 ═══\nsrc/core/think-pipeline.js:190 与 src/core/heartflow.js 里各有一处自增\nthinkCount / lowConfCount / blockedCount。实测:\n    串行 think 5 次 → thinkCount=10(期望 5)\n    串行 think 10 次 → thinkCount=20(期望 10)\n    6 进程各 think 1 次 → thinkCount=12(期望 6)\n正好翻倍。修法: 计数只保留 pipeline 一处(它还管 last50/misalignedCount)，\nheartflow 那处退化为只落盘 + 喂 Reflector。\n顺带统一了 lowConfCount 阈值: 原先 pipeline 用 conf<0.3、heartflow 用\nconf<0.4，同一次 think 会因阈值不同被分别计一次。\n═══ 缺陷二(只修一半，残余风险已诚实记录) ═══\n原实现是\"内存态整份覆写\": 启动时读一次旧文件，之后每次 think 把\n自己累加后的整份 _selfView 覆写回去。多进程并发时后写覆盖先写。\n已改为\"写前重读磁盘 + 合并 + 临时文件 rename\":\n  - 修掉了\"读者读到写了一半的文件\"这一类\n  - 但**计数丢失仍在**: 并发下各进程从同一基线各自累加，\n   取 max 只能取到\"走得最远的那份\"，无法还原总量\n═══ 我试过正解但失败了，原因值得记 ═══\n改用 append-only 增量日志(每个进程只追加自己这次的增量，\nself-view.json 改为派生视图)。三次都没成:\n  1) 忘初始化 _svFlushed → 把整个历史计数当增量 → thinkCount=16129090\n  2) 初始化为历史值 → 历史增量早已在日志里 → 双算 → 1344178\n  3) 初始化为 0 → 启动载入的视图值与日志又重叠 → 17078566\n根因: 既有的\"启动时载入 self-view.json\"语义与\"日志是唯一真源\"冲突，\n两者混用必双算。已 git stash 回滚，保留能修好的那一半。\n═══ 我的误判一: 探针没 await，把\"我没等\"测成\"引擎丢 83%\" ═══\nthink() 是 async。首版探针同步调用，写 self-view 的代码还没跑到就退出。\n改对探针(加 await)后数字依旧，才继续深挖——但也正因先修好了探针，\n后面才发现重复计数这个真问题。\n═══ 我的误判二: 据 journal 推测直接动手，没先量测 ═══\njournal 说\"值得加文件锁或改为 append-only\"。若照做，我会去实现一个\n复杂的文件锁，却错过旁边那个翻倍的、一行就能修的错误。\n═══ 门禁 ═══\nverify 14/14；run-all **1036/0**(基线 1032，+4 新测试)；\n审计 43/43、0 不符、0 无法实测；语料未动。\n改了 src/core/heartflow.js(引擎代码)，**已重启 MCP**: 181 工具在线。\n新增 test/self-view-counting.test.js(4 例): 锁\"一次 think 只计一次\"、\n\"串行跨进程累积正确\"、\"self-view.json 始终是完整 JSON\"、\n\"源码不得再有两处自增\"。AGENTS.md 新增 Honest limitations 条目，\n写明并发丢失只修了一半、正解为何失败、残余风险是什么。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) 并发丢失的正解要做，但必须先决定\"启动载入\"与\n   \"日志真源\"谁说了算——建议让启动只从日志重建，self-view.json 纯派生;\n   (b) last50 在并发下的合并也只是取拼接，同样可能重复或丢失;\n   (c) 上轮留下的 dataDir 选项语义不一致(rootPath 优先)仍未查。"
+}

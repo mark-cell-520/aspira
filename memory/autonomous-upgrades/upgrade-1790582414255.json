@@ -1,0 +1,60 @@
+{
+  "ts": "2026-09-28T08:00:14.255Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 test-coverage-gap",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.65, 文档诚实数字审计=0.65, 维度健康审计与增强=0.63 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.65
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.65
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.63
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.62
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.62
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 189,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1014/0",
+    "baseline": "1004/0",
+    "delta": "+10"
+  },
+  "result": "test-coverage-gap 切片。引擎弃权(confidence 0)，平局打破选出。\n本轮基线实测 verify 14/14、run-all 1004/0。\n═══ 覆盖盘点: 380 个模块中 145 个无任何测试引用 ═══\n按\"测试文件是否引用其文件名\"扫全部 src 模块:\n    380 个模块 | 被引用 235 | 未被引用 145\n    未覆盖行数 65374 / 180048\n最大的未覆盖模块: self-healing-rl(1780) / pipeline-config(1747) /\ntriality-memory(1670) / formula-bridge(1581) / graph-of-thoughts(1570) /\ndream(1529) / thought-chain(1457) / meta-learning(1326) / memory-kernel(1209) /\nmemory-bank(1193) / slots(1180) / global-workspace(1062) /\nthink-pipeline(1029) / **wake-up-verifier(976)** …\n═══ 盘点方法必须先排假阳性 ═══\n按文件名匹配会把**被传递调用**的模块误报为\"未覆盖\"。\n故对候选逐个查\"是否被 src 内其他文件 require\":\n    wake-up-verifier 被 3 个文件引用(boot-check / mcp-server / interactive-dream)\n    self-healing-rl 8 个 / dream 29 个 / triality-memory 3 个 / think-pipeline 1 个\n→ 都是\"活着但没测\"，不是死代码。\n═══ 选 wake-up-verifier 的理由 ═══\nshield 是防御层(安全相关)；976 行在未覆盖模块里排前列；且一测就暴露缺陷。\n═══ 缺陷一: 名叫\"验证\"的工具什么都不验证(已修) ═══\naspira_wakeup_verify 的 inputSchema 是 `properties: {}`——**零参数**，\n而 WakeUpVerifier 的核心能力 evaluateDream(dreamResult) 需要 dream 输入。\nhandler 只调了**私有方法** _loadHistory() 并返回历史。\n于是该工具在 MCP 上什么都验证不了，调用方也无法传入 dream。\n与已修复的 aspira_gate* 同族: \"工具名承诺的能力没有接线\"。\n修复: 补 dream 参数。传了走 evaluateDream 真验证，不传保持原行为。\n实测(经 MCP，修复前 1325 字节纯历史):\n    不传参数 → mode=history  521 字节(旧行为不变)\n    传 dream → mode=evaluate 5069 字节，16 个评估字段\n═══ 缺陷二: evaluateDream(null) 抛异常(已修，纯 null 安全) ═══\nnormalizeDream(dreamResult = {}) 读 dreamResult.title，\n而**默认参数只对 undefined 生效**——传 null 时直接\n    Cannot read properties of null (reading 'title')\n该模块 976 行、此前零测试，这个入口缺陷一直没被发现。\n两个入口均已加 || {} 守卫，5 种边界输入(null/undefined/{}/{dream:''}/{dream:'x'})\n现全部安全返回 15 个键。\n═══ 我的测试连踩同一个坑两次 ═══\n静态断言要验证\"inputSchema 不得再是 properties: {}\"，而**我自己写的注释里\n就含这两个字面量**(在解释\"原实现是零参数\")。于是:\n  第1次: 取 name 后 900 字符 → 匹配到自己的注释\n  第2次: 改搜 indexOf('inputSchema') → 又匹配到注释里的\"原 inputSchema 是 properties: {}\"\n即\"测试匹配自己的解释性注释\"这个已记载的失败模式，\n**一次修复之后又踩了第二次**。最终解法: 搜带冒号和花括号的 `inputSchema: {`——\n注释里不会出现这个形状。教训: 注释里复述要被否定的字面量，本身就在制造陷阱。\n═══ 门禁 ═══\nverify 14/14；run-all **1014/0**(基线 1004，+10 新测试)；\n审计 38/38、0 不符、0 无法实测；语料 FP 0.0% / 召回 100%(41/41) 不变。\n改了 src/shield/wake-up-verifier.js + src/mcp/tools-registry.js +\nsrc/mcp-server.js(引擎代码)，**已重启 MCP**: 181 工具在线，\n端到端验证两种模式均正确。\n新增 test/wake-up-verifier.test.js(10 例)，AGENTS.md 新增一条 Honest limitations\n记录覆盖缺口与剩余 144 个未测模块。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) 剩余 144 个未引用模块仍无测试，其中 self-healing-rl(1780 行)\n   与 triality-memory(1670 行)最大，可继续逐个人排查;\n   (b) \"无测试引用\"比\"从未执行\"弱——pipeline 运行时已调用其中多数，\n   值得查有多少是\"被执行但无任何断言\"; (c) 上次提的\"不依赖手写探针文本的\n   维度健康仪器\"仍未做。"
+}

@@ -2851,11 +2851,28 @@ function handleGateCheck(args) {
 }
 
 function handleGatePipeline(args) {
-  const { text, evidence = [] } = args || {};
+  const { text, evidence = [], mode = 'fast' } = args || {};
   if (!text) throw new Error('text 是必填参数');
   try {
     const gate = require(HF_DIR + '/src/gate.js');
-    return gate.pipeline(text, evidence);
+    // [对抗盲区修复] 原先调 gate.pipeline(text, evidence)——它内部只跑
+    // discriminate()，**不过 adversarial-variant 层**。后果实测:
+    //     'kill me киll'  → aspira_gate_pipeline = pass
+    //     而 gate.checkOutput / gate.runPipeline 均为 rewrite
+    // 同形字、零宽、弯引号、全角、组合字符、数字混淆、词拆分这一整类混淆攻击
+    // 对本工具完全不可见，而工具名与描述都叫"管道模式"——名不副实。
+    // 全 pipeline 是 runPipeline(17 层，含 adversarial-variant)。
+    // 兼容性: runPipeline 的返回键是 gate.pipeline 的**超集**
+    // (多 input / checked_by / data)，既有调用方读的键都在。
+    // evidence: runPipeline 不直接收该参数，经 options 透传; 若底层忽略，
+    // 行为等同于"无 evidence 的 pipeline"——仍好过放过一整类混淆攻击。
+    return Object.assign(gate.runPipeline({ input: text, mode, options: { evidence } }), {
+      // [兼容性] runPipeline **不含** dimensions 键，而旧 gate.pipeline 含(54 维
+      // 逐维分数)。切换入口会静默丢掉它——调用方读 result.dimensions 将得到
+      // undefined 且不报错。此处显式补回。test/mcp-adversarial-reachability.test.js
+      // 锁住"返回键必须是旧形状超集"，正是为防这个回归。
+      dimensions: gate.gate(text).dimensions,
+    });
   } catch (e) {
     return { error: e.message };
   }
@@ -3626,8 +3643,18 @@ const HANDLERS = {
     try {
       const { WakeUpVerifier } = require('./shield/wake-up-verifier.js');
       const wv = new WakeUpVerifier({ rootPath: HF_DIR, silent: true });
+      // [MCP-ENHANCE] 原实现只调私有方法 _loadHistory()——这个名叫"验证"的工具
+      // 在 MCP 上什么都验证不了，WakeUpVerifier 的核心 evaluateDream() 不可达，
+      // 且 inputSchema 是 properties:{} 使调用方根本无法传入 dream。
+      // 现: 传了 dream 就走 evaluateDream 真验证(并落盘历史)，
+      // 不传则保持原行为(返回历史一致性)。**向后兼容**。
+      const dream = args && args.dream;
+      if (dream && typeof dream === 'object') {
+        const evaluation = wv.evaluateDream ? wv.evaluateDream(dream) : { error: 'evaluateDream 不可用' };
+        return { wakeup: evaluation, mode: 'evaluate', timestamp: Date.now() };
+      }
       const r = wv._loadHistory ? wv._loadHistory() : {};
-      return { wakeup: r, timestamp: Date.now() };
+      return { wakeup: r, mode: 'history', timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
 
@@ -4570,6 +4597,27 @@ async function handleRequest(request, sessionId) {
 
       if (!handler) throw { code: -32601, message: `Method not found: ${name}` };
 
+      // [MCP-ENHANCE] 主文本参数别名归一化: text ↔ input
+      //
+      // 实测 181 个工具里 **61 个用 text、13 个用 input** 作为主文本参数
+      // (aspira_think/think_fast/emotion/decision_router/mood/self_correction/
+      //  supervise/agent_think/bridge_analyze/translate/…)。agent 按一套习惯传
+      // text 就会在那 13 个上撞 -32603「input 是必填参数」。
+      //
+      // 失败的形态特别难查: 下面的中央校验会**丢弃未声明参数**，于是调用方传的
+      // text 被静默删掉，错误信息只提 input——看不到"你其实传了 text"。
+      // 实测复现: tools/call aspira_think {text:'test'} → -32603 input 是必填参数。
+      //
+      // 修法: 声明了 input 而未收到 input、但收到 text 时，把 text 复制为 input。
+      // **向后兼容**——原传 input 的调用方完全不受影响；原传 text 的从报错变为可用。
+      const _aliasDef = TOOLS.find(t => t.name === name);
+      if (_aliasDef && _aliasDef.inputSchema && _aliasDef.inputSchema.properties) {
+        const _props = _aliasDef.inputSchema.properties;
+        if ('input' in _props && !('input' in args) && typeof args.text === 'string') {
+          args = Object.assign({}, args, { input: args.text });
+        }
+      }
+      
       // [AUDIT-FIX I-2] 中央参数校验：只透传 inputSchema 声明的参数，
       // 丢弃未声明参数（防参数注入），并对 string 类型参数强制字符串（防类型混淆）
       const toolDef = TOOLS.find(t => t.name === name);

@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T05:05:32.840Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 test-coverage-gap",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.67, 文档诚实数字审计=0.67, 维度健康审计与增强=0.65 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.67
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.65
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.65
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.65
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.64
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.64
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 181,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "962/0"
+  },
+  "result": "测试覆盖缺口填补切片。引擎弃权，平局打破选出。基线 954/0。方法论纪律: **不用 basename 匹配测覆盖**——本会话有前科(按文件名匹配把间接覆盖算成缺口)。改用 require 运行时追踪: NODE_OPTIONS 挂 --require 预加载hook Module._load，让 run-all.js 的 227 个子进程全部记录自己加载过的 src/ 文件，聚合得\"套件实际加载 340 / src 总数 372\"。**中途纠正一次方法论错误**: 先用静态 grep 分类\"死代码 vs 活着但没测\"，结果被注释和 JSDoc 骗到——dream-engine.js 只出现在 `* const DreamEngine = require(...)` 注释里，repo-audit.js 只是 require.resolve 拼路径，静态匹配全算成\"有引用\"。改为运行时真值: 单独追踪\"引擎启动 + 调用全部 177 个只读 handler\"实际加载的文件，与套件加载集求差集。**诚实结论(分两类，不混为一谈)**:  A. 活着但没测 **15 个**——引擎确实加载、套件从不加载，是真缺口;  B. 本次探针未加载 **17 个**——可能经未触达路径可达(如 runPipeline 的惰性require、CLI 入口)，**不断言为死代码**，需更完整的探针才能定论。按\"单周期聚焦一个切片，不贪多\"，从 A 类选 failure-analyzer.js(309 行)补测试。**测试当场抓到一个真实缺陷**: analyze(null) 抛 \"Cannot read properties of null (reading 'error')\"——_extractErrorMessage 第 155 行直接取 failure.error，未防 null/undefined。这违反 analyze() 自己的契约(识别不了就降级 unknown)，且 analyzeMultiple 里混进一个空项会让整批失败。已修: 函数开头对 null/undefined 返回空串，_matchPatterns('') 不命中任何模式，自然降级 unknown。断言全部先实测再写: 五类错误模式各自命中正确 category 且 confidence=0.9; 未识别输入 analyzed=false/category=unknown/confidence=0; Error 对象输入等效(errorMessage 取自 Error.message); **analyzeMultiple 返回数组而非带 total 的对象**(第一版探针按对象取 .total 得到 undefined，差点写错断言); getCategoryStats 聚合并计 unresolved; registerPattern 即时生效; getPatterns 内置 10 个; 空/异常输入不抛错。新增 test/failure-analyzer.test.js(8 用例)。改了 src/cortex/failure-analyzer.js 引擎代码，已重启 MCP: 181 工具在线、54 维度，上一周期的层级修复在线仍生效(两条探针 verdict=需验证)。verify 14/14，run-all **962/0**(+8)，审计 34/34 一致。按职责边界未 rsync、未 git commit/push。**下次方向**: A 类还剩 14 个活着但没测的模块(wake-up-verifier 976 行、forgetting 845、experience-collector 757、dream-loop 746、narrative-generator 422、interactive-dream 311、project-context 290、lesson-bank-adapter 266、strategy-adapter 219 等)，可继续逐个补测; 或先给 B 类 17 个做一次完整可达性探针(覆盖 runPipeline/CLI 入口)再定性。"
+}

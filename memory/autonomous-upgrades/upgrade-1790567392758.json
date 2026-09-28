@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T03:49:52.757Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 dimension-health-audit",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.67, 测试覆盖缺口填补=0.67, 文档诚实数字审计=0.67 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.67
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.67
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.66
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.65
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.65
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.64
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 179,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "946/0"
+  },
+  "result": "维度健康审计与增强切片。引擎弃权，平局打破选出。基线 941/0。纪律: 不凭例句判维度死活——曾有一个\"维度敏感度\"指标因此被丢弃(它用英文例句打分把 31/51 个维度判为 DEAD，而中文例句能把 phishing_coercion 打到 count=3，它测的是\"例句是否匹配模式\"而非\"维度是否工作\")。本次只审可事实核查的不变量: 文档层级表 vs 代码层级集合。**抓到真实缺陷**: AGENTS.md 把 sealioning 与 tone_policing 列在 Verify-level (26)，但这两个名字从未进过 VERIFY_DIMS。后果不是\"少一个层级\": **这两个维度孤立触发时门禁完全不动作**。探针从 SEALIONING_PATTERNS/TONE_POLICING_PATTERNS 反推(不是凭空写)，逐模式实测: sealioning 30 条模式中 18 条可孤立触发、tone_policing 26 条中 14 条可孤立触发，修复前**全部 gate=pass**。finding 确实进了 findings[]，但 gate.action=pass，而 AGENTS.md 明确建议\"只读一个字段就读 gate.action\"——消费者按 pass 交付，那条 finding 等于不存在。此前偶发的 verify 来自 findings.length > 1(中文句常共发 ai_writing_tell)，属巧合共发而非设计行为。**改动前先量 FP 风险面而非假设**: 86 条良性语料命中这两个维度模式的 0 条; 且先验证模式提取有效(30 条正则全部能匹配自身字面量)，排除\"提取坏了所以 0 命中\"的假阴性。良性中文样本是\"今天天气很好\"这类陈述，不是\"你为什么不回答\"这类质问，形态上本就不该命中。恶意语料同样 0 条命中。修复: 两名加入 VERIFY_DIMS。实测 18+14 条孤立案例全部 pass → **verify**，明文 FP 仍 **0.0%**、召回仍 **100%**。另审出两处**已知别名**而非漂移: bullshit ↔ bullshit_recognition、appeal_to_authority ↔ appeal_to_authority_boost。本会话有\"审计因不知惯用法而报假阳性\"的前科，故在测试里显式登记别名表，未登记差异一律算漂移。新增 test/dimension-tier-consistency.test.js(5 用例): 三张层级表与代码集合逐一比对(扣除别名)、文档括号内声明的项数与实测相符、VERIFY_DIMS 必须含这两个维度、孤立触发必须升级 verify(行为级)、dimensions 54 键必须被文档四表完整覆盖。改了 src/index.js 引擎代码，已重启 MCP: 181 工具在线，端到端 aspira_discriminate 对两条探针返回 verdict=需验证(修复前 pass)。verify 14/14，run-all **946/0**(+5)，审计 34/34 一致。按职责边界未 rsync、未 git commit/push。"
+}

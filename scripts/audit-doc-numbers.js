@@ -15,7 +15,25 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const DOCS = ['README.md', 'SKILL.md', 'AGENTS.md'];
+// [审计盲区修复] 原 DOCS 是**硬编码的三份** ['README.md','SKILL.md','AGENTS.md']，
+// 于是其余 18 份 markdown 的数字声称完全不受审计——包括 CONTRIBUTING.md
+// (“The 45 discrimination dimensions”，实测 54)与 CURRENT_STATE.md
+// (“128 modules / 119 tests”，实测 132)。两份都是**现在时陈述**，
+// 却因不在扫描列表里而长期无人发现。这正是“仪器看不见的风险等于不存在”。
+//
+// 改为扫描全部 markdown，仅显式豁免“整份文件用途就是记录历史”的文档，
+// 且每条豁免都写理由(避免把豁免当成藏污之处)。
+const HISTORICAL_DOCS = {
+  'CHANGELOG.md': '逐版本历史记录，数字是当时快照',
+  'CHAT_LOG_HeartFlow_完整备份_2026-05-16.md': '旧项目完整备份档案',
+  'AUDIT-v6.0.0.md': 'v6.0.0 时点的代码审计快照',
+  'AUDIT_REPORT.md': '安全审计报告(时点)',
+  'aspira-audit-report.md': '仓库审计报告(时点)',
+  'ARCHITECTURE_REORG_v6.0.6.md': 'v6.0.6 时点的重组分析',
+  'FAILURE_REPORT.md': '升级历程回顾',
+};
+const DOCS = fs.readdirSync(ROOT)
+  .filter(f => f.endsWith('.md') && !Object.prototype.hasOwnProperty.call(HISTORICAL_DOCS, f));
 
 function readDoc(f) { try { return fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch (_) { return ''; } }
 
@@ -138,6 +156,37 @@ function claims() {
       { re: /\|\s*MCP tools\s*\|\s*(\d+)\s*\|/g, key: 'tools', what: 'MCP tools (表格)' },
       { re: /\|\s*Dispatch routes\s*\|\s*([\d,]+)\s*\|/g, key: 'routes', what: 'dispatch routes (表格)' },
       { re: /\|\s*Test suite\s*\|\s*([\d,]+)\s+passing/g, key: 'tests', what: 'test suite (表格)' },
+      // [审计盲区修复] CURRENT_STATE.md 的形态是散文 "N tests passed / 0 failed"，
+      // 既不是表格也不是 "Test suite | ... "，于是该文件的测试数声称长期不受审计。
+      // 注意源码里必须是字面量 `\s+`(反杠+s): 有测试按字面量搜索这一行，
+      // 写成真实正则语义的 \s 会让那条测试永远找不到本行。
+      { re: /(\d[\d,]*)\s+tests?\s+passed/g, key: 'tests', what: 'tests passed (散文)' },
+      // ── [审计盲区] 中文形态的数字声称 ──
+      // 以上模式**全是英文形状**，而本仓库文档以中文为主。于是所有中文数字声称
+      // 对审计完全不可见: "132 个模块" / "54 个维度" / "181 个 MCP 工具"。
+      // 一条都测不到。这不是"数字都对"，是**测不到**——与已记载的盲点同根:
+      // 仪器看不见的风险等于不存在。实测: 补了中文模式后立刻抓到一个真错
+      // (IDENTITY.md 写"129 个模块真实加载"，实测 132)。
+      //
+      // ⚠️ 中文模式更易出假阳性(提案/回顾文档用现在时陈述历史前提，
+      // 如 AGI_VISION.md 的"当前 mcp-server.js 暴露 25 个工具"实为重构提案的
+      // 前提)。故只匹配描述引擎当前规模的固定搭配，且用 reject 排除
+      // 序数("第 N 个模块")与括号内("阶段 (N个模块)")——两者都不是引擎总规模。
+      { re: /(\d[\d,]*)\s*个\s*(?:discrimination\s*)?维度/g, key: 'dimensions', what: 'dimensions (中文)' },
+      { re: /(\d[\d,]*)\s*个模块/g, key: 'modules', what: 'modules (中文)',
+        reject: (text, at) => {
+          const before = text.slice(Math.max(0, at - 8), at);
+          if (/第\s*$/.test(before)) return 'ordinal';
+          const seg = text.slice(Math.max(0, at - 40), at);
+          const opens = (seg.match(/[(（]/g) || []).length;
+          const closes = (seg.match(/[)）]/g) || []).length;
+          if (opens > closes) return 'parenthesized';
+          return null;
+        } },
+      { re: /(\d[\d,]*)\s*个\s*MCP\s*工具/g, key: 'tools', what: 'MCP tools (中文)' },
+      { re: /(\d[\d,]*)\s*条\s*dispatch\s*routes?/gi, key: 'routes', what: 'dispatch routes (中文)' },
+      { re: /(\d[\d,]*)\s*层\s*pipeline/gi, key: 'layers', what: 'pipeline layers (中文)' },
+      { re: /(\d[\d,]*)\s*个测试(?:\s*全部通过|\s*通过)?/g, key: 'tests', what: 'tests (中文)' },
       { re: /separate from the (\d+) text dimensions/g, key: 'dimensions', what: 'dimensions (章节标题)' },
       // 分层散文形态: "**9 can `block`**" 等(数字在形容词前，与 Block-level(N) 不同形)
       { re: /\*\*(\d+) can `block`\*\*/g, key: 'tier_block', what: 'Block-level count (散文)' },
@@ -147,7 +196,12 @@ function claims() {
     for (const p of pats) {
       let mm;
       const re = new RegExp(p.re.source, 'g');
-      while ((mm = re.exec(s)) !== null) out.push({ doc: f, what: p.what, key: p.key, claimed: mm[1] });
+      while ((mm = re.exec(s)) !== null) {
+        // reject 过滤器: 排除「匹配到了但不是引擎当前规模声称」的假阳性。
+        // 没有 reject 的模式行为不变。
+        if (typeof p.reject === 'function' && p.reject(s, mm.index)) continue;
+        out.push({ doc: f, what: p.what, key: p.key, claimed: mm[1] });
+      }
     }
   }
   return out;
@@ -179,9 +233,20 @@ const actual = {
 // 这同时意味着 test/doc-numbers.test.js 里那个 ASPIRA_MEASURED_TESTS
 // 环境变量从未被任何地方设置过，该断言一直静默退化成"只断言是正数"——
 // 真正的测试条数校验只能由本脚本(或调用方)完成。
-try {
-  const { execSync } = require('child_process');
-  const out = execSync('node test/run-all.js', { cwd: ROOT, encoding: 'utf8', timeout: 900000, stdio: ['ignore', 'pipe', 'ignore'] });
+// [递归防护] ASPIRA_AUDIT_SKIP_TESTS=1 时跳过测试数实测。
+// 审计要跑 run-all.js 取测试数，而 run-all.js 会执行调用本脚本的测试
+// (test/doc-honest-numbers-chinese.test.js)——不设此开关会无限递归，
+// 实测后果: 嵌套调用把测试数测错，且测试临时改写的文档在嵌套层之间
+// 互相可见，产出假警报。
+const SKIP_TESTS = process.env.ASPIRA_AUDIT_SKIP_TESTS === '1';
+if (!SKIP_TESTS) try {
+  // [仪器修复] 原先用 execSync——子进程**非零退出即抛异常**，而 run-all.js 在
+  // 有用例失败时正是 process.exitCode = 1。于是 catch 把 m.tests 置 null，
+  // 测试数声称变成"无法实测": **审计恰在出问题的那一刻失明**。
+  // spawnSync 不抛异常，stdout 在失败时依然可读——测试数照常测得。
+  const { spawnSync } = require('child_process');
+  const r = spawnSync('node', ['test/run-all.js'], { cwd: ROOT, encoding: 'utf8', timeout: 900000, stdio: ['ignore', 'pipe', 'ignore'] });
+  const out = (r && r.stdout) ? r.stdout.toString() : '';
   // 必须取**最后**一条匹配: run-all.js 对每个测试文件都打印一行
   // "测试结果: N 通过, 0 失败, 共 N 个"，最终汇总行形状与之相同。
   // 首版用 exec 取第一条，拿到的是某个测试文件的 10 通过，于是一条
@@ -247,6 +312,26 @@ if (process.argv.includes('--json')) {
   console.log(`实测: dimensions=${m.dimensions} modules=${m.modules} tools=${m.tools} `
     + `initErrors=${m.initErrors} layers=${actual.layers} nodeReq=${m.nodeReq} VERSION=${m.version}`);
   console.log(`AGENTS.md 分层声明: block=${m.tiers.block} rewrite=${m.tiers.rewrite} verify=${m.tiers.verify} scored=${m.tiers.scored}`);
+  // ── [覆盖面自报] 审计自己的盲区有多大 ──
+  // 由来: 曾发现审计 38/38 全绿，但全仓 md 约 295 处数字型声称里它只校验 38 条。
+  // 绿只说明「它知道的那几条没错」，不说明没被查到的一定对。
+  // 于是把覆盖率从一次性测量变成**每次运行都报**的常驻指标。
+  //
+  // ⚠️ 这个百分比**不能**当漏洞数读: 它是「数字+单位词」的粗计，含版本号、日期、
+  // 提案前提(AGI_VISION.md 的「当前 25 个工具」是重构规划的起点，不是当前声称)、
+  // 历史叙事章节等大量本就不该审的内容。报它是为了让人问
+  // 「剩下那些为什么没审」，而不是为了凑一个好看的数字。
+  const NUMISH = /(\d[\d,]*)\s*(?:个|条|行|层|维|模块|工具|路由|tests?|passing|failed|%|倍)/g;
+  let rawClaims = 0;
+  for (const f of DOCS) {
+    const t = readDoc(f);
+    if (!t) continue;
+    rawClaims += (t.match(NUMISH) || []).length;
+  }
+  const pct = rawClaims ? (100 * rows.length / rawClaims).toFixed(1) : 'n/a';
+  console.log('');
+  console.log('[覆盖面自报] 校验 ' + rows.length + ' 条 / 数字型声称 ' + rawClaims + ' 条 = ' + pct + '%');
+  console.log('  (粗计含版本号/日期/提案前提/历史叙事，不能当漏洞数读；报它是为了让人问「剩下那些为什么没审」)');
   console.log(`\n文档声称总数: ${rows.length} | 与实测一致: ${okRows.length} | 不一致: ${bad.length} | 无法实测: ${unmeasurable.length}`);
   if (bad.length) {
     console.log('\n--- ❌ 与实测不符(必须修) ---');

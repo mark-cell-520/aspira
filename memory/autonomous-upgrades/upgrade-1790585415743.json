@@ -1,0 +1,63 @@
+{
+  "ts": "2026-09-28T08:50:15.743Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.63); \"测试覆盖缺口填补\" (0.63); \"对抗鲁棒性增强\" (0.63); \"性能优化\" (0.63); \"误报/召回校准\" (0.62); \"MCP 工具增强\" (0.62)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.63
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.62
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 191,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1019/0",
+    "baseline": "1019/0",
+    "delta": "0"
+  },
+  "result": "doc-honest-numbers 切片(引擎连续第二轮选出，confidence 0.75)。\n基线实测 verify 14/14、run-all 1019/0。\n═══ 先查切片是否枯竭 ═══\n上轮已给审计补中文模式。先量还有哪些中文数字类别未入审计，实测剩:\n  项检查/条规则/个工具/个引擎/个核心引擎…\n逐个查上下文后确认: 它们全在 AGI_VISION.md(重构**提案**)或已豁免的\nFAILURE_REPORT.md 里——是提案前提与历史叙事，不是当前声称。\n→ 方向(a)\"补更多中文模式\"**已枯竭**，再补就是在审提案前提。\n═══ 方向(b): 让审计自己报覆盖面 ═══\n上轮一次性量出\"43/295 = 12.9%\"，但那是手工量的，下次运行看不到。\n现已变成**每次运行都报**的常驻指标:\n    [覆盖面自报] 校验 43 条 / 数字型声称 181 条 = 23.8%\n  (粗计含版本号/日期/提案前提/历史叙事，不能当漏洞数读)\n注意分母从我上次手工量的 295 变成 181——因为那次我用的是\n\"数字+单位词\"更宽的口径。两个数都不可当漏洞数，已在这行输出里写明。\n═══ 真实危害: AGI_VISION.md 零时点标记(已修) ═══\n该文档是重构规划，文中\"当前 mcp-server.js 暴露 25 个工具\"是**提案前提**，\n但全文**没有任何日期标记**。今天的读者会把提案前提当成引擎现状\n(实际 181 个工具)。这是不诚实数字的一种: 数字本身没错，错在**没有时点**。\n已在文档顶部加时点横幅，并明确:\n  - 「当前 …」指本规划撰写时，不是现在的事实;\n  - 当前实测值以 node scripts/audit-doc-numbers.js 为准;\n  - **刻意不修改**那些历史前提数字——改掉就伪造了提案的论证起点;\n  - 「重构后暴露 5 个工具」等是提案目标，同样不是既成事实。\n横幅未引入审计假阳性(43/43 不变)。\n═══ ⚠️ 本轮我造成了一次数据丢失，已完整恢复 ═══\n给审计脚本加覆盖面自报时，Python 的 io.open(F,'w') **先截断文件**，\n随后的 write() 因字符串里含 emoji 代理对而抛 UnicodeEncodeError——\n**scripts/audit-doc-numbers.js 被清空成 0 字节**。\n恢复步骤: git checkout HEAD -- 取回 14309 字节的 HEAD 版，\n再逐条重放本会话对它的四项改动:\n  1) execSync → spawnSync(修\"审计恰在出问题时失明\")\n  2) 中文声称模式 + reject 过滤器(滤序数/括号两类假阳性)\n  3) DOCS 从硬编码 3 文件改为\"扫描全部 md 减带理由的豁免表\"\n  4) 覆盖面自报\n另补回一条 HEAD 版缺失的 \"N tests passed\" 散文模式\n(CURRENT_STATE.md 的形态，audit-doc-coverage.test.js 断言它存在)。\n最终审计恢复到 **43/43、0 不符、0 无法实测**，与丢失前一致。\n═══ 恢复过程又暴露两个问题(都已修) ═══\n1) HEAD 版 DOCS 是硬编码的三份 (README/SKILL/AGENTS)，\n   所以中文模式一度一条都匹配不到——恢复后必须先修 DOCS 才能验证模式。\n2) IDENTITY.md 被上次注入留在错值 **99**(应为 132)。\n   根因: 测试里\"锚点不在就静默跳过\"，于是文件一旦被留在错值，\n   此后每次运行都因找不到锚点而提前 return，**再也不会被还原**——\n   错值自我维持，测试还全是绿的。已改为锚点缺失即报失败。\n═══ 教训 ═══\n写临时文件/改文件前必须先完整构造好内容再一次性写入;\nio.open(F,'w') 是\"先截断\"，编码错误会让原内容**和**新内容一起丢。\n另: \"找不到预期状态就跳过\"的测试会把已发生的损坏永久化。\n═══ 门禁 ═══\nverify 14/14；run-all **1019/0**(与基线持平，本轮净增 0——\n因为工作主要是恢复+文档，未加新测试);\n审计 43/43、0 不符、0 无法实测；语料 FP 0.0% / 召回 100% 不变。\n本轮改了 scripts/audit-doc-numbers.js 与 AGI_VISION.md/IDENTITY.md(文档)，\n**未改 src/ 引擎代码**，故未重启 MCP(181 工具在线)。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: 该切片两个方向均已枯竭(中文模式只剩提案前提，覆盖面已常驻自报)，\n建议置 exhausted: true 让引擎轮换; 若仍被选中，可转向\n\"审计的口径本身是否诚实\"(如 23.8% 这个分母该怎么定义才有意义)。",
+  "exhausted": true,
+  "exhausted_reason": "doc-honest-numbers 已完成 8 次，两个方向均已枯竭: (a) 中文声称模式只剩 AGI_VISION.md(重构提案)与 FAILURE_REPORT.md(已豁免)中的提案前提/历史叙事，再补就是在审提案前提; (b) 覆盖面已改为每次运行自报的常驻指标。上轮 journal 里只\"建议\"置 exhausted 而未真的置，导致引擎第三次仍选中它——轮换权重减到 0.05 下限后不再下降，未标记 exhausted 的切片会永远留在候选里。"
+}

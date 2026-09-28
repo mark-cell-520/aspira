@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T12:10:15.469Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 198,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1088/0",
+    "baseline": "1075/0",
+    "delta": "+13"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1075/0。\n\n═══ 做什么 ═══\n继续填 B 类「活着但没测」缺口。当前最大几个里挑了\nsrc/cortex/experience-replay.js(866 行) —— 它被 mcp-server 直接使用，\n却没有任何测试引用，属最高价值缺口。\n\n═══ 抓出两个真缺陷 ═══\n\n(a) **aspira_experience_replay 这个 MCP 工具完全不可用。**\n    src/mcp-server.js:3528 写的是\n    new ExperienceReplay({ rootPath: HF_DIR, silent: true }) —— 传**对象**，\n    而构造函数只接受字符串，于是每次调用都抛\n    [ExperienceReplay] Invalid projectRoot。\n    **端到端实测确认**: curl tools/call 恒返回\n    {\"error\":\"[ExperienceReplay] Invalid projectRoot\"}。\n    一个名字叫 experience_replay 的工具，什么都做不了。\n    这是 aspira_gate* / aspira_wakeup_verify 之后**第三例**同形状缺陷:\n    MCP 处理器与模块对调用约定各说各话，只有端到端调用能看见。\n    修法: 构造函数同时接受字符串与 { rootPath } / { projectRoot } / { root }。\n    修复后端到端复测: 正常返回 {replay:{}, action:\"stats\", ...}。\n\n(b) **构造函数里的「路径验证」是死代码。**\n    原代码先 path.resolve(projectRoot)，再判\n    normalizedPath !== resolvedRoot || !path.isAbsolute(resolvedRoot)。\n    而 path.resolve() 返回的**已是绝对且归一化**路径，两个条件永假。\n    实测 ../escape、/a/../b、/a//b、~/x 全部 differ=false 且 isAbs=true。\n    只有第一项(空/非字符串)真正生效。\n    相对路径被静默 resolve 成 cwd 下的路径——注释说防遍历，实际什么都没防。\n    一个永远不触发的校验比没有校验更糟: 它让人以为被挡住了。\n    修法: 改为在 resolve **之前**校验原始输入，相对路径与 .. 均拒绝。\n\n═══ 一个我自己的测试bug(记下来) ═══\n首版测试写成 assertTrue(() => { er = new ExperienceReplay(...) })\n——传进去的是**函数对象**，恒为 truthy，于是断言\"通过\"而构造函数\n从未被执行，下一条断言才暴露 er 仍是 null。\n教训: **断言必须包裹已求值的结果，不能包裹一个 lambda。**\n两处都改成显式 try/catch 后 13/13 通过。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1088/0**(基线 1075，+13)；审计 43/43、0 不符；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/ 引擎代码，**已重启 MCP**: 181 工具在线，\naspira_experience_replay 端到端复测正常。\n新增 test/experience-replay.test.js(13 例，全绿)，锁住:\n  构造契约(字符串+对象)、路径规则(相对/遍历/null/空对象全拒)、\n  validateReportIntegrity 全部分支、自愈路径(默认回退/.bak 恢复/\n  repairPartialPatterns 保留 lastUpdate/损坏 JSON 不致构造失败)。\nREADME/SKILL/CURRENT_STATE 测试数 1075→1088；AGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) B 类仍有约 100 个「活着但没测」模块，可继续填\n    (meta-learning 1326 行、memory-index 932 行、value-internalizer 914 行)；\n(b) **MCP 处理器与模块契约不一致已是第三例**，值得写一个脚本\n    全量核对每个 aspira_* 工具的 new X({...}) 调用与对应构造函数签名；\n(c) 上轮留下的 ThoughtNode.prune() 从未被调用仍未修\n    (接入探索循环会改变搜索结果，需单独评估)。"
+}

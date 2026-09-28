@@ -66,7 +66,14 @@ class ReflexionEngine {
 
     // 更新成功率
     const total = this.reflectionCount;
-    const successes = this.reflections.filter(r => r.result.success).length + (result.success ? 1 : 0);
+    // [测试覆盖缺口修复] reflections 里存的 result 是**字符串**
+    // ('success' / 'failure'，见下方 push 处)，故 `r.result.success` 恒为 undefined。
+    // 后果: 过滤器永远数出 0，successes 只等于"本次是否成功"。
+    // 实测 success,success,failure,failure → successRate = 1, 0.5, 0, 0
+    // （应为 1, 1, 0.67, 0.5）——成功率只反映最近一次调用，除以总次数。
+    // 同文件的 _calculateImprovementRate() 用的是正确写法
+    // `r.result === 'success'`，故此处是遗漏而非设计。
+    const successes = this.reflections.filter(r => r.result === 'success').length + (result.success ? 1 : 0);
     this.successRate = successes / total;
 
     // 生成反思

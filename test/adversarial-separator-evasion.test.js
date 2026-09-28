@@ -180,9 +180,13 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     }
   });
 
-  test(' variants()/altVariants 无消费方(死代码事实的记录)', () => {
-    // 机制存在但接线不存在——本会话第二次遇到。记录它，避免有人以为
-    // "加个 altVariant 就能提高召回"(实际没有任何代码读它)。
+  test(' altVariants 必须被 discriminate 消费(不再是死代码)', () => {
+    // [事实变更] 本测试原断言"altVariants 无消费方"，记录的是当时的事实:
+    // 机制存在但接线不存在。本轮已把接线补上(src/index.js 的 discriminate
+    // 现在会对每个候选复跑一次并取更严重的 gate)，实测 leet 召回
+    // 73.2% → 85.4%。故断言方向反转: 现在必须**有**消费方。
+    // 保留这条测试的意义在于——它从"记录一个缺陷"变成"锁住一个修复"，
+    // 将来若有人删掉接线，它会再次失败并提醒这里曾经坏过。
     const fs = require('fs');
     const srcFiles = [];
     (function walk(d) {
@@ -197,8 +201,8 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       const s = fs.readFileSync(f, 'utf8');
       return /\bvariants\s*\(/.test(s) || /altVariants/.test(s);
     });
-    assertEqual(consumers.length, 0,
-      `variants()/altVariants 应仍无消费方，实测被 ${consumers.length} 个文件引用` +
-      '(若已接线，请更新本测试与文件头说明)');
+    assertTrue(consumers.length > 0,
+      `altVariants 必须被 discriminate 消费，实测 ${consumers.length} 个文件引用——` +
+      `接线被删了，leet 召回会退回 73.2%(见本测试上方的事实变更说明)`);
   });
 };

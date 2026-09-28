@@ -152,6 +152,16 @@ class FailureAnalyzer {
       return failure;
     }
 
+    // [健壮性修复] failure 为 null/undefined 时，下面的 failure.error 会抛
+    // "Cannot read properties of null (reading 'error')"。
+    // analyze() 的契约是"识别不了就降级为 unknown"(见 analyze() 的
+    // matchedPatterns.length === 0 分支)，不该因空输入而崩溃——
+    // 批量分析 analyzeMultiple 里只要混进一个空项就会让整批失败。
+    // 返回空串: _matchPatterns('') 不命中任何模式，自然降级为 unknown。
+    if (failure === null || failure === undefined) {
+      return '';
+    }
+
     if (failure.error) {
       if (typeof failure.error === 'string') {
         return failure.error;

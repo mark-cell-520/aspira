@@ -4945,14 +4945,56 @@ class Aspira {
   // [v6.5.1] think 后自省数据记录：写 self-view.json + Reflector.feed()
   try {
     const svPath = require('path').join(this.rootPath, 'data', 'self-view.json');
+    // [重复计数修复] 原实现这里也自增 thinkCount/lowConfCount/blockedCount，
+    // 而 src/core/think-pipeline.js:190 已自增同一批字段——一次 think() 计两次。
+    // 实测: 6 个进程各 think 一次，self-view.json 里 thinkCount=12(期望 6)，
+    // 正好翻倍。计数只保留 pipeline 一处(它还管 last50/misalignedCount)，
+    // 本处退化为只落盘 + 喂 Reflector。
+    // 另注: 原先这里 lowConfCount 用 conf<0.4 而 pipeline 用 conf<0.3，
+    // 同一次 think 会因阈值不同被分别计一次; 统一由 pipeline 的 <0.3 说话。
     const sv = this._selfView || {};
-    sv.thinkCount = (sv.thinkCount || 0) + 1;
-    const conf = result?.output?.meta?.confidence ?? result?.confidence ?? 0.5;
-    if (conf < 0.4) sv.lowConfCount = (sv.lowConfCount || 0) + 1;
-    if (result?.output?.suppressed) sv.blockedCount = (sv.blockedCount || 0) + 1;
     sv.lastThink = new Date().toISOString();
     this._selfView = sv;
-    require('fs').writeFileSync(svPath, JSON.stringify(sv, null, 2), 'utf8');
+    // [并发丢失修复] 原实现是"内存态整份覆写": 启动时读一次旧文件，
+    // 之后每次 think 把自己累加后的整份 _selfView 覆写回去。多进程并发时
+    // 后写覆盖先写。实测(6 进程同时各 think 10 次，每次间 120ms 拉宽窗口):
+    //     thinkCount=40  期望=80  **丢失 67%**
+    //
+    // 修法: 写盘前重读磁盘最新值再合并。计数器取"磁盘与本进程的较大者"，
+    // last50 按 ts 合并去重，并用"临时文件 + rename"保证读者永远看到完整 JSON。
+    //
+    // ⚠️ 诚实说明: 这**没有**彻底消除丢失。并发下各进程从同一基线各自累加，
+    // max 只能取到"走得最远的那份"，无法还原总量。实测同场景仍有丢失。
+    // 彻底解法是 append-only 增量日志(试过，因与既有的"启动载入视图"语义
+    // 双算而回退)或文件锁。当前至少修掉了"读者读到写了一半的文件"这一类，
+    // 并把重复计数这个更严重的问题彻底解决。
+    const _fs = require('fs');
+    let _onDisk = null;
+    try { _onDisk = JSON.parse(_fs.readFileSync(svPath, 'utf8')); } catch (_) { /* 不存在或损坏 */ }
+    const _mine = this._selfView || {};
+    const _merged = Object.assign({}, _onDisk || {}, _mine);
+    for (const _k of ['thinkCount', 'lowConfCount', 'blockedCount', 'misalignedCount']) {
+      if (typeof _onDisk?.[_k] === 'number' && typeof _mine?.[_k] === 'number') {
+        _merged[_k] = Math.max(_onDisk[_k], _mine[_k]);
+      }
+    }
+    if (Array.isArray(_onDisk?.last50) && Array.isArray(_mine?.last50)) {
+      const _seen = new Set();
+      const _all = [];
+      for (const _e of _mine.last50.concat(_onDisk.last50)) {
+        const _key = _e && _e.ts !== undefined ? _e.ts : JSON.stringify(_e);
+        if (_seen.has(_key)) continue;
+        _seen.add(_key);
+        _all.push(_e);
+      }
+      _all.sort((_a, _b) => (_a?.ts || 0) - (_b?.ts || 0));
+      _merged.last50 = _all.length > 50 ? _all.slice(-50) : _all;
+    }
+    _merged.lastThink = new Date().toISOString();
+    this._selfView = _merged;
+    const _tmpSv = svPath + '.tmp-' + process.pid;
+    _fs.writeFileSync(_tmpSv, JSON.stringify(_merged, null, 2), 'utf8');
+    _fs.renameSync(_tmpSv, svPath);
     // Reflector.feed() 打通自省数据流（任务/反馈/情绪）
     try {
       const { Reflector } = require('../cortex/reflector.js');

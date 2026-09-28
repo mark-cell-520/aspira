@@ -1,0 +1,55 @@
+{
+  "ts": "2026-09-28T09:40:15.469Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,performance-optimization,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.63, 测试覆盖缺口填补=0.63, 对抗鲁棒性增强=0.63 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.63
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.63
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.62
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.62
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 192,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1032/0",
+    "baseline": "1029/0",
+    "delta": "+3"
+  },
+  "result": "adversarial-robustness 切片(引擎连续第二轮选出，弃权后平局打破)。\n基线实测 verify 14/14、run-all 1029/0。\n上轮留下方向(a): \"leet 残留 6/41 全卡在 1 歧义，需要的是对两个候选都跑\n模式匹配，而非全局择优\"。本轮实测起点 leet 召回 85.4%(35/41)。\n═══ 根因一: 判元音用的是原始前字符，没考虑它也是 leet 数字(已修) ═══\n\"b310ng\" 的 1 前是 3，而 3 是 leet 的 **e(元音)**。原实现按原始字符判，\n把 3 当辅音 → 1→i → beiong(错)，正确是 belong。\n修法: 先把前字符过 LEET_MAP 再判元音。\n═══ 根因二: 词首 1 默认给 l，因为哨兵 @ 被过了一遍 LEET_MAP(已修) ═══\n\"没有前字符\"用 '@' 占位，而 LEET_MAP['@']='a' 是给**文本里的 @** 用的。\n把哨兵也过一遍就得 'a'(元音) → 判成 l → \"belong 1n the\" 变 \"belong ln the\"，\nhate_speech 的 \"belong in the\" 短语匹配不上。\n修法: 哨兵 '@' 刻意不过 LEET_MAP，词首 1 默认按 i\n(1 在词首时更像 i: 1n / 1mportant / 1gnore，几乎不存在词首 l 的英文词)。\n**两个根因都修完后，该样本完整还原成 \"women belong in the kitchen\"**。\n═══ 结果 ═══\nleet 召回 85.4%(35/41) → **90.2%(37/41)**，提升 4.8 个百分点;\n明文召回保持 41/41，FP 0.0%。\n═══ 我的测试又踩\"输入够不上既有门槛\"(已修) ═══\n测词首 1 时我写 'belong 1n the kitchen'，但它只有 1 个 leet 字符，\n够不上 _deLeetCandidates 的 totalHits<3 门槛(那是防误伤的既有护栏)，\n于是原样返回、断言失败。改为用满足门槛的完整句子。\n教训: 造测试输入时要先确认它过得了引擎的既有门槛，否则测的是门槛不是逻辑。\n═══ 未做的方向(留待下次) ═══\n剩余 4 条 leet 残留全是**多重混淆叠加**，单修 leet 层不够:\n  #6  31.1nn3rH7M1(leet + 词首数字 31 被误当 leet 的 el)\n  #23 i g n o r e …(leet + 逐字符空格，两条规则顺序耦合)\n  #38 k111 m3 ки11(leet + 西里尔同形字)\n  #40 р455 7h3 7357(leet + 西里尔，且 altVariants 为 null)\n这些需要跨层协同，不是再调一个映射能解决的。\n═══ 门禁 ═══\nverify 14/14；run-all **1032/0**(基线 1029，+3 新测试)；\n审计 43/43、0 不符、0 无法实测；语料 FP 0.0% / 明文召回 41/41。\n改了 src/text-normalizer.js(引擎代码)，**已重启 MCP**: 181 工具在线。\n端到端经 aspira_gate_pipeline 实测:\n    leet 侮辱语 → block | 正常文本\"圆周率 3.14\" → pass\n新增 3 条测试(两个根因各一条 + leet 召回 ≥90% 的仪表)。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) 剩余 4 条多重混淆残留(#23 leet+逐字符空格 的顺序耦合\n   最有望，两条规则都在 normalize 里，可调序); (b) #38/#40 的\n   西里尔+leet 叠加，altVariants 为 null 说明同形字还原后 leet 层不再跑;\n   (c) #6 的\"词首 31 被误当 el\"是 leet 映射的已知误判，需词表兜底。"
+}

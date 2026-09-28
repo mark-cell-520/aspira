@@ -640,8 +640,23 @@ const TOOLS = [
   },
   {
     name: 'aspira_wakeup_verify',
-    description: '唤醒验证：验证引擎唤醒状态和历史一致性。',
-    inputSchema: { type: 'object', properties: {} }
+    // [MCP-ENHANCE] 原 inputSchema 是 properties: {}——**零参数**，
+    // 而 WakeUpVerifier 的核心能力 evaluateDream(dreamResult) 需要 dream 输入。
+    // 于是这个名叫"验证"的工具在 MCP 上**什么都验证不了**: handler 只调了
+    // 私有方法 _loadHistory()，返回历史记录。与已修复的 aspira_gate* 同族——
+    // "工具名承诺的能力没有接线"。调用方也无法传入 dream(没声明参数)。
+    // 现补 dream 参数: 传了就走 evaluateDream 真验证，不传则保持原行为(返回历史)，
+    // **向后兼容**。
+    description: '唤醒验证：验证引擎唤醒状态和历史一致性。传入 dream 时对该梦境结果做完整评估(质量分/冲突检测/自我纠正反馈)；不传则返回历史一致性。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dream: {
+          type: 'object',
+          description: '待验证的梦境结果(dreamResult)。传入后执行完整 evaluateDream 评估；不传则仅返回历史。',
+        },
+      },
+    }
   },
   {
     name: 'aspira_affective_intentionality',
@@ -1044,7 +1059,7 @@ const TOOLS = [
   // [v6.6.4] P2: gate.js 独立入口
   {
     name: 'aspira_gate',
-    description: '新愿门禁：对文本做 AGI 第一层辨别，返回 gate.action(pass/verify/block/rewrite)、reason、score、overallScore。适用于快速门禁检查。',
+    description: '新愿门禁：对文本做 AGI 第一层辨别，返回 gate.action(pass/verify/block/rewrite)、reason、score、overallScore。⚠️ 本工具只跑 54 维判别器，**不过 adversarial-variant 层**——同形字(киll)、零宽字符、弯引号、全角、组合字符、词拆分等混淆攻击可绕过它返回 pass。需要防混淆请用 aspira_gate_pipeline 或 checkOutput。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1056,7 +1071,7 @@ const TOOLS = [
   },
   {
     name: 'aspira_gate_check',
-    description: '新愿快速门禁：只返回行动指令 (action/reason/score)，适合 LLM agent 轻量调用。',
+    description: '新愿快速门禁：只返回行动指令 (action/reason/score)，适合 LLM agent 轻量调用。⚠️ 本工具只跑 54 维判别器，**不过 adversarial-variant 层**——同形字(киll)、零宽字符、弯引号、全角、组合字符、词拆分等混淆攻击可绕过它返回 pass。需要防混淆请用 aspira_gate_pipeline 或 checkOutput。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1067,7 +1082,7 @@ const TOOLS = [
   },
   {
     name: 'aspira_gate_pipeline',
-    description: '新愿管道模式：text 先过 gate，返回 gate-filtered 结论和原始结果。支持 evidence 参数。',
+    description: '新愿管道模式：跑**完整 17 层 pipeline**(含 adversarial-variant 对抗变体层)，返回 gate-filtered 结论、checked_by 全链路与原始结果。同形字/零宽/弯引号/全角/组合字符/词拆分等混淆攻击经此工具可被识别(实测 "kill me киll" → rewrite)。mode 可选 fast/deep。',
     inputSchema: {
       type: 'object',
       properties: {

@@ -262,6 +262,13 @@ class KVCachePersistor {
   load(sessionId, key) {
 
     try {
+      // [测试覆盖缺口修复] loads 从未被自增。
+      // getStats() 里 hitRate = hits / Math.max(1, loads)，而 loads 永远是 0，
+      // 故分母恒为 1——实测 1 命中 + 2 未命中，真实命中率 0.33，
+      // 报告值却是 1.00。一个永远显示 100% 的命中率指标，
+      // 比没有指标更坏: 它让人以为缓存很有效。
+      // 故在唯一入口自增一次，覆盖命中/未命中/异常三条路径。
+      this._stats.loads++;
 
       const filePath = path.join(this.config.cacheDir, sessionId, `${key}.kv`);
 

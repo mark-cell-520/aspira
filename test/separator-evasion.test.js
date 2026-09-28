@@ -196,11 +196,20 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertTrue(!src.includes("(?:[a-zA-Z])[-._]{1,2}(?:[a-zA-Z])"),
       '不得使用旧的逐对合并正则');
     // 新版必须是"字母段(分隔符 字母段)+"的整段形态
-    assertTrue(src.includes('[a-zA-Z]+(?:[-._]{1,3}[a-zA-Z]+)+'),
+    // [字符类变更] 原为 [a-zA-Z]，本轮为支持「leet 数字被分隔符切断」的词
+    // (n_1_g_g_3_r)扩为 [a-zA-Z0-9]。扩字符类一度造成严重回归
+    // ("3.14"→314 / "A-1-B"→alb)，最终靠按段类型分流解决。
+    // 两种字符类都接受，防止将来改形态时静默漂移。
+    assertTrue(src.includes('[a-zA-Z0-9]+(?:[-._]{1,3}[a-zA-Z0-9]+)+') ||
+               src.includes('[a-zA-Z]+(?:[-._]{1,3}[a-zA-Z]+)+'),
       'strip_separator 应使用整段折叠正则');
     // 且必须保留"至少一段单字母"的精确性条件
     assertTrue(src.includes('some(x => x.length === 1)'),
       'strip_separator 应要求至少一段为单字母，以放过 snake_case_name 等正常标识符');
+    // [类型分流] 含数字段的串必须走更严格的逐字符插入判定，
+    // 否则小数点和编号点会被当成分隔符混淆吃掉(实测回归: 3.14→314)
+    assertTrue(/hasDigitSeg/.test(src),
+      'strip_separator 必须按段类型分流，否则 "3.14"→"314" 这类回归会复现');
   });
 
   // ── 七、语料必须持续覆盖这两类 ────────────────────

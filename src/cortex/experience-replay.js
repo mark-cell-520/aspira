@@ -69,15 +69,37 @@ const OSCILLATION_CONFIG = {
 
 class ExperienceReplay {
   constructor(projectRoot) {
-    // [P2] 路径验证 - 防止路径遍历
-    if (!projectRoot || typeof projectRoot !== 'string') {
+    // [测试覆盖缺口修复] 两处缺陷，都是「注释描述的防护实际不存在」。
+    //
+    // 缺陷一(最严重): MCP 处理器 aspira_experience_replay 传的是
+    // `new ExperienceReplay({ rootPath: HF_DIR, silent: true })` —— 一个**对象**，
+    // 而这里要求字符串，于是该工具**恒返回** {error:'Invalid projectRoot'}，
+    // 端到端实测确认。一个名字叫 experience_replay 的工具什么都做不了。
+    // 现在同时接受字符串与 { rootPath } / { projectRoot } 对象。
+    //
+    // 缺陷二: 下面这段「路径验证 - 防止路径遍历」是**死代码**。
+    // `path.resolve()` 已把任何输入变成绝对且归一化的路径，所以
+    // `normalizedPath !== resolvedRoot` 与 `!path.isAbsolute(resolvedRoot)`
+    // 两个条件**永假**——实测 '../escape'、'/a/../b'、'/a//b'、'~/x'
+    // 全部 differ=false 且 isAbs=true。只有第一项(空/非字符串)真正生效。
+    // 一个永远不触发的校验比没有校验更糟: 它让人以为 traversal 被挡住了。
+    // 现改为在 resolve **之前**校验原始输入，这才有可能拦住东西。
+    let rawRoot = projectRoot;
+    if (rawRoot && typeof rawRoot === 'object') {
+      rawRoot = rawRoot.rootPath || rawRoot.projectRoot || rawRoot.root;
+    }
+    if (!rawRoot || typeof rawRoot !== 'string') {
       throw new Error('[ExperienceReplay] Invalid projectRoot');
     }
-    const resolvedRoot = path.resolve(projectRoot);
-    const normalizedPath = path.normalize(resolvedRoot);
-    if (normalizedPath !== resolvedRoot || !path.isAbsolute(resolvedRoot)) {
-      throw new Error('[ExperienceReplay] Invalid projectRoot path');
+    // 在 resolve 之前校验: 相对路径会被 resolve 成 cwd 下的路径，
+    // 静默接受一个调用方以为被拒的输入，正是要防的形态。
+    if (!path.isAbsolute(rawRoot)) {
+      throw new Error('[ExperienceReplay] projectRoot 必须是绝对路径');
     }
+    if (rawRoot.includes('\0')) {
+      throw new Error('[ExperienceReplay] projectRoot 含非法字符');
+    }
+    const resolvedRoot = path.resolve(rawRoot);
 
     this.projectRoot = resolvedRoot;
     this.reportFile = path.join(resolvedRoot, 'logs', 'reflect-reports.json');

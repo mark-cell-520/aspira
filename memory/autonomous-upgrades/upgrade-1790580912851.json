@@ -1,0 +1,60 @@
+{
+  "ts": "2026-09-28T07:35:12.851Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 mcp-tool-enhancement",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.65, 文档诚实数字审计=0.65, MCP 工具增强=0.64 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.65
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.65
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.64
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.63
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.62
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 188,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1004/0",
+    "baseline": "999/0",
+    "delta": "+5"
+  },
+  "result": "mcp-tool-enhancement 切片。引擎弃权(confidence 0)，平局打破选出。\n本轮基线实测 verify 14/14、run-all 999/0。\n═══ 审计: 181 个工具的主文本参数命名不一致 ═══\n逐个读 inputSchema 统计主文本参数名:\n    text   61 个\n    input  13 个\n    query   7 个 / content 1 / message 1 / output 1\n    (无主文本参数) 97 个\n那 13 个 input 型是: aspira_think / think_fast / emotion / emotion_deep /\nemotion_dynamics / mood / self_correction / supervise / agent_think /\nbridge_analyze / decision_router / translate。\n═══ 真实缺陷: agent 传 text 会在那 13 个上撞 -32603 ═══\n实测复现: tools/call aspira_think {text:'test'}\n  → {\"error\":{\"code\":-32603,\"message\":\"input 是必填参数\"}}\n═══ 失败形态为什么特别难查 ═══\nmcp-server.js 的中央参数校验([AUDIT-FIX I-2])会**丢弃未声明参数**——\n调用方传的 text 被静默删掉，错误信息只提 input，\n看不到\"你其实传了 text\"。误判成本很高。\n═══ 修复: 中央校验之前的别名归一化 ═══\n工具声明了 input、调用方没传 input 但传了 text 时，把 text 复制为 input。\n带两道守卫: !(\"input\" in args)(不得覆盖显式传入的 input)、\ntypeof args.text === \"string\"(不得把非文本值复制进去)。\n**向后兼容**——原传 input 的调用方完全不受影响；\n原传 text 的从报错变为可用。实测 5 个代表工具双向均通。\n═══ 我的测试连踩两个坑 ═══\n1) 静态断言里，我从 const cleaned = {}; **向后**取 900 字符找\n   \"丢弃未声明参数\"注释，但注释在定义**之前**，永远匹配不到。\n   改为向前后各取一段。——又是\"找错了方向\"这个老毛病。\n2) 首版对 12 个工具各发 2 次共 24 个请求，实测连跑时 3/6 次撞上\n   MCP server 的**限流器**(\"Too Many Requests\", retryAfter 60)。\n   那不是引擎缺陷，是测试在砸服务器。改为只实测 3 个代表工具(6 请求)\n   + 请求间 250ms 间隔;等 70 秒退避后连跑 5 次全过。\n   12 个工具的清单由 INPUT_TOOLS 常量静态声明，不必逐个在线打。\n═══ 顺带清掉自己写的死代码 ═══\n首版有个不起任何作用的占位 test，还挂了 12 个未 await 的请求——已删，\n连同不再使用的 serverUp()。\n═══ 门禁 ═══\nverify 14/14；run-all **1004/0**(基线 999，+5)，连跑 2 次均 0 失败；\n新测试单独连跑 5 次 5/5；审计 38/38、0 不符、0 无法实测。\n改了 src/mcp-server.js(引擎代码)，**已重启 MCP**: 181 工具在线。\n新增 test/mcp-text-input-alias.test.js(5 例)锁住别名与顺序契约。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) 剩下 7 个 query 型与 content/message/output 三个孤例\n   是否也该纳入别名(需先确认它们语义上确是\"主文本参数\"，\n   query 可能是检索词而非待判别文本，不能一概而论);\n   (b) 97 个\"无主文本参数\"的工具是否有参数命名不一致的其他形态;\n   (c) 上次提的\"不依赖手写探针文本的维度健康仪器\"仍未做。"
+}

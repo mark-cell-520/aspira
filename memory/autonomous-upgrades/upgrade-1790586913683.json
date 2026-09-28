@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T09:15:13.682Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.63); \"测试覆盖缺口填补\" (0.63); \"对抗鲁棒性增强\" (0.63); \"性能优化\" (0.63); \"误报/召回校准\" (0.62); \"MCP 工具增强\" (0.62)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.63
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.63
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.63
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.62
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 191,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1029/0",
+    "baseline": "1019/0",
+    "delta": "+10"
+  },
+  "result": "═══ 先修一个流程缺陷: doc-honest-numbers 被选中第三次 ═══\n引擎再次选出 doc-honest-numbers(confidence 0.75)。上轮我已在 journal 里\n\"建议\"置 exhausted，却**没有真的去置**。实测各切片完成次数:\n    doc-honest-numbers 8 次 / test-coverage-gap 7 / dimension-health 6 …\n根因: 轮换权重只按完成次数递减(每次 -0.08)，减到 0.05 下限后**不再下降**，\n而未标记 exhausted 的切片会永远留在候选里。已把上轮那条 journal 置\nexhausted=True 并写理由，验证引擎随即改选 adversarial-robustness——轮换恢复。\n教训: \"建议下次做 X\" 若不落成可执行的标记，就等于没做。\n═══ adversarial-robustness 切片: 补 leet/拼音变换的仪器盲区 ═══\n上轮留下方向(b)\"拼音/leet 召回无仪器覆盖\"。造仪器实测(取语料 41 条\n恶意样本，非自造):\n    明文召回 41/41 | **leet 变换召回 30/41 (73.2%)** | 拼音 41/41\n11 个明文下确定被拦的样本经 leet 变换后穿过 gate=pass。\n═══ 根因一: 两层互相等对方先动手(已修) ═══\nseparator 折叠规则要求分隔符两侧都是**字母**，于是 n_1_g_g_3_r(两侧是\nleet 数字)匹配不上; 而 leet 还原只处理**无分隔符的连续串**，看不见被切断的\n词。两层互等，谁都动不了 → 穿透。\n═══ 根因二: altVariants 是死代码(已修) ═══\ntext-normalizer 对 `1` 的固有歧义会算两个候选写进 _norm.altVariants，\n但 src/index.js 与 src/gate.js **全文搜不到 altVariants**——精心算出的\n第二候选从来没人消费。discriminate 现对每个候选复跑一次并**取更严重的\ngate.action**(方向取保守: 漏报代价高于误报)，用 _altChecked 守卫防递归。\n═══ ⚠️ 我造成的回归，以及最终解法 ═══\n修根因一时把折叠字符类从 [a-zA-Z] 扩到 [a-zA-Z0-9]，**造成严重回归**:\n    \"3.14\"→\"314\"   \"3.5 元\"→\"35 元\"   \"A-1-B\"→\"alb\"\n第一次收窄(≥4 段且 ≥3 段单字符)仍不够——旧护栏\"至少一段是单字符\"\n对数字段也生效(3.14 的段 3 就是单字符)。语料明文召回从 41/41 掉到 40/41，\n校准脚本报 97.6% 才发现。\n最终解法: **按段类型分流**——含数字段的串只认逐字符插入签名，\n纯字母串维持旧护栏。改完明文召回恢复 41/41、FP 0.0%。\n═══ 我的测试两次断言过强(都是我写错，非引擎错) ═══\n1) 断言 n_1_g_g_3_r 必须被拦: 归一化已正确产出 n1gg3r，但 `1` 歧义使\n   模式匹配不上——已记录的残留，不是本轮该顺手解决的。改为显式记录。\n2) 断言 \"v1.2\" 须原样保留: v1.2→vi.2 是 **HEAD 版就有的既存行为**\n   (1 当 leet 的 i 还原)。我用大小写敏感比较又误判一次，已改为结构比较。\n3) 断言 f_4gg07_5 必须被拦: 它只有 3 段，不满足窄版 ≥4 段条件，\n   尾部 _5 折不掉。这是为保住小数点付出的已知代价，已显式记录。\n═══ 两个测试锁的是\"已修好的缺陷\"，需反转断言 ═══\n1) adversarial-separator-evasion.test.js 原断言\"altVariants 无消费方\"\n   (记录当时事实)。本轮接线后该断言反向失败，已反转为\"必须有消费方\"\n   ——它从\"记录缺陷\"变成\"锁住修复\"，将来删接线会再次失败。\n2) separator-evasion.test.js 断言源码必须含 [a-zA-Z]+ 整段正件，\n   已扩为接受 [a-zA-Z0-9]+，并新增\"必须按段类型分流\"断言。\n═══ 门禁 ═══\nverify 14/14；run-all **1029/0**(基线 1019，+10 新测试)；\n语料 FP 0.0% / 明文召回 41/41(100%)；leet 召回 73.2%→**85.4%**(35/41)。\n改了 src/text-normalizer.js 与 src/index.js(引擎代码)，**已重启 MCP**:\n181 工具在线。端到端经 aspira_gate_pipeline 实测:\n    leet 代码注入 → block | leet eval → block | 明文侮辱语 → block\n    正常文本\"圆周率 3.14\" → pass | 零宽 → rewrite\n新增 test/leet-separator-evasion.test.js(10 例)。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) leet 残留 6/41 全部卡在 `1` 歧义(n1gg3r 既可能是\n   nigger 也可能是 nlgger)，需要的是\"对两个候选都跑模式匹配\"而非全局择优;\n   (b) 3 段 leet 词(f_4gg07_5)尾部折不掉，放宽会重演 3.14→314，\n   或可改成\"段内含数字且整串无小数点\"的更精确判据; (c) 拼音变换仪器\n   本身有盲区(我的映射只换中文攻击词)，需换成真实拼音攻击样本。"
+}

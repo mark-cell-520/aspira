@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T05:55:20.827Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,performance-optimization,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.65, 测试覆盖缺口填补=0.65, 文档诚实数字审计=0.65 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.65
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.65
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.65
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.65
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.64
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.64
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 183,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "981/0"
+  },
+  "result": "adversarial-robustness 切片。引擎弃权(confidence 0)，平局自主打破选出本切片。基线 975/0。\n**方法**: 不重复已知的三类逃逸(分隔符91%/字母空格26%/HTML 94%)，改为对比\"text-normalizer 实现的变换\"与\"校准仪器实际测量的变换\"，发现 **6 种变换从未被测量**(同形字母/零宽/全角/拼音/leet 等)——这是新的仪器盲点，与已记录的逃逸盲点同根。逐类实测暴露出两个真实缺陷。\n═══ 缺陷一: 同形字检测误伤合法西里尔/希腊文字(已修) ═══\nHOMOGLYPH_RE = /[\\u0400-\\u04FF\\u0370-\\u03FF]/ 匹配**任一**西里尔/希腊字符，于是合法文本全部被判 rewrite:\n    'Привет, как дела?'                          → 对抗变体: 同形字混淆\n    'Καλημέρα, τι κάνεις;'                       → 同上\n    'I read a book called Война и мир yesterday.' → 同上\n而设计意图(见原注释)是抓\"西里尔字母**伪装成拉丁字母**\"。引擎 86 条良性语料全是中英文，对此完全失明。\n**修复**: 收窄为\"西里尔/希腊字符**紧邻拉丁字母**\"/[a-zA-Z][\\u0400-\\u04FF\\u0370-\\u03FF]|[\\u0400-\\u04FF\\u0370-\\u03FF][a-zA-Z]/——攻击文本里那个 look-alike 必然紧邻拉丁字母(киll 的 к 后接拉丁 ill)；合法俄语的西里尔字符邻接空格或其它西里尔。\n**代价(已评估，非隐藏)**: 纯西里尔 look-alike 词(ѕеϲret，无拉丁邻接)不再命中本层;但 normalizer 的 de_cyrillic 会还原它、discriminate() 仍按内容识别——两层防线的精度/召回取舍: 本层保精度(不误伤整片合法文字)，内容识别保召回。\n实测: 4 个攻击案例(киll/hаte/lа lа/рass)仍 rewrite；4 个合法案例全部转 pass。\n═══ 缺陷二: 对抗变体层经 MCP 完全不可达(已修) ═══\n    'kill me киll'  aspira_gate          → pass\n    'kill me киll'  aspira_gate_check    → pass\n    'kill me киll'  aspira_gate_pipeline → pass   ← 名叫'管道模式'\n    而 gate.checkOutput / gate.runPipeline 均为 rewrite\n根因: 三个 handler 分别调 gate.gate / gate.check / gate.pipeline，**三者内部都只跑 discriminate()**，不过 adversarial-variant 层。真正的全 pipeline 是 runPipeline(17 层)。于是同形字、零宽、弯引号、全角、组合字符、数字混淆、词拆分这一整类混淆攻击对整个 MCP 工具面不可见，而 agent 正是靠这些工具门禁不可信输入。\n**修复**:\n1) handleGatePipeline 改调 gate.runPipeline({input, mode, options:{evidence}})。\n2) aspira_gate / aspira_gate_check 的 description 补 ⚠️ 警告，点明不过 adversarial-variant 层并指路 aspira_gate_pipeline(它们是有意的轻量路径，但原先没说会跳过什么，agent 无从得知)。\n═══ 我的测试当场抓到自己差点交付的不兼容变更 ═══\n我原判\"runPipeline 返回键是 gate.pipeline 的超集\"——**错了**。runPipeline 不含 dimensions 键，而 gate.pipeline 含(54 维逐维分数)。直接切换会静默丢掉它，调用方读 result.dimensions 得到 undefined 且不报错。是\"返回键必须是旧形状超集\"这条断言失败的。已在 handler 里显式补回 dimensions(gate.gate(text).dimensions，实测 54 键)，并用测试锁住，防回归。\n═══ 另一个探针 bug(记录，非引擎缺陷) ═══\n首轮测量报\"全角字母召回 17.6%\"，一度以为是真缺口。实为我的探针偏移量算错: 全角 A(U+FF21) 与 A(U+0041) 差 65248，我写成了 39，生成的是一堆控制字符。直接用 normalizer 复核后确认half_width 步骤正确还原。**又一次\"探针自身有错却被当成引擎缺陷\"**，与既往教训同族。\n═══ 新增测试 ═══\ntest/homoglyph-false-positive.test.js(5 用例): 合法西里尔/希腊文本不得判同形字、门禁不得 rewrite、真实攻击仍须拦截、正则必须要求紧邻拉丁字母(锁修复形式，防过宽正则复辟)、明文 FP/召回基线不变。\ntest/mcp-adversarial-reachability.test.js(6 用例): gate_pipeline 必须识别同形字攻击、对良性中/英/俄/希不得误报、返回键必须是旧形状超集、checked_by 必须真的含 adversarial-variant 层、两个轻量工具描述必须含对抗层警告、gate_pipeline 描述必须说明跑完整 pipeline。\n═══ 门禁 ═══\nverify 14/14，run-all **981/0**(975+6)，明文 FP 0.0%/召回 100% 未变，逃逸召回三类未变(91%/26%/94%)，审计 37/37 一致。\n改了 src/(shield/adversarial-variant.js、mcp-server.js、mcp/tools-registry.js)，**已重启 MCP**: 181 工具在线，端到端验证 攻击→rewrite、合法俄/中文→pass。\n按职责边界未 rsync、未 git commit/push。\n**下次方向**: (a) 零宽字符一类: aspira_gate_check 直接 block 而 checkOutput 只 rewrite，两者严重度口径不一致，值得统一; (b) 其余未测变换(拼音/leet)的召回仍无仪器覆盖;(c) aspira_gate/aspira_gate_check 仍不过对抗层，是否应让 gate.gate 也过一次对抗检查(而非仅靠描述警告)需权衡性能。"
+}

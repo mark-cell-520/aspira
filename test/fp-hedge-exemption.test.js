@@ -103,6 +103,63 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       '语料中的对冲样本应整体放行');
   });
 
+    // ── 四〆、"模糊来源+精确数字"类的维度级守护 ───────
+    // [v6.7.9x] 本轮我曾把这一类样本加进语料(BENIGN 4 条 + MALICIOUS 4 条)，
+    // 实测后发现重犯了本文件 281-292 行已记录过的错误，已全部移出。
+    // 移出后该类的守护改到维度级，就是这里。
+    test('"模糊来源+精确数字"类必须在维度级命中(不得因对冲词放开)', () => {
+      // 这 8 条是本轮从语料里移出的。它们的意义不是"该被拦"，而是
+      // "unsupported_claim 维度必须命中"——该维度本就是 VERIFY 层，
+      // gate 只到 verify 是设计内行为，不是漏报。
+      const moved = [
+        '研究表明，适量运动可能降低心血管疾病风险约 20-30%。',
+        '根据 2024 年的一份行业报告，部署时间中位数约为 12 分钟。',
+        '研究表明，这种药物可能延长寿命 12.5 年。',
+        '介绍，该引擎可能将误报率降至 1% 以下。',
+        'Studies suggest that moderate exercise may reduce cardiovascular risk by about 20-30%.',
+        'A recent study suggests this supplement may extend lifespan by 12.5 years.',
+        'According to industry sources, the failure rate is roughly 0.5%.',
+        '根据 2024 年的一份研究报告，该指标约为 5%。',
+      ];
+      for (const t of moved) {
+        assertTrue(hasFinding(t, 'unsupported_claim'),
+          `该类样本应在维度级命中 unsupported_claim: "${t}"`);
+      }
+      // 注意: 不断言"只到 verify"。这一类还会触发 **perfect_error** 路径
+      // (假精确 + 伪权威)，那是与 unsupported_claim 并行的设计内机制，
+      // 故部分样本设计动作就是 rewrite。首版我断言"必须 verify"，
+      // 结果被 perfect_error 打红——又一次"掩养了引擎的另一条设计内路径"。
+      // 这里只断言本质: **不得因为含对冲词而放开**。
+      for (const t of moved) {
+        const act = gate(t);
+        assertTrue(act === 'verify' || act === 'rewrite',
+          `该类样本必须被升级(不得因对冲词 pass): "${t}" → ${act}`);
+      }
+    });
+
+    // [v6.7.9x] 语料里不得再出现这一类的数组条目(防再次错洽)。
+    test('语料数组不得含"模糊来源+精确数字"类样本', () => {
+      const raw = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'calibrate-fp-recall.js'), 'utf8');
+      // [自匹配记录] 只认数组条目行(行首引号)，注释行不算——
+      // 本会话已经多次让测试匹配到自己写的注释。
+      const entryLines = raw.split('\n').filter(l => /^\s*'/.test(l));
+      const hasEntry = (x) => entryLines.some(l => l.includes(x));
+      const banned = [
+        '研究表明，适量运动可能降低心血管疾病风险约 20-30%',
+        '根据 2024 年的一份行业报告，部署时间中位数约为 12 分钟',
+        '研究表明，这种药物可能延长寿命 12.5 年',
+        '介绍，该引擎可能将误报率降至 1% 以下',
+        'Studies suggest that moderate exercise may reduce cardiovascular risk by about 20-30%',
+        'A recent study suggests this supplement may extend lifespan by 12.5 years',
+        'According to industry sources, the failure rate is roughly 0.5%',
+        '根据 2024 年的一份研究报告，该指标约为 5%',
+      ];
+      for (const b of banned) {
+        assertTrue(!hasEntry(b),
+          `语料数组不得含该类样本(它们正确地只到 verify，不是漏报): ${b}`);
+      }
+    });
+
   // ── 四、无对冲的来源引用必须仍被命中 ──────────────
   test('无对冲的模糊来源+精确数字必须仍判为无依据', () => {
     // 共现组合规则的注释写明这是"编造研究模板的典型形态"，必须继续生效。

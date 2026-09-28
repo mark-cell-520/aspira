@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T11:45:13.467Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 197,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1075/0",
+    "baseline": "1070/0",
+    "delta": "+5"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7)。\n基线实测 verify 14/14、run-all 1070/0。\n\n═══ 承接上轮留下的下一步方向 ═══\n上轮结论:「同类『计数器从未自增』缺陷值得全库扫一遍——已发现两个，\n形状一致，很可能还有」。本轮就做这件事。\n\n═══ 仪器错了两次，都是假阳性(本周期最重要的记录) ═══\n新建 scripts/dead-counter-audit.js，扫 380 个 src 模块里\n「被读取但从未自增」的统计字段。\n\n第一版正则尾部写成 `\\s*1?\\b`。`\\b` 在 `++` 位于**行尾**时永远不匹配\n(后面没有字符可构成词边界)，于是每一句单独的 `this._stats.foo++;`\n都被判成「从未自增」—— 第一遍跑出 **193 处**命中，大半是这种。\n\n第二版修掉那个，却仍匹配不上 `x = (x || 0) + 1` 兜底写法\n(`\\1\\s*(?:\\+|-)\\s*1` 要求字段紧贴 +1，中间隔着 `|| 0)`),\n于是 tamperedDetected 这种**确实有自增**的又被误报成死的。\n\n这与 dimension-health-audit 错两次是同源故障的**第三次**出现:\n**仪器把自己的正则缺陷报告成引擎缺陷。** 已两次修正，\n并把三个已知答案样本写进测试，防止它再退化成假阳性机器。\n\n═══ 手工核查剩余候选，抓到第三个真缺陷 ═══\n修正后仪器报 11 处候选，绝大多数是方法调用(this.metrics.recordLayer(...))、\nMap 操作(this._metrics.set/get/delete)、或直接赋值的重算值\n(this.stats.totalMemories = this.memories.size)——后两类已显式过滤。\n逐个手工核查剩下的，抓到:\n  src/reasoning/graph-of-thoughts.js 的 prunedNodes ——\n  ThoughtNode.prune() 是公共方法，但**全文件从未被调用**，\n  于是 getResult() 永远报告 prunedNodes: 0。实测修复前 0、修复后 3。\n  这与上轮 kv-cache 的 hitRate 恒等于 hits 同类: 指标不走比没指标更误导。\n\n═══ 修法的边界(刻意不改行为) ═══\n没有把 prune() 接进探索循环——那会改变搜索结果。\n改为在 evaluateCandidates 里候选真正被丢弃处(校验失败、分数不足阈值)\n计数，让统计描述实际发生的事。测试同时锁两半:\n「计数会走」与「搜索结果不变」。\n\n═══ 又一个复发故障: 静态 grep 被注释骗到 ═══\n测试里断言「prune() 无调用点」，首版直接 grep `\\.prze\\(\\)`，\n结果匹配到**测试自己的说明文字里的 \"ThoughtNode.prune()\"**，\n报出 1 处假调用点。已改为先剥注释再匹配。\nAGENTS.md 里原本就记着这条(static require-grep fooled by comments)。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1075/0**(基线 1070，+5)；审计 43/43、0 不符；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/ 引擎代码，**已重启 MCP**: 181 工具在线。\n新增 test/dead-counter-audit.test.js(5 例，全绿)。\nREADME/SKILL/CURRENT_STATE 测试数 1070→1075；AGENTS.md 新增条目，\n把仪器两次出错、第三个缺陷、修法边界都写进去。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 仪器剩余 11 处候选已人工核查完毕，此类缺陷暂告一段落，\n    可轮换到其他切片；\n(b) B 类仍有 105 个「活着但没测」模块可继续填；\n(c) ThoughtNode.prune() 从未被调用是已披露未修项——\n    接入探索循环会改变搜索结果，需单独评估。"
+}

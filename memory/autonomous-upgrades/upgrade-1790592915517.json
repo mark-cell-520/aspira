@@ -1,0 +1,55 @@
+{
+  "ts": "2026-09-28T10:55:15.517Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[dimension-health-audit,mcp-tool-enhancement,test-coverage-gap], 按consequence_value最高选 dimension-health-audit",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.63, 测试覆盖缺口填补=0.63, MCP 工具增强=0.62 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.63
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.62
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 194,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1051/0",
+    "baseline": "1043/0",
+    "delta": "+8"
+  },
+  "result": "dimension-health-audit 切片。引擎弃权(confidence 0)，平局自主打破选出。\n基线实测 verify 14/14、run-all 1043/0。\n\n═══ 做了什么 ═══\n新建 scripts/dimension-health-audit.js: 把大输入池(校准语料 + 全部测试\n文件里的字符串字面量 + 引擎正则剥出的片段)喂给 discriminate()，逐维度\n统计「信号是否曾非零」与「是否推过 finding」。\n语料回答不了这个问题: 一个维度可以完整实现却静默，只要语料里没有能\n触达它的句子。\n\n═══ 仪器本身错了两次，这是本周期最重要的教训 ═══\n第一版: 只扫 check 函数体找正则 → 51/54 报「完全沉默」，差点写成\n  「引擎大面积失效」。直接调用 idx.checkPromptInjection(...) 正常返回\n  count=2/score=1 —— **是仪器坏了，不是引擎坏了**。函数体只有 767 字符、\n  里面一个模式都没有，因为模式全在模块级常量表(INJECTION_PATTERNS 等)。\n第二版: 改成跟着常量表引用走，能跑了，但仍报 6 个沉默维度。逐个直接\n  调用验证: unsupported_claim/sycophancy/contradiction/bullshit **四个都\n  能正常触发**。根因是「从正则剥最长纯字面量片段」有系统性盲区:\n  · 核心字面量 <3 字符被过滤(根据…报告 → 只剥出「根据」，长度 2)\n  · 交替组要整组才匹配((很棒|很好|…)[^。]*?但，剥出的「很棒」单独不匹配)\n  · 需要共现的模式合成不出输入\n  → 我把「我合成不出输入」误报成「引擎失效」。\n第三版: 不再假装能反向工程每条正则，只测「这个维度在 6273 条输入里\n  有没有触发过」。**一个把仪器局限说成引擎缺陷的仪器，比没有仪器更糟**\n  ——它会让人去修没坏的代码。\n\n═══ 仪器随后抓出三个真缺陷(都在 discriminate() 的 finding 构造) ═══\n(a) **dimMap 键名与 allDims 的 name 对不上，次数永远是假的。**\n    allDims 用 name:'bullshit'，dimMap 只有 'bullshit_recognition'。\n    `const detail = dimObj?.count || ... || 1` → dimObj 取到 undefined，\n    **静默回退成 1**。实测 bullshit 真实 count=4，finding 却报 bullshit(1次)。\n    appeal_to_authority ↔ appeal_to_authority_boost 同病。\n    这正是 AGENTS.md 记录过的 dimMap 键名不一致 bug，之前只修了一部分。\n(b) **pseudo_causal / soft_deflection 被推送两次。**\n    既有专属块(if (pc.count>0...) / if (sd.count>0...))，又在 allDims 里。\n    实测伪因果样本 findings 里 pseudo_causal 出现 2 次、同为 sev=60。\n    这与上轮修的「跨度双算」是同一类: 虚增 findings.length，\n    而它正好是 gate 的 verify 触发条件之一(findings.length > 1)。\n(c) **clickbait 从不推送 finding。**\n    dimMap 有 clickbait: cb、dimensions{} 有该键，但 allDims 从未包含它\n    —— 一个完整实现却对门禁零贡献的维度。\n\n═══ 修法为什么是「补别名」而不是「改名」 ═══\n命名有**三处**且互不一致: dimMap 键 / allDims name / BLOCK·REWRITE·VERIFY_DIMS。\n改名任何一处都会错环 —— 例如把 allDims 的 'bullshit' 改成 'bullshit_recognition'，\nREWRITE_DIMS 里仍是 'bullshit'，rewrite 触发立刻失效。\n故只在 dimMap 补别名(bullshit/appeal_to_authority/pseudo_causal/soft_deflection/\nai_writing_tell)，让 dimObj 能解析，其余一律不动。\npseudo_causal/soft_deflection 从 allDims 移除(专属块的详情更准)。\nclickbait 补进 allDims。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1051/0**(基线 1043，+8 新测试)；\n审计 43/43、0 不符、0 无法实测；\n维度健康仪器: 输入池 6273 条，**52 个维度触发且推 finding、0 个从未触发**，\n  仅 evidence(仅打分)与 perfect_error(聚合信号直设 gate action)按设计不推 finding。\n语料三处修复后**完全不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/index.js(引擎代码)，**已重启 MCP**: 181 工具在线。\n端到端经 aspira_gate_pipeline 实测: bullshit(1次) → **bullshit(4次)**。\n新增 test/dimension-finding-integrity.test.js(8 例)，锁住:\n  次数不得回退成 1 / 不得双推 / clickbait 必须能推 /\n  dimMap 不得再有解析不到的键 / 仪器本身必须跑通且不得误报。\nAGENTS.md 新增一条 Honest limitations，把「仪器错两次」与三个缺陷都写进去。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 三处命名不一致仍是遗留(dimMap/allDims/门禁集)，可设计一次性收敛方案\n    并评估对全部测试的影响面；\n(b) perfect_error 是聚合信号、直接设 action 而不推 finding，\n    与 unsupported_claim 并行，可查是否有样本因此拿到偏强动作；\n(c) dataDir 选项语义不一致(rootPath 优先)仍未查；\n(d) 144 个无测试引用模块的普查仍可做。"
+}

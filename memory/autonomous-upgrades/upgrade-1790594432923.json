@@ -1,0 +1,56 @@
+{
+  "ts": "2026-09-28T11:20:32.922Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 195,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1070/0",
+    "baseline": "1051/0",
+    "delta": "+19"
+  },
+  "result": "test-coverage-gap 切片。引擎选定(confidence 0.7，非平局)。\n基线实测 verify 14/14、run-all 1051/0。\n\n═══ 先重新实测缺口，不沿用旧数字 ═══\n新建 scripts/coverage-sweep.js。旧记录只有一个数「145 无测试引用」，\n它把两类**价值相反**的缺口混在一起:\n  · 没人 require 的 → 疑似死代码\n  · 管线在 require 的 → **活着但没测**，这才是真缺口(它在跑，却没有任何\n    断言说它该怎样工作)\n380 个 src 模块实测: A(死代码候选) 10、B(活着但没测) 107、C(已覆盖) 263。\n写完两个测试后 B 降到 105、C 升到 265 —— **数字在写这条记录的过程中就变了**。\n一个因被修复而改善的数字必须带时间戳，否则下一个人会以为清点错了。\n\n═══ 填 B 类缺口，当场抓出两个真缺陷 ═══\n两个缺陷形状完全相同: **被报告指标依赖的计数器，从未自增**。\n\n(a) src/memory/kv-cache.js — hitRate 恒等于 hits。\n    getStats() 算 hitRate = hits / Math.max(1, loads)，而 `loads`\n    **全文件只有第 452 行读它，没有任何一处 loads++**。分母永远是 1。\n    实测 1 命中 + 2 未命中: 真实命中率 **0.33**，报告值 **1.00**。\n    一个永远显示 100% 的指标比没有指标更糟 —— 它告诉你缓存很有效。\n    修法: loads++ 放在 load() 唯一入口，覆盖命中/未命中/异常三条路径。\n    修后实测 1.00 → 0.33。\n\n(b) src/cortex/reflexion-engine.js — successRate 只反映最近一次调用。\n    计算处写 r.result.success，而 reflections[] 里存的 result 是**字符串**\n    'success'/'failure'，.success 恒为 undefined，过滤器永远数出 0，\n    successes 退化成\"本次是否成功\"这一个布尔。再除以累计次数。\n    实测 success,success,failure,failure → 1, 0.5, 0, 0，\n    正确值应为 1, 1, 0.67, 0.5。\n    同文件的 _calculateImprovementRate() 用的是正确写法 r.result === 'success'，\n    所以这是遗漏而非设计。修为正确写法，三组序列实测全部吻合。\n\n═══ 两个险错(都记下来) ═══\n· 首版我看到 getStats() 报 totalEntries: 0，以为索引不同步是 bug。\n  实测才发现**那次我已经 delete 掉了那条**。差点把正确行为当缺陷修。\n  教训: 看到可疑数字先复现最小场景，再下结论。\n· reflexion 测试首版断言\"样本不足 strategyMinFrequency 时策略建议返回 null\"\n  ——**错了**，实测 2 次成功就返回策略对象。_suggestStrategy 的门槛是\n  successRate > successThreshold，strategyMinFrequency 只被 _assessUncertainty 用。\n  这是\"按配置项名字猜语义\"的复发故障模式，与\"按文档猜\"同源。已改为实测断言。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1070/0**(基线 1051，+19)；审计 43/43、0 不符；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n改了 src/ 引擎代码(两个模块)，**已重启 MCP**: 181 工具在线，\n启动行 37ms / 132 模块 / v1.0.0。\n新增测试: test/kv-cache-persistor.test.js(10 例)、test/reflexion-engine.test.js(9 例)。\n断言边界都实测过: 量化是有损且钳位到 [0,1] 的(-0.3 → 0，精度 1/15)，\n  故不断言\"往返相等\"；improvementRate 在样本 <10 时恒为 0(设计如此)。\nREADME/SKILL/CURRENT_STATE 测试数 1051→1070；AGENTS.md 更新覆盖清点条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) B 类仍有 105 个模块可继续填(最大的 meta-learning 1326 行、memory-index 932 行)；\n(b) 同类\"计数器从未自增\"缺陷值得在全库扫一遍——已发现两个，形状一致，\n    很可能还有；\n(c) A 类 10 个疑似死代码模块需逐个确认是否真无引用。"
+}

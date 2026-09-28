@@ -145,22 +145,26 @@ class WakeUpVerifier {
 
 
   normalizeDream(dreamResult = {}) {
+    // [null 防护] 默认参数只对 undefined 生效——传 null 时 d.title
+    // 直接抛 "Cannot read properties of null (reading 'title')"。
+    // 该模块 976 行、此前零测试覆盖，这个入口缺陷一直没被发现。
+    const d = dreamResult || {};
 
     return {
 
-      title: dreamResult.title || 'Dream',
+      title: d.title || 'Dream',
 
-      motifs: Array.isArray(dreamResult.motifs) ? dreamResult.motifs : [],
+      motifs: Array.isArray(d.motifs) ? d.motifs : [],
 
-      fragments: Array.isArray(dreamResult.fragments) ? dreamResult.fragments : [],
+      fragments: Array.isArray(d.fragments) ? d.fragments : [],
 
-      insights: Array.isArray(dreamResult.insights) ? dreamResult.insights : [],
+      insights: Array.isArray(d.insights) ? d.insights : [],
 
-      next_actions: Array.isArray(dreamResult.next_actions) ? dreamResult.next_actions : [],
+      next_actions: Array.isArray(d.next_actions) ? d.next_actions : [],
 
-      corrections: Array.isArray(dreamResult.corrections) ? dreamResult.corrections : [],
+      corrections: Array.isArray(d.corrections) ? d.corrections : [],
 
-      awake_summary: dreamResult.awake_summary || {}
+      awake_summary: d.awake_summary || {}
 
     };
 
@@ -575,8 +579,8 @@ class WakeUpVerifier {
 
 
   evaluateDream(dreamResult = {}) {
-
-    const dream = this.normalizeDream(dreamResult);
+    // [null 防护] 同上: 传 null 时默认参数不生效，会在下游抛异常。
+    const dream = this.normalizeDream(dreamResult || {});
 
     const issues = [];
 

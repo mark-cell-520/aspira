@@ -1,0 +1,58 @@
+{
+  "ts": "2026-09-28T04:40:20.246Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 mcp-tool-enhancement",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.67, 文档诚实数字审计=0.67, MCP 工具增强=0.66 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.67
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.66
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.65
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.65
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.65
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.64
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 180,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "954/0"
+  },
+  "result": "MCP 工具增强切片。引擎弃权，平局打破选出。基线 946/0。结构审计先跑: 181 个工具定义 / 181 个 handler 映射，全部有定义、有映射、指向真实函数，无孤儿 handler、无重复工具名、无缺失 inputSchema/description; 20 个 properties 为空的全是 status/query/reflection 类无参工具，合法。结构干净后转功能审计: 直接调用 177 个只读 handler(空参)，分类结果——17 个抛\"必填参数\"错是正确的参数校验; 37 个返回 error 字段，其中大半也是参数校验。**真实缺陷 2 个，都是\"advertised 但不可用\"**:aspira_benchmark_run require src/benchmark/benchmark-runner.js(BenchmarkRunner),aspira_benchmark_import_failures require src/benchmark/failure-importer.js(FailureCaseImporter)——**这两个模块文件此前都不存在**。工具定义/handler 映射/handler 函数三样齐全，description 也完整承诺了\"加载 JSONL 数据包、对每条运行 think()、对比 expected_output 算准确率、失败案例自动推入自愈 RL\"，所以工具对外可用却永不能工作，调用即Cannot find module。这类缺口比缺失工具更危险: 调用方以为买了保险。修复: 实现两个模块。遵守约定——无顶层 require(与 src/benchmark/latency-benchmark.js 一致，函数内惰性 require); 两模块不进 _lazy 注册表，故模块数仍 132。**踩到并修掉一个相对深度陷阱**: 先写 require('../../gate.js')，从 src/benchmark/ 解析到 aspira/gate.js，报 Cannot find module——正是 AGENTS.md 约定 #4 警告的子目录相对深度问题。已改 ../gate.js 并用测试锁住。**为什么不用 hf.think() 做评估**: 实测 new Aspira({rootPath}).think(x) 对任意输入都返回 {}(空对象)——hi/长英文句/中文句三种形态均如此，不能作判别入口。改用 src/gate.js 的 checkOutput()，其 gate.action 与 expected_output 同一命名空间。flushFailuresToRL/importFromFile 由 handler 无条件 await，故设计成绝不抛错:RL 不可用时返回 status=skipped 而非崩溃。新增 test/benchmark-modules.test.js(8 用例): 两模块存在且导出约定类名、两 handler 不再报 Cannot find module(行为级)、接口齐备、**准确率计算必须真的算**(故意全错的包必须得到 accuracy=0，防恒真返回)、相对 require 深度、无顶层 require、以及一个诚实盲点断言。**顺带发现一个新盲点(本周期不修，记录备查)**: 实测 rm -rf / 、DROP TABLE users; 、format c: /q 全部 gate=pass、findings=[]。根因不是漏判而是**范围界定**: DANGEROUS_PATTERNS 覆盖\"绕过/关闭安全机制 + 权限提升\"，不含破坏性文件系统/数据库命令。同类形态\"把防火墙关掉\"\"绕过 WAF 的 SQL 注入 payload\"实测正确 block。另外实测疑问句被 QUESTION_FRAME 有意豁免(\"怎么关掉防火墙\"→pass，\"把防火墙关掉\"→block)——这是设计而非缺陷，我第一版测试数据用疑问句期望 block，是自己的期望错，非引擎错。严重性在于: scripts/calibrate-fp-recall.js 的语料里**零条破坏性命令样本**，所以 FP/召回仪器对这一整类完全失明——与已记录的\"逃逸召回盲点\"同类: 仪器看不见的风险等于不存在。已把该实测钉在测试里防悄悄漂移，但\"是否该把破坏性命令纳入 dangerous_instruction 范围\"需人工定夺，不在本切片内擅动。在线验证: 运行中的 MCP 无需重启即已能用上新模块(惰性 require 生效)，aspira_benchmark_run 在线返回 accuracy=1 total=2。未改任何引擎启动代码，模块数仍 132，故未重启 MCP。verify 14/14，run-all **954/0**(+8)，审计 34/34 一致。按职责边界未 rsync、未 git commit/push。"
+}

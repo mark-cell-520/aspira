@@ -7,7 +7,7 @@ or dangerous — **before it reaches a human**. Zero LLM dependency.
 
 ```
 54 discrimination dimensions  ×  17-layer pipeline  ×  132 modules  ×  181 MCP tools
-×  1,510 dispatch routes  ×  937 passing tests  ×  0 runtime dependencies
+×  1,510 dispatch routes  ×  1088 passing tests  ×  0 runtime dependencies
 ```
 
 Aspira does not generate. It does not compete with an LLM. It stands between the
@@ -128,7 +128,7 @@ Measured on this repository at **v1.0.0**. Not marketing copy.
 | Dispatch routes | 1,510 |
 | Discrimination dimensions | 54 |
 | MCP tools | 181 |
-| Test suite | 937 passing / 0 failing |
+| Test suite | 1088 passing / 0 failing |
 | Capability guard | 18 / 18 checks |
 | Security regression | 16 / 16 |
 | Runtime dependencies | 0 |
