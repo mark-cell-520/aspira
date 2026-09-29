@@ -1,0 +1,150 @@
+/**
+ * test/doc-probe-lock-coverage.test.js — 每个 spawn 文档审计的测试都必须持锁
+ *
+ * ═══ 由来 ═══
+ * 第 56 轮修掉了并发探针冲突: 至少四个测试会改写 README/IDENTITY 再
+ * spawn 审计，并发下 A 的审计看到 B 的探针，A 断言失败，
+ * A 又用含 B 探针的备份恢复。修法是 test/_doc-probe-lock.js。
+ *
+ * **然后在第 9 轮，我自己连续两次违反这条规则**，两次都是新写的测试:
+ *   ① `作用域计数不得被当成引擎总量` —— spawn 审计未持锁
+ *   ② `行内代码跨度内的数字是被引用的字面量` —— 同上
+ *
+ * 失败形态**完全一样且特别隐蔽**:
+ *   · 直接跑该文件: 全绿
+ *   · 跑整套 run-all: 1 失败，且失败信息指向一个与真因无关的断言
+ *
+ * 为什么容易漏: 违规的测试本身**逻辑全对**。它失败不是因为自己错了，
+ * 而是并发下读到了**别人**的探针注入。于是失败信息看起来像
+ * "我的断言太严"，真因却是"我没持锁"——**报错指向的地方不是错的地方**。
+ *
+ * ═══ 首版守卫自己也错了两处(都已修) ═══
+ * ① 用通用正则匹配 `execFileSync('node', [SCRIPT]`，把跑
+ *    `mcp-contract-audit.js` / `mcp-echo-audit.js` 的测试也算进来了——
+ *    它们根本不碰文档。判据必须精确到 `audit-doc-numbers.js`。
+ * ② 检查 spawn **语句**是否在锁内。但 spawn 写在模块层的辅助函数里
+ *    (`function runAudit() { return execFileSync(...) }`)，持锁发生在
+ *    **调用处**。于是所有合规文件都被误报。
+ *    正确判据: 找到含 spawn 的辅助函数名，再检查它的每个**调用点**。
+ *
+ * ═══ 本测试锁什么 ═══
+ * 对每个 spawn `audit-doc-numbers.js` 的测试文件:
+ *   ① 必须 require `_doc-probe-lock.js`
+ *   ② 其审计辅助函数的每个调用点都必须在 withDocLock 回调内
+ */
+const path = require('path');
+const fs = require('fs');
+
+const ROOT = path.join(__dirname, '..');
+const TEST_DIR = __dirname;
+const TARGET_SCRIPT = 'audit-doc-numbers.js';
+
+module.exports = function ({ test, assertTrue }) {
+
+  function listTestFiles(dir, out) {
+    let ents;
+    try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return out; }
+    for (const e of ents) {
+      if (e.name === 'archive' || e.name === 'node_modules') continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) listTestFiles(p, out);
+      else if (e.name.endsWith('.test.js')) out.push(p);
+    }
+    return out;
+  }
+
+  // 该文件是否真的 spawn 文档审计(而非别的审计脚本/仅在注释里提到它)
+  // 判据: 必须同时有
+  //   ① 指向 scripts/audit-doc-numbers.js 的路径常量
+  //   ② 一个真的子进程调用
+  // 首版只查字符串出现，把 test-runner-concurrency.test.js 误算了——
+  // 它只是在注释里提到该脚本，实际 execSync 跑的是 test/run-all.js。
+  function spawnsDocAudit(src) {
+    const hasPath = /audit-doc-numbers\.js['"]\s*\)?/.test(src)
+      && /path\.join\([^)]*audit-doc-numbers\.js/.test(src);
+    if (!hasPath) return false;
+    return /execFileSync\(\s*'node'\s*,\s*\[\s*SCRIPT/.test(src)
+      || /execSync\([^)]*SCRIPT/.test(src)
+      || /spawnSync\(\s*'node'\s*,\s*\[[^\]]*SCRIPT/.test(src);
+  }
+
+  // 含 spawn 语句的辅助函数名。
+  // ⚠️ 必须锚定 **spawn 调用本身**再往前找声明:
+  // 首版锚定字符串 'audit-doc-numbers'，而它首次出现在
+  // `const SCRIPT = path.join(...)` 里，早于任何函数声明，
+  // 于是所有合规文件都报"找不到函数名"。
+  function helperName(src) {
+    const m = src.match(/execFileSync\(\s*'node'\s*,\s*\[\s*SCRIPT|execSync\([^)]*SCRIPT|spawnSync\(\s*'node'\s*,\s*\[[^\]]*SCRIPT/);
+    if (!m) return null;
+    const before = src.slice(0, m.index);
+    const cands = [...before.matchAll(/(?:function\s+([A-Za-z_$][\w$]*)\s*\(|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\([^)]*\)|\w+)\s*=>)/g)];
+    if (!cands.length) return null;
+    const last = cands[cands.length - 1];
+    return last[1] || last[2];
+  }
+
+  // 某个位置是否落在 withDocLock(() => { ... }) 之内
+  function insideDocLock(src, at) {
+    const before = src.slice(0, at);
+    const opens = (before.match(/withDocLock\(\s*\(\)\s*=>/g) || []).length;
+    const closes = (before.match(/\}\)\);/g) || []).length;
+    return opens > closes;
+  }
+
+  test('每个 spawn 文档审计的测试都必须持 doc-probe 锁', () => {
+    const files = listTestFiles(TEST_DIR, []);
+    const offenders = [];
+    let checked = 0;
+    for (const f of files) {
+      const rel = path.relative(ROOT, f);
+      if (rel === path.join('test', 'doc-probe-lock-coverage.test.js')) continue;
+      const src = fs.readFileSync(f, 'utf8');
+      if (!spawnsDocAudit(src)) continue;
+      checked++;
+      const requiresLock = /require\(['"]\.\/_doc-probe-lock\.js['"]\)/.test(src)
+        || /require\(['"]\.\.\/test\/_doc-probe-lock\.js['"]\)/.test(src);
+      if (!requiresLock) {
+        offenders.push(rel + '  # spawn 文档审计但未 require _doc-probe-lock');
+        continue;
+      }
+      const fn = helperName(src);
+      if (!fn) {
+        offenders.push(rel + '  # 找不到含 spawn 的辅助函数名，无法判定(宁可信其无)');
+        continue;
+      }
+      // 该辅助函数的每个调用点都必须在锁内
+      const callRe = new RegExp('(?<![\\w$.])' + fn.replace(/\$/g, '\\$') + '\\s*\\(', 'g');
+      let m, calls = 0;
+      while ((m = callRe.exec(src)) !== null) {
+        // 跳过函数定义自身
+        const before = src.slice(Math.max(0, m.index - 30), m.index);
+        if (/function\s+$/.test(before) || /=\s*(\([^)]*\)|\w+)\s*=>\s*$/.test(before)) continue;
+        calls++;
+        if (!insideDocLock(src, m.index)) {
+          const line = src.slice(0, m.index).split('\n').length;
+          offenders.push(rel + ':' + line + '  # ' + fn + '() 调用点不在 withDocLock 内');
+        }
+      }
+      if (calls === 0) {
+        offenders.push(rel + '  # 找不到 ' + fn + '() 的调用点');
+      }
+    }
+    assertTrue(checked > 0, '应至少扫到一个 spawn 文档审计的测试文件');
+    assertTrue(offenders.length === 0,
+      '以下测试 spawn 了文档审计却未正确持锁:\n  '
+      + offenders.join('\n  ')
+      + '\n\n第 56 轮修掉的就是这个缺陷，第 9 轮我又连续违反两次。'
+      + '失败形态很隐蔽: 直接跑全绿，跑整套才失败，且失败信息指向一个'
+      + '与真因无关的断言——因为读到的是别人的探针。'
+      + '**报错指向的地方不是错的地方。**');
+  });
+
+  test('_doc-probe-lock 模块契约完好', () => {
+    const lockSrc = fs.readFileSync(path.join(TEST_DIR, '_doc-probe-lock.js'), 'utf8');
+    assertTrue(/withDocLock/.test(lockSrc), '必须导出 withDocLock');
+    assertTrue(/module\.exports/.test(lockSrc), '必须导出模块');
+    // 锁必须真的跨进程: 基于文件系统而非进程内变量
+    assertTrue(/mkdirSync|renameSync|writeFileSync/.test(lockSrc),
+      '锁必须落在文件系统上——进程内变量挡不住并发子进程');
+  });
+};

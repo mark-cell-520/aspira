@@ -14,10 +14,29 @@ const { FormulaSearch } = require('./formula-search.js');
 
 // [v6.4.5 性能] mathjs 惰性加载：mathjs 是 5MB 大库，顶层 require 拖慢启动 ~500ms
 // 改为首次需要时再加载（FormulaCalculator 构造时才触发）
+//
+// [诚实性修复·第四轮] 此前 `require('mathjs')` 没有 try/catch，
+// 于是 node_modules 缺失时**符号计算路径直接抛 MODULE_NOT_FOUND**——
+// 而 README/AGENTS.md/SKILL.md 三处都声称 "0 runtime dependencies"，
+// package.json 也把 mathjs 挂在 dependencies 里。**两处都不诚实**:
+// 文档说零依赖(运行时语义上成立，因为其它 require 都有 catch)，
+// 声明说必需(事实上可选)，而这一条路径既不 catch 也不降级。
+// 现在: mathjs 已移入 optionalDependencies，此处也改为缺失即降级，
+// 让"零依赖"在运行时语义上真正成立——scripts/audit-doc-numbers.js
+// 的 depsActuallyRequired 会每次扫描这一点，回到硬依赖就会报 ❌。
 let _mathInstance = null;
+let _mathMissing = false;
 function getMath() {
   if (_mathInstance) return _mathInstance;
-  const _rawMath = require('mathjs');
+  let _rawMath;
+  try {
+    _rawMath = require('mathjs');
+  } catch (_) {
+    // mathjs 是 optionalDependencies: 缺失是**合法状态**，不是异常。
+    // 降级为"无符号计算能力"，由调用方决定如何向用户说明。
+    _mathMissing = true;
+    return null;
+  }
   const math = _rawMath.create(_rawMath.all, {
     matrix: 'Array',
     number: 'number',
@@ -51,6 +70,24 @@ class FormulaCalculator {
     if (this._mathInstance) return this._mathInstance;
     this._mathInstance = getMath();
     return this._mathInstance;
+  }
+
+  // [诚实性修复·第四轮] mathjs 缺失时的统一出口。
+  // getMath() 现在缺失即返回 null(不再抛 MODULE_NOT_FOUND)，于是每个
+  // `this._mathOrThrow().evaluate(...)` 都会变成 "Cannot read properties of null" ——
+  // 一个把"可选依赖没装"误报成"代码有 bug"的错误信息。
+  // 所有符号计算路径改为先过这一道，拿到明确的降级说明。
+  _mathOrThrow() {
+    const m = this._math;
+    if (m) return m;
+    const err = new Error(
+      '符号计算需要可选依赖 mathjs，当前未安装。'
+      + '公式搜索/查表仍可用；如需求值与解方程，请 npm i mathjs'
+      + '（它是 optionalDependencies，缺失时本引擎其余功能不受影响）。'
+    );
+    err.code = 'OPTIONAL_DEP_MISSING';
+    err.optionalDep = 'mathjs';
+    throw err;
   }
 
   [Symbol.for('nodejs.util.inspect.custom')]() { return '[FormulaCalculator]'; }
@@ -130,7 +167,7 @@ class FormulaCalculator {
 
         const expression = this._substituteParams(formulaText, params, opts);
 
-        const value = this._math.evaluate(expression);
+        const value = this._mathOrThrow().evaluate(expression);
 
         return {
 
@@ -245,9 +282,9 @@ class FormulaCalculator {
 
       // 所有变量都已知：验证等式是否成立
 
-      const leftVal = this._math.evaluate(this._substituteParams(left, params, opts));
+      const leftVal = this._mathOrThrow().evaluate(this._substituteParams(left, params, opts));
 
-      const rightVal = this._math.evaluate(this._substituteParams(right, params, opts));
+      const rightVal = this._mathOrThrow().evaluate(this._substituteParams(right, params, opts));
 
       return {
 
@@ -441,7 +478,7 @@ class FormulaCalculator {
 
       try {
 
-        const val = this._math.evaluate(this._substituteParams(right, params, opts));
+        const val = this._mathOrThrow().evaluate(this._substituteParams(right, params, opts));
 
         return val;
 
@@ -459,9 +496,9 @@ class FormulaCalculator {
 
     try {
 
-      fNode = this._math.parse(substituted);
+      fNode = this._mathOrThrow().parse(substituted);
 
-      dfNode = this._math.derivative(fNode, unknown);
+      dfNode = this._mathOrThrow().derivative(fNode, unknown);
 
     } catch (e) {
 
@@ -557,7 +594,7 @@ class FormulaCalculator {
 
     const feval = (g) => {
 
-      try { return this._math.evaluate(substituted, { ...scope0, [unknown]: g }); }
+      try { return this._mathOrThrow().evaluate(substituted, { ...scope0, [unknown]: g }); }
 
       catch { return NaN; }
 
@@ -715,11 +752,11 @@ class FormulaCalculator {
 
       // 用 mathjs 求解：A * x = b
 
-      const A_math = this._math.matrix(A);
+      const A_math = this._mathOrThrow().matrix(A);
 
-      const b_math = this._math.matrix(b);
+      const b_math = this._mathOrThrow().matrix(b);
 
-      const x_math = this._math.lusolve(A_math, b_math);
+      const x_math = this._mathOrThrow().lusolve(A_math, b_math);
 
       
 
@@ -829,7 +866,7 @@ class FormulaCalculator {
 
     try {
 
-      const result = this._math.simplify(expression);
+      const result = this._mathOrThrow().simplify(expression);
 
       return {
 

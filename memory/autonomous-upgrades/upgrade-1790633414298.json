@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T22:10:14.298Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 221,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1201/0",
+    "baseline": "1195/0",
+    "delta": "+6"
+  },
+  "result": "doc-honest-numbers 切片(连续第 5 轮)。\n基线实测 verify 14/14、run-all 1195/0。\n\n═══ 本轮角度: 元问题 —— 分母本身诚不诚实 ═══\n前四轮修了「扫哪些文件」「读哪些写法」「怎么测量层数」\n「声明 vs 事实」。本轮问:\n  自报「校验 45 条 / 数字型声称 695 条 = 6.5%」\n  **这个分母诚不诚实?**\n\n═══ 实测: 分母虚高 ═══\n把 NUMISH 粗计拆开:\n  · 383 条是**百分比** —— \"FP 率 0.9%\" \"召回 85%\"，\n    它们是**被测量出来的结果**，不是文档里的规模声称\n  · 150 条在**代码围栏内** —— 示例命令、配置片段、注释\n\n拿这种分母算出的百分比，暗示\"还有 96% 没审\"是误导:\n**用一个虚高的分母冒充诚实，与虚假的精确度是同一种不诚实。**\n\n═══ 抽样进一步证实 ═══\n从\"可审形态\"均匀抽 40 条，24 条可视样本中\n绝大多数是**历史叙事**(CHANGELOG 条目、带日期的审计报告、\nplan 步骤、规则条数、模块字段说明)。\n只有 1 条是真规模声称:\n  docs/audit-service-brief-zh.md 的\n  \"47 维判别引擎 + 132 个运行模块\"\n  —— 而它写的 47 维，实测是 54。\n\n═══ 修法 ═══\n① 分母只数**已扫文档**(排除已豁免的 49 份)\n② 分母剔除百分比、版本号/日期、代码围栏内容\n③ 分类报出分母构成，让读者看见它而不只是一个数\n④ 标签必须写\"已扫文档内\"而非\"全仓\"\n   (全仓 721 份 vs 已扫 601 份，\n    写\"全仓\"就是把豁免文件偷偷算回分母)\n⑤ 明说\"可审 695\"里仍含序数/括号/叙事引用/多义形态等\n   已知不审类别，故 6.5% 是**有构成说明的下界**，不是疏漏率\n\n═══ 我自己引入的两个错，被为锁它而写的测试抓住 ═══\n(a) 标签写\"全仓 NUMISH 粗计\"，而循环只遍历已扫集\n    —— 标签把豁免文件折回分母\n(b) rawClaims 在剥围栏**之后**才累加，\n    于是构成加起来 1228 > 标签写的 1078 ——\n    **一个自己都不自洽的分母构成，比没有构成更糟。**\n    已修: rawClaims 也计入围栏，四类互斥、粗计为四者之和。\n    现 695 + 383 + 0 + 150 = 1228，完全自洽。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1201/0**(基线 1195，净增 +6 ——\n新增 test/coverage-denominator-honesty.test.js 6 个用例)；\n审计 **45/45、0 不符**，覆盖面自报现为:\n  校验 45 / 可审 695 = 6.5%(有构成说明的下界)\n  分母构成: 可审 695 · 百分比 383 · 版本号/日期 0 · 代码围栏 150\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n只改 scripts/ + test/ + markdown，\n**未改引擎代码**，故未重启 MCP(181 工具在线，已确认)。\nREADME/SKILL/CURRENT_STATE 测试数已同步 1195 → 1201。\nAGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) doc-honest-numbers 已连续 **5 轮**。\n    五个角度(扫哪些文件/读哪些写法/怎么测量层数/\n    声明vs事实/分母是否诚实)都已推进。\n    **强烈建议轮换**。\n(b) 若仍选到本切片，唯一还剩的角度是\n    \"instant install\" 与 \"Node >= 18.17\" 的运行时验证。\n(c) 更建议转**维度健康**或**对抗鲁棒性**\n    (字母空格召回仅 39%)。"
+}

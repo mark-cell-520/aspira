@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T20:30:13.046Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 218,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1182/0",
+    "baseline": "1182/0",
+    "delta": "0"
+  },
+  "result": "doc-honest-numbers 切片。引擎选定(confidence 0.75)。\n基线实测 verify 14/14、run-all 1182/0。\n\n═══ 轮换修复见效 ═══\n上轮修好 exhausted 单向阀后，\n引擎本轮**改选 doc-honest-numbers**(0.65)，\n不再是连续 28 次的 test-coverage-gap。\n修复得到实证。\n\n═══ 执行切片: 先跑审计 ═══\n审计报 43/43 全一致、0 不符 —— 表面上没有待修项。\n但覆盖面自报 22.3%，其注释明说\"不能当漏洞数读，\n报它是为了让人问「剩下那些为什么没审」\"。\n本轮就问这个问题。\n\n═══ 真缺陷: 自报的 22.3% 本身偏乐观 ═══\n实测分母:\n  根目录 md 21 份(纳入 14)  → 193 条数字型声称\n  子目录 md 368 份           → 1894 条数字型声称\n\n根因: `const DOCS = fs.readdirSync(ROOT)` **只列根目录**，\n不递归。368 份子目录 md 完全不在扫描范围。\n\n真实覆盖率: 豁免前 **9.2%**，豁免后 **3.5%**。\n**仪器的自报之所以乐观，与仪器之所以失明是同一个原因。**\n\n═══ 扩到子目录: 21 处不一致，然后仪器又错了 ═══\nwalkMd 递归后立刻报 21 处。逐条核对，\n**绝大多数是正则误匹配**(第 25 次仪器失效):\n  ·「其他 55 个模块在注册表中但不在管道中」\n    陈述的是**管道覆盖面**，不是引擎规模\n  ·「本案触发的 6-10 个维度」是案例描述，\n    正则捕到区间上界 10\n  ·「Node.js >= 16」是**通用 JS 项目规范**，\n    不是 aspira 自身要求\n  ·「6 个模块」出现在升级示例里\n\n**把仪器的局限报成文档缺陷，会让人去\"修\"正确的文字。**\n\n═══ 两道闸门 ═══\n① 引擎自我指称门槛: 同一行/紧邻上下文出现\n   aspira|新愿|heartflow|引擎|本仓库|判别 才算 aspira 的规模声称\n② 区间排除: 6-10 这类范围不是规模声称\n\n═══ 穿过闸门的 4 处真缺陷(已修) ═══\n  capability-audit-methodology.md  「新愿有 114 个模块」→ 132\n  debug-workflow/SKILL.md          「55 个模块在注册表中」→ 改为不写死\n  debug-workflow/SKILL.md          「新愿有 60 个模块」→ 132\n  module-upgrader/SKILL.md         「54个模块、18条CORE记忆」→ 132\n\n第 5 处「115 个模块」是**我自己刚写的**(132−17)，\n审计照样报它不符 —— 派生的差值必然腐烂，删掉不辩护。\n\n═══ 两个既有守卫测试失败，都该怀疑但都锁错了东西 ═══\n① audit-doc-coverage: 断言字面量\n   `const DOCS = fs.readdirSync(ROOT)`\n   —— **任何正确重构都会打破它**。\n   它想锁的原则(不得硬编码、必须动态扫描)我完全遵守，\n   只是变量名换了。已改为锁原则。\n\n② doc-honest-numbers-chinese: 取**第一个** reject:\n   之后的 600 字。selfRef 上移后第一个不再是中文模式。\n   且 indexOf(\"个模块\") 会先匹配到**注释里**的\n   \"132 个模块\" 字样。已改为用正则精确定位模式定义。\n\n**守卫该锁原则，锁具体实现会让\"正确的前进\"被当成\"倒退\"拦下。**\n\n═══ 门禁 ═══\nverify 14/14；run-all **1182/0**(基线 1182，净增 0——\n本轮工作是审计口径扩展+文档修复，未加新测试)；\n审计 **43/43、0 不符**，且**已扫文档 14 → 289 份**。\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n本轮**只改 scripts/ + test/ + markdown，未改 src/ 引擎代码**，\n故未重启 MCP(181 工具在线，已确认)。\nAGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 真实覆盖率仍只有 3.5%(1229 条里只校 43 条)。\n    剩余大量是版本号/日期/提案前提/历史叙事，\n    但\"已扫 289 份、每条豁免带理由\"是可接受的诚实状态 ——\n    3.5% 是**审得动的那部分**的比例，不是疏漏率。\n(b) doc-honest-numbers 本轮已见效(抓到 4 处真腐烂)，\n    但下一轮的边际收益可能下降，可再评估。\n(c) 建议下轮关注维度健康或对抗鲁棒性(字母空格召回仅 39%)。"
+}

@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T21:20:12.735Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 219,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1190/0",
+    "baseline": "1186/0",
+    "delta": "+4"
+  },
+  "result": "doc-honest-numbers 切片(连续第 3 轮)。\n基线实测 verify 14/14、run-all 1186/0。\n\n═══ 本轮角度: 审计的\"实测值\"本身是否可信 ═══\n前两轮修了「扫不到文件」和「读不懂写法」，\n本轮审第三件事: 测量口径。\n\n═══ 先排除一个自己的错误(第 27 次仪器失效) ═══\n用静态正则数 handler 映射，正则要求引号键名\n`['\"]name['\"]:`，而 mcp-server.js 用**无引号键名**\n`aspira_think: handleThink,` ——\n**181 个工具全被判成\"没有 handler\"。**\n\n破绽是这个结论与运行中的系统矛盾:\n几分钟前 tools/list 刚返回 181 个可用工具。\n改用运行时口径(起 socket server 逐个 tools/call):\n**181/181 全部可调用** ——\n  177 ok\n  4 个写工具因未带写权限而 isError(符合设计)\n\n**静态检测的结论与运行时事实相反，而前者看起来完全合理。**\n\n═══ 真问题: \"17 层\"永远绿灯但会误导 ═══\nrunPipeline 实测:\n  input  → 11 层\n  draft  → 12 层\n  output → 13 层\n**17 从不匹配任何一次运行。**\n\n但 17 也是真的 —— 它是 pipeline.js 里可提取的\n**静态层名数**。两个都是事实。\n\n审计此前只核对静态名单，于是 \"17-layer pipeline\"\n这个声称永远绿灯:\n**一个数字可以在一种读法下完全正确、\n   在另一种读法下完全误导，\n   而只测一种读法的审计看不见这个区别。**\n\n═══ 修法 ═══\n① 审计每次运行都实测并**并排报两个口径**:\n   静态层名 17 个 / 单次运行最多命中 13 个\n   (input=11 draft=12 output=13)\n   不一致时打 ⚠ 并说明\"引用时须说明口径\"\n② README 的 17-layer pipeline 加 * 脚注\n③ SKILL.md 17 层一节加说明块\n④ 新测试 test/layer-count-two-readings.test.js(4 用例)\n   锁住: 两口径不同、运行最大值小于静态值、\n   模式深度递增 input<draft<output、三份文档都带说明\n\n═══ 门禁 ═══\nverify 14/14；run-all **1190/0**(基线 1186，净增 +4)；\n审计 **48/48、0 不符**，且新增双口径报出；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n只改 scripts/ + test/ + markdown，\n**未改引擎代码**，故未重启 MCP(181 工具在线，已确认)。\nREADME/SKILL/CURRENT_STATE 测试数已同步 1186 → 1190。\nAGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) doc-honest-numbers 已连续 3 轮。\n    三个角度(扫哪些文件/读哪些写法/怎么测量)都已推进，\n    **边际收益明显下降，强烈建议下次轮换**。\n(b) 若仍选到本切片，下一个可做角度是:\n    \"0 runtime dependencies\" 与 \">=18.17\" 这两个\n    声称的**运行时验证**(目前只查 package.json 声明，\n    未验证实际 require 图是否真的零依赖)。"
+}

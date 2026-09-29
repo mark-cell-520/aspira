@@ -755,35 +755,31 @@ async function step16_identityCheck(result) {
 
 async function step17_engineFunctions(result) {
 
-  // 引擎实际文件位置（已确认）：
-
-  // - DreamEngine: dream.js (class DreamEngine)
-
-  // - SelfModel: consciousness/self-model.js
-
-  // - SelfHealingRL: self-healing-rl.js ✓
-
-  // - DecisionVerifier: decision-verifier.js ✓
-
-  // - PsychologyEngine: psychology.js (函数式，非类) ✓
-
-  // - EmotionalProtocol: 不存在（功能在 psychology.js）
-
-  // - TruthfulnessChecker: 不存在
-
+  // [第十六轮修复] 引擎实际文件位置——**按实测填写，不是按 src/core 猜**。
+  // 原表把 6 个引擎里 5 个的 dir 都写成 'src/core'，其中只有
+  // DecisionVerifier 真的在 src/core/。实测位置:
+  //   PsychologyEngine → src/emotion/psychology.js
+  //   DreamEngine      → src/dream/dream.js        (class DreamEngine)
+  //   SelfModel        → src/identity/self-model.js
+  //   SelfHealingRL    → src/cortex/self-healing-rl.js
+  //   DecisionVerifier → src/core/decision-verifier.js
+  //   LessonBank       → src/cortex/lesson-bank.js
+  // 改之前 allFound = 1/6，门槛是 >= 4，所以 step 17 **永远 fail**。
+  // 上面那段旧注释还写着"引擎实际文件位置（已确认）"并列出 DreamEngine: dream.js，
+  // 而下一行的 dir 仍旧是 src/core——**注释知道正确位置，代码用错的那个**。
   const engines = [
 
-    { name: 'PsychologyEngine', file: 'psychology.js', dir: 'src/core', fns: ['analyze', 'calculatePAD', 'detectPAD'] },
+    { name: 'PsychologyEngine', file: 'psychology.js', dir: 'src/emotion', fns: ['analyze', 'calculatePAD', 'detectPAD'] },
 
-    { name: 'DreamEngine', file: 'dream.js', dir: 'src/core', fns: ['dream'] },
+    { name: 'DreamEngine', file: 'dream.js', dir: 'src/dream', fns: ['dream'] },
 
-    { name: 'SelfModel', file: 'self-model.js', dir: 'src/core/consciousness', fns: ['update', 'get'] },
+    { name: 'SelfModel', file: 'self-model.js', dir: 'src/identity', fns: ['update', 'get'] },
 
-    { name: 'SelfHealingRL', file: 'self-healing-rl.js', dir: 'src/core', fns: ['update', 'getAvailable'] },
+    { name: 'SelfHealingRL', file: 'self-healing-rl.js', dir: 'src/cortex', fns: ['update', 'getAvailable'] },
 
     { name: 'DecisionVerifier', file: 'decision-verifier.js', dir: 'src/core', fns: ['check', 'verify'] },
 
-    { name: 'LessonBank', file: 'lesson-bank.js', dir: 'src/core', fns: ['add', 'retrieve'] },
+    { name: 'LessonBank', file: 'lesson-bank.js', dir: 'src/cortex', fns: ['add', 'retrieve'] },
 
   ];
 
@@ -817,13 +813,22 @@ async function step17_engineFunctions(result) {
 
 async function step18_dreamEngineCheck(result) {
 
+  // [第十六轮修复] 这里原来写 `path.join(ROOT, 'src/core', f)`，
+  // 但这三个文件全都在 **src/dream/**，不在 src/core/。
+  // 于是 fs.existsSync 恒为 false、found 恒为空数组、
+  // step 18 **永远报 fail**——而 runDiagnostic 的 20 步里只有这一步
+  // 永远红，整套自检从没有任何测试调用过，所以没人知道。
+  // 这正是仓库反复记载的形状: **一个看错目录的风险检查，
+  // 比没有检查更糟**——它让" dream 引擎还在吗"这个问题
+  // 永远得到"不在"的答复，而这个答复从来没对过，也从来没被质疑。
+  const DREAM_DIR = 'src/dream';
   const files = ['dream-engine.js', 'dream.js', 'interactive-dream.js'];
 
   const found = [];
 
   for (const f of files) {
 
-    const file = path.join(ROOT, 'src/core', f);
+    const file = path.join(ROOT, DREAM_DIR, f);
 
     if (fs.existsSync(file) && !isEmptyFile(file)) found.push(f);
 

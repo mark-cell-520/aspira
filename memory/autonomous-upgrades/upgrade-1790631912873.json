@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T21:45:12.873Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 220,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1195/0",
+    "baseline": "1190/0",
+    "delta": "+5"
+  },
+  "result": "doc-honest-numbers 切片(连续第 4 轮)。\n基线实测 verify 14/14、run-all 1190/0。\n\n═══ 本轮角度: 声明型数字 ═══\n前三轮修了「扫哪些文件」「读哪些写法」「怎么测量层数」。\n本轮审**从未被任何仪器验证过的声称**:\n\nREADME / AGENTS.md / SKILL.md 三处都写\n  \"0 runtime dependencies / instant install\"\n而 package.json 的 **dependencies 里挂着 4 个包**:\n  @xenova/transformers, js-yaml, mathjs, pm2\n\n审计只查 engines.node，从不查依赖数 ——\n**一个被三份文档重复的声称，一次都没被测过。**\n\n═══ 判定: 必须实测而不能只读代码 ═══\nnode_modules **完全不存在**时:\n  · 引擎启动 132 个模块\n  · initErrors === undefined\n  · think() 完整工作\n\n所以「零依赖」在**运行时语义上为真** ——\n那些 require 都在 try/catch 或惰性 getter 里，缺失即降级。\n\n═══ 修法: 改声明，不改文档 ═══\n不是让文档迁就声明，而是让声明对齐事实:\n四个包移入 **optionalDependencies**。\n\n═══ 新仪器立刻抓到两个缺陷 ═══\n(a) 第 28 次仪器失效: 扫 src/ 外部 require 时没剥注释，\n    把文档块里的 `require('@yun520-1/heartflow')`\n    当成真依赖报出来。\n    **写在注释里的示例 require 不是依赖，\n      正如写在散文里的旧数字不是声称。**\n    已加 stripComments。\n\n(b) 剥掉注释后只剩 mathjs 一个**真硬依赖**:\n    formula-calculator.js 的 getMath() 里\n    `require('mathjs')` **没有 try/catch**，\n    node_modules 缺失时符号计算路径直接抛\n    MODULE_NOT_FOUND ——「可选」名不副实。\n\n    已修: 缺失即返回 null，统一出口 _mathOrThrow()\n    带 code=OPTIONAL_DEP_MISSING 并点名缺失的包。\n    实测: 公式查表路径返回诚实的 underdetermined\n    而不是崩溃。\n\n═══ 既有守卫反对，但它维护的是旧事实 ═══\nbin/verify.js 有:\n  `if (deps < 1) throw '新愿至少需要 mathjs'`\n  标题却写「npm 必选依赖为空」——\n  **标题与条件自相矛盾，条件是旧事实的化石。**\n\n它本轮正确地失败了(verify 一度 13/14)，\n但失败理由是错的。已改为锁真实契约:\n  ① dependencies 必须为空\n  ② optionalDependencies 的 require 点必须在 try/catch 内\n  (②比旧断言更强: 旧断言只说\"有依赖\"，\n   新断言说\"依赖可选且真的可选\")\n\n═══ 门禁 ═══\nverify **14/14**(曾 13/14，改守卫后恢复)；\nrun-all **1195/0**(基线 1190，净增 +5 ——\n新增 test/zero-runtime-deps.test.js 5 个用例)；\n审计 **48/48、0 不符**，且新增依赖双口径:\n  dependencies 声明 0 个 / optionalDependencies 4 个\n  src/ 内硬依赖 **0 个** ← 「零依赖」现在是真的\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n\n═══ 运行时重启 ═══\n本轮**改了 src/ 引擎代码**(formula-calculator.js)，\n已安全重启 MCP: 181 工具在线，已确认。\nREADME/SKILL/CURRENT_STATE 测试数已同步 1190 → 1195。\nAGENTS.md 新增条目。\n\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) doc-honest-numbers 已连续 4 轮，\n    四个角度(扫哪些文件/读哪些写法/怎么测量/声明vs事实)\n    都已推进，**强烈建议轮换**。\n(b) 若仍选到本切片，下一角度:\n    \"instant install\" 与 \"Node >= 18.17\" 的运行时验证\n    (后者已部分覆盖，前者尚无仪器)。\n(c) 更建议转向**维度健康**或**对抗鲁棒性**\n    (字母空格召回仅 39%)。"
+}

@@ -1,0 +1,95 @@
+{
+  "ts": "2026-09-29T03:10:10.800Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.62,
+  "confidence": 0.65,
+  "reasoning": "Selected: \"MCP 工具增强\" (score: 0.62). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    { "id": "mcp-tool-enhancement", "label": "MCP 工具增强", "score": 0.62 },
+    { "id": "dimension-health-audit", "label": "维度健康审计与增强", "score": 0.61 },
+    { "id": "adversarial-robustness", "label": "对抗鲁棒性增强", "score": 0.61 },
+    { "id": "performance-optimization", "label": "性能优化", "score": 0.61 },
+    { "id": "fp-recall-calibration", "label": "误报/召回校准", "score": 0.6 }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 235,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "measurement": {
+    "method": "全量调用 181 个 MCP handler(require('./src/mcp-server.js').HANDLERS，await fn({}))，而非静态清点。约定 #3 的三处一致与工具/处理器互覆盖早已被 test/mcp-tool-integrity.test.js(7 例)锁住且全绿，所以本轮改用行为测量。",
+    "instrumentError": "第一版仪器是错的: 同步调用 handler，异步 handler 返回 Promise，JSON.stringify(Promise) 是 {}，于是 12 个健康工具被报成 returns size 2，其拒绝以 unhandled rejection 逃逸成游离堆栈。改成 await 后图像才干净。测错东西的仪器会把健康代码报成空心。",
+    "result": {
+      "ok": 132,
+      "throw": 18,
+      "errorObj": 31,
+      "throwAreValidation": "18/18 全是正确的必填参数提示(input/text/action/text 和 dimension 是必填参数)",
+      "errorObjAreValidation": "29/31 是正确的缺参提示",
+      "genuineDefects": 2,
+      "genuineDefectList": [
+        "aspira_check_outbound: src/gate-outbound.js 的 scanPII 用 pattern 描述对象初始化 findings，导致 piiFindings.length 恒 >= 3、action 永不为 pass、真实命中数被 +3 污染",
+        "aspira_check_outbound: checkOutbound 首参解构无默认值，text 为 undefined 时 estimateClassification 里 text.toLowerCase() 抛 TypeError，原始 TypeError 消息被当作错误返回(其余 18 个缺参工具都返回干净的 text 是必填参数)"
+      ]
+    },
+    "notInScope": {
+      "aspira_benchmark_run": "未找到数据包 —— 判为合法的无数据状态，未扩大切片去查",
+      "degradedTools": [
+        "aspira_boundary_check (boundaryGuard not loaded)",
+        "aspira_decision_decide (decision.decide not available —— AGENTS.md 点名的四个管理写工具之一)",
+        "aspira_decision_feedback (decisionFeedback not initialized)"
+      ],
+      "note": "这三个工具「广告了但不可用」是本轮新发现的已知缺口，披露而不静默扩大切片; 其中 aspira_decision_decide 涉及写权限模型，改动需要单独一轮。"
+    }
+  },
+  "fixes": [
+    {
+      "file": "src/gate-outbound.js",
+      "what": "scanPII 的 findings 从空数组开始; 三条幽灵 pattern 描述对象中，email 与 PII_RULES.EMAIL 等价、\\b[4-6]\\d{15}\\b 是 PII_RULES.BANK_CARD 的子集(均已覆盖，照搬会造成同一跨度双计)，只有护照 \\b[PEG]\\d{8}\\b 真正未被覆盖，故提为 PII_RULES.PASSPORT 正式规则并获得 id/name/severity 与 maskPII 脱敏条目; checkOutbound 参数先归一化再校验(只写 = {} 不够——默认值挡 undefined 不挡 null)",
+      "before": "今天天气不错 / hello world / 12345 / '   ' 全部判 rewrite，reason '命中 PII 规则 (3 处)'，那 3 处一条也不存在; pass 分支永不可达; 2 处真实 PII 报成 piiCount=5",
+      "after": "无 PII 文本判 pass、piiCount=0、reason '无 PII 命中，密级符合'; 单个手机号/邮箱/护照/银行卡各 piiCount=1 且 id 正确; 护照命中并脱敏 ***护照***"
+    },
+    {
+      "file": "test/compliance/compliance.test.js",
+      "what": "G3-4 原先断言 checkOutbound({text:'今天天气真好'}).action==='rewrite'，注释写'实际: 公开内容触发 PII 规则 rewrite（非 bug，是 PII 规则触发）'—— 那句话是缺陷的产物，而断言把坏行为变成了承重墙。与同文件 G3-3 是同一教训(那次 forcedLevel 契约不匹配杀死密级 block 分支，注释同样把缺陷记为'实际')。现改为断言设计行为(pass, piiCount 0)，并用真含 PII 的文本保住原测试意图(PII → rewrite + 脱敏)",
+      "before": "今天天气真好 → rewrite (把幽灵 finding 当真实 PII 命中)",
+      "after": "今天天气真好 → pass/piiCount 0; 今天天气真好，我的手机是13812345678 → rewrite/piiCount 1/id=PHONE/有脱敏"
+    }
+  ],
+  "locks": [
+    {
+      "file": "test/outbound-pii-no-phantom.test.js",
+      "cases": 5,
+      "checks": [
+        "scanPII 不得返回缺字段的幽灵 finding (源码级，剥注释后匹配 const findings = []，因为修复说明引用了被删的旧代码，不剥会把锁自己的说明当罪证)",
+        "pass 分支必须可达: 无 PII 的文本不得被判 rewrite/block",
+        "piiCount 必须等于真实命中数，不得被虚增 (4 个单 PII 用例)",
+        "每条 finding 都必须有可行动的 id/name/severity",
+        "这把锁本身必须能变红: 同一套判据跑已知含幽灵的数组必须检出 1 条 (一个永远通过的检查与没有检查不可区分)"
+      ],
+      "liveInjection": "把三条幽灵 finding 加回 src/gate-outbound.js → 3 条用例按名变红(含 pass 分支可达性); 恢复后全过"
+    }
+  ],
+  "liveVerified": [
+    "require 层面: 7 种非法输入(不传参/null/{}/text=''/数字/数组/对象)全部返回干净的 'text 是必填参数(非空字符串)'",
+    "活 MCP 服务器(重启后 401 未认证，tools/list 181/181): args={} → error: text 是必填参数(非空字符串); text=今天天气不错 → action=pass piiCount=0; text=手机 13800138000 → action=rewrite piiCount=1"
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1343 通过 / 0 失败 (自 1338)",
+    "audit": "85/85",
+    "corpus": "106 benign / FP 0.9%, 41 malicious / recall 100% (未变)",
+    "srcChanged": true,
+    "mcpRestarted": true,
+    "mcpCheck": "HTTP 401 未认证正确拒绝; tools/list 181/181 aspira_*"
+  },
+  "docsSynced": ["CURRENT_STATE.md", "README.md", "SKILL.md"],
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "nextRecommendation": "adversarial-robustness —— 最大已知缺口是字母间距规避召回 39% 对明文 100%，而那个天真的修法已被测为净负(折叠 53 个良性样本换回 1 个恶意)。本周期还留下一个披露未修的缺口: aspira_boundary_check / aspira_decision_decide / aspira_decision_feedback 三个工具广告了但不可用。"
+}

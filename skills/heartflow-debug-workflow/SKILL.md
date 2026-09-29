@@ -19,7 +19,7 @@ tags: [heartflow, debugging, p0-fix, dead-code, version-sync, memory-status, mcp
 - 用户说"新愿版本错误" — 可能是多引擎版本分裂
 - 用户说"写了一堆代码没有调用起来"
 - 管道引擎报 `Pipeline deadlock` 或阶段失败
-- 用户问"新愿到底能干什么"或"新愿的能力是什么" — 需要区分"注册了"和"被调用了"，pipeline 只调了 5 个阶段，其他 55 个模块在注册表中但不在管道中
+- 用户问"新愿到底能干什么"或"新愿的能力是什么" — 需要区分"注册了"和"被调用了"，pipeline 只调 17 个层，注册表里其余模块处于"注册了但不在管道中"的状态(模块总数与层数均由 bin/verify.js 实测，此处不写死——写死的差值是个必然腐烂的数字)
 
 ---
 
@@ -77,7 +77,7 @@ tags: [heartflow, debugging, p0-fix, dead-code, version-sync, memory-status, mcp
 
 ## ⚡ 关键 Pitfall：模块注册了但没被调用（v5.0.0 新发现）
 
-**症状**：新愿有 60 个模块在 `_modules` 注册表中，但 `think()` 只有 9 个被直接调用，ThoughtChain 只有 3 个 dispatch。用户说"写了一堆代码，没有调用起来"。
+**症状**：新愿有 132 个模块在 `_modules` 注册表中，但只有一部分被直接调用，其余处于"注册了但没接线"状态。用户说"写了一堆代码，没有调用起来"。
 
 **根因**：新愿没有统一的调用管道。每个模块在 `start()` 中初始化、在 `_registerModules()` 中注册、在 `ALLOWED_ROUTES` 中声明路由——但没有任何机制保证它们被 `think()` 实际调用。
 

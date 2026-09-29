@@ -32,6 +32,8 @@
  * 正则，验证它能匹配 CURRENT_STATE.md 的真实claim文本。
  */
 module.exports = function ({ test, assertEqual, assertTrue }) {
+  const { withDocLock } = require('./_doc-probe-lock.js'); // [第七轮] 跑审计须持共享文档锁(见 test/_doc-probe-lock.js)
+  return withDocLock(() => {
   const fs = require('fs');
   const path = require('path');
   const ROOT = path.join(__dirname, '..');
@@ -49,16 +51,25 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     while ((m = re.exec(histMatch[1]))) historical.add(m[1]);
   }
 
-  test('DOCS 不得再是硬编码的 3 文件列表', () => {
-    // 这是本次修复的核心: 曾经就是 const DOCS = ['README.md','SKILL.md','AGENTS.md']
-    const hardcoded = /const DOCS = \[/;
-    assertTrue(!hardcoded.test(scriptSrc),
-      'DOCS 不得硬编码文件列表——那正是 18 个文件失明的原因');
-    assertTrue(/const DOCS = fs\.readdirSync\(ROOT\)/.test(scriptSrc),
-      'DOCS 应由 readdirSync 动态扫描全部 markdown');
+  test('审计范围不得硬编码文件列表(必须动态扫描)', () => {
+    // 这是上一轮修复的核心: 曾经就是 const DOCS = ['README.md','SKILL.md','AGENTS.md']
+    // 导致 18 个根目录 md 完全失明。
+    // [本轮扩展] 之后又发现 readdirSync(ROOT) **只列根目录**，
+    // 子目录 368 份 md(约 1894 条数字型声称)完全不在扫描范围，
+    // 真实覆盖率只有 9.2%。于是 DOCS 被 walkMd + DOCS_RECURSIVE 取代。
+    //
+    // 这里锁的是**原则**而不是变量名: 不得硬编码，必须动态发现。
+    // 上一版写成 /const DOCS = fs\.readdirSync\(ROOT\)/, 本轮改了结构它就失败——
+    // 守卫该锁原则，锁具体实现会让"正确的前进"被当成"倒退"拦下。
+    assertTrue(!/const (?:DOCS|DOCS_RECURSIVE)\s*=\s*\[/.test(scriptSrc),
+      '审计范围不得硬编码文件列表——那正是 md 失明的原因');
+    assertTrue(/walkMd\s*\(/.test(scriptSrc),
+      '必须用 walkMd 递归扫描——只列根目录会让子目录全部失明');
+    assertTrue(/DOCS_RECURSIVE/.test(scriptSrc),
+      '应存在 DOCS_RECURSIVE 作为实际扫描范围');
   });
 
-  test('全部非历史 markdown 都必须进入审计范围', () => {
+  test('全部非历史 markdown 都必须进入审计范围(含子目录)', () => {
     const expected = allMd.filter(f => !historical.has(f)).sort();
     // 至少覆盖原来的 3 个 + 本周期发现盲区的 2 个
     for (const f of ['README.md', 'SKILL.md', 'AGENTS.md', 'CURRENT_STATE.md', 'CONTRIBUTING.md']) {
@@ -70,6 +81,13 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     // 历史文档必须被豁免且有理由(每条豁免值后应有注释说明)
     for (const h of historical) {
       assertTrue(allMd.includes(h), `豁免的 ${h} 应真实存在`);
+    }
+    // [本轮扩展] 子目录豁免也必须附理由
+    assertTrue(/EXEMPT_DIRS\s*=/.test(scriptSrc),
+      '子目录豁免必须成表且每条带理由');
+    for (const reason of ['report', 'docs', 'plans']) {
+      assertTrue(scriptSrc.includes(`'${reason}'`),
+        `子目录 ${reason}/ 的豁免应有显式理由`);
     }
   });
 
@@ -145,5 +163,6 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertTrue(!!a && !!b, '两处都应有测试数声称');
     if (a && b) assertEqual(a[1].replace(/,/g, ''), b[1].replace(/,/g, ''),
       `CURRENT_STATE.md 说 ${a[1]} 而 README 说 ${b[1]}，跨文档不一致`);
+  });
   });
 };

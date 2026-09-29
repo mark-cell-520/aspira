@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T23:25:13.594Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 224,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1216/0",
+    "baseline": "1210/0",
+    "delta": "+6"
+  },
+  "result": "doc-honest-numbers 切片(连续第 8 轮)。\n基线实测 verify 14/14、run-all 1210/0。\n\n═══ 上轮留下的方向被执行 ═══\n第七轮结尾写「机械化穷举审计 key 集 vs 文档实际\n出现的所有数字形态，不靠人工提问」。\n本轮照做，写成脚本穷举:\n  798 份文档 / 2792 处数字形态 / pats 命中 121 处(4.3%)\n绝大多数是噪音(ms/KB/MB/Phase/Astra/乱码切片)，\n筛到引擎规模类后剩下 3 个候选:\n  · benign / malicious —— 语料规模 ← 真盲区\n  · tests / failures(散文) —— changelog 历史快照，正确排除\n  · files / layers —— 叙事引用，正确排除\n\n═══ 为什么 benign/malicious 是要紧的 ═══\n文档三处写 \"106 benign / 41 malicious samples\"，\n而**审计一次都没量过它**。\n关键在于: **0.9% FP 和 100% recall 都以它为分母。**\n分母错了两个百分比同时失真，且没有任何仪器会报错。\n\n**错的分母比错的百分比更危险**——\n百分比至少会被怀疑，分母被当成「已知事实」。\n\n═══ 第 29 次仪器失效: 闸门过严导致漏报 ═══\n新加 benign/malicious 模式后，往 AGENTS.md 注入\n\"999 benign\"(实测 106)，**审计毫无反应**。\n\n逐层查下去，根因在 selfRef: 它只在数字**之前**的文本里找\n  aspira|新愿|heartflow|引擎|本仓库|判别|discriminator\n而那句是:\n  \"measures it on a hand-written labelled corpus of **999 benign\"\n—— 主语是 \"it\"(指 aspira)，字面上一个自指词都没有。\n于是 reject 返回真值，该声称被**静默跳过**。\n\n这与假阳性是**相反的失败**:\n  假阳性把对的报成错的 —— 吵闹但可见\n  **漏报把错的静默吞掉 —— 安静且不可见**\n而审计的全部价值就在于不错过。\n一个会把错声称吞掉的闸门，比没有闸门更糟。\n\n═══ 修法与一个自我否定的设计 ═══\n① ENGINE_SELF 放宽: 语料规模是**引擎自评指标**，上下文天然带\n   false-positive / recall / corpus / calibrat / labelled 等词。\n② NARRATIVE 扩: 放宽后两条历史语料规模立刻被报出来\n   (\"corpus grew by 16 benign ... and 7 malicious\"、\n    \"folded 53 additional benign samples to recover 1 malicious\")\n   —— 它们讲语料**曾经如何长大**，不是当前规模。\n\n⚠️ ② 的实现是**枚举动词**，而枚举型过滤器\n   每遇到一种新叙述就漏一次。本轮同时加了\n   \"from N to N\" 式变化结构识别，但**没有解决枚举本身**。\n   残余风险已写在源码注释与 AGENTS.md，而非假装修好。\n\n═══ 一个过程教训: 测试把自己的叙述当成残留 ═══\n新测试的残留检查第一版写 !/999 benign/，\n而 AGENTS.md 那段「讲述本轮如何发现漏报」的散文\n恰好引用了注入示例 —— 于是**测试把文档对自身的\n正确描述误判成自己的污染**，恢复明明成功却报失败。\n已改为只认本测试注入的具体串\n(labelled corpus of **999)。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1216/0**(基线 1210，净增 +6 ——\n  test/corpus-size-measured.test.js 6 个用例，\n  含活体注入: 错语料数必须把审计变红)；\n审计 **53/53、0 不符、0 无法实测**；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%\n  (逃逸召回 85%/39%/95% 亦不变)。\n未改引擎代码(src/ 未动)，故未重启 MCP(181 工具在线)。\nREADME/SKILL/CURRENT_STATE 测试数同步 1210 → 1216。\nAGENTS.md 新增条目。\n\n═══ 下次方向 ═══\n(a) 本切片已连续 **8 轮**。本轮角度是「机械化穷举」，\n    第八个角度也已推进完。\n(b) **强烈建议轮换**。候选(按已测量缺口排序):\n    · 对抗鲁棒性: 字母空格召回仅 **39%**，最严重已知缺口\n    · 测试覆盖缺口: 169 个模块被加载但无测试\n    · 维度健康审计\n(c) 若仍选到本切片，下一个可试角度:\n    审计 pats 与**文档标题/表格结构**的对应关系\n    ( domains 是在标题里，下一个可能在表格列名里)。\n\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n"
+}

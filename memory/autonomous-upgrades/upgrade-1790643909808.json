@@ -1,0 +1,136 @@
+{
+  "ts": "2026-09-29T01:05:09.808Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 229,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "cycleSeq": 12,
+  "consecutive": 12,
+  "angle": "重跑周期 8 的机械枚举——文件集已缩 4 倍(798→218)、键集新增 6 个，\"已经枚举过了\"本身已是陈旧读数",
+  "findings": [
+    {
+      "id": "formula-library-unaudited",
+      "severity": "high",
+      "summary": "公式库条数: 三份文档三个数字，而 formulas 在审计里出现 0 次",
+      "detail": "INSTALL.md 公式库(2397个) 夸大约 4 倍; CURRENT_STATE.md 1286 formulas 夸大约 2 倍; formulas/README.md \"未拆分前的完整382条公式文件\" 是拆分前的旧值。实测 FormulaModule 默认加载的 formulas/formulas.json = 608 条(分域相加自洽)。陈旧读数比错数字更难发现，因为它曾经是对的。"
+    },
+    {
+      "id": "regression-lock-coupled-to-global-green",
+      "severity": "high",
+      "summary": "用\"全局 0 不符\"当自己闸门的回归锁，会被每一次新增合法键误伤，并指认错误的嫌疑人",
+      "detail": "test/audit-gate-scope.test.js 的「作用域计数不得被当成引擎总量」与「行内代码跨度内的数字…」原本断言 assertEqual(mismatchCount(out),0)，注释自陈\"「当前文档 0 不符」就是 notScoped 的回归锁\"。三处公式数字被发现有错后两条立刻变红，失败信息指向 notScoped / inCodeSpan，真因却在 INSTALL.md。已改为靶向断言。"
+    },
+    {
+      "id": "per-file-vs-total-same-family",
+      "severity": "design-note",
+      "summary": "公式模式只锁总量，故意不锁分文件计数",
+      "detail": "formulas-core.json(284) 与 formulas-archive.json(98) 是分文件计数且实测均为真，与总量 608 不是同一个量；拿 284 去对 608 就是自己制造假警报。三条模式各自锚定自己的标签，互不重叠。"
+    }
+  ],
+  "fixes": [
+    "scripts/audit-doc-numbers.js: 新增 m.formulas 实测(读 formulas/formulas.json，即 formula-module.js:13 的 formulasFile 默认值)",
+    "scripts/audit-doc-numbers.js: actual.formulas 接线",
+    "scripts/audit-doc-numbers.js: 新增三条 formulas 模式(INSTALL 表格 / CURRENT_STATE 行 / README 完整N条公式文件)",
+    "INSTALL.md: 公式库(2397个) → (608个)",
+    "CURRENT_STATE.md: 1286 formulas → 608 formulas",
+    "formulas/README.md: 完整382条公式文件 → 完整608条公式文件",
+    "test/audit-gate-scope.test.js: 两条回归锁由\"全局 0 不符\"改为靶向断言",
+    "test/formula-count-measured.test.js: 新建，6 个用例(三份文档活体注入 + 分文件计数不得被误匹配的回归锁)",
+    "README.md / SKILL.md / CURRENT_STATE.md: 测试数 1239 → 1245",
+    "AGENTS.md: 新增第十二轮条目"
+  ],
+  "liveInjections": [
+    {
+      "target": "INSTALL.md 公式库(608个) → (9999个)",
+      "before": "0 不符",
+      "after": "公式库总量 (INSTALL 表) = 9999 实测 608"
+    },
+    {
+      "target": "CURRENT_STATE.md 608 formulas → 1234 formulas",
+      "before": "0 不符",
+      "after": "公式库总量 (CURRENT_STATE 行) = 1234 实测 608"
+    },
+    {
+      "target": "formulas/README.md 完整608条 → 完整400条",
+      "before": "0 不符",
+      "after": "公式库总量 (README 原文件说明) = 400 实测 608"
+    }
+  ],
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1245/0",
+    "baseline": "1239/0",
+    "delta": "+6",
+    "audit": "85/85",
+    "auditBaseline": "82/82",
+    "auditDelta": "+3",
+    "scannedDocs": "218 (217 distinct, 1 duplicate)",
+    "auditableForms": "706 (基线 702)",
+    "corpus": "106 benign / 41 malicious(未变)",
+    "fp": "0.9%(未变)",
+    "recall": "100% plaintext(未变)",
+    "srcChanged": false,
+    "mcpRestart": false,
+    "mcp": "PID 99766 在线"
+  },
+  "instrumentNote": "新模式上线后 audit-gate-scope 两条测试直接跑也失败(非并发竞争)，一度怀疑是 doc-probe 锁问题复发；逐层排查后确认真因是三处文档数字确实写错。先修产品(文档数字)，再修仪器的耦合(回归锁改靶向)。",
+  "sync": {
+    "rsync": false,
+    "gitCommitPush": false,
+    "skillCopy": "过期，无同步任务",
+    "note": "未 rsync、未 git commit/push、技能副本过期无同步任务。src/ 未改动，故未重启 MCP。"
+  },
+  "rotationAdvice": [
+    "adversarial-robustness: 已知最大缺口——空字母间隔召回仅 39%(plaintext 100% / 字元分隔 85% / HTML 实体 95%)。第八轮已试过放宽 strip_letter_space 到 1-2 字母词并回退，再攻需换思路。",
+    "test-coverage-gap: 第十一轮附带发现 bin/verify.js 不查版本一致性，且无任何测试调用 scripts/sync-version.js——约定 #1 目前没有任何东西锁住。doc-honest-numbers 只能锁文档声称，锁不住 package.json/VERSION/源码三处一致。",
+    "doc-honest-numbers: 六个可问面(键/形态/闸门/文件集/被测-vs-被锁/枚举重跑)已问遍，剩余 623 条未认领形态经逐条核对均为子目录工作流指引或历史里程碑。建议下次轮换。"
+  ],
+  "exhausted": true
+}

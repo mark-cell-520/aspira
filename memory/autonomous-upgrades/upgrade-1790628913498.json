@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T20:55:13.497Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 218,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1186/0",
+    "baseline": "1182/0",
+    "delta": "+4"
+  },
+  "result": "doc-honest-numbers 切片(连续第 2 轮)。\n基线实测 verify 14/14、run-all 1182/0。\n\n═══ 上轮扩了扫描范围，本轮发现模式仍是盲区 ═══\n上轮把扫描从根目录扩到全仓(14 → 520 份 md)。\n但**模式只有 25 条且全是固定搭配**。\n\n用注入法实测: 往 README.md 追加 5 种写法各含错值:\n  \"ships with 139 modules in total\"      → 没发现\n  \"exposes 184 MCP tool for agents\"      → 没发现(单数)\n  \"1522 dispatch route entries\"          → 没发现(单数)\n  \"1197 tests passing right now\"         → 没发现\n  \"63 discrimination dimension\"          → 没发现(单数)\n**5 个一个都没发现，审计仍报 43/43 全绿。**\n\n报全绿只说明「它知道的那 43 条没错」。\n\n═══ 修法 ═══\n英文指标加复数容忍: modules?/tools?/routes?/tests?/dimensions?\n补后 5 个注入全部被发现。\n\n═══ 然后仪器又错了一次(第 26 次)，且是我造成的 ═══\n我顺手补了中文「N 维度」(省略\"个\")模式，\n全仓立刻产出 8 条\"不符\"，逐条核对**全是假阳性**:\n  \"self-audit.js(6维度审计引擎)\"     —— 那模块自己有 6 个审计维度\n  \"56题 × 6维度\" / \"5维度核心能力专项测试\" —— 测试集维度数\n  \"7维度 × 3用例 = 21个\"              —— 测试用例设计\n  \"4维度加权评分 (0-1)\"               —— 代码注释里的算法\n  \"三个维度(认知负荷/能量水平/社会压力)\" —— 稳态系统的维度\n\n**\"N 维度\"在中文里是多义结构**，远比\"N 个模块\"\n更常表示子集/测试集/算法维度，而非引擎总规模。\n该模式已撤回，并把\"知道盲区但选择不修\"写进源码。\n**已知盲区故意留着并记录，胜过用假阳性发生器把它藏起来。**\n\n═══ 顺带抓到一个真缺陷 ═══\nIDENTITY.md 写「99 个模块真实加载」，实测 **132**。\n它之所以长期不可见: 审计自己的中文模式探针\n(doc-honest-numbers-chinese.test.js)会在 run-all.js\n执行期间改写**这一行**再还原 ——\n**本该证明模式活着的探针，一直在编辑仪器要测的那一行。**\n已修为 132。\n\n═══ 建测试时又踩了三个仪器的坑 ═══\n(a) 注入追加到 README.md **末尾**，而 currentClaimsOnly()\n    把 \"| Version | Date | Change |\" 及其后整段剥掉 ——\n    5 个注入全落在被剥区间，探针自己制造了假阴性。\n(b) 注入句 \"The suite reports 1197 tests passing\"\n    不含引擎自我指称，被上轮的 selfRef 闸门拒了 ——\n    闸门是对的，探针是错的。\n(c) 首版断言 5 个值含 1197，但 ASPIRA_AUDIT_SKIP_TESTS=1\n    时 m.tests 按设计为 null，该声称变\"无法实测\" ——\n    **断言与它所测的设计相矛盾**。\n测试现已: 注入点在 changelog 表之前、注入句含引擎指称、\n只断言跳过模式能核的 4 个值。\n\n═══ 收尾时发现自己的叙事也触发了审计 ═══\nAGENTS.md 新条目讲述上轮工作、内含 \"99 个模块\"/\"1197 tests\npassing\" 等**被引用并已修/已否的旧值**，被新模式当成\n当前声称报出。narrativeQuote 闸门此前只挂在英文 modules\n模式上，已挂到全部中英文规模模式。\n**修好仪器后立刻发现仪器把自己的记录也当成了缺陷。**\n\n═══ 门禁 ═══\nverify 14/14；run-all **1186/0**(基线 1182，净增 +4 ——\n新增 test/audit-pattern-blindspot.test.js 4 个用例)；\n审计 **44/44、0 不符**；\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n只改 scripts/ + test/ + markdown(及 src/data 运行时数据)，\n**未改引擎代码**，故未重启 MCP(181 工具在线，已确认)。\nREADME/SKILL/CURRENT_STATE 测试数已同步 1182 → 1186。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) doc-honest-numbers 连续两轮，边际收益在下降。\n    模式盲区这一轮基本补完(英文复数容忍已上)，\n    下轮可转向**维度健康**或**对抗鲁棒性**。\n(b) 已知未修盲区(已记录在源码): 中文「N 维度」不审，\n    因多义; 3.6% 覆盖率是\"审得动的那部分\"的比例，非疏漏率。"
+}

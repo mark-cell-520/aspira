@@ -40,6 +40,7 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
   const fs = require('fs');
   const path = require('path');
   const { execFileSync } = require('child_process');
+  const { withDocLock } = require('./_doc-probe-lock.js'); // [第七轮] 共享文档探针互斥
   const ROOT = path.join(__dirname, '..');
   const SCRIPT = path.join(ROOT, 'scripts', 'audit-doc-numbers.js');
 
@@ -67,9 +68,19 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
   test('中文模式必须带 reject 过滤器(序数与括号不得计入)', () => {
     const src = fs.readFileSync(SCRIPT, 'utf8');
     assertTrue(/reject:/.test(src), '必须有模式带 reject 过滤器');
-    // 过滤器必须处理两种形态
-    const i = src.indexOf('reject:');
-    const seg = src.slice(i, i + 600);
+    // 过滤器必须处理两种形态。
+    // ⚠️ 上一版锚定"第一个 reject:" 之后的 600 字。本轮把 selfRef(引擎自我指称)
+    // 挪到了 pats 之前，Node.js 那条模式的 reject 成了第一个，于是本条失败——
+    // **守卫该锁原则(序数与括号必须被排除)，锁"第一个"就会在正确重构时误报。**
+    // 改为: 用正则定位「个模块」那条**模式定义**(re: /…个模块/g)，
+    // 再检查它及其 reject 是否覆盖两种形态。
+    // ⚠️ 不能用 indexOf('个模块')——注释里就有 "132 个模块" 字样，
+    // 会先匹配到注释，其后 700 字内没有 reject。锚点必须精确到定义本身。
+    const mDef = src.match(/re:\s*\/\(\\d\[\\d,\]\*\)\\s\*个模块\//);
+    assertTrue(!!mDef, '应存在「个模块」的中文模式定义');
+    const i = mDef.index;
+    const seg = src.slice(i, i + 700);
+    assertTrue(/reject:/.test(seg), '中文「个模块」模式必须带 reject');
     assertTrue(/第/.test(seg), 'reject 必须排除序数(第 N 个模块)');
     assertTrue(/[(（]/.test(seg), 'reject 必须排除括号内((N个模块))');
   });
@@ -80,7 +91,7 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
       'claims() 必须调用 p.reject——只声明不调用会让过滤器变成死代码');
   });
 
-  test('仪器必须真的抓住一个中文错数(注入验证，非仅断言模式存在)', () => {
+  test('仪器必须真的抓住一个中文错数(注入验证，非仅断言模式存在)', () => withDocLock(() => {
     // 这条是整个文件的意义: 前面几条只证明"模式写在那"，
     // 可能是个永远匹配不到东西的死模式。用临时注入证明它真能报警。
     const F = path.join(ROOT, 'IDENTITY.md');
@@ -104,14 +115,18 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
     // 还原后必须恢复全绿
     const after = runAudit();
     assertTrue(/不一致: 0/.test(after), `还原后应恢复全绿，实测: ${after.match(/文档声称总数[^\n]*/)}`);
-  });
+  }));
 
-  test('还原后审计必须无不一致(跳过模式下允许测试数无法实测)', () => {
+  // ⚠️ 这个 test 跑审计并断言"无不一致"，所以它也必须持锁:
+  // 它读的是**磁盘上的文档**，而别的探针此刻可能正在改写那份文档。
+  // 不持锁时它读到的是别人的探针，失败表现是"还原后仍不一致"——
+  // **看起来像自己没还原干净，实际是别人的临时状态。**
+  test('还原后审计必须无不一致(跳过模式下允许测试数无法实测)', () => withDocLock(() => {
     // ⚠️ 不能断言"无法实测: 0": 跳过模式本就跳掉测试数实测，
     // 那 3 条测试数声称必然报"无法实测"。首版在这里断言 0，是自己没想清
     // 跳过模式的语义——又是"断言与设计不符"。
     const out = runAudit();
     const line = (out.match(/文档声称总数[^\n]*/) || [''])[0];
     assertTrue(/不一致: 0/.test(line), `还原后应无不一致: ${line}`);
-  });
+  }));
 };

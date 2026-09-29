@@ -126,10 +126,38 @@ if (engine) {
 }
 
 // 6. npm 依赖检查
-check('npm 必选依赖为空', () => {
+// [诚实性修复·第四轮] 这条检查**标题与内容本来是矛盾的**:
+// 标题写「npm 必选依赖为空」，失败条件却是 `deps < 1`(要求依赖非空)，
+// 错误信息还说「新愿至少需要 mathjs」——它是旧事实的化石。
+// 实测(本轮): node_modules 完全不存在时引擎仍启动 132 个模块、
+// initErrors 为 undefined、think() 完整工作; mathjs 的 require 在
+// formula-calculator.js 里已改为缺失即降级(返回 null + 明确的
+// OPTIONAL_DEP_MISSING 说明)，不再抛 MODULE_NOT_FOUND。
+// 所以 mathjs 从来不是「必选」，这条检查一直在维护一个错误的事实。
+//
+// 新契约锁两件事(都比旧断言强):
+//   ① dependencies 必须为空 —— 「0 runtime dependencies」的声明侧
+//   ② optionalDependencies 里声明的包，其 require 点必须能被 catch 到
+//      —— 即「可选」是真的可选，缺失不会让引擎崩
+// 第 ② 项由 scripts/audit-doc-numbers.js 的 depsActuallyRequired 每次扫描，
+// 此处再补一个直接的行为断言: 在 mathjs 缺失下构造 FormulaCalculator 不抛。
+check('npm 运行时依赖必须为空(0 runtime dependencies)', () => {
   const pkg = require(path.join(HF_DIR, 'package.json'));
   const deps = Object.keys(pkg.dependencies || {}).length;
-  if (deps < 1) throw new Error('依赖声明为空，新愿至少需要 mathjs');
+  if (deps !== 0) {
+    throw new Error(`dependencies 声明了 ${deps} 个包，但文档三处声称 0 runtime dependencies；`
+      + '若确属可选依赖，请移入 optionalDependencies 并确保其 require 点在 try/catch 内');
+  }
+  const opt = Object.keys(pkg.optionalDependencies || {});
+  if (opt.length > 0) {
+    // 可选依赖必须真的是可选的: 缺失时构造与查表路径都不能抛
+    const fcPath = path.join(HF_DIR, 'src', 'formula', 'formula-calculator.js');
+    const src = require('fs').readFileSync(fcPath, 'utf8');
+    if (!/try\s*\{[^}]*require\(['"]mathjs['"]\)/s.test(src.replace(/\s+/g, ' '))) {
+      throw new Error('mathjs 在 optionalDependencies 中，但其 require 点不在 try/catch 内——'
+        + '「可选」名不副实，缺失时会抛 MODULE_NOT_FOUND');
+    }
+  }
 });
 
 // 7. 明文记忆扫描：检查是否有新增的 .txt/.json 明文记忆落盘
@@ -210,6 +238,49 @@ checkResults.push(check('扫描新增.txt/.json明文记忆', async () => {
       (unexpected.length > 20 ? `\n  ... 及其他 ${unexpected.length - 20} 个` : '')
     );
   }
+}));
+
+// ── [第十三轮] 版本一致性 ──
+// 约定 #1 列出五处必须一致的位置(VERSION 文件 / package.json /
+// SKILL.md front-matter / version.js 兜底值 / 运行时 hf.version)，
+// 而此前 verify.js 全文只有 Node 主版本号检查，**一处都不查**。
+// scripts/sync-version.js 是个只有写者、没有验证者的脚本:
+// 改了 VERSION 忘了跑它，漏掉任何一处都没有任何东西会响。
+// 详细不变量与活体注入见 test/version-consistency.test.js(8 例)。
+checkResults.push(check('版本一致性(VERSION/package.json/SKILL.md/兜底值/运行时)', () => {
+  const fs = require('fs');
+  const path = require('path');
+
+  const SEMVER = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+  const vf = path.join(HF_DIR, 'VERSION');
+  if (!fs.existsSync(vf)) throw new Error('VERSION 文件缺失——它是唯一真相源');
+  const v = fs.readFileSync(vf, 'utf8').trim();
+  if (!SEMVER.test(v)) throw new Error('VERSION 不是合法语义版本: ' + JSON.stringify(v));
+
+  const bad = [];
+  const pkg = JSON.parse(fs.readFileSync(path.join(HF_DIR, 'package.json'), 'utf8'));
+  if (pkg.version !== v) bad.push('package.json=' + pkg.version);
+
+  const skill = fs.readFileSync(path.join(HF_DIR, 'SKILL.md'), 'utf8');
+  const sm = skill.match(/^version:\s*"([^"]*)"/m);
+  if (!sm) bad.push('SKILL.md 无 version 字段');
+  else if (sm[1] !== v) bad.push('SKILL.md=' + sm[1]);
+
+  // 只取 try 之前的兜底赋值: try 里读成功后会重新赋值，
+  // 抓错就会把"兜底值"变成"读到的值"，查不到想查的东西。
+  const vsrc = fs.readFileSync(path.join(HF_DIR, 'src', 'core', 'version.js'), 'utf8');
+  const fb = vsrc.split('try {')[0].match(/let\s+VERSION\s*=\s*'([^']*)'/);
+  if (!fb) bad.push('version.js 无兜底赋值');
+  else if (fb[1] !== v) bad.push('version.js 兜底=' + fb[1]);
+
+  const rt = require(path.join(HF_DIR, 'src', 'index.js'));
+  if (rt.version !== v) bad.push('运行时 hf.version=' + JSON.stringify(rt.version));
+
+  if (bad.length > 0) {
+    throw new Error('版本漂移(VERSION=' + v + '): ' + bad.join(', ')
+      + '。跑 node scripts/sync-version.js 同步');
+  }
+  return v;
 }));
 
 // Wait for all async checks, then print results

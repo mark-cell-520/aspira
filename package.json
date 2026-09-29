@@ -57,7 +57,9 @@
     ]
   },
   "license": "MIT",
-  "dependencies": {
+  "//dependencies": "故意为空：本包声称 0 runtime dependencies，而这在运行时语义上为真——引擎在 node_modules 完全不存在时仍能启动 132 个模块并完整跑完 think()。下列四个包此前挂在 dependencies 里，与文档直接矛盾；它们全部是可选的，缺失即降级，故移入 optionalDependencies。",
+  "dependencies": {},
+  "optionalDependencies": {
     "@xenova/transformers": "~2.17.2",
     "js-yaml": "^5.4.2",
     "mathjs": "~15.2.0",

@@ -1,0 +1,80 @@
+{
+  "ts": "2026-09-29T00:15:15.255Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 227,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1233/0",
+    "baseline": "1227/0",
+    "delta": "+6",
+    "audit": "78/78",
+    "corpus": "106 benign / 41 malicious (未变)",
+    "mcp": "在线 PID 99766，未重启(src/ 本周期未动)"
+  },
+  "note": "未 rsync、未 git commit/push、技能副本过期无同步任务。本周期 src/ 未改动；git status 里的 src/formula/formula-calculator.js 等是本周期之前(05:48)的未提交改动。",
+  "exhausted": false,
+  "rotationAdvice": "doc-honest-numbers 已连续 10 轮，本轮仍有实质发现(文件集方向首次被问)。但四个可问面(键/形态/闸门/文件集)均已覆盖，下一轮若仍选此切片，建议只做加固不做新方向。轮换候选(按实测缺口): ① 对抗鲁棒性(字母间空格逃逸召回仅 39%，已知最大缺口); ② 测试覆盖缺口(约100个模块活着但没测); ③ 维度健康审计(57 命名项 vs 54 键的别名不一致)。",
+  "findings": [
+    "审计自报「已扫文档 904 份」，但 data/ 下有 682 份 CORE_VALUES.md 逐字节相同副本(_tc_*/_cache_probe_* 测试泄漏)，真实不同文档只有 222 份——自报虚高 4 倍",
+    "NUMISH 粗计 28,592 条里 6,192 条(21.7%)来自那 682 份副本，覆盖率分子分母同时被一份 332 字节、9 个序号、零规模词的宪法污染",
+    "仓库根目录有字面名为 \" 的目录，内含整棵带引号绝对路径树(\"/var/folders/.../T/aspira-mx-D4BRqZ\"/，含 CORE_VALUES.md 与 .opencode/memory)。入口上上轮已修(sanitizeHFDir)，.gitignore 也有 *aspira-mx-*，但残留从未清理",
+    "我为让自报诚实而加的去重自身静默失效: crypto 未 import，ReferenceError 被 catch (_) { nDistinct++ } 吞掉，输出「811 份全不同、0 重复」看似正常，实际一次都没去重",
+    "把异常吞成看似合理答案的 catch，比没有自检更危险——它让坏掉的自检显示为通过"
+  ],
+  "fixes": [
+    "data/ 整份移出文档扫描集(附理由: 运行时数据而非文档)",
+    "walkMd 跳过名字含引号/反引号/控制字符的目录(泄漏产物标记)，并计入自报",
+    "自报同时给 文件数 / 不同内容数 / 逐字节重复数，已扫与豁免两侧都去重",
+    "import crypto；去重读不到文件改为发声(⚠️)而非静默计入不同内容"
+  ],
+  "newTests": "test/audit-scan-set-hygiene.test.js (6 例，含活体注入: 带引号目录不得增加已扫文档数)"
+}

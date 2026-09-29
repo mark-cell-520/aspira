@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T22:35:14.212Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 222,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1205/0",
+    "baseline": "1201/0",
+    "delta": "+4"
+  },
+  "result": "doc-honest-numbers 切片(连续第 6 轮)。\n基线实测 verify 14/14、run-all 1201/0。\n\n═══ 本轮角度: 前两轮记下的唯一剩余项 ═══\n  \"instant install\" 与 \"Node >= 18.17\" 的运行时验证\n\n═══ 盲区: 被读了六轮，从未被验证 ═══\n审计核对 engines.node 的方式:\n  把 package.json 里的字符串抄进 actual.nodeReq，\n  再拿文档声称去比它 —— **比的是同一份声明**。\n「声明与声称一致」就是全部检验。\n**声明与声称一致，不等于代码真能跑在那个版本上。**\n\n这与上一轮盲区同构: \"0 runtime dependencies\" 被三份文档\n重复却无仪器验证; \"Node >= 18.17\" 同样只有声明、\n没有运行时证据。区别是上一轮测出**假**，本轮测出**真**——\n**一个从不为假声称准备的仪器，也无法为真声称背书。**\n\n═══ 实测结果 ═══\nNode 兼容(剥注释，扫 src/ 374 个文件):\n  optional chaining ×122(需 14.0)\n  nullish coalescing ×43(需 14.0)\n  global fetch ×2(需 18.0)\n  private class field ×1(需 12.0)\n  **越界特性 0 个** → 声明诚实\n\ninstant install:\n  require(package.main) 后**立即**调 checkOutput()\n  → { gate: { action: 'pass' } }，无额外设置 → 装完即可用\n\n═══ 本轮改的是仪器，不是文档 ═══\n两个声称都为真，所以不改文档也不改声明。\n把这两项从\"读一次\"变成\"每次运行都实测\"，\n并各自带 ❌ 判据:\n  · 越界特性 > 0 → ❌ 声明在运行时语义上不成立\n  · main 无法立即调用 → ❌ instant install 不成立\n下一个用到 Node 20 API 的人会立刻看见审计变红，\n而不是等到某个 18.17 用户装不上。\n\n═══ 探针假象(值得记录，因为它酷似回归) ═══\n用 ASPIRA_AUDIT_SKIP_TESTS=1 试跑，自报从 45/45 变成\n「42 一致 / 3 无法实测」。那 3 条正是 **test count** ——\nskip 模式按设计把 m.tests 置 null。\n**产品没有回归，是我的探针参数让仪器失明。**\n「审计数字变了」的第一步必须是先分清\n是产品坏了还是仪器坏了。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1205/0**(基线 1201，净增 +4 ——\n新增 test/node-compat-runtime-verified.test.js 4 个用例)；\n审计 **45/45、0 不符、0 无法实测**，新增两项实测:\n  Node 兼容实测: 声明下限 >=18.17 · 扫 src/ 374 个文件 · 越界特性 0 个\n  instant install 实测: require(src/gate.js) 后立即调用 可用\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n只改 scripts/ + test/ + markdown，\n**未改引擎代码**，故未重启 MCP(181 工具在线，已确认)。\nREADME/SKILL/CURRENT_STATE 测试数已同步 1201 → 1205。\nAGENTS.md 新增条目。\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) doc-honest-numbers 已连续 **6 轮**，六个角度\n    (扫哪些文件/读哪些写法/怎么测量层数/声明vs事实/\n    分母是否诚实/Node与instant install运行时验证)\n    **已全部推进完毕，本切片确实接近枯竭**。\n(b) 下次应轮换到**维度健康审计**或**对抗鲁棒性**\n    (字母空格召回仅 39%，是最严重的已知缺口)。\n(c) 若仍选到本切片，建议置 exhausted 让轮换发生。"
+}

@@ -162,13 +162,14 @@ async function runJobs(jobs) {
 }
 
 function subTestJob(name, rel, timeout) {
-  return { label: name, cmd: `node ${JSON.stringify(path.join(TEST_DIR, rel))}`, timeout };
+  return { label: name, cmd: `node ${JSON.stringify(path.join(TEST_DIR, rel))}`, timeout, kind: 'plain' };
 }
 function mountTestJob(name, rel, timeout) {
   return {
     label: name,
     cmd: `node ${JSON.stringify(path.join(TEST_DIR, '_mount.js'))} ${JSON.stringify(path.join(TEST_DIR, rel))}`,
     timeout,
+    kind: 'mount'
   };
 }
 function jestStyleJob(name, rel, timeout) {
@@ -176,7 +177,43 @@ function jestStyleJob(name, rel, timeout) {
     label: name,
     cmd: `node -r ${JSON.stringify(path.join(TEST_DIR, '_jest-globals.js'))} ${JSON.stringify(path.join(TEST_DIR, rel))}`,
     timeout,
+    kind: 'jest'
   };
+}
+
+/**
+ * [第十四周修复] 按**文件自身风格**决定怎么跑——这是唯一的选择点。
+ *
+ * 此前这里有两套互相矛盾的选择逻辑:
+ *   · 根目录文件走完整的 mount/箭头/jest 检测(第 234-238 行为此专门修过一次);
+ *   · 而**任何子目录文件**在检测之前就被 `if (rel.includes('/')) { subTestJob; continue; }`
+ *     旁路掉了,一律裸 `node` 运行。
+ * 于是子目录里的 mount 风格文件(module.exports = function/箭头)export 永不被调用:
+ * `node <file>` 退出码 0、零输出,`emitResult` 匹配不到汇总行,计 0 个用例也不计失败。
+ *
+ * 实测代价(第十四周量出): `test/identity/agent-psychology.test.js` 有 21 个 test() 调用,
+ * 裸跑 0 输出、经 _mount.js 有 21 个用例——**21 个用例从未进过 run-all 的总数**。
+ * 这正是仓库反复记载的形状: 一个数字被测量、被显示、却从未被比较;
+ * 而这里更直白——**用例存在、被执行、然后静默归零**。
+ *
+ * 检测顺序与正则和原来的根目录分支逐字一致,只把作用域从"根目录"扩到"全部文件"。
+ */
+function pickJob(label, rel, timeout) {
+  let src = '';
+  try { src = fs.readFileSync(path.join(TEST_DIR, rel), 'utf8'); } catch (e) {}
+  // [修复] mount 检测：原正则只认 `module.exports = function` 且只查前 400 字符，
+  // 导致 15 个箭头式 mount 文件（`module.exports = ({test,...}) =>`，含 gate/output-gate/
+  // pipeline/index/doubt-engine 等核心测试）被当 plain 运行——export 永不被调用，
+  // 测试静默漏计（实测 103 个用例全部通过却从未进过总数）。
+  // 改为：匹配 function 或箭头式，且查全文件（长 JSDoc 头会把 export 挤到 400 字符之后）。
+  if (/module\.exports\s*=\s*(function\b|\([^)]*\)\s*=>)/.test(src)) {
+    // 导出 mount 函数：子进程 + 注入 harness
+    return mountTestJob(label, rel, timeout);
+  } else if (/\bdescribe\s*\(/.test(src) && !/require\(['"][^'"]*mini-expect/.test(src)) {
+    // jest/mocha 风格：它自己调 describe/it，靠 -r 注入全局
+    return jestStyleJob(label, rel, timeout);
+  }
+  return subTestJob(label, rel, timeout);
 }
 
 // === MAIN ===
@@ -216,7 +253,9 @@ async function runAllTests() {
   for (const [label, rel] of CORE_TESTS) {
     if (!fs.existsSync(path.join(TEST_DIR, rel))) continue;
     explicit.add(rel);
-    jobs.push(subTestJob(`  ${label}`, rel));
+    // 显式列出的核心测试也走同一个选择点——否则 CORE_TESTS 里的 mount 风格文件
+    // (knowledge/classics-value-mapper.test.js 就是)仍会被裸跑,export 不被调用。
+    jobs.push(pickJob(`  ${label}`, rel));
   }
 
   // 动态接入其余测试文件（全部子进程隔离）
@@ -225,26 +264,13 @@ async function runAllTests() {
   const allTests = collectTestFiles(TEST_DIR);
   for (const rel of allTests) {
     if (explicit.has(rel)) continue;
-    if (rel.includes('/')) {
-      jobs.push(subTestJob('  · ' + rel, rel));
-      continue;
-    }
-    let src = '';
-    try { src = fs.readFileSync(path.join(TEST_DIR, rel), 'utf8'); } catch (e) {}
-    // [修复] mount 检测：原正则只认 `module.exports = function` 且只查前 400 字符，
-    // 导致 15 个箭头式 mount 文件（`module.exports = ({test,...}) =>`，含 gate/output-gate/
-    // pipeline/index/doubt-engine 等核心测试）被当 plain 运行——export 永不被调用，
-    // 测试静默漏计（实测 103 个用例全部通过却从未进过总数）。
-    // 改为：匹配 function 或箭头式，且查全文件（长 JSDoc 头会把 export 挤到 400 字符之后）。
-    if (/module\.exports\s*=\s*(function\b|\([^)]*\)\s*=>)/.test(src)) {
-      // 导出 mount 函数：子进程 + 注入 harness
-      jobs.push(mountTestJob('  + ' + rel, rel));
-    } else if (/\bdescribe\s*\(/.test(src) && !/require\(['"][^'"]*mini-expect/.test(src)) {
-      // jest/mocha 风格：它自己调 describe/it，靠 -r 注入全局
-      jobs.push(jestStyleJob('  j ' + rel, rel));
-    } else {
-      jobs.push(subTestJob('  · ' + rel, rel));
-    }
+    // [第十四周修复] 删除 `if (rel.includes('/')) { subTestJob; continue; }` 旁路:
+    // 子目录文件与根目录文件走同一套风格检测。标签前缀随选中的风格变化
+    // (mount → '+', jest → 'j', plain → '·'),与原来的输出格式保持一致。
+    const probe = pickJob(null, rel);
+    const prefix = probe.kind === 'mount' ? '+' : (probe.kind === 'jest' ? 'j' : '·');
+    probe.label = `  ${prefix} ${rel}`;
+    jobs.push(probe);
   }
 
   await runJobs(jobs);

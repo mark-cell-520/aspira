@@ -1176,7 +1176,7 @@ SKILL.md 的 Version history 节有特殊的表格格式陷阱：
 1. DreamV3 使用 `_gatherMaterials()` 收集引擎状态（模块数/记忆层/Q-table/决策/心理学），不依赖 EPHEMERAL 碎片
 2. 梦有5种科学功能（威胁模拟/记忆巩固/情绪调节/创意重组/问题孵化），每种产生真实认知效果
 3. 梦的输出是破碎、跳跃、超现实的符号序列，不是分析总结
-4. 引擎空状态不是"没有材料"——54个模块、18条CORE记忆都是材料
+4. 引擎空状态不是"没有材料"——132个模块都是材料(模块数由 bin/verify.js 实测)
 
 **实现要点**：
 - `_gatherMaterials()` 从 `this.engineState` 收集，而非从 memory.fragments

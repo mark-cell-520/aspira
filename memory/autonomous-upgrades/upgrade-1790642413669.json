@@ -1,0 +1,158 @@
+{
+  "ts": "2026-09-29T00:40:13.668Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 228,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "cycleSeq": 11,
+  "consecutive": 11,
+  "hardeningCycle": true,
+  "hardeningRationale": "第 10 周期收尾明确:『此切片的四个可问面(键/形态/闸门/文件集)已问遍，若仍选它建议只做加固不做新方向』。第 11 次仍选中 doc-honest-numbers，故本周期只做加固。",
+  "hardeningAngle": "反向枚举 pats 的 key 与 measure() 实际赋值的 key 对差，问『哪些被测到的键没有任何模式核对』——即哪些数字被测量、被打印，却锁不住。",
+  "findings": [
+    {
+      "id": "version-measured-but-never-compared",
+      "severity": "high",
+      "summary": "version 被测到、被打印、被约定 #1 点名，却从未被任何模式核对",
+      "detail": "约定 #1 原文: 'Never hardcode the version. VERSION is the single source of truth… package.json 和 SKILL.md 必须匹配'。measure() 一直测 VERSION(=1.0.0)，audit 也打印它，**却没有任何模式拿它核对文档**。实测注入: README 的 'Measured on this repository at **v1.0.0**' 改成 v9.9.9，审计仍 78/78、0 不符。这是第七轮 domains 那一类('被测到却锁不住')，中的却是仓库第一条约定亲自点名的那一个数字。"
+    },
+    {
+      "id": "testsFailed-measured-then-dropped",
+      "severity": "high",
+      "summary": "testsFailed 与 m.tests 同出一个正则，却从未进 actual，于是三处 '0 failing' 永远不必为真",
+      "detail": "第 887 行从 run-all 输出解析出 m.testsFailed，但 actual 只接线了 m.tests。实测注入: '0 failing' → '7 failing'，同样 0 报告。README / SKILL.md / CURRENT_STATE.md 三处的 '0 failing' 是一句永远不必为真的话。"
+    },
+    {
+      "id": "version-pattern-must-be-label-scoped",
+      "severity": "design-note",
+      "summary": "裸语义版本号模式是陷阱: 551 处版本形态，绝大多数是路线图/架构里程碑",
+      "detail": "ARCHITECTURE.md 的 v6.3.0/v6.4.0/v6.5.0、ROADMAP.md 的 v6.0.6 都不是包版本。匹配裸 v?\\d+\\.\\d+\\.\\d+ 就是第 26 次仪器失效的同一条: 枚举式过滤器每遇到一种新的叙述方式就漏一次，而版本号的叙述方式有十几种。故只认两种带标签形态: '| Engine version | 1.0.0 |' 与 '> 版本 | v1.0.0'。"
+    },
+    {
+      "id": "reflection-md-version-disclosed-not-included",
+      "severity": "residual",
+      "summary": "REFLECTION.md 的 '| 版本 | 6.2.7 |' 故意不审",
+      "detail": "该行位于 '## 现在（2026-07-25）' 之下，是一份『过去/现在/未来』反思文档里钉在 2026-07-25 的时点快照；拿现在去核对就是制造假警报，且中文『版本』标签在任意表格里都可能出现，不构成『这是引擎版本』的保证。该残留已披露，未悄悄纳入。"
+    },
+    {
+      "id": "skip-tests-nulls-testsFailed",
+      "severity": "known-probe-artifact",
+      "summary": "ASPIRA_AUDIT_SKIP_TESTS 同时 null 掉 m.tests 与 m.testsFailed",
+      "detail": "第九轮已记录的同一种探针伪影: 带该开关时，错误的失败数落入『无法实测』而非『不符』。因此失败数的『变红』一面必须在不带该开关时验证(已验: 注入 7 failing → 报『failing tests (失败数) = 7』实测 0)；测试内只断言『被识别 + 已接线』。"
+    }
+  ],
+  "fixes": [
+    "scripts/audit-doc-numbers.js: actual.version = m.version; 接线",
+    "scripts/audit-doc-numbers.js: actual.testsFailed = m.testsFailed; 接线",
+    "scripts/audit-doc-numbers.js: 新增 failing tests (失败数) 模式，带 reject (排除 SKILL.md 历史读数 '711 passing / 1 failing (was 546)')",
+    "scripts/audit-doc-numbers.js: 新增 engine version (标签表格) 模式",
+    "scripts/audit-doc-numbers.js: 新增 版本 (CURRENT_STATE 行首) 模式",
+    "test/audit-unlocked-measurements.test.js: 新建，6 个用例(结构 + 三种活体注入)",
+    "README.md / SKILL.md / CURRENT_STATE.md: 测试数 1233 → 1239",
+    "AGENTS.md: 新增第十一轮条目(其自身数字随之成为被审声称)"
+  ],
+  "liveInjections": [
+    {
+      "target": "README.md 0 failing → 7 failing",
+      "before": "78/78, 0 不符(不受审)",
+      "after": "1 不符: README.md 声称「failing tests (失败数) = 7」实测 0",
+      "note": "必须不带 ASPIRA_AUDIT_SKIP_TESTS 验证，否则落入『无法实测』"
+    },
+    {
+      "target": "SKILL.md Engine version 1.0.0 → 9.9.9",
+      "before": "78/78, 0 不符(不受审)",
+      "after": "1 不符: SKILL.md 声称「engine version (标签表格) = 9.9.9」实测 1.0.0"
+    },
+    {
+      "target": "CURRENT_STATE.md > 版本 | v1.0.0 → v2.0.0",
+      "before": "78/78, 0 不符(不受审)",
+      "after": "1 不符: CURRENT_STATE.md 声称「版本 (CURRENT_STATE 行首) = 2.0.0」实测 1.0.0"
+    },
+    {
+      "target": "README.md 'v1.0.0' 无标签形态(反向验证)",
+      "before": "78/78, 0 不符",
+      "after": "仍 0 不符——确认裸版本号不在匹配范围，与设计一致(551 处版本形态绝大多数不是包版本)"
+    }
+  ],
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1239/0",
+    "baseline": "1233/0",
+    "delta": "+6",
+    "audit": "82/82",
+    "auditBaseline": "78/78",
+    "auditDelta": "+4",
+    "corpus": "106 benign / 41 malicious(未变)",
+    "fp": "0.9%(未变)",
+    "recall": "100% plaintext(未变)",
+    "scannedDocs": "218(217 distinct, 1 duplicate)(未变)",
+    "srcChanged": false,
+    "mcpRestart": false,
+    "mcp": "PID 99766 在线"
+  },
+  "docIntegrity": {
+    "incident": "活体注入时用 shell 循环，IFS='|' 把 markdown 表格行内的竖线当成分隔符，导致 CURRENT_STATE.md 的版本行被静默损坏成 ' v1.0.0| v1.0.0'",
+    "detection": "跑门禁前重新读 git diff 发现，已修复",
+    "finalCheck": "CS 版本行=1、SKILL 版本行=1、Test suite 行各=1；三份文档 diff 仅测试数/条目",
+    "lesson": "一个在写错东西的同时报告成功的工具，比一个失败的工具更糟——这次 shell 自己的成功消息正是误导人的那一部分。"
+  },
+  "sync": {
+    "rsync": false,
+    "gitCommitPush": false,
+    "skillCopy": "过期，无同步任务",
+    "note": "未 rsync、未 git commit/push、技能副本过期无同步任务。src/ 未改动，故未重启 MCP。"
+  },
+  "rotationAdvice": [
+    "adversarial-robustness: 已知最大缺口——空字母间隔召回仅 39%(plaintext 100% / 字元分隔 85% / HTML 实体 95%)。第八轮已试过放宽 strip_letter_space 到 1-2 字母词并回退(折叠 53 个良性样本换回 1 个恶意样本)，若要再攻需换思路而非再放宽。",
+    "test-coverage-gap: 本周期附带发现 bin/verify.js 不查版本一致性，且无任何测试调用 scripts/sync-version.js——约定 #1 目前**没有任何东西锁住**。doc-honest-numbers 只能锁文档声称，锁不住 package.json/VERSION/源码三处一致；这属于测试覆盖缺口切片。",
+    "dimension-health: 54 键集合已由 test/dimension-health.test.js 锁定。"
+  ],
+  "exhausted": false
+}

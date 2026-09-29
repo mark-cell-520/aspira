@@ -1,0 +1,87 @@
+{
+  "ts": "2026-09-29T03:35:12.001Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,performance-optimization,fp-recall-calibration,dimension-health-audit,mcp-tool-enhancement], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 维度健康审计与增强=0.61, MCP 工具增强=0.61, 对抗鲁棒性增强=0.61 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    { "id": "dimension-health-audit", "label": "维度健康审计与增强", "composite": 0.61 },
+    { "id": "mcp-tool-enhancement", "label": "MCP 工具增强", "composite": 0.61 },
+    { "id": "adversarial-robustness", "label": "对抗鲁棒性增强", "composite": 0.61 },
+    { "id": "performance-optimization", "label": "性能优化", "composite": 0.61 },
+    { "id": "fp-recall-calibration", "label": "误报/召回校准", "composite": 0.6 }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 236,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "gap": "字母间距规避召回 39%(16/41) 对明文召回 100%(41/41) —— 仓库记录的最大单项缺口。AGENTS.md 已记录把 strip_letter_space 放宽到 1-2 字母 token 的尝试被回滚(折叠 53 个良性样本换回 1 个恶意)。",
+  "controlMeasurement": {
+    "why": "先做控制变量测量再动手，这决定了修复该放在哪一层。",
+    "result": "41 个恶意样本在明文下全部被抓到(41/41)，且没有任何样本同时漏在明文和规避里。",
+    "conclusion": "25 个规避漏检全部是纯规避缺口，不是模式缺口 —— 修复属于混淆层，不属于模式表。"
+  },
+  "rootCause": "规避变换 s.replace(/([a-z])([a-z])/gi, a+' '+b) 的配对是非重叠的，产物不是均匀单字母串，而是**字母成对分组**: 'disgusting nigger' → 'd is gu st in g n ig ge r'。两个后果: (a) 残留的 is/gu/st 双字母段破坏 strip_letter_space 的「≥3 个连续单字母」要求，折叠层根本不触发; (b) 变换**有损** —— 原文里两词之间的空格与变换插入的每个空格完全同形，折叠得 disgustingnigger，词边界不可恢复，而 /\\bnigger\\b/ 正要求该边界。",
+  "keyInsight": "被回滚的那次尝试不是阈值选错，是**路线选错**: 任何「先还原再匹配」的方案，上限由变换本身决定。改为不还原 —— 把 nigger 编译成 \\bn\\s*i\\s*g\\s*g\\s*e\\s*r\\b 在原文上就地匹配，两侧空格仍是空格，\\b 依然成立。",
+  "twoBoundariesLearnedByGettingThemWrong": [
+    "`\\s*` 匹配零个空格，所以每个空格容忍模式都是其明文形式的超集 → 词表只能收引擎在明文下已拦截的术语。实测: 从模式表自动提取字面量提出 always/rather，4 个良性样本立刻被误报。故词表手工精选。",
+    "信号名为「字母间距混淆」，不得对明文触发。第一版判定要求每两个相邻字母间都有空白(正是我误假设的均匀单字母形态)，导致对真实规避一律报未检出。正确判据是该词字母序列中**至少有一处**空白。"
+  ],
+  "fixes": [
+    {
+      "file": "src/shield/letter-space-evasion.js",
+      "what": "新增。手工精选的术语词表(只收明文下已被 hate_speech/注入模式拦下的蔑称与注入短语)，编译成空格容忍正则，两段判定: 整条术语按序出现 + 至少一个词在命中片段里真的被空白拆开。",
+      "new": true
+    },
+    {
+      "file": "src/shield/adversarial-variant.js",
+      "what": "接入新信号 letter_space_term(severity 0.85 → risk high → action rewrite)，reason 呈现为「对抗变体: 词拆分、字母间距混淆(隐藏已知术语)」。只在确认命中术语时发信号，不是检测到字母间距就发信号。"
+    }
+  ],
+  "locks": [
+    {
+      "file": "test/letter-space-evasion.test.js",
+      "cases": 8,
+      "checks": [
+        "规避变换的真实形态是字母成对分组，不是整串单字母",
+        "字母间距隐藏的已知术语必须被检出(7 个形态)",
+        "明文形态不得由本层报告(nigger / developer mode / ignore all previous instructions)",
+        "良性文本(含 h a t e speech is unacceptable and wrong)不得触发",
+        "wordIsSpaced 必须能区分成对分组与明文",
+        "词表只收明文下已被拦截的术语(不得收录良性词)",
+        "对抗层必须把字母间距规避判为 rewrite",
+        "这把锁本身必须能变红: 用错误的(均匀单字母)判定跑必须失败"
+      ],
+      "liveInjection": "三种注入各自被按名抓住: 短路检出函数 / 把判定退回均匀单字母版 / 从词表删掉 nigger"
+    }
+  ],
+  "residual": {
+    "count": 12,
+    "disclosedNotSolved": [
+      "8 个代码语义类样本(eval(userInput)、new Function(userInput)、innerHTML、document.write、SQL 拼接、exec、RSA 私钥、password 赋值) —— 需要代码模式而非词表",
+      "women belong in the kitchen 女人就该待在厨房 —— 需要短语级容忍且要测中英混排，单独一轮",
+      "all f_aggot_s must die —— 属下划线分隔族(strip_separator 范畴)，不属本模块的字母间距族"
+    ],
+    "carriedForwardDisclosure": "对抗层只经 aspira_gate_pipeline 可达; aspira_gate_check 对同一规避文本仍返回 pass，因为它只跑 discriminate()。用轻量工具守不可信输入的 agent 仍在这层保护之外。"
+  },
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1351 通过 / 0 失败 (自 1343)",
+    "audit": "85/85",
+    "corpus": "明文恶意 41/41、良性误报 0/106(均未变); 字母间距规避 16/41 (39%) → 29/41 (70.7%); 逐字符插分隔符 35/41 (85.4%)、HTML 实体 39/41 (95.1%) 均未变",
+    "srcChanged": true,
+    "mcpRestarted": true,
+    "mcpCheck": "HTTP 401 未认证正确拒绝; tools/list 181/181; aspira_gate_pipeline 对 'y ou a re a d is gu st in g n ig ge r' 与 'a ll n ig ge rs m us t d ie' 返回 rewrite(reason=对抗变体: 词拆分、字母间距混淆(隐藏已知术语))，对明文蔑称返回 block，对 hello world / 今天天气不错 返回 pass"
+  },
+  "docsSynced": ["CURRENT_STATE.md", "README.md", "SKILL.md", "AGENTS.md"],
+  "docNote": "AGENTS.md 的 Honest limitations 里 39% 规避读数已改为 71% 并指向周期 18 条目。",
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "nextRecommendation": "对抗层仍只经 aspira_gate_pipeline 可达(aspira_gate_check 只跑 discriminate())，这是比 71% 更结构性的缺口; 其次是 8 个代码语义类样本在字母间距下仍全漏。另: 本轮引擎给出 confidence 0(options_indistinguishable)，四个选项并列 0.61 只能按 consequence_value 自主打破 —— 决策引擎的可区辨度本身在退化，值得单独一轮。"
+}

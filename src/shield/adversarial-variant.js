@@ -11,6 +11,9 @@
  *
  * 纯规则，零 LLM 依赖。输出与新愿 gate 兼容（{action, risk, evidence}）。
  */
+'use strict';
+
+const { checkLetterSpaceEvasion } = require('./letter-space-evasion.js');
 
 // ─── 检测信号 ───
 
@@ -127,6 +130,23 @@ function checkAdversarialVariant(text) {
     const existing = signals.find(s => s.id === 'word_split');
     if (existing) existing.count += 1;
     else signals.push({ id: 'word_split', name: '词拆分', count: 1, severity: 0.75 });
+  }
+
+  // [第十八轮] 字母间距混淆: 只认"术语命中"，不认"有字母间距"。
+  // 见 src/shield/letter-space-evasion.js 的说明 —— 折叠还原这条路被变换的
+  // 有损性封死(disgusting nigger → d i s g u s t i n g n i g g e r，
+  // 折一下就是 disgustingnigger，词边界不可恢复)，所以改成在原文上
+  // 容忍空格地匹配已知术语。词表只收明文下已被拦下的术语，
+  // 因此 `\s*`(匹配零个空格)不会把良性词变成误报。
+  const ls = checkLetterSpaceEvasion(text);
+  if (ls.detected) {
+    signals.push({
+      id: 'letter_space_term',
+      name: '字母间距混淆(隐藏已知术语)',
+      count: ls.hits.length,
+      severity: 0.85,
+      terms: ls.hits.map(h => h.term),
+    });
   }
 
   if (signals.length === 0) return { action: 'pass', risk: 'none', signals: [], normalized: null };

@@ -114,11 +114,37 @@ test('G3-3c: 非法密级值不得静默变成 undefined', () => {
 });
 
 test('G3-4: 公开内容 → rewrite(脱敏)', () => {
-  // 实际: 公开内容触发 PII 规则 rewrite（非 bug，是 PII 规则触发）
-  // 新愿监督: rewrite ≠ 泄露，脱敏后放行符合国标 PII 处理要求
-  const r = checkOutbound({ text: '今天天气真好' });
+  // [第十七轮修复] 这里原先断言 `今天天气真好` → rewrite，
+  // 注释还写着"实际: 公开内容触发 PII 规则 rewrite（非 bug，是 PII 规则触发）"。
+  // **那句话是缺陷的产物，而且这个测试把它锁死了。**
+  //
+  // 根因在 src/gate-outbound.js 的 scanPII: `findings` 数组初始化时装的是三条
+  // **pattern 描述对象**({ pattern, type, level })，从来没有任何代码用它们匹配文本，
+  // 却被原样当作"发现"返回。于是:
+  //   · piiFindings.length 恒 >= 3，`piiFindings.length > 0` 恒真
+  //     → checkOutbound 的 action **永远不可能是 'pass'**;
+  //   · 那三条序列化成 `{}`，没有 id/name/severity，调用方无法据以行动;
+  //   · 真实 PII 的计数被 +3 污染(实测 2 处真实命中报成 5 处)。
+  // 实测(修复前): '今天天气真好'、'hello world'、'12345'、'   ' 全部判 rewrite，
+  // reason 写着"命中 PII 规则 (3 处)"，而那 3 处一条也不存在。
+  //
+  // 与 G3-3 是同一个教训: **测试的期望要跟着设计走，不跟着缺陷走**——
+  // 上一次是 forcedLevel 契约不匹配让密级 block 分支失效，
+  // 这一次是幽灵 finding 让 pass 分支不可达。两次都有注释替缺陷辩护。
+  //
+  // 无 PII、未强制密级的文本，按 CLASSIFICATION 表的设计就是 pass。
+  const clean = checkOutbound({ text: '今天天气真好' });
+  assert.strictEqual(clean.action, 'pass', 'action=' + clean.action);
+  assert.strictEqual(clean.piiCount, 0, 'piiCount=' + clean.piiCount);
+  assert.ok(clean.reason.includes('无 PII'), 'reason=' + clean.reason);
+
+  // 原测试的**意图**(有 PII 的公开内容 → 脱敏放行)用一个真含 PII 的文本来保住了:
+  // rewrite ≠ 泄露，脱敏后放行符合国标 PII 处理要求。
+  const r = checkOutbound({ text: '今天天气真好，我的手机是13812345678' });
   assert.strictEqual(r.action, 'rewrite', 'action=' + r.action);
   assert.ok(r.sanitized, '应脱敏');
+  assert.strictEqual(r.piiCount, 1, 'piiCount=' + r.piiCount);
+  assert.strictEqual(r.piiFindings[0].id, 'PHONE', 'id=' + r.piiFindings[0].id);
 });
 
 test('G3-5: safeFetch preflight', () => {

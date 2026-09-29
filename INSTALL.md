@@ -38,7 +38,7 @@ node core/upgrade.js --engine humor
 |------|------|----------|------|
 | Core | ~3MB | 默认安装 | 核心引擎、MCP server、CLI |
 | Engines | ~5MB | `--engines` | 11个AI认知引擎 |
-| Data | ~10MB | `--data` | 公式库(2397个)、知识图谱 |
+| Data | ~10MB | `--data` | 公式库(608个)、知识图谱 |
 | Skills | ~3MB | `--skills` | 额外skill模块 |
 
 ## 验证安装

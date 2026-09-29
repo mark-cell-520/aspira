@@ -1,0 +1,135 @@
+{
+  "ts": "2026-09-29T02:45:12.427Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 233,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "baseline": {
+    "verify": "15/15",
+    "runAll": "1335/0",
+    "audit": "85/85"
+  },
+  "gap": {
+    "slice": "test-coverage-gap",
+    "found": "约定 #6(每步编辑后 node --check)是纯人的纪律，全仓库零强制执行: src/ 下 351 个 JS 文件，而 grep 全仓 --check 只在 test/unwired-module-coverage.test.js 的注释里出现过一次。用 NODE_OPTIONS='--require' 钩住 Module._load(run-all 的 236 个子进程会继承)实测: 整套门禁只加载 348/351，29 个从未加载，其中 21 个是未归档的活模块——这些文件里的语法错误完全无声。"
+  },
+  "measuredProof": {
+    "injectionTarget": "src/dream/dream-engine.js (21 个从未加载的活模块之一)",
+    "method": "把新锁临时移出目录树以模拟'加锁前'的门禁，再注入语法错误",
+    "result": {
+      "nodeCheck": "报语法错误(注入生效)",
+      "runAll": "1333/0 全绿 ← 没抓住",
+      "verify": "15/0 全绿 ← 没抓住",
+      "outputMentions": "0 处提及该文件"
+    },
+    "kicker": "存在一个 test/dream-engine.test.js 且它通过——但它 require 的是 src/dream/engine.js，另一个文件。所以该模块'看起来被覆盖了'。"
+  },
+  "secondGap": {
+    "found": "src/core/self-diagnostic.js 的 20 步自检里 step17 与 step18 每跑必 fail",
+    "step17": "6 个引擎条目里 5 个 dir 指向不存在的目录(PsychologyEngine 写 src/core 实为 src/emotion; DreamEngine 写 src/core 实为 src/dream; SelfModel 写 src/core/consciousness 实为 src/identity; SelfHealingRL/LessonBank 写 src/core 实为 src/cortex)，实测 allFound=1/6 而该步门槛 >=4 → 恒 fail",
+    "step18": "在 src/core/ 找 dream-engine.js/dream.js/interactive-dream.js，三个文件全在 src/dream/ → found 恒空 → 恒 fail",
+    "whyUnnoticed": "grep -rln runDiagnostic test/ 为空——整套 20 步自检从未被任何测试调用过",
+    "mostPointed": "step17 旧注释标题写着'引擎实际文件位置（已确认）'并列出 DreamEngine: dream.js，而下一行的 dir 仍旧是 src/core——注释知道正确位置，代码用错的那个",
+    "fixed": "修正后 step17 found=6/6、step18 found=[3 个文件]、20 步零失败"
+  },
+  "instrumentCorrections": [
+    {
+      "v": "1",
+      "what": "用 grep 测试文本是否提及模块名来判断'未被覆盖'",
+      "result": "错。注入 src/ai-anti-pattern.js 后 run-all 1002/130 变红——该文件被 heartflow.js 传递加载。测试文本没提名字 != 模块没被加载。",
+      "fix": "改用 Module._load 钩子实测整套门禁的真实加载集合"
+    },
+    {
+      "v": "2",
+      "what": "用 new vm.Script(src) 在进程内解析(快 180 倍)",
+      "result": "错。它对 src/core/heartflow.js 报 Illegal return statement 而 node --check 报 0 错——vm.Script 不包装模块，顶层 return 在 CJS 里合法。仪器把自己的局限当成引擎缺陷。",
+      "fix": "用约定 #6 字面的 node --check，零翻译层"
+    },
+    {
+      "v": "3",
+      "what": "run-all 汇总行用 .match() 取第一条",
+      "result": "错。取到的是某个子测试的汇总行(10 通过)，不是套件总计。",
+      "fix": "取最后一条汇总行"
+    }
+  ],
+  "work": {
+    "files": [
+      "test/src-syntax-check.test.js (新增, 2 例: 全量 node --check + 锁本身必须能变红)",
+      "test/self-diagnostic-paths.test.js (新增, 3 例)",
+      "src/core/self-diagnostic.js (step17 五个 dir + step18 DREAM_DIR 修正)",
+      "README.md / SKILL.md / CURRENT_STATE.md (测试数 1335→1338)",
+      "AGENTS.md (周期 16 条目)"
+    ],
+    "lockDesign": "self-diagnostic 的锁刻意做成源码级而不跑 runDiagnostic: step19_versionSync 会写文件(版本不一致时改写 package.json/SKILL.md/README.md/heartflow.js)，让测试跑它等于让套件改写仓库源码，并发下正是周期 7 的探测污染缺陷。纪律同'产生审计的测试必须持 doc 锁'——能写的东西不能随便跑。",
+    "commentStripping": "两把源码级锁都先剥注释: 修复时把真实位置写进了注释，不剥就会把锁自己的说明当罪证——周期 14 与周期 15 各踩过一次，这是第三次。"
+  },
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1338/0 (基线 1335/0, delta +3 = self-diagnostic-paths 3 例; src-syntax-check 2 例已在基线内)",
+    "audit": "85/85 (0 不符)",
+    "corpus": "106 benign / 41 malicious 不变",
+    "srcChanged": true,
+    "mcpRestarted": true,
+    "mcpCheck": "HTTP 401(在线且正确拒绝未认证); tools/list 认证后 181/181 aspira_*"
+  },
+  "liveInjection": {
+    "syntaxLock": "注入语法错误到 src/dream/dream-engine.js → 新锁 1 通过/1 失败，点名该文件; 恢复后 2/2 通过，git 干净",
+    "pathLock": "三处: (1) DreamEngine dir 改回 src/core → 抓住并点名 (2) step18 DREAM_DIR 改回 src/core → 抓住并点名 (3) 只改注释不改代码 → 仍通过(证明剥注释生效，锁没被自己的说明咬到)",
+    "verdict": "两把锁均有效"
+  },
+  "processFailure": {
+    "what": "一个早前的注入脚本被 60s 超时 SIGTERM 杀掉，杀掉时它已经写入坏模块但还没恢复，src/dream/dream-engine.js 从那时起一直是坏的; 下一个脚本又把坏内容当成了 backup",
+    "caught": "只因恢复校验比对 git status 而不是信任内存里的副本",
+    "lesson": "信任那个已被污染的变量的'恢复'不是恢复"
+  },
+  "git": {
+    "rsync": false,
+    "committed": false,
+    "pushed": false,
+    "note": "未 rsync、未 git commit/push、技能副本过期无同步任务"
+  },
+  "exhausted": true,
+  "exhaustedReason": "test-coverage-gap 切片内可机械定义的缺口已全部关闭: 约定 #1(版本五处一致, 周期13)、约定 #4(测试可达性, 周期14)、33 个静默 SKIP 加载检查(周期15)、约定 #6(node --check 全量, 周期16)、self-diagnostic 错目录两步(周期16)。剩余候选只有约定 #2 的 Tier-2 边界，而'哪些模块算 Tier-2'没有机械定义——锁它需要我发明定义，那是立新规而非执行既有约定，故不纳入本切片。约定 #3 已实测被 test/mcp-tool-integrity.test.js 完整锁住，约定 #5 已被审计 deps 键锁住。"
+}

@@ -1,8 +1,8 @@
 # Aspira 当前状态 (CURRENT_STATE)
 
 > 版本 | v1.0.0
-> 审计状态 | status running, 132 modules, 1182 tests passed / 0 failed
-> 公式库 | 1286 formulas (cognitive science / psychology / neuroscience)
+> 审计状态 | status running, 132 modules, 1359 tests passed / 0 failed
+> 公式库 | 608 formulas (cognitive science / psychology / neuroscience)
 > 记忆层 | AES-256-GCM 加密持久化, 本地优先, 不外传
 
 ## 最近升级 (v1.0.0 自主升级周期)

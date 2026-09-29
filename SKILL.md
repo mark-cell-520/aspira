@@ -157,7 +157,7 @@ from marketing copy.
 | Discrimination dimensions | 54 | `dimMap` keys in `src/index.js` |
 | MCP tools | 181 | tool definitions exposed via `tools/list` |
 | Pipeline layers | 11 input / 12 draft / 13 output | `checked_by.length` on `runPipeline({ input, mode })` — the bare `checkInput` / `checkDraft` / `checkOutput` shortcuts return the **same** count, not one fewer; passing an `anchor` appends the final `intent-anchor` layer (11 → 12) |
-| Test suite | 1182 passing / 0 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
+| Test suite | 1359 passing / 0 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
 | Capability guard | 18 / 18 checks | `node scripts/guard-abilities.js` |
 | Security regression | 16 / 16 | `node test/security-audit.test.js` |
 | Runtime dependencies | 0 required by the core | the core gate loads without `npm install`; the 4 `dependencies` in `package.json` (transformers / js-yaml / mathjs / pm2) are optional and not loaded by the discriminator |
@@ -313,6 +313,12 @@ input -> scope-check -> premise-check -> discriminate(54 dims) -> classical-know
 
 The gate aggregates every layer's findings and emits one of four actions:
 `block` / `rewrite` / `verify` / `pass`.
+
+> **Two readings of "17", and they are not the same number.** The 17 above is the
+> **static** layer set — every layer name the pipeline can push into `checked_by`.
+> A single call traverses only the branch it takes: measured **11** layers for
+> `mode: 'input'` and **13** for `mode: 'output'`. `scripts/audit-doc-numbers.js`
+> reports both side by side so the two are never conflated.
 
 > **This list is measured, not remembered.** `scripts/audit-doc-numbers.js` extracts the
 > layer names straight out of the `checked_by.push({ layer: '…' })` statements in

@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-28T23:00:13.477Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.63); \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 223,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "14/14",
+    "runAll": "1210/0",
+    "baseline": "1205/0",
+    "delta": "+5"
+  },
+  "result": "doc-honest-numbers 切片(连续第 7 轮)。\n基线实测 verify 14/14、run-all 1205/0。\n\n═══ 上轮结论被推翻 ═══\n第六轮写「六个角度已推进完毕、接近枯竭」。\n本轮换了个问法，直接推翻它:\n  不问「还有哪些数字没审」，\n  而问 **「45/45 全绿，绿的里面有没有\n        形式上是绿的、实际上根本没被检验的?」**\n\n═══ 答案: domains ═══\n把 pats 的 key 列出来只有 8 类:\n  dimensions/modules/tools/routes/layers\n  /tier_block/tier_rewrite/tier_verify/tests/nodeReq/deps\n而 README 的小节标题是:\n  `### Capability domains (7 domains, 132 modules)`\n—— **domains 不在审计的任何模式里。**\n\n实测: 标题写 7，表格也正好 7 行，数字**碰巧为真**。\n将来加第 8 个域、改了表格忘了改标题，没有任何仪器会报警。\n\n**一个从未被测量过的数字，在全绿的报表里\n  与已被测量的数字无法区分。**\n\n═══ 新 key 立刻抓到三样东西 ═══\n(a) README 与 SKILL.md 各一条此前不可见的 domains 声称\n(b) 真缺陷: IDENTITY.md 写「99 个模块真实加载」，实测 132\n    —— 这是两轮前修过的**孪生写法**(修了一处，另一处存活)\n(c) SKILL.md 用的是 `Capability map` 而非 `Capability domains`\n    —— **同一件事两份文档用了不同的标题词**\n\n═══ 然后发现并发风险评估本身是错的 ═══\nrun-all.js 改并发时记录的风险依据是:\n  「0 test files write under data/ or memory/」\n—— 为真，但**文不对题**: 至少四个探针测试\n会**改写 README.md / IDENTITY.md** 再 spawn 审计。\n\n并发下: A 注入 → B 在 A 已污染的副本上再注入\n→ A 的审计看到 B 的探针 → A 断言失败\n→ A 用**含 B 探针的备份**恢复 → README 残留多行。\n首测: README 残留 7 行，套件一度 6 处失败，\n失败信息**全都看起来像仪器的错**。\n\n═══ 修法: test/_doc-probe-lock.js ═══\n基于 mkdir 的跨进程锁(带陈旧锁接管 + pid 归属校验)。\n所有 spawn 审计的测试都持锁——\n**写入者和读者都要**，因为读者必须看到文档处于\n确定状态，而不是探针的中间态。\n不降并发度(那会牺牲 6.8x 加速)，只让\n「改写共享文档」这个动作串行。\n\n═══ 清理的次生损害，只有一个读者测试发现 ═══\n为清探针行执行 `git checkout -- README.md`(正确做法)，\n但它同时把两轮前加的 `17-layer pipeline*` 脚注回退没了。\n**只有 layer-count-two-readings.test.js —— 一个纯读者 ——\n   发现了这件事。** 已补回脚注。\n\n═══ 门禁 ═══\nverify 14/14；run-all **1210/0**(基线 1205，净增 +5 ——\n新增 test/audit-domains-blindspot.test.js 5 个用例)；\n审计 **49/49、0 不符、0 无法实测**，新增:\n  capability domains = 7(标题与表格自洽)\n语料**不变**: 良性 106 / FP 0.9%、恶意 41 / 召回 100%。\n未改引擎代码(src/ 未动)，故未重启 MCP(181 工具在线)。\nREADME/SKILL/CURRENT_STATE 测试数已同步 1205 → 1210。\nAGENTS.md 新增条目。\n\n═══ 一个重要的过程教训 ═══\n中途 run-all 连续多轮报失败，我每一轮都在\n「改测试」而不是先问「这是产品坏了还是仪器坏了」。\n真正的根因(并发探针互相踩)只在把\n**失败测试的共同点**列出来之后才显形:\n它们全是会改写 README 的注入测试。\n\n按职责边界未 rsync、未 git commit/push。技能副本过期，无同步任务。\n\n═══ 下次方向 ═══\n(a) 本切片现已连续 7 轮，七个角度全部推进，\n    且本轮是通过**推翻上轮的枯竭结论**才找到新角度——\n    这本身说明剩余角度已很难找。\n(b) **强烈建议下次轮换**到:\n    · 对抗鲁棒性(字母空格召回仅 39%，最严重已知缺口)\n    · 维度健康审计\n    · 测试覆盖缺口(169 个模块加载但无测试)\n(c) 若仍选到本切片，下一个可试角度:\n    审计的 key 集 vs 文档实际出现的所有数字形态\n    (机械化穷举，而非本轮的人工提问)。"
+}

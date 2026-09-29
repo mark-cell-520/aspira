@@ -6,9 +6,15 @@ A pure rule engine that judges whether a statement or an action is right, wrong,
 or dangerous — **before it reaches a human**. Zero LLM dependency.
 
 ```
-54 discrimination dimensions  ×  17-layer pipeline  ×  132 modules  ×  181 MCP tools
-×  1,510 dispatch routes  ×  1182 passing tests  ×  0 runtime dependencies
+54 discrimination dimensions  ×  17-layer pipeline*  ×  132 modules  ×  181 MCP tools
+×  1,510 dispatch routes  ×  1359 passing tests  ×  0 runtime dependencies
 ```
+
+> `*` **17 is the layer *set*, not the depth of any single call.** The pipeline
+> declares 17 layer names in `checked_by`; a given run executes only the branch it
+> takes. Measured: `mode: 'input'` traverses **11** layers, `mode: 'output'`
+> traverses **13**. Both numbers are reported side by side by
+> `scripts/audit-doc-numbers.js`, so "17" and "11" are never silently swapped.
 
 Aspira does not generate. It does not compete with an LLM. It stands between the
 LLM and the human, like a pain receptor that says "no" when something is wrong.
@@ -128,7 +134,7 @@ Measured on this repository at **v1.0.0**. Not marketing copy.
 | Dispatch routes | 1,510 |
 | Discrimination dimensions | 54 |
 | MCP tools | 181 |
-| Test suite | 1182 passing / 0 failing |
+| Test suite | 1359 passing / 0 failing |
 | Capability guard | 18 / 18 checks |
 | Security regression | 16 / 16 |
 | Runtime dependencies | 0 |

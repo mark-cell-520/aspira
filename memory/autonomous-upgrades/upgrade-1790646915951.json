@@ -1,0 +1,101 @@
+{
+  "ts": "2026-09-29T01:55:15.950Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.63,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.63). Identity alignment: 80%. Alternatives considered: \"MCP 工具增强\" (0.62); \"维度健康审计与增强\" (0.61); \"对抗鲁棒性增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.63
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.62
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.61
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.61
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.61
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.6
+    }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 231,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "baseline": {
+    "verify": "15/15",
+    "runAll": "1253/0",
+    "audit": "85/85"
+  },
+  "gap": {
+    "slice": "test-coverage-gap",
+    "found": "约定 #4 只警告了「子目录里 ../src/... 相对深度写错就永远不会跑」，而实测 271 个非归档测试文件全部被收集、全部被执行——深度不是问题。问题在**怎么跑**: run-all.js 的动态收集循环开头就是 `if (rel.includes('/')) { subTestJob; continue; }`，于是每个子目录文件都被裸 `node <file>` 运行，下面那套 mount/箭头/jest 风格检测(曾为根目录文件专门修过一次)对子目录**一次都没生效**。同一条规则只覆盖了一半文件，而这一半恰好是所有子目录。mount 风格文件被裸跑时: 退出码 0、零输出、emitResult 匹配不到汇总行 → 计 0 个用例也不计失败。另外 CORE_TESTS 里的文件用 subTestJob 直接入队，绕过了第二次检测。"
+  },
+  "measuredCost": {
+    "previouslyUncountedCases": 39,
+    "detail": {
+      "identity/agent-psychology.test.js": "21 个 test() 调用；裸 node 0 输出，经 _mount.js 有 21 个用例",
+      "knowledge/classics-value-mapper.test.js": "10 个用例；在 CORE_TESTS 里被裸跑，export 不被调用",
+      "agent-boundary-guard.test.js": "8 个用例；同上"
+    },
+    "note": "run-all 报 1253 passing，其中 39 个从未被数过，而 1253 本身看起来完全正常。"
+  },
+  "work": {
+    "files": [
+      "test/run-all.js (新增共享 pickJob()，删除子目录旁路；CORE_TESTS 也走同一选择点)",
+      "test/knowledge/classics-value-mapper.test.js (改为真正调用注入的 test())",
+      "test/subdirectory-test-reachability.test.js (新增, 5 例)",
+      "README.md / SKILL.md / CURRENT_STATE.md (测试数 1253→1297)",
+      "AGENTS.md (周期 14 条目)"
+    ],
+    "notes": [
+      "classics-value-mapper.test.js 是**双重静默**: 声明了 mount 签名 function({ test }) 却从不调用 test()，自建 cases 数组、打印 classics-value-mapper: 11 cases passed——这行既不含「通过」也不含「失败」，即使 harness 正确也计 0。",
+      "改用真 harness 后立刻浮出一条**从未运行过的错误期望**: 它断言 parseHit('no-colon-here').file 为真，而真实契约(src/knowledge/classics-rules.js:1033)是降级返回 { file: null, line: null, raw }。一个从未执行的断言不是一条断言——它绿只因为它从未跑过。已改为断言真实降级形状。",
+      "回归锁分两层: 静态查(全部 165 个 mount 文件的 export 体内必须出现 test() 调用) + 行为查(每个子目录 mount 文件经 _mount.js 必须 >=1 用例且 0 失败)。两层都必要: 静态查只匹配文本 test(，把注入参数改名成 test: _unused 而仍调用 test(...) 能溜过静态查，只有行为查能抓住。",
+      "源码锁必须先剥注释再匹配: pickJob 自己的 JSDoc 原文引用了被删掉的旁路来说明它替换了什么，不剥注释就会把自己写的文档当成没删掉的代码——一个把说明当罪证的锁会永远红着，直到有人连真锁一起删掉。"
+    ]
+  },
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1297/0 (基线 1253/0, delta +44 = 39 个此前未计数用例 + 5 个新测试)",
+    "audit": "85/85 (0 不符)",
+    "corpus": "106 benign / 41 malicious 不变",
+    "srcChanged": false,
+    "mcpRestarted": false
+  },
+  "liveInjection": {
+    "what": "三处注入: (1) 重新引入子目录旁路 (2) 注释掉一个 mount 文件的全部 test() 调用 (3) 把挂载函数的注入参数改名成 test: _unused",
+    "result": "三处全部被抓住并恢复；恢复后 5/5 通过",
+    "verdict": "两层锁都有效"
+  },
+  "git": {
+    "rsync": false,
+    "committed": false,
+    "pushed": false,
+    "note": "未 rsync、未 git commit/push、技能副本过期无同步任务"
+  }
+}
