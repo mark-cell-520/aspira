@@ -48,5 +48,15 @@
       "type": "episodic"
     },
     "id": "31b1d322-7c85-4175-be60-a158c9d47a98"
+  },
+  {
+    "ts": 1790789504375,
+    "input": "hello",
+    "output": "",
+    "context": {
+      "memoryType": "episodic",
+      "type": "episodic"
+    },
+    "id": "820888ff-5e30-461e-b143-5d26eb2df630"
   }
 ]

@@ -79,8 +79,8 @@ class BlindSpotBreaker {
     // 置信度分类
     this.confidenceBands = {
       ALTA: { min: 0.9, max: 1.0, label: '高置信', action: '直接执行' },
-      MEDIA: { min: 0.6, max: 0.89, label: '中置信', action: '需验证假设' },
-      BAIXA: { min: 0.0, max: 0.59, label: '低置信', action: '需更多信息' },
+      MEDIA: { min: 0.6, max: 0.9, label: '中置信', action: '需验证假设' },
+      BAIXA: { min: 0.0, max: 0.6, label: '低置信', action: '需更多信息' },
     };
     
     // 断言分类标签

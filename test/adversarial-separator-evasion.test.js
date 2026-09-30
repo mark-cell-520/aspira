@@ -144,16 +144,23 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       '混合分隔符串在两个多字母词之间应保留');
   });
 
-  test('已知限制: 全单字母段会把 . 当分隔符吃掉(显式记录，不假装已修)', () => {
-    // 这不是疏漏而是记录在案的局限: 折叠启发式要求"该串内至少一段是单字母"，
-    // 而 e-l-.-i-n-n-e-r-H-T-M-L **所有**段都是单字母，于是 . 也被剥掉。
-    // 若将来修好，把此测试改为断言被拦即可。
+  test('[周期57 已修] 全单字母段不再把 . 当分隔符吃掉', () => {
+    // [事实变更] 这条测试原先断言相反的事实——"全单字母段会把 . 当分隔符吃掉"，
+    // 且注释明确写着"若将来修好，把此测试改为断言被拦即可"。本周期就是那个"将来"。
+    //
+    // 原局限: 整段折叠原先剥 [-._]，逐字符逃逸 e-l-.-i-n-n-e-r-H-T-M-L 被还原成
+    // 'elinnerhtml'，而 code_security 的 /innerHTML\s*=/ 要的是 'innerHTML',
+    // 属性访问的 '.' 没了就再也匹配不上(document.write 同理)。
+    // 修法: 折叠只剥 [-_]，'.' 留给属性访问; split 仍按 [-._] 分段，段边界不变,
+    // 故"至少一段是单字母"等护栏全部维持。
+    // 实测: 逐字符逃逸召回 35/41 → 37/41，明文召回维持 41/41(零回归)。
     const t = sep('el.innerHTML = userInput;');
     const n = norm(t).normalized;
-    assertTrue(n.includes('elinnerhtml'),
-      `当前实现产出 elinnerhtml(点被吃)，实测: ${JSON.stringify(n)}`);
-    assertTrue(idx.checkCodeSecurity(n).count === 0,
-      '该形态下 code_security 确实不命中——这就是已知限制的实证');
+    assertTrue(n.includes('el.innerhtml'),
+      `. 应作为属性访问被保留，实测: ${JSON.stringify(n)}`);
+    const r = idx.checkCodeSecurity(n);
+    assertTrue(r.count > 0,
+      'code_security 现在必须命中该形态——这是修复的实证, 实测 count=' + r.count);
   });
 
   test('其余变换类当前状态快照(防静默退化)', () => {

@@ -1,0 +1,93 @@
+{
+  "ts": "2026-09-30T08:20:14.708Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 316,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "deliverable": "audit 的\"无法实测\"从 2 降到 0、\"与实测一致\"从 86 升到 88 —— 周期41/44/47 三个周期的未完成项终于完成。根因不是求值顺序, 是我自己的三个正则没加 /g。",
+  "defects": [
+    {
+      "id": "A",
+      "severity": "high",
+      "title": "三个 matchAll 的正则都没加 /g, String.prototype.matchAll 直接抛 TypeError, 被 catch 兜住",
+      "detail": "audit 的调试打印给出决定性证据: mSrc=null 而 mAlive=undefined —— m.srcModules 只在 catch 里被置 null, 而 m.aliveUntested 与 m.suspectedDead **连赋值都没走到**。原因: /src 模块 (\\d+) 个/ 等三个正则都没有 /g, 而 matchAll 要求全局正则, 遇非全局直接抛 TypeError; 抛出点在第一个 matchAll, 所以第一项被 catch 兜成 null、后两项停在 undefined。**周期44 与 47 我两次都把原因归给\"求值顺序\", 两次都不对。** 加 /g 后: 88 条声称全部被测得, 0 条无法实测。"
+    },
+    {
+      "id": "B",
+      "severity": "high",
+      "title": "SKILL.md 的 Engine version 行真的被写成 9.9.9 —— 一次注入探针从未还原",
+      "detail": "周期43 记录过一条\"无法解释\"的异常: audit 报 SKILL.md 声称 engine version = 9.9.9 而实测 1.0.0, 复跑即消失, 我当时判定\"不在本轮改动范围内, 未能定位\"。本轮 git diff 给出真相: SKILL.md 磁盘内容确实是 | Engine version | 9.9.9 |, 与 | Test suite | 1418 passing | 并列 —— 即某次版本注入探针改了版本行却未还原, 而我周期39/46 两次同步测试条数时都只改了那一行旁边的测试条数, 从没看过同一表格里的版本行。已还原为 1.0.0。**一条记录为\"无法解释、复跑即消失\"的异常, 更可能是一次未还原的写入, 而不是环境噪声。**"
+    },
+    {
+      "id": "C",
+      "severity": "medium",
+      "title": "周期44 的\"突变验证通过\"是假的: 那 5 处不符全是间歇性 tests 短差, 我的声称仍躺在\"无法实测\"里",
+      "detail": "周期44 我注入 122→999, 看到 exit 0→1、不一致 0→5, 就判定锁生效。实际那 5 处与我的声称无关(间歇性 tests 短差在同期复现), 而 README 的 999 仍被归入\"无法实测\"。**我把别人的红灯当成了自己的锁的证据。** 这与周期43 把 88→66 归因成 SKILL.md 一样: 看到形状像, 就当成因果。"
+    }
+  ],
+  "fixes": [
+    "audit-doc-numbers.js: 三个 matchAll 的正则补上 /g, 并在块前记录根因(未带 g 时 catch 兜住第一项、后两项从未执行)",
+    "SKILL.md: Engine version 行由 9.9.9 还原为 1.0.0(注入探针的未还原污染)"
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1418/0(复跑; 中途一次读到 1415/3 未复现)",
+    "audit": "88 条, 87 一致 / 1 不符 / 0 无法实测",
+    "note": "改了 scripts/audit-doc-numbers.js 与 SKILL.md 一行",
+    "corpus": "未改"
+  },
+  "processNotes": [
+    "**我三次归因错两次。** 周期44 归因\"读取先于测量\"(错), 周期47 第一次也归因求值顺序(错), 真相是正则漏了 /g。决定性证据不是再读一遍代码, 而是**打印回填时刻的实际值** —— mSrc=null mAlive=undefined 这一行直接排除了所有\"顺序\"假设: 顺序问题会让两项同时为 undefined, catch 兜住只会让第一项为 null。",
+    "一条形状上的捷径: 我连续两个周期都在分析\"为什么 null\", 却从没打印过那个 null 是 undefined 还是 null。**这两种值来自完全不同的代码路径。**"
+  ],
+  "remainingGap": "audit 仍 exit=1: 豁免条目悬空 1 个(CHAT_LOG_HeartFlow_完整备份_2026-05-16.md 符号链接目标不存在)未处理。一次 1415/3 的 run-all 未复现, 原因不明。",
+  "nextRecommendation": "处理 audit exit=1 的两个剩余来源: (a) 悬空的豁免条目 —— 要么重建符号链接目标, 要么把该豁免条目连同理由一起删掉, 别让它无限期红着; (b) 确认那一次 1415/3 的成因, 若与周期46 修掉的 ε-greedy 无关, 说明还有第二个 flaky 测试。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "not-performed: 仅改 scripts/ 与 SKILL.md, 未改 src/ 引擎代码"
+}

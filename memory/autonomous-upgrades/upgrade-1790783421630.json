@@ -1,0 +1,94 @@
+{
+  "ts": "2026-09-30T15:50:21.630Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 316,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "deliverable": "定位了八年来(八个周期)挂着\"未定位\"的间歇测试短差 —— 它不是 flaky 测试, 是**我自己并发跑 run-all**。证据: 并发 3 个 run-all, 三种不同的失败数、总数各掉 4/25/24 个用例。",
+  "defects": [
+    {
+      "id": "A",
+      "severity": "high",
+      "title": "\"tests 间歇短差\"的真凶是同一个 doc-probe 锁上的并发, 不是 flaky 测试",
+      "detail": "用 audit 的 spawn 形态连跑 10 次 run-all(串行): **10/10 全部 1418/0, 零不稳定**。改成并发 3 个 run-all 立刻爆炸: B 1383 通过/10 失败/**共 1393**, A 1407/7/**共 1414**, C 1385/9/**共 1394** —— 总数比 1418 少 4、25、24, 说明用例**根本没跑**。失败条目全是文档探针类: \"活体验证: 表格加一行而标题不改, 审计必须抓住\" / \"活体注入: 引擎版本写错必须变红\" / \"漏报防线: 注入一条错值, 审计必须抓住\" / \"audit-doc-coverage.test.js: 挂载异常 无法在 60000ms 内取得文档探针锁 /tmp/aspira-doc-probe.lock\" / \"活体注入: measure() 期间弄脏文档, 不得被报成文档声称不符\"。争用点是 /tmp/aspira-doc-probe.lock。"
+    },
+    {
+      "id": "B",
+      "severity": "medium",
+      "title": "周期47/48 的失败由本轮工作方式造成, 我一直在找 suite 里的问题",
+      "detail": "周期47 报告的 1415/3、周期48 报告的 1417/1, 都是在**我同时跑着其他后台任务**时读到的 —— audit 在 spawn run-all, 而我自己另起的后台 job 也在 spawn run-all, 两个 run-all 抢同一把锁、同时改写同一批文档。周期46 我修掉了 ε-greedy 那条真 flaky, 于是剩下的间歇全部来自并发。**我把自己的并发当成了仪器的不稳定性。**"
+    },
+    {
+      "id": "C",
+      "severity": "low",
+      "title": "`_doc-probe-lock` 的 STALE_MS(120000ms) 超过其调用者的耐心(60000ms), 老缺口在本轮得到一次现场",
+      "detail": "本轮实测到它的后果: 探针测试报\"无法在 60000ms 内取得文档探针锁\", 而锁的 STALE_MS 是 120000ms —— 调用者放弃时锁还没过期, 于是这个锁永远等不到、也永远不被回收, 用例以\"挂载异常\"整体消失。这正是 AGENTS.md 早已记录的缺口, 本轮给出了它造成用例消失的现场。"
+    }
+  ],
+  "fixes": [
+    "未改任何源码: 本轮是一次定位, 不是一次修改。清理了残留的 /tmp/aspira-doc-probe.lock 后, 门禁恢复 15/15 与 1418/0"
+  ],
+  "zeroRegression": {
+    "串行10次": "10/10 全部 1418/0, 零不稳定",
+    "并发3次": "B 1383/10/1393, A 1407/7/1414, C 1385/9/1394 —— 全部红, 且总数下降(用例未跑)",
+    "并发后的单跑": "1417/1(锁与文档仍被前一轮并发污染)",
+    "清理锁后": "verify 15/15, run-all 1418/0",
+    "note": "本轮未改任何文件, 只新增了两份探针输出"
+  },
+  "processNotes": [
+    "**这条\"未定位\"的缺陷, 是我的仪器用法的产物, 却被我当成仓库的属性记录了八个周期。** 每次我说\"间歇短差仍未定位\"时, 事实是我正在同时跑两个 spawn run-all 的任务, 而我认为那是\"顺便跑一下门禁\"。周期46 定位 ε-greedy 用的是\"复现 audit 的 spawn 形态\", 我这次照做了, 但**没有先停掉自己的并发** —— 于是第 11 次跑又绿了, 我据此写\"第二个 flaky 未复现\"。",
+    "串行 10 次全绿, 已足以否证\"还有第二个 flaky 测试\"这个周期49 交接里的假设。**一个在受控条件下不出现的现象, 先要怀疑条件, 再怀疑对象。**",
+    "`aspura` 路径打错又发生一次(本会话第七次以上), 白跑一整轮 run-all。那条规则我写进 journal 三四次了, 仍然照错。"
+  ],
+  "remainingGap": "`_doc-probe-lock` 的 STALE_MS(120000ms) 与调用者耐心(60000ms)不匹配, 使等待中的用例整体消失而非失败 —— 这是真实缺陷, 本轮只给出现场未修。audit 的常亮 ❌ 与\"无法实测 0\"是现状。",
+  "nextRecommendation": "修 _doc-probe-lock 的 STALE_MS: 让它小于调用者的 60000ms 耐心, 使等待超时前锁能被回收, 用例以\"失败\"而非\"消失\"呈现。同时把\"不得并发跑两个 run-all\"写进 AGENTS.md 的操作约定 —— 这是本轮真正的教训, 而且它防的不是仓库的 bug, 是我自己的操作。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "not-performed: 本轮未改任何文件"
+}

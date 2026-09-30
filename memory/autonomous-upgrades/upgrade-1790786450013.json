@@ -1,0 +1,54 @@
+{
+  "ts": "2026-09-30T16:40:50.012Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.71,
+  "confidence": 0.6,
+  "reasoning": "Selected: \"维度健康审计与增强\" (score: 0.71). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 316,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "decided"
+}

@@ -44,6 +44,7 @@ const path = require('path');
 const LOCK_DIR = '/tmp/aspira-doc-probe.lock';
 const STALE_MS = 120000; // 2 分钟未更新即视为陈旧(持有者已死)
 
+
 function lockAge() {
   try {
     const st = fs.statSync(LOCK_DIR);
@@ -54,6 +55,7 @@ function lockAge() {
 function touch() {
   try { fs.utimesSync(LOCK_DIR, new Date(), new Date()); } catch (_) {}
 }
+
 
 function acquire(timeoutMs) {
   const deadline = Date.now() + (timeoutMs || 60000);

@@ -1,0 +1,86 @@
+{
+  "ts": "2026-09-30T06:15:11.740Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 316,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "outcome": "REVERT. 改动破坏了 4 个测试, 已 git checkout 还原, 门禁恢复 15/15 与 1417/0。",
+  "target": "src/workflow/pipeline-config.js (1746 行) —— 诚实清点后 B 类最大缺口, 配置整条管线",
+  "realDefectFound": "COMPLEXITY_SIGNALS.decision 62 条里有 2 个重复条目(建议、权衡)。模块无任何测试, 无人发现。这不是致命中缺陷, 但它是 B 类\"活着但没人断言\"的真实写照: 连数据表的重复都没有东西看。",
+  "whyFailed": [
+    "我删掉 decision 数组里的第二个 权衡 后, run-all 从 1417/0 掉到 1413/4 —— **四个测试直接变红**。这证明 权衡 在两个信号类别里各出现一次不是笔误, 而是**被依赖的行为**: 复杂度评分跨类别累计, 删掉任一条目都会改变分数、进而改变 selectMode 的路由。",
+    "我在过程中还犯了一个更危险的错误: 第一处 edit 把第 62 行(条件/假设词表, 含 权衡、利弊、后果、假如、如果、假设、若、则)整行替换成了与第 52 行重复的内容。当场发现并还原, 但那是一次真实的内容损坏, 起因是我把\"行号邻近\"当成了\"语义同属\"。"
+  ],
+  "fixAttempted": "删除 COMPLEXITY_SIGNALS.decision 中的重复条目(建议、权衡), 并为该模块补测试锁。",
+  "zeroRegression": {
+    "revert前": {
+      "verify": "15/15",
+      "runAll": "1413/4",
+      "audit": "86/86, exit=0"
+    },
+    "revert后": {
+      "verify": "15/15",
+      "runAll": "1417/0",
+      "audit": "88 条, 不一致 0, exit=1"
+    },
+    "note": "还原后 run-all 回到 1417/0, 证明失败确由本轮改动引入。审计 exit=1 与本轮无关(见 collateralDamage)"
+  },
+  "processNotes": [
+    "**一个重复条目不一定是缺陷。** 我先假定它是坏数据, 删掉, 测试就用红告诉我它在被依赖。如果我当时把 run-all 的 4 个失败当成噪音重跑一次, 就会带着一个真实回归走进下一周期。删一条表项之前, 先问\"有谁在数它\"。",
+    "我的探针连续第四周期 narrowly: 先测 selectMode 只给短输入, 得出\"结构上无法返回 full\"的结论; 换长输入后它轻易返回 full。**探针的输入范围比被测量的合同窄, 是我的仪器最稳定的失效方式。**"
+  ],
+  "collateralDamage": [
+    "周期41 我给 audit 加的 srcModules 声称模式是坏的: regex /across (\\\\d+)\\\\s*\\\\n?modules/ 在 SKILL.md 里匹配到了 8, 于是这轮输出出现 \"SKILL.md 声称「src modules counted by coverage-sweep = 8」\" —— 一个数字被读进了一个完全不属于它的键。这轮 audit exit=1 与它有关。周期41 我说\"srcModules 这条锁上了\", 而实际上它锁上的是一个错的目标。"
+  ],
+  "remainingGap": "pipeline-config.js 的 2 个重复条目**是有意保留的行为依赖, 不是缺陷** —— 已还原, 形态上仍是重复, 语义上是跨类别累计。src/workflow/pipeline-config.js 仍是 134 个 B 类模块之一, 本轮未覆盖。",
+  "nextRecommendation": "下一周期两件事, 按序: (1) 修掉周期41 引入的坏 srcModules 模式(它会把 SKILL.md 的 8 读成模块数), 或者把那条 README 声称撤回; (2) 不要再把\"把数字接进 audit\"当成已完成 —— 周期41 的 srcModules 现在被证明锁错了目标, 而 aliveUntested 根本没锁上。正确的完成判据只有一个: **突变测试变红**。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "not-performed: 改动已全部还原, 当前 src/ 与周期开始时逐字节相同"
+}

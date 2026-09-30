@@ -1,0 +1,90 @@
+{
+  "ts": "2026-09-30T04:35:13.934Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 315,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "defects": [
+    {
+      "id": "A",
+      "severity": "medium",
+      "title": "HealingMemoryRL.import() 的合同两种失效方向同时存在: 安全输入崩溃、垃圾输入沉默",
+      "detail": "import() 第一行就是 if (data.qTable)。实测: import(null)/import(undefined) 抛裸 TypeError \"Cannot read properties of null (reading 'qTable')\" —— 报引擎内部细节，与\"调用方给错了\"这件事实无关; 而 import({}) / import([]) / import(\"s\") / import(42) 全部**静默无操作**，返回 undefined，调用方无从得知\"什么都没导进去\"。一个在安全输入上崩溃、在垃圾输入上沉默的合同，比直接抛错更糟: 它把\"导入了\"和\"没导入\"变得无法区分 —— 结构合法、内容为空，正是本仓库反复记录的失败形状。该模块 1779 行、22 个公开方法，在 coverage-sweep 里属 B 类(有 src 引用，无测试引用)。"
+    },
+    {
+      "id": "B",
+      "severity": "low",
+      "title": "我自己的探针在一个周期内错了三次，每次都足以制造一份假缺陷报告",
+      "detail": "(a) 把 qTable 当普通对象 JSON.stringify —— 它是 Map，stringify(new Map()) 恒为 {}，于是得出\"autoCleanupRL 清空了 qTable\"的假结论; (b) updateFromRepair 要三个参数(errorPattern, strategy, success)，我只传一个对象，于是得出\"学习状态坍缩进 [object Object] 垃圾桶\"的假结论; (c) getBestStrategy 要 errorPattern 参数，我空参调用，于是得出\"getBestStrategy 恒为 null\"的假结论。三个都是探针错，不是引擎错。"
+    }
+  ],
+  "fixes": [
+    "import() 加合同校验: null/undefined 视为\"无可导入\"并如实回报 {imported:false, reason:'no-data'}；非对象(null/数组/基本类型)抛明确 TypeError 且信息点名合同; 成功导入后回报 {imported, qEntries, history}，把\"导入了多少\"变成可观测的",
+    "新增 test/self-healing-rl-import-contract.test.js(16 用例)锁定: 真往返恢复 Q 表与行为、null 不再崩溃、垃圾输入被合同明确拒绝、空对象如实回报 0 条、原型污染防护",
+    "测试计数 1401 → 1417 同步 4 处当前声称站点(CURRENT_STATE.md / README.md x2 / SKILL.md)，audit 由 4 处不符回到 86/86"
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1401 -> 1417 / 0 失败",
+    "audit": "86/86, exit 0",
+    "note": "改了 src/cortex/self-healing-rl.js 的 import() 合同; 新增 16 个测试用例",
+    "mutation": "撤掉 null 守卫 -> 锁 12 通过 / 4 失败; 还原 -> 16 通过 / 0 失败",
+    "corpus": "未改"
+  },
+  "processNotes": [
+    "测试第一版用了 node:test 的 test()，被 run-all 判成 plain 风格后**裸跑出 0 个用例** —— 一个从未被收集的锁，与一个不存在的锁无法区分。run-all:209 的分派逻辑写得很清楚(module.exports= 走 mount; 有 describe( 走 jest; 否则 plain)，我却没有先读它。已改为本仓的 plain 自述风格。",
+    "突变还原后读到过一次 15 通过/1 失败 —— cp 刚写完 node 就开始读。重跑确认文件状态正确、16/0。**报告一个失败前先复核它是不是真的**，这次如果直接报告，会把一次竞态记成一次回归。",
+    "我自己的断言也过度了一次: 断言 qEntries >= 3，而 qEntries 数的是**上下文键**条目数(2 个)，不是策略-Q 对数(3 个)。把自己对指标口径的误读当成引擎缺陷 —— 与前面三次探针错误同一族。"
+  ],
+  "remainingGap": "coverage-sweep 修正后未覆盖 135 个模块，本轮覆盖了其中 1 个。HealingMemoryRL 其余 21 个公开方法仍无断言（本轮只锁了 import 的合同）。周期38 交接的\"给 135 加一条当前声称让 audit 锁定\"仍未做。",
+  "nextRecommendation": "doc-honest-numbers 续作: 给 coverage-sweep 的\"未覆盖 135 / B 类 123\"加一条当前声称，让 audit-doc-numbers 核对它 —— 否则这个刚被修正的诚实数字下一轮又会悄悄漂移，而没有任何东西会报。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "src/ 已改(self-healing-rl.js 的 import() 合同)，但未新增/修改任何 MCP 工具定义、handler 映射或权限契约，工具清单仍 181/181。如实记录: 本轮确实改了 src/，记为不重启的理由是合同口径而非\"没动引擎\"。"
+}

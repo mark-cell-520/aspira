@@ -1,0 +1,100 @@
+{
+  "ts": "2026-09-30T16:20:38.115Z",
+  "chosen": "dimension-health-aududit",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.71,
+  "confidence": 0.6,
+  "reasoning": "Selected: \"维度健康审计与增强\" (score: 0.71). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 316,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "outcome": "REVERT. 我改 _doc-probe-lock 的陈旧判据, 红了一个专门测锁语义的测试, 并连带污染两份文档。已全部还原(0 残留), 门禁恢复 15/15 与 1418/0。",
+  "whatIAttempted": [
+    "第一版: 持有期间 setInterval(touch) 心跳 + STALE_MS 120000 → 20000",
+    "第二版: 陈旧判据由 mtime 换成 pid 存活(process.kill(pid,0))"
+  ],
+  "whyFailed": [
+    "test/doc-probe-lock-release-ownership.test.js 的 用例③「陈旧锁必须能被强拆」直接红: 它写 pid=活着的父进程、回溯 mtime, 期望 release() 能强拆。而我的 pid 存活判据把\"活着但卡住\"永远判为活锁。**该测试锁的是对的: 一把永不失效的锁和没有锁是分不开的**(它自己的注释就这么写)。",
+    "连带: 两处\"挂载异常 无法在 60000ms 内取得文档探针锁\"(coverage-denominator-honesty / layer-count-two-readings), 以及 SKILL.md 被探针污染 → \"流水线分层数必须与 SKILL.md 声称一致\" 与 \"SKILL.md front-margin 版本必须与 VERSION 一致\" 红。",
+    "第一版被实测否证: 持锁 24s 后, 等待方在 20027ms(=STALE_MS)就拿到了锁。原因不是间隔不合适, 而是 **withDocLock 的 fn 是同步的** —— 探针持锁期间跑 spawnSync 审计, 事件循环被阻塞, setInterval 根本不触发。任何\"在同一个进程里定时 touch\"的方案对同步持锁都无效。"
+  ],
+  "defects": [
+    {
+      "id": "A",
+      "severity": "medium",
+      "title": "我把一个真实缺陷与一个错误修法一起写进了源码, 而错误修法本身会伤人",
+      "detail": "周期50 定位到的两条是真缺陷: (a) STALE_MS(120000) > 调用者耐心(60000), 等待方先放弃, 用例以\"挂载异常\"消失而非失败; (b) 持锁方跑审计(分钟级, 同步)期间不 touch, 一把**被合法持有**的锁会在 120s 后被判陈旧被强拆, 产生两个持有者。这两条我都没修好, 而两次尝试都引入了新的红。"
+    },
+    {
+      "id": "B",
+      "severity": "low",
+      "title": "周期50 我把失败读成\"我的并发\", 而本轮证明即使单跑也会红",
+      "detail": "周期50 我断定间歇失败源自我同时跑两个 run-all。部分属实, 但 (a) 是真缺陷且**不需要并发就能触发** —— 只要一个探针持锁跑审计超过 60s 的等待方耐心, 用例就消失。"
+    }
+  ],
+  "fixes": [],
+  "zeroRegression": {
+    "revert前": {
+      "verify": "15/15",
+      "runAll": "1381~1387 通过 / 7~9 失败 / 共 1390~1394",
+      "audit": "SKILL.md 被污染"
+    },
+    "revert后": {
+      "verify": "15/15",
+      "runAll": "1418/0",
+      "残留": "本轮改动 0 处"
+    }
+  },
+  "processNotes": [
+    "**又一个夹具。** 周期48 我删了坏符号链接(测试钉住), 本轮我改了陈旧判据(测试钉住)。两次都是同一个形状: 我认为那是\"明显的坏参数\", 而它是别人的契约。周期28 的\"删除一个文件前问它是不是契约\"我查了, 这次**连查都没查** —— 因为我以为改一个常数不算删东西。**改一个数字和删一个文件, 在契约面前是同一种动作。**",
+    "这次做对了的: 看到红灯立刻 REVERT, 没有写第四条注释继续论证。上轮我会先把\"为什么这其实是测试过时\"写进源码。",
+    "本会话 `aspura` 路径打错已第 9 次, 每次白跑一整轮 run-all。它被我写进 journal 三四次, 仍然照错。**一条反复记录却不改操作的教训, 和没有教训的区别只在于它让人自我感觉更好。**"
+  ],
+  "remainingGap": "周期50 定位的两条 _doc-probe-lock 缺陷(等待方先放弃 / 持锁跑长审计被判陈旧)一条未修。正确修法方向(尚未验证): 把\"调用者耐心\"与\"陈旧线\"分离 —— 等待方耐心调大到长于陈旧线, 而锁的 mtime 在持锁期间由**外部**手段刷新(因为 fn 是同步的, 同进程定时器无效); 或者让探针持锁改用异步 spawn 而非 spawnSync, 定时器才有机会跑。",
+  "nextRecommendation": "不要再动 STALE_MS 的**语义**。若要修, 先跑 test/doc-probe-lock-release-ownership.test.js 看它钉住什么(它钉了语义, 不只是数值), 并且任何改动前先确认该文件是绿的。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "not-performed: 仅改 test/_doc-probe-lock.js 且已全部还原"
+}

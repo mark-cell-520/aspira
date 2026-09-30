@@ -667,6 +667,32 @@ function claims() {
     if (!s) continue;
     const pats = [
       { re: /(\d+)\s+discrimination dimensions/g, key: 'dimensions', what: 'dimensions' },
+      // ── [第四十一轮] 覆盖缺口 ──────────────────────────────────
+      // coverage-sweep.js 周期37 修掉子串匹配后, 诚实缺口 103 → 134,
+      // 但这个数字只活在脚本 stdout 里, 无任何声称站点, 于是不核对它。
+      // 只加测量键(m.aliveUntested)是**不够的**: 实测突变 122 → 122X
+      // 后 audit 仍 exit=0 —— 因为 reads 声称的是 claims() 里这份
+      // 逐个文档硬编码的 re 列表, 没有对应 re 的数字照样没人读。
+      // **一个写进文档却没有任何模式读它的数字, 与一个没人声称的数字
+      // 在全绿报告里无法区分。** 这正是本脚本自己记录的失败形状。
+
+      // [第四十四轮] 两个正则都不是"收紧", 而是**第一次真正匹配上**。
+      // 原 re 要求 \*\*(\d+)\*\* (粗体只包数字), 而 README 的真实形态是
+      // \*\*122 alive but referenced by no test\*\* —— 粗体包整句。
+      // srcModules 则死在换行: 原文 "coverage-sweep.js across 383\\nmodules"。
+      // 两处的后果是同一个: 声称从未进过 claims 列表, 于是周期41 与 43
+      // 的突变验证 122 → 122X 都"通过" —— 不是因为锁住了, 而是因为没有锁。
+      // 而周期43 我把声称总数 88 → 66 解释成"SKILL.md 伪声称已消除",
+      // 真实原因是我自己的声称掉出了名单。**一个从不匹配的 re 与一个
+      // 收紧的 re 在数字上看起来一样, 含义相反。**
+      { re: /\*\*(\d+) alive but referenced by no test\*\*/g, key: 'aliveUntested', what: 'alive but untested src modules' },
+      // 收紧过的 re: 原为 /across (\d+)\s*\n?modules/, 它在 SKILL.md
+      // "globalThis (11 refs across 8 modules → …)" 上匹配到 **8**，
+      // 于是 "coverage-sweep 的模块数" 这个键被读进了 8 —— 一个数字
+      // 落进了完全不属于它的标签, 而它偏偏还显示为"一致"。
+      // **读到 ≠ 核对, 读到错目标比读不到更危险**。现在要求前缀是
+      // "coverage-sweep.js across", 只匹配 README 那一句。
+      { re: /coverage-sweep\.js across (\d+)\s+modules/g, key: 'srcModules', what: 'src modules counted by coverage-sweep' },
       { re: /(\d+)\s+modules\s*[×,.]/g, key: 'modules', what: 'modules' },
       // ── [审计盲区修复·第七轮] "N domains" 从未被任何模式覆盖 ──
       // 连续第七轮 doc-honest-numbers，上轮结论是「六个角度已推进完毕、
@@ -961,6 +987,40 @@ const cl = claims();
 // 注意求值顺序: m.routes / m.layers 在下面的 try 块里才被赋值，
 // 若在对象字面量里提前引用会得到 undefined——首版正是如此，把已测得的层数
 // 报成"无法实测"。故此处先用占位，测量后再回填。
+  // [第四十四轮] 覆盖清点的测量必须放在 `const actual = {}` **之前**。
+  // 原来它跟在后面, 于是 actual.aliveUntested = m.aliveUntested 在
+  // m.aliveUntested 还是 undefined 时就被求值 —— 声称被正确读出来(999),
+  // 实测值却是 null, 于是掉进"无法实测"而不是"不符"。**读取先于测量,
+  // 锁就永远是开着的, 而且看起来是关着的。**
+  // [第四十七轮] 三个 matchAll 的正则都必须带 /g —— String.prototype.matchAll
+  // 遇非全局正则**直接抛 TypeError**(本轮早前一次探测就撞过同一个错误)。
+  // 未带 g 时: 第一行 matchAll 抛出 → catch 把 m.srcModules 置 null →
+  // **m.aliveUntested 与 m.suspectedDead 连赋值都没走到, 停在 undefined**。
+  // 实测调试打印: mSrc=null mAlive=undefined —— 一个被 catch 兜住、
+  // 一个从未执行。这就是无法实测的真正来源, 与求值顺序无关。
+  // ── [第四十一轮] 测试覆盖清点 ────────────────────────────────────
+  // 背景: coverage-sweep.js 在周期37 修掉了 referencedByTest 的子串匹配
+  // (虚报 47 个模块已覆盖)，诚实缺口从 103 变成 134。但那个数字只活在
+  // 脚本自己的 stdout 里，**没有任何当前声称站点引用它**，于是 audit
+  // 不核对它 —— 周期 28/38/39/40 连续四个周期把它列为「下次方向」
+  // 却一直没做。这正是 AGENTS.md 反复记录的形状:
+  // **一个被测量过的数字，不等于一个被锁定的数字。**
+  //
+  // 与 m.tests 同构: spawn 脚本，从 stdout 抓汇总值。
+  // 取「最后一次」匹配，理由与 m.tests 完全相同 —— 取第一条会拿到
+  // 某个中间值，把正确的文档声称报成不符。
+  try {
+    const { spawnSync } = require('child_process');
+    const r = spawnSync('node', ['scripts/coverage-sweep.js'], { cwd: ROOT, encoding: 'utf8', timeout: 300000, stdio: ['ignore', 'pipe', 'ignore'] });
+    const out = (r && r.stdout) ? r.stdout.toString() : '';
+    const all = [...out.matchAll(/src 模块 (\d+) 个/g)];           // 汇总行
+    m.srcModules = all.length ? Number(all[all.length - 1][1]) : null;
+    const bm = [...out.matchAll(/B 无测试引用但有 src 引用\(活着但没测\): (\d+)/g)];
+    m.aliveUntested = bm.length ? Number(bm[bm.length - 1][1]) : null;
+    const am = [...out.matchAll(/A 无测试引用且无 src 引用\(疑似死代码\): (\d+)/g)];
+    m.suspectedDead = am.length ? Number(am[am.length - 1][1]) : null;
+  } catch (_) { m.srcModules = null; }
+
 const actual = {
   dimensions: m.dimensions,
   modules: m.modules,
@@ -972,6 +1032,9 @@ const actual = {
   tier_verify: m.tiers.verify,
   nodeReq: m.nodeReq,
   tests: null,
+  aliveUntested: m.aliveUntested,
+  srcModules: m.srcModules,
+  suspectedDead: m.suspectedDead,
 };
 
 // 测试条数实测: 必须跑 run-all 取权威数字。
@@ -1002,7 +1065,8 @@ if (!SKIP_TESTS) try {
   const tm = all.length ? all[all.length - 1] : null;
   m.tests = tm ? Number(tm[1]) : null;
   m.testsFailed = tm ? Number(tm[2]) : null;
-} catch (_) { m.tests = null; }
+  } catch (_) { m.tests = null; }
+
 
 // 层数实测: 从 src/pipeline.js 的 checked_by.push({ layer: 'X' }) 静态提取。
 // 不能靠跑一次 pipeline 数 checked_by——那条路径只走命中分支(实测同一输入
@@ -1042,6 +1106,13 @@ try {
 actual.routes = m.routes;
 actual.layers = m.layers;
 actual.tests = m.tests;
+// [第四十七轮] 覆盖清点三项, 紧贴 actual.tests —— 这是本文件里
+// **唯一被证明可用**的位置(它在 rows 构造之前, 而 rows 读 actual[c.key])。
+// 周期44 与 47 第一次都放错了地方: 一次在 rows 之后, 一次在对象字面量里
+// 提前求值。两次都表现为"无法实测", 而红灯从未为它们亮过。
+actual.aliveUntested = m.aliveUntested;
+actual.srcModules = m.srcModules;
+actual.suspectedDead = m.suspectedDead;
 // ── [第十一轮] 两个"测了却没接线"的键 ──
 // 反向枚举 pats 的 key 与 measure() 赋值的 key，得到 21 个
 // "被测但无模式"的键。其中绝大多数是中间量(depsDeclared /
@@ -1085,6 +1156,17 @@ actual.formulas = m.formulas;
 actual.corpusBenign = m.corpusBenign;
 actual.corpusMalicious = m.corpusMalicious;
 
+// [第四十四轮] 覆盖清点三项。上面 actual = {...} 里的
+// aliveUntested: m.aliveUntested 不是这里的工作方式 —— actual 的键
+// 要在这个比对前的块里**二次赋值**才生效(formulas / corpusBenign /
+// tests 全是如此)。我前两轮就是漏了这一步: 声称被读成 999、实测是
+// undefined, 于是掉进无法实测而不是不符。**一把看起来关着的锁。**
+// [第四十七轮] 覆盖清点三项的回填必须发生在 rows 构造**之前**。
+// 周期44 我把 actual.X = m.X 写在了 rows 之后 —— 于是 rows 捕获到的
+// 是 undefined, 声称被判为"无法实测"而不是"不符"。周期44 那次
+// "突变 122→999 后 exit=1" 我当成锁生效的证据, 而那 5 处不符全是
+// 间歇性 tests 短差, **我的声称仍躺在"无法实测"里**。这次的判据是
+// rows 的求值时机, 不是红灯本身 —— 又一条"绿灯不能证明锁存在"。
 const rows = cl.map(c => {
   const a = actual[c.key];
   // 千分位归一化后再比: 文档写 1,510，实测 1510
@@ -1323,10 +1405,19 @@ if (process.argv.includes('--json')) {
   }
   // 悬空条目是**审计自己的配置缺陷**，不是被豁免文档的问题: 从豁免总数剔除，
   // 并用 ❌ 报出。一个指向空处的豁免，是永远无法被论证的豁免。
+  // [第四十九轮] 补一句定向说明。这条 ❌ 从第十九轮起每个周期都亮, 而
+  // test/audit-self-pollution.test.js:163 专门钉住它必须被报出 —— 所以它
+  // **是有意常亮, 不会被修好**。周期48 我试图消音, 删掉了断链与豁免条目,
+  // 该测试立刻按名报出它, 改动被 REVERT。
+  // 一个永远常亮的断言本身是设计(它防的是"悬空豁免被静默计数"),
+  // 但不加说明就会让每个读报告的人先怀疑一次文档有缺陷。
+  // 注意: 下面两条子串 CHAT_LOG_...md 与 符号链接目标不存在 都被该测试断言, 不能动。
   const nExemptReal = exemptAll.length - exemptDangling.length;
   if (exemptDangling.length) {
     console.log('  ❌ 豁免条目悬空 ' + exemptDangling.length + ' 个(指向不存在的文件，已从豁免总数剔除): '
       + exemptDangling.join(', '));
+    console.log('     ℹ 此为**有意常亮**: 该条目是测试钉住的夹具(见 test/audit-self-pollution.test.js), '
+      + ' 用来说明"悬空豁免必须按名报出、且不得计入豁免总数"。它不代表文档声称有缺陷, 也不应当被消音。');
   }
   const nExemptDup = nExemptReal - nExemptDistinct;
   // [第十九轮] 豁免理由自检: 把豁免的**理由**从断言变成测量。

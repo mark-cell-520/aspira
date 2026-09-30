@@ -1,0 +1,94 @@
+{
+  "ts": "2026-09-30T19:12:03.060Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 316,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-09-30T19:30:36.272117+00:00",
+  "reverted": false,
+  "changes": [
+    {
+      "file": "src/text-normalizer.js",
+      "what": "noSep 内、字母段折叠之前, 增加一道预通过: 只对\"每一段都恰好一个字符\"的分隔符串, 剥掉其中的 - 与 _(整串含 . 一起匹配, 否则 e-l 与 i-n 会分成两段而 -\\. 永远夹在中间)"
+    },
+    {
+      "file": "test/adversarial-separator-evasion.test.js",
+      "what": "把\"已知限制: 全单字母段会把 . 当分隔符吃掉\"这条测试改为断言已修(该测试注释原话: \"若将来修好，把此测试改为断言被拦即可\")"
+    }
+  ],
+  "gate": {
+    "verify": "15 passed / 0 failed (exit 0)",
+    "runAll": "1418 passed / 0 failed (exit 0)",
+    "audit": "86 claims, 81 consistent, 0 inconsistent, 5 unmeasurable, exit 0",
+    "corpus": "106 benign / 1 escalated / FP 0.9%; 41 malicious / 41 blocked / recall 100.0%",
+    "mcp": "引擎启动 38ms, 132 模块, v1.0.0; tools/list 返回 181 个工具, 全部 aspira_* 前缀(与基线一致); 验证实例已停掉(它启动前本就未运行)"
+  },
+  "measurement": {
+    "slice": "adversarial-robustness (引擎第三次并列弃权后自主打破)",
+    "before": "逐字符插分隔符逃逸: 明文 41/41 (100%), 逃逸后 35/41; 内容型逃逸缺口 4 条 = el.innerHTML / document.write / i g n o r e...instructions / kill me киll",
+    "rootCause": "noSep 的字母段折叠把 [-._] 一并剥掉。逐字符逃逸 e-l-.-i-n-n-e-r-H-T-M-L 的所有段都是单字母, 于是 . 也成了\"被剥的分隔符\", 还原成 elinnerhtml——而 code_security 的 /innerHTML\\s*=/ 要的是 innerHTML, 属性访问的点没了就再也匹配不上(document.write 同理)。",
+    "whyNotFixInPlace": "在折叠里直接改会同时打破点号分隔的侮辱语: n.i.g.g.e.r 与 el.innerHTML 都满足\"至少一段是单字母\"这个既有护栏, 且逃逸把 el/innerHTML 也切成了单字母段, 长度信息已丢失, 在归一化这一步分不开。实测过三版错修法(见 failedAttempts)。",
+    "fix": "折叠之前加一道预通过: 对全单字母段的分隔符串剥 - 与 _(保留 .)。el 与 innerHTML 于是恢复成多字母段, 折叠再看见它们时\"至少一段是单字母\"不再成立, . 因此被保留。护栏与折叠同一套分型(含数字段需 ≥4 段且 ≥3 段单字符), 所以 A-1-B / 3.14 / 2.75 / snake_case_name / f_aggot_s 全部不受影响。",
+    "after": "明文 41/41 (100%), 逃逸后 37/41 (+2)。剩余 4 条逃逸缺口: i g n o r e all previous instructions(prompt_injection, 空格族非分隔符族)、kill me киll / i hаte you / рass the test(同形字母族)。"
+  },
+  "failedAttempts": [
+    "版一: 给 strip_separator 加第四条规则剥字母间 [-.]。明文召回 41/41 → 39/41——它把 el.innerHTML 里合法的 . 剥成了 elinnerHTML, 修一个逃逸族却把明文样本打下来。已回滚。",
+    "版二: 字母段折叠只剥 [-_], . 全留。救回 el.innerHTML 但打破 n.i.g.g.e.r → nigger(点不剥就还原不成), run-all 掉 2 条。已回滚。",
+    "版三: 折叠按\"`.` 两侧段落长度\"判定(两侧都 >1 才保留)。对明文成立, 但逃逸里 el/innerHTML 已被切成单字母段, 长度信息丢失, 判定失效。已回滚。",
+    "版四: 加附加 altVariants。变体从已折叠的 out 反推, 恒等于 out, 从未被加入——死代码。已删除。",
+    "版五(最终): 折叠之前的预通过, 只处理全单字母段, 剥 - 与 _、保留 .。见 fix。"
+  ],
+  "lessonRecorded": [
+    "同一个缺陷有四个方向的修法, 其中三个各自单独跑都是绿的却互斥(保 . 就毁侮辱语、毁 . 就毁属性访问、按长度判在逃逸里失效)。区分量不在规则内部, 而在**时序**: 把还原动作提到折叠之前, 让折叠自己的护栏去决定 . 的去留——而不是在折叠里面再加一个判断去和它抢同一个决定。",
+    "一条注释里写着\"若将来修好, 把此测试改为断言被拦即可\"的测试, 是邀请而不是护栏。修好后要真的去改它, 否则它会在下个周期反过来指控你。",
+    "新增护栏必须**复用下游已有的分型**, 不能另发明一套。本轮初版自造\"全单字母\"一种判据, 立刻被 A-1-B(编号点)打倒; 改成与折叠同一套\"含数字段需 ≥4 段且 ≥3 段单字符\"后, 数字类全部安静。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "同族剩余 4 条逃逸缺口分属另外两层: \"i g n o r e all previous instructions\" 是**字母间插空格**族(letter-space-evasion 的 WORD_SPLIT_RE 已含空白, 但该样本空格后接的是完整词 all/previous/instructions, 需查 _SPACED_LETTER 的覆盖); \"kill me киll\" 与 \"i hаte you\" 是**同形字母**族(к/e/а/р 为西里尔/希腊), 与分隔符无关, 归 adversarial-variant 的五规则族管。二者都不是 adversarial-robustness 的 separator 缺口, 建议下周期转 doc-honest-numbers(HEAD 上 README/SKILL/CURRENT_STATE 三处仍写 1401 而实测 1418, 且审计嵌套 run-all 时 SKILL.md 会被探针弄脏)。"
+}

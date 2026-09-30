@@ -1,0 +1,98 @@
+{
+  "ts": "2026-09-30T07:05:17.221Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 316,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "actualWork": "引擎选了 fp-recall-calibration, 但周期38/39/40/41/43 连续五期把同一件事列为\"下次方向\"却未完成 —— 本轮先把它做完。这是清账, 不是新切片。",
+  "deliverable": "README 的\"122 alive but referenced by no test\"终于真的被 audit 锁定了 —— 突变 122→999 后 exit 0→1、不一致 0→5。连续三个周期(41/43/44)的未完成项完成。",
+  "rootCauses": [
+    {
+      "n": 1,
+      "what": "声称正则第一次写就没匹配上 README 的真实形态",
+      "detail": "原 re 要求 \\*\\*(\\d+)\\*\\* (粗体只包数字), 而 README 写的是 \\*\\*122 alive but referenced by no test\\*\\* —— 粗体包**整句**。srcModules 则死在换行: 原文 \"coverage-sweep.js across 383\\nmodules\", 而正则只吃一个空格。所以周期41 与 43 两次突变 122→122X 都\"通过\", 不是因为锁住了, 而是因为根本没有这把锁。"
+    },
+    {
+      "n": 2,
+      "what": "周期43 我把 88→66 解释反了",
+      "detail": "周期43 收紧 srcModules 正则后声称总数从 88 掉到 66(本会话记录为 86, 当时读作 66), 我当时认定\"SKILL.md 的伪声称已消除\"。**真实原因是我自己的 README 声称掉出了名单** —— 原正则 SKILL.md 那条本来就匹配, 收紧后我自己的 383 声称因换行失配。两件事同时发生, 我把后者的数字当成了前者的证据。一个从不匹配的 re 与一个收紧的 re 在数字上看起来一样, 含义相反。"
+    },
+    {
+      "n": 3,
+      "what": "我的突变方法本身是错的, 而且是它掩盖了上面两条",
+      "detail": "122 → 122X 让正则**不再匹配**, 声称整体从名单里消失。一个消失的声称不会产生\"不符\" —— 突变后 exit=0 与\"锁住了\"完全同形。正确的突变是改成**另一个有效数字** (122 → 999), 让 re 仍匹配而值不等。我用错的方式验证了三轮(41、43、44 各一次), 每次都看到绿灯。**一个验证不了失败的验证, 与没有验证的区别只在于它让你更放心。**"
+    },
+    {
+      "n": 4,
+      "what": "actual 表的键必须在比对前二次赋值",
+      "detail": "audit-doc-numbers.js 的比对读的是 actual[c.key], 而 actual 的每个键都要在比对前那个块里显式补写(actual.formulas / actual.corpusBenign / actual.tests 全是如此)。我在 const actual = {...} 里写了 aliveUntested: m.aliveUntested, 又在别处赋值 m.aliveUntested —— 但**没有再补 actual.aliveUntested = m.aliveUntested**。于是声称被正确读成 999, 实测值是 undefined, 掉进\"无法实测\"而不是\"不符\"。补上后立刻变红。"
+    }
+  ],
+  "fixes": [
+    "claims() 两个 re 改为匹配真实文本形态: /\\*\\*(\\d+) alive but referenced by no test\\*\\*/ 与 /coverage-sweep\\.js across (\\d+)\\s+modules/",
+    "比对前补 actual.aliveUntested / actual.srcModules / actual.suspectedDead 三项二次赋值",
+    "在源码里逐条记录上述四个根因, 尤其是\"读取先于测量, 锁永远是开着的, 而且看起来是关着的\""
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1417/0",
+    "audit": "88 条, 不一致 0, exit 0",
+    "mutation": "122 → 999 → exit 1, 不一致 5, README 的 999 与实测比对; 还原 → exit 0",
+    "note": "仅改 scripts/audit-doc-numbers.js 与 README 未变动(突变已还原), 未改 src/",
+    "corpus": "未改"
+  },
+  "processNotes": [
+    "连续三个周期把同一件事列为\"下次方向\"。周期43 结束时我甚至写下\"完成判据只有一个: 突变测试变红\"—— 而我周期43 的突变方法是根本验证不了失败的那一种。**写下正确的判据, 与用正确的方法执行它, 是两件事。**",
+    "本轮最大的一条不是技术性的: 我用错的方式验证了三轮, 三次都是绿灯。如果第四轮也绿灯, 我会报告\"已完成\"。是换了突变参数才暴露的 —— 而换参数的动机来自怀疑自己的方法, 不是来自任何红灯。**绿灯不能证明锁存在; 只有红灯能。**"
+  ],
+  "remainingGap": "audit 的\"无法实测: 2\"仍未清零(本轮之前是 2, 现在仍是 2)。tests 的间歇性 1416/1 短差连续第六个周期出现。README 里 122 这个数本身现在锁上了, 但它对应的真实清点已从周期37 的 135 变成 122 —— 数字锁定之后仍会漂, 因为它随 B 类模块减少而变。",
+  "nextRecommendation": "fp-recall-calibration(引擎本轮选中的切片)仍未动过: 记录在案的字母空间绕过仍有两个 —— 中英混合短语 \"women belong in the kitchen 女人就该待在厨房\", 以及下划线分隔的 \"all f_aggot_s must die\"。下个周期应优先做后者: 它同时逃过 strip_letter_space 与折叠两步, 是明确的根因。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "not-performed: 仅改 scripts/audit-doc-numbers.js, 未改 src/ 引擎代码"
+}

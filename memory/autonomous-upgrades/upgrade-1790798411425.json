@@ -1,0 +1,92 @@
+{
+  "ts": "2026-09-30T20:00:11.424Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 317,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-09-30T20:11:23.029256+00:00",
+  "changes": [
+    {
+      "file": "test/fp-hedge-sentence-known-limitation.test.js",
+      "what": "新增 2 个用例: 把良性语料里唯一那条误报(FP 0.9% = 1/106)钉成可复核的已知限制, 并写下\"为什么修不动\"的定位诊断与下一步入口。未改任何引擎代码——本周期未定位到触发模式, 按周期58 的教训不凭猜下刀。"
+    }
+  ],
+  "gate": {
+    "verify": "15 passed / 0 failed (exit 0)",
+    "runAll": "见 flakyGate 段——审计族测试存在**既有的、非确定性**的红灯, 与本周期改动无关(已用三次对照测量证明)",
+    "audit": "86 claims, 81 consistent, 0 inconsistent, 5 unmeasurable, exit 0",
+    "corpus": "106 benign / 1 escalated / FP 0.9%; 41 malicious / 41 blocked / recall 100.0% — 与基线逐项一致"
+  },
+  "fpDiagnosis": {
+    "fpRate": "0.9% (106 条良性语料中恰好 1 条被升级)",
+    "theSample": "[verify] 可能有多种解释，我倾向于第一种，但不排除其他可能。",
+    "findings": "ai_writing_tell severity=35 + meta_cognition severity=15, gate.action=verify",
+    "priorAttempt": "src/index.js:852 附近注释记载已为同一句话移除过 /不排除/i(理由是: 它不是模糊归因而是认知对冲,\"不排除其他可能\"正是明确承认不确定性)。移除后该句**仍**被升级, 故触发的是同维度另一个未定位模式。",
+    "blocker": "ai_writing_tell 的 findings 只返回 { dimension, severity, details }, details 形如 \"ai_writing_tell(1次)\"——**不返回命中的原文片段**。看不到命中串就无法定位是哪个正则, 改正则等于凭猜下刀。",
+    "nextStep": "给 shield 维度补\"命中片段\"字段(新测试第三条已用 assertTrue(details.length<40) 钉住这个阻塞点: 一旦补上, 该断言失败, 即解除信号), 再据此定位真正的触发模式。"
+  },
+  "flakyGate": {
+    "symptom": "run-all 的红灯在审计族测试之间游走, 每次都不一样: \"活体注入: 名字带引号的目录不得增加已扫文档数\" / \"活体验证: 表格加一行而标题不改，审计必须抓住\" / \"活体注入: measure() 期间弄脏文档\" 都出现过。",
+    "measurements": [
+      "k60-r  (含本周期初版3个用例): 1432/1",
+      "k60-r2 (含本周期初版3个用例): 1432/1",
+      "k60-r3 (**不含**本周期文件):      1430/0",
+      "l60-r  (含本周期收敛到1次调用的版本): 1431/1",
+      "l60-r2 (**不含**本周期文件):      1429/1  ← 同一基线状态却是红的"
+    ],
+    "conclusion": "k60-r3 与 l60-r2 是**同一个基线状态**, 一次 1430/0、一次 1429/1, 且失败用例不同。故红灯是既有的非确定性抖动(与已记录的 _doc-probe-lock.js 自死锁/审计与等待方 66s vs 60s 同一机制), **不是本周期引入的**。本周期曾据 k60-r3 误判\"是我的文件导致\", 被 l60-r2 推翻。",
+    "recordedRule": "一条不是你造成的红灯, 不能当成你自己锁的证据——但也不能只测一次就下结论。必须至少在同一状态下测两次, 相反的结果才是抖动的证据。"
+  },
+  "lessonRecorded": [
+    "审计族的红灯会游走, 所以\"去掉我的改动就绿了\"这一句话**不足以归因**。本周期的完整弧线: 初测带我的文件 1432/1 → 去掉我的文件 1430/0(误判为我的锅, 于是把测试从 3 次引擎调用压到 1 次) → 再测仍 1431/1 → 再去掉我的文件却 1429/1。同一基线状态一绿一红, 才证明是既有抖动。**归因需要重复测量, 单次对照会产生自信的错误结论**——而且这个错误结论会驱动你去改本来无辜的代码。",
+    "修 FP 的前置条件是能定位。findings 不返回命中片段时, 任何正则改动都是猜; 猜中的修法会把召回一起打下来(周期58 已付过学费)。故本周期选择\"把误报钉成可复核的已知限制 + 写下定位入口\", 而非硬修。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 优先修 _doc-probe-lock.js 的自死锁(审计墙钟 66s vs 等待方耐心 60s)——它让 run-all 的红灯不可信, 进而让每个周期的零回归门禁都无法判定, 这是当前最大的工程债务。② 解除后再定位 ai_writing_tell 的真正触发模式: 先给 shield 维度补命中片段字段(新测试已钉住这个信号)。③ doc-honest-numbers: HEAD 上 README/SKILL/CURRENT_STATE 写 1401 而实测 1430+。"
+}

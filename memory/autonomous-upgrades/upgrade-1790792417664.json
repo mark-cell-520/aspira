@@ -1,0 +1,75 @@
+{
+  "ts": "2026-09-30T18:20:17.664Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 316,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "completedAt": "2026-09-30T18:28:28.422Z",
+  "reverted": true,
+  "revertReason": "第四条 strip_separator 规则(字母↔字母)使明文召回从 41/41(100%) 掉到 39/41(95.1%), 内容型分母从 39 掉到 37。按周期规则立即 REVERT, 已恢复到基线并复测确认。",
+  "changes": [],
+  "residue": "src/text-normalizer.js 无残留(第四轮注释与规则均已移除, 774 字节), 仓库无自建脚本残留(run56.sh / fix56.mjs / revert56.mjs / probe56.cjs 全部删除)。",
+  "gate": {
+    "verify": "15/15 passed, 0 failed (exit 0)",
+    "runAll": "1418 passed, 0 failed (exit 0)",
+    "audit": "88 claims, 88 consistent, 0 mismatched (exit 0)",
+    "corpus": "106 benign / FP 0.9% (1 escalated), 41 malicious / 41 intercepted / recall 100.0% — 与基线逐项一致"
+  },
+  "measurement": {
+    "slice": "adversarial-robustness",
+    "chosenBy": "并列弃权后按 consequence_value 自主打破 (confidence 0, AspiraDecision 拒绝任意挑选)",
+    "baseline": "FP 0.9%; 明文召回 100%; 逃逸召回 逐字符插分隔符 35/41(内容型 35/39) / 字母间插空格 39/41(37/39) / HTML 实体 39/41(37/39)",
+    "rootCauseLocated": "strip_separator 的三条规则每条都要求分隔符紧邻一个非字母数字字符: (字母↔标点)(标点↔字母)(标点↔标点)。而逐字符插分隔符的逃逸是 s.split(\"\").join(\"-\"), 全部落在字母↔字母之间, 因此三条规则对这一族全数失效。实测三条漏报的归因: el.innerHTML=userInput 与 document.write(userInput) 明文 block(code_security) 逃逸后 pass; i g n o r e all previous instructions 明文 rewrite(prompt_injection) 逃逸后 pass; kill me киll 明文与逃逸均 rewrite(ai_writing_tell, 非本族问题)。",
+    "attemptedFix": "补第四条规则 .replace(/([a-zA-Z0-9])([-._]+)(?=[a-zA-Z0-9])/g, ...), 护栏与前三轮同构(邻居类排除分隔符自身, 同类连续串原样保留)。修正后 FP 维持 0.9%, 但明文召回下降, 说明该规则破坏了某条正常依赖分隔符串的检测路径。",
+    "whyRevertedNotFixed": "修复使召回净下降, 是回归而非改进; 在无法定位是哪条路径被破坏前, 按周期规则回滚而不是带着回归继续。"
+  },
+  "lessonRecorded": "strip_separator 的三条规则是有意的边界设计(字母↔标点/标点↔字母/标点↔标点各覆盖一类)。补第四条\"字母↔字母\"在方向上正确(逐字符插分隔符的逃逸正落在此), 但\"剥掉字母间的分隔符\"同时会摧毁依赖\"同类分隔符串\"签名的检测(如 PEM 头的 \"KEY-----BEGIN\")。下一次修这一类必须先把被破坏的那条路径找出来, 而不是先加规则再看总数。",
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "adversarial-robustness 的下一步: 修 strip_separator 字母族之前, 先用 --require 钩子定位补第四条规则后是哪一条样本从 41 掉到 39(改后只报了 1 条漏报 el.innerHTML, 但漏报数是凭输出断言的, 需逐条对比 41 个样本的 findings 才知道真正被破坏的是哪几条)。"
+}
