@@ -82,7 +82,7 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     } finally { cleanup(dir); }
   });
 
-  test('loads 必须被计数，hitRate 必须是真实命中率(本轮修复)', () => {
+  test('loads 必须被计数，hitRate 必须是真实命中率且是数字(本轮修复)', () => {
     const { dir, cache } = mkCache();
     try {
       cache.save('s1', 'k', [0.5]);
@@ -94,8 +94,125 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       assertEqual(s.hits, 1, 'hits 应为 1');
       assertEqual(s.misses, 2, 'misses 应为 2');
       // 修复前: loads 恒为 0 → hitRate = 1/max(1,0) = 1.00，与真实 0.33 严重不符
-      assertEqual(s.hitRate, '0.33',
+      assertEqual(s.hitRate, 0.33,
         `hitRate 应等于 hits/(hits+misses)=0.33，实测 ${s.hitRate}(修复前是 1.00)`);
+      // [第三十一轮] 本行原先断言的是字符串 '0.33'，于是把 hitRate 的类型不一致
+      // 一起锁死了: getStats() 里 sessions/saves/loads/hits/misses/evictions 全是数字，
+      // 唯独 hitRate 是 toFixed(2) 出来的字符串。后果实测:
+      //   typeof stats.hitRate === 'number'      → false
+      //   stats.hitRate.toFixed(2)                → TypeError
+      //   stats.hitRate > 0.5 (恰好 0.50 时)      → false(靠隐式转型碰巧对)
+      // 而 src/reasoning/decision-engine.js 的 sdtAnalyze 文档约定正是 @param {number}。
+      // 已确认 src/ test/ scripts/ 无任何下游消费者，故改为数字。
+      assertEqual(typeof s.hitRate, 'number',
+        `hitRate 必须是数字，实测 ${typeof s.hitRate}(第三十一轮前是 string)`);
+    } finally { cleanup(dir); }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
+  // [第三十一轮] 路径穿越: 四个公开方法把 sessionId/key 直接 path.join
+  // 进路径，无任何净化。实测(修前):
+  //   save('../escape','k',v) → <cacheDir 父目录>/escape/k.kv  ← 逃到外面
+  //   save('..','k',v)        → <cacheDir 父目录>/k.kv         ← 逃到外面
+  //   save('a/b','k',v)       → cacheDir/a/b/k.kv(仍在内部但层级不可控)
+  //   save('.','k',v)         → cacheDir/k.kv
+  //   save('/tmp/x','k',v)    → path.join 归一化掉前导斜杠，反被 containment
+  // 真正的危险来自 `..` 前缀: 持久层因此成为一个**任意目录写入原语**。
+  // 而 sessionId/key 不一定可信 —— 可来自 MCP 工具参数或调用方输入。
+  // 修法: _safeSegment() 只允许 [A-Za-z0-9._-]，显式拒绝 '.'/'..' 与分隔符。
+  // ══════════════════════════════════════════════════════════════════
+
+  /** 统计某个目录树下(含 cacheDir 之外)有多少 .kv 文件 */
+  const countKvOutside = (base, cacheDir) => {
+    let inside = 0, outside = 0;
+    const walk = (d, depth) => {
+      if (depth > 4) return;
+      let ents;
+      try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+      for (const e of ents) {
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) walk(p, depth + 1);
+        else if (e.name.endsWith('.kv')) {
+          if (path.relative(cacheDir, p).startsWith('..')) outside++;
+          else inside++;
+        }
+      }
+    };
+    walk(base, 0);
+    return { inside, outside };
+  };
+
+  test('路径穿越: "../" 前缀的 sessionId 不得写出 cacheDir(本轮修复)', () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'aspira-kv-trav-'));
+    const cacheDir = path.join(base, 'cache');
+    try {
+      const cache = new KVCachePersistor({ cacheDir });
+      for (const sid of ['../escape', '../../escape2', '..']) {
+        const ok = cache.save(sid, 'k', { v: 1 });
+        assertEqual(ok, false,
+          `save('${sid}','k',v) 应被拒绝返回 false，实测 ${ok}(修前为 true 并写出 cacheDir)`);
+        assertTrue(!cache.has(sid, 'k'), `has('${sid}','k') 应为 false`);
+        assertEqual(cache.load(sid, 'k'), null, `load('${sid}','k') 应返回 null`);
+        assertEqual(cache.delete(sid, 'k'), false, `delete('${sid}','k') 应返回 false`);
+      }
+      const { outside } = countKvOutside(base, cacheDir);
+      assertEqual(outside, 0, `cacheDir 之外不得出现任何 .kv 文件，实测 ${outside} 个(修前为 2 个)`);
+    } finally { cleanup(base); }
+  });
+
+  test('路径穿越: 含路径分隔符的 key 同样被拒绝', () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'aspira-kv-trav2-'));
+    const cacheDir = path.join(base, 'cache');
+    try {
+      const cache = new KVCachePersistor({ cacheDir });
+      // 只列**实测确有危害**的: 含路径分隔符 -> 可写出 cacheDir 之外/改变层级
+      for (const k of ['a/b', 'a\\b', '.', '..', '../../etc/passwd']) {
+        const ok = cache.save('good', k, { v: 1 });
+        assertEqual(ok, false, `save('good',${JSON.stringify(k)},v) 应被拒绝，实测 ${ok}`);
+        assertEqual(cache.load('good', k), null, `load('good',${JSON.stringify(k)}) 应返回 null`);
+        assertEqual(cache.delete('good', k), false, `delete('good',${JSON.stringify(k)}) 应返回 false`);
+      }
+      assertTrue(!cache.has('good', 'a/b'), 'has 对含分隔符的 key 应为 false');
+      const { outside } = countKvOutside(base, cacheDir);
+      assertEqual(outside, 0, `cacheDir 之外不得有文件，实测 ${outside}`);
+    } finally { cleanup(base); }
+  });
+
+  test('合法 sessionId/key 不受净化影响(反向控制)', () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'aspira-kv-ok-'));
+    const cacheDir = path.join(base, 'cache');
+    try {
+      const cache = new KVCachePersistor({ cacheDir });
+      // 这些形状在现实里都合法，净化后必须照旧工作
+      for (const sid of ['s1', 'feishu-1790474303619', 'a.b-c_d', 'session_2']) {
+        assertTrue(cache.save(sid, 'k', { v: 1 }), `save('${sid}','k') 应成功`);
+        assertTrue(cache.has(sid, 'k'), `has('${sid}','k') 应为 true`);
+        assertEqual(JSON.stringify(cache.load(sid, 'k')), JSON.stringify({ v: 1 }),
+          `load('${sid}','k') 应无损返回`);
+      }
+      for (const k of ['k1', 'k.v', 'a-b_c', '0']) {
+        assertTrue(cache.save('s1', k, { v: 2 }), `save('s1',${JSON.stringify(k)}) 应成功`);
+      }
+    } finally { cleanup(base); }
+  });
+
+  test('getStats() 里除 version 外所有字段都是数字(本轮修复)', () => {
+    const { dir, cache } = mkCache();
+    try {
+      cache.save('s1', 'k', [0.5]);
+      cache.load('s1', 'k'); cache.load('s1', 'miss');
+      const s = cache.getStats();
+      // version 本来就是字符串(VERSION 单一大源)，其余必须是数字
+      const numeric = ['sessions', 'totalEntries', 'totalBytes', 'hitRate',
+        'saves', 'loads', 'hits', 'misses', 'evictions'];
+      for (const k of numeric) {
+        assertEqual(typeof s[k], 'number',
+          `getStats().${k} 必须是数字，实测 ${typeof s[k]}(第三十一轮前 hitRate 是 string)`);
+      }
+      assertEqual(typeof s.version, 'string', 'version 保持字符串');
+      // hitRate 数值语义必须仍然正确(不被类型修复破坏)
+      assertEqual(s.hitRate, 0.5, `1 命中 1 未命中时 hitRate 应为 0.5，实测 ${s.hitRate}`);
+      assertTrue(s.hitRate > 0.4, `hitRate 必须能参与数值比较，实测 ${s.hitRate} > 0.4 => ${s.hitRate > 0.4}`);
     } finally { cleanup(dir); }
   });
 

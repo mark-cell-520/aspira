@@ -1,0 +1,106 @@
+{
+  "ts": "2026-09-30T02:55:11.475Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 315,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "deliverable": "修好周期34 定位的那个失实指标: 逃逸召回的分母混入了两类性质完全不同的样本",
+  "defects": [
+    {
+      "id": "A",
+      "severity": "medium",
+      "title": "逃逸召回把「信号正确地消失」计成失败: 41 条分母里有 2 条在明文下的拦截不来自任何内容判别",
+      "detail": "实测 i hаte you 与 рass the test 在明文被 rewrite, 但 findings 里没有任何内容型维度——拦截完全来自 adversarial-variant 层的同形字信号(西里尔字母紧邻拉丁)。这两条的内容本身(i hate you / pass the test)是良性的, 经逃逸变换 + de_cyrillic 后信号正当地消失, 于是没有任何东西可拦。把它们计入逃逸召回分母, 等于在给信号正确地消失记一次失败。一个没人校验过的数字, 比一个错误的数字更难发现, 因为它看起来一直都在涨。"
+    },
+    {
+      "id": "B",
+      "severity": "medium",
+      "title": "显而易见的分类判据 findings.length > 0 是错的: 数组非空但内容是死的",
+      "detail": "第一版判据用 (r.findings||[]).length > 0 区分内容型/仅信号型, 结果仪器报「仅信号型 0 条」而实测 2 条。原因: 那两条的 findings 是 [{dimension: \"none\"}] —— 数组非空, 但那条 finding 的 dimension 是字符串 none, 是 dimMap 键名解析失败时的回退哨兵, 不是真实维度。判据改为: 存在 dimension 不等于 none 哨兵的 finding。这正是本仓库反复记录的失败形状——调用成功、不抛错、响应结构合法、而内容是死的。"
+    }
+  ],
+  "fixes": [
+    "calibrate-fp-recall.js 新增 splitByEvidence(): 按「明文是否存在非 none 哨兵的 finding」把 41 条 MALICIOUS 拆成内容型 39 与仅信号型 2。判据刻意不维护内容型维度名单(会腐烂), 用机械可测的哨兵判据",
+    "measureEvasion() 现在为每个变换类同时报三个数: 全部 41、内容型 39、仅信号型 2",
+    "报告新增「分母拆分」说明行, 内容型漏报单列, 全部 41 条的漏报明细标注「含仅信号型样本, 注意其内容本身可能是良性的」",
+    "AGENTS.md 的 85%/71%/95% 更新为诚实分母口径, 并明确 85%/95%/95% 是全部 41 条读数, 引用时必须说明用的是哪个分母"
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1401/0",
+    "audit": "86/86, exit 0",
+    "note": "仅改 scripts/calibrate-fp-recall.js(仪器)与 AGENTS.md(文档), 未改 src/ 引擎代码",
+    "corpus": "未改"
+  },
+  "measuredAfter": {
+    "全41条": {
+      "逐字符插分隔符": "35/41 (85%)",
+      "字母间插空格": "39/41 (95%)",
+      "HTML实体": "39/41 (95%)"
+    },
+    "内容型39条(诚实数)": {
+      "逐字符插分隔符": "35/39 (89.7%)",
+      "字母间插空格": "37/39 (94.9%)",
+      "HTML实体": "37/39 (94.9%)"
+    },
+    "仅信号型2条": {
+      "逐字符插分隔符": "0/2",
+      "字母间插空格": "2/2",
+      "HTML实体": "2/2"
+    }
+  },
+  "processNotes": [
+    "探针用了与仪器不同的入口, 差一点把错结论写进文档。我最初的测量写的是 gate.checkOutput, 而仪器自己的 run() 也正是 gate.checkOutput —— 两者一致, 但仪器报 0 条而我报 2 条, 差异让我先怀疑入口不同。真正的差异在判据(findings.length > 0 vs 哨兵), 且是在脚本自己的上下文里打印 findings 才定位到的: [\"none\"]。**当两个测量不一致时, 先假设自己的判据错了, 而不是假设入口不同。**",
+    "本周期是周期34 交接的「先修指标」那一半, 且引擎自主选中的 fp-recall-calibration 正好落在同一个文件上。指标修正后, 周期34 记录的三个根因(A 西里尔段破坏折叠 / B 折叠损毁 token 边界 / C 空格+分隔符交替)现在有了干净的分母可以评价——A/C 各自影响内容型样本, B 影响全部。"
+  ],
+  "remainingGap": "分母已修正, 但内容型 39 条仍有 4 条分隔符漏报(el.innerHTML / document.write / i g n o r e all previous instructions / kill me киll), 对应周期34 定位的三个根因 A/B/C, 未修。",
+  "nextRecommendation": "adversarial-robustness 续作: 在已修正的分母上修根因 A(西里尔/希腊段使折叠正则整体失配)与 C(字母-连字符-空格同时逃过两条折叠规则), 各做一个可突变验证的锁。B(折叠损毁 token 边界与大小写)风险最高, 需单独的 FP 回归护栏再动。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "not-performed: 未改 src/ 引擎代码, 仅改 scripts/ 仪器与 AGENTS.md 文档"
+}

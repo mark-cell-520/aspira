@@ -346,13 +346,124 @@ function main() {
     console.log(`  ${dim.padEnd(24)} 信号 ${String(t.signal).padStart(5)}  finding ${String(t.finding).padStart(5)}${tag}${flag}`);
   }
 
+  // [第三十三轮] 门禁集自洽核对。
+  // SCORE_ONLY 声称"这些维度不强制门禁动作"，但它是**手写**的集合。
+  // 若它与引擎真实门禁集失同步，本仪器不会报错，只会**静默少报缺陷**:
+  // 把一个真在 VERIFY_DIMS 里的维度错标成仅打分，下面的
+  // silentButShouldPush 就再也筛不到它 —— 一个会因配置错误而少报的
+  // 仪器，与一个从不报警的仪器不可区分。这正是本切片反复记录的失败形状。
+  //
+  // 核对方法: 从 src/index.js 读三个真实门禁集，经 canon() 规范化后
+  // (门禁集用别名 'bullshit'，dimensions{} 用真名 'bullshit_recognition')，
+  // 断言 SCORE_ONLY **恰好等于**"不在任何门禁集里的维度"。
+  // 注意: 本核对第一版正则是 const BLOCK = new Set([...])，而真实声明是
+  // const BLOCK_DIMS = ...，结果三个集合全部取空、核对"通过"——
+  // 一个因前提缺失而通过的核对比没有核对更糟，故下面显式检查取空。
+  {
+    const ENG = fs.readFileSync(path.join(ROOT, 'src', 'index.js'), 'utf8');
+    const tierSet = (name) => {
+      const m = ENG.match(new RegExp('const\\s+' + name + '\\s*=\\s*new Set\\(\\[([^\\]]*)\\]\\)'));
+      if (!m) return null;
+      return new Set(m[1].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean));
+    };
+    const RAW = { block: tierSet('BLOCK_DIMS'), rewrite: tierSet('REWRITE_DIMS'), verify: tierSet('VERIFY_DIMS') };
+    const missing = Object.entries(RAW).filter(([, v]) => v === null).map(([k]) => k);
+    if (missing.length) {
+      console.log('\n  ✗ 门禁集自洽核对失效: 无法从 src/index.js 解析 ' + missing.join('/') +
+        ' 门禁集(声明形式可能已变)。SCORE_ONLY 失去校验，本仪器的漏报风险不可评估。');
+      process.exitCode = 1;
+    } else {
+      // 规范化: 门禁集条目经 canon() 映射到 dimensions{} 的真名
+      const norm = {};
+      for (const [tier, set] of Object.entries(RAW)) for (const d of set) norm[canon(d)] = tier;
+      const engineScoreOnly = probeKeys.filter(k => !norm[k]);
+      // SCORE_ONLY 里的维度若实际有门禁动作 → 错标，会静默少报
+      const staleList = [...SCORE_ONLY].filter(d => norm[d] || (FINDING_ALIAS[d] && norm[FINDING_ALIAS[d]]));
+      // 无门禁集却未标记 → 错标，会把设计行为报成缺陷
+      const missingList = engineScoreOnly.filter(d => !SCORE_ONLY.has(d) && !FINDING_ALIAS[d]);
+      console.log('\n  ── 门禁集自洽核对 ──');
+      console.log(`  引擎门禁集: block ${RAW.block.size} / rewrite ${RAW.rewrite.size} / verify ${RAW.verify.size}` +
+        `  (规范化后覆盖 ${Object.keys(norm).length} 个 dimensions{} 键)`);
+      console.log(`  引擎中无门禁集: ${engineScoreOnly.length} 个; 仪器 SCORE_ONLY: ${SCORE_ONLY.size} 个`);
+      if (staleList.length) {
+        console.log('  ✗ SCORE_ONLY 里的维度实际**有**门禁动作(错标 → 会静默少报缺陷):');
+        for (const d of staleList) console.log(`     ${d} ← 在 ${norm[d] || norm[FINDING_ALIAS[d]]} 集`);
+      }
+      if (missingList.length) {
+        console.log('  ✗ 无门禁集却未标记为仅打分(错标 → 会把设计行为报成缺陷):');
+        for (const d of missingList) console.log(`     ${d}`);
+      }
+      if (!staleList.length && !missingList.length) {
+        console.log('  ✓ SCORE_ONLY 与引擎真实门禁集完全一致(含别名规范化)');
+      } else {
+        process.exitCode = 1;
+      }
+    }
+  }
+
+  // ─── 别名一致性自检 [第三十八轮] ────────────────────────────────
+  // FINDING_ALIAS 把门禁集用的名字映射到 dimensions{} 的真名
+  // (门禁写 bullshit，dimensions{} 是 bullshit_recognition)。
+  // 本轮先量化三处命名分歧: 43 个门禁名 / 52 个 allDims 名 / 54 个维度键，
+  // 差集里共 4 个门禁名不是维度键 —— 其中 2 个是别名(已被 FINDING_ALIAS 覆盖)，
+  // 另 2 个(pseudo_causal / soft_deflection)是 AGENTS.md 记载的"不是
+  // dimensions{} 键的额外判别器"。
+  //
+  // 所以别名机制目前是**完整**的。但完整不是性质，是巧合:
+  // 没有任何东西验证它。若有人给门禁集加一个别名而忘了同步
+  // FINDING_ALIAS，本仪器会把它静默误报成"触发但从不推 finding"——
+  // 正是周期7 记录过的那种"仪器把自己的局限报成引擎缺陷"。
+  // 一个会因漏维护而误报的仪器，与一个乱报的仪器不可区分。
+  {
+    const ENG = fs.readFileSync(path.join(ROOT, 'src', 'index.js'), 'utf8');
+    const tierSet = (name) => {
+      const m = ENG.match(new RegExp('const\\s+' + name + '\\s*=\\s*new Set\\(\\[([^\\]]*)\\]\\)'));
+      return m ? new Set(m[1].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)) : new Set();
+    };
+    const NOT_KEYS = new Set(['pseudo_causal', 'soft_deflection', 'ai_writing_tell']);
+    const tierNames = new Set([...tierSet('BLOCK_DIMS'), ...tierSet('REWRITE_DIMS'), ...tierSet('VERIFY_DIMS')]);
+    const realKeys = new Set(Object.keys(tally));
+    // 判据三选一: 是维度键 / 是已记录的非键判别器 / **已有别名映射**。
+    // 第一版漏了第三项，于是把 bullshit 和 appeal_to_authority —— 这两个
+    // FINDING_ALIAS 明明已经映射了的名字 —— 报成"缺别名"，exit 直接 1。
+    // 一个在正确状态下报警的自检，和一个永远不会报警的自检同样有害:
+    // 它训练你忽略它。信号的代价必须与它的准确率成反比。
+    const unaliased = [...tierNames].filter(n =>
+      !realKeys.has(n) && !NOT_KEYS.has(n) && !(n in FINDING_ALIAS));
+    console.log('\n  ── 别名一致性自检 ──');
+    console.log(`  门禁名 ${tierNames.size} 个 | dimensions{} 键 ${realKeys.size} 个 | FINDING_ALIAS 已映射 ${Object.keys(FINDING_ALIAS).length} 个`);
+    if (unaliased.length) {
+      console.log('  ✗ 门禁集里这些名字不是 dimensions{} 的键、又没有别名映射');
+      console.log('    (本仪器会把它们误报成「触发但从不推 finding」——周期7 的假警报):');
+      for (const n of unaliased) console.log(`     ${n} → 需在 FINDING_ALIAS 补 '${n}': '<真名>'`);
+      process.exitCode = 1;
+    } else {
+      console.log('  ✓ 每个门禁名要么是维度键，要么是已记录的非键判别器，要么有别名映射');
+    }
+    const dangling = Object.entries(FINDING_ALIAS).filter(([, t]) => !realKeys.has(t));
+    if (dangling.length) {
+      console.log('  ✗ FINDING_ALIAS 指向的维度键不存在(别名陈旧):');
+      for (const [a, t] of dangling) console.log(`     ${a} → ${t} (不存在)`);
+      process.exitCode = 1;
+    }
+  }
+
   if (uncovered.length) {
     console.log('\n  ℹ 仪器未覆盖的引擎维度（缺 check 函数映射，仍统计了俪号/finding）:');
     for (const k of uncovered) console.log(`     ${k}`);
   }
   console.log('\n  ── 汇总 ──');
+  // [第三十三轮] 这一行原先把 scoredOnly 整体打印成
+  // "曾触发但不推 finding → evidence"，读起来像一条缺陷。但 evidence 是
+  // **按设计**的仅打分维度(它在 index.js 里是反向测试 `if (ev.score < 0.25)`)，
+  // 仪器自己在逐维度标记(345 行)和 silentButShouldPush(371 行)都知道这一点，
+  // 唯独汇报名单不知道 —— 同一仪器对同一事实给出两种口径。
+  // 拆成两行: 按设计的归"按设计"，其余才值得人看。
+  const byDesign = scoredOnly.filter(d => SCORE_ONLY.has(d) || FINDING_ALIAS[d]);
+  const needsLook = scoredOnly.filter(d => !SCORE_ONLY.has(d) && !FINDING_ALIAS[d]);
   console.log(`  曾触发且推 finding:  ${ok.length}`);
-  console.log(`  曾触发但不推 finding: ${scoredOnly.length}${scoredOnly.length ? ' → ' + scoredOnly.join(', ') : ''}`);
+  console.log(`  曾触发、按设计不推 finding: ${byDesign.length}${byDesign.length ? ' (仅打分/别名: ' + byDesign.join(', ') + ')' : ''}`);
+  console.log(`  曾触发但从不推 finding: ${needsLook.length}${needsLook.length ? ' → ' + needsLook.join(', ') : ' ✓'}`);
   console.log(`  从未触发:            ${never.length}${never.length ? ' → ' + never.join(', ') : ''}`);
 
   const realNever = never.filter(d => !SCORE_ONLY.has(d));
@@ -375,7 +486,12 @@ function main() {
   }
   console.log('');
 
-  process.exitCode = silentButShouldPush.length > 0 ? 1 : 0;
+  // [第三十三轮] 这行原来是  —— 它是一个
+  // **无条件赋值**，会把本轮上面任何一处自行设置的 1 覆盖回 0。实测踩到:
+  // 错标 vagueness 进 SCORE_ONLY，门禁集自洽核对正确打印了 ✗ 并置 1，
+  // 然后被这一行抹掉，最终 exit=0 —— 仪器报出了缺陷却返回成功，
+  // 任何消费退出码的调用方都会认为通过。故改成只升不降。
+  if (silentButShouldPush.length > 0) process.exitCode = 1;
 }
 
 function signalOf(result) {

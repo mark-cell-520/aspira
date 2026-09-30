@@ -1,0 +1,85 @@
+{
+  "ts": "2026-09-30T01:46:31.466Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.72,
+  "confidence": 0.55,
+  "reasoning": "Selected: \"误报/召回校准\" (score: 0.72). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.71); \"测试覆盖缺口填补\" (0.7); \"MCP 工具增强\" (0.7); \"对抗鲁棒性增强\" (0.69); \"性能优化\" (0.67); \"文档诚实数字审计\" (0.65)",
+  "all_options": [
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.69
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 315,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "defects": [
+    {
+      "id": "A",
+      "severity": "medium",
+      "title": "周期18 披露的 8 条代码/密钥类逃逸被错误判定为需要代码语义模式，不是词表",
+      "detail": "src/shield/letter-space-evasion.js 的注释称 eval/new Function/innerHTML/document.write/SQL 拼接/exec/RSA 私钥/password 这 8 条需要代码语义模式，不是词表。重新测量后该判断是错的: 模块的两段判定(整条术语按序出现 且 至少一个词真含空白)本身就是上下文锚点，明文 exec/password/select/eval 不会被报(第 2 段 /\\s/.test(\"exec\") 为 false)，而 \\b 边界又拦住 execute/executive/selection。故可安全收录, 字母间插空格逃逸 29/41(71%) -> 39/41(95%)。"
+    },
+    {
+      "id": "B",
+      "severity": "low",
+      "title": "SQL 类用短语 SELECT FROM 永远配不上",
+      "detail": "规避变换后原文 SELECT * FROM 变成 S E L E C T * F R O M, SELECT 与 FROM 之间隔着 *, 而编译器要求词间是 \\s+, 短语必然失配(实测确认)。改用单词 SELECT 后命中。这也是枚举式短语会随插入字符而漏的又一例。"
+    }
+  ],
+  "fixes": [
+    "新增 9 条代码/密钥类词条: eval/exec/execSync/Function/innerHTML/document.write/SELECT/BEGIN RSA PRIVATE KEY/password",
+    "SQL 由短语 SELECT FROM 改为单词 SELECT"
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1399/0",
+    "audit": "86/86, exit 0",
+    "corpus": "41 malicious / 41 intercepted / 100.0% 不变; 106 benign / 1 escalated / FP 0.9% 不变(同一条校准不确定性样本), 未新增任何误报",
+    "evasion": "字母间插空格 29/41(71%) -> 39/41(95%); 逐字符插分隔符 35/41(85%) 不变; HTML 实体 39/41(95%) 不变"
+  },
+  "processNotes": [
+    "突变证明第一次没生效: password 与 BEGIN RSA PRIVATE KEY 在同一行, 我写的替换串 \"  'password',\\n\" 根本没匹配上, 于是测试 10/10 通过、看起来像锁不会红。加 assert 锚点后重做才真正移除词条, 得到 9/10(按名失败在新用例上), 还原后 10/10。教训: 一个不突变的突变证明, 和一个不会红的锁看起来完全一样 —— 突变本身也必须被断言确认已生效。"
+  ],
+  "remainingGap": "字母间插空格仍余 2 条: 多词中英混排短语(women belong in the kitchen 女人就该待在厨房)需短语级容忍; 下划线分隔族(all f_aggot_s must die)属 strip_separator 范畴, 不在本模块职责内。",
+  "nextRecommendation": "doc-honest-numbers: routes() 的私有方法计数口径仍未修(加一个 _前缀方法就把公开 dispatch routes 从 1510 推到 1511), 并用能识别 path.join 分段写法的探针重测未覆盖模块清点。",
+  "excluded": "技能副本过期，无同步任务"
+}

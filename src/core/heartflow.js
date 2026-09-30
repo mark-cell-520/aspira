@@ -4473,11 +4473,30 @@ class Aspira {
       try {
         const proto = Object.getPrototypeOf(mod);
         if (proto && proto !== Object.prototype) {
-          methods = Object.getOwnPropertyNames(proto).filter(m => m !== 'constructor' && typeof mod[m] === 'function');
+          // [第三十六轮] `_` 前缀的私有助手不计入 dispatch routes。
+          //
+          // 原实现只排除 'constructor'，于是每个类上的私有方法都被算成一条
+          // "公开派发路由"。实测: 现行口径 1,510 条里有 **487 条** 是
+          // `_readLayer` / `_writeLayer` / `_log` / `_initRootKey` 这类私有
+          // 助手 —— 公开数字虚高 48%，接近一半的路由并不存在。
+          //
+          // 这不是数字漂移，是**公共契约被实现细节扰动**: 给任何类加一个私有
+          // 助手，公开声称的"dispatch routes"就会 +1(周期31 实测过:
+          // 加一个 `_safeSegment` 把 1510 推到 1511 并染红 audit)。
+          // 一个能被内部重构改动的公开数字不是数字。
+          //
+          // 安全性: routes() 是枚举/报表面，不是派发表。已核对三类消费者 ——
+          // self-benchmark.js:146 只用 Object.keys() 数模块数(132)；
+          // audit-doc-numbers.js:212 数条目总数(本条修复的目标)；
+          // bin/cli.js:375 只打印。src/ 内无 `routes[` 表查找。
+          methods = Object.getOwnPropertyNames(proto).filter(m =>
+            m !== 'constructor' && m[0] !== '_' && typeof mod[m] === 'function');
         }
       } catch (e) { /* strict mode or primitive */ }
       if (!methods.length) {
-        methods = Object.keys(mod).filter(k => typeof mod[k] === 'function');
+        // 兜底分支同样排除 `_` 前缀，否则私有助手会从这条路绕回来
+        // (实测: 修好上面那处后仍有 5 条残留，全部来自这里)。
+        methods = Object.keys(mod).filter(k => k[0] !== '_' && typeof mod[k] === 'function');
       }
       table[name] = methods;
     }

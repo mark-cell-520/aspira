@@ -1,0 +1,82 @@
+{
+  "ts": "2026-09-30T03:20:13.091Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 315,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "defects": [
+    {
+      "id": "A",
+      "severity": "high",
+      "title": "routes() 把 487 条私有助手计成公开 dispatch routes, 公开数字虚高 48%",
+      "detail": "heartflow.routes() 用 Object.getOwnPropertyNames(proto).filter(m !== constructor && ...) 构建路由表, 只排除 constructor, 不排 _ 前缀。实测: 现行口径 1,510 条里有 487 条是 _readLayer / _writeLayer / _log / _initRootKey 这类私有方法, 公开 dispatch routes 的真实数是 1,023。受影响模块 78 个。这不是数字漂移, 是公共契约被实现细节扰动: 给任何类加一个私有助手, 公开声称的路由数就 +1(周期31 实测加 _safeSegment 把 1510 推到 1511 并染红 audit)。一个能被内部重构改动的公开数字不是数字。"
+    }
+  ],
+  "fixes": [
+    "routes() 两处过滤均加 m[0] 不等于 _(下划线): prototype 分支与无 proto 时的 Object.keys 兜底分支。只改 prototype 分支会残留 5 条, 因为兜底分支会把私有助手绕回来",
+    "安全核对: routes() 是枚举/报表面而非派发表。三类消费者逐一核对 —— self-benchmark.js:146 只用 Object.keys().length 数模块数(132); audit-doc-numbers.js:212 数条目总数; bin/cli.js:375 只打印。src/ 内无 routes[ 表查找, 故无派发依赖",
+    "5 处当前声称站点同步 1,510 改为 1,023: AGENTS.md:15、AGENTS.md:483、README.md:10、README.md:134、SKILL.md:156。SKILL.md 说明列改为 sum of public method entries in hf.routes() (underscore-prefixed private helpers excluded), 免得下次有人按旧口径复现"
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1401/0",
+    "audit": "86/86, exit 0",
+    "note": "改了 src/core/heartflow.js 的 routes() 枚举口径; 修复后 132 模块 / 1,023 条公开路由 / 0 条下划线残留 / 0 个空路由模块",
+    "corpus": "未改"
+  },
+  "processNotes": [
+    "探针构造错了两次, 都是被自己的记忆误导。第一次用 hf.Aspira(src/index.js 的导出不是构造器), 第二次直接 new HF(heartflow.js 的导出也不是构造器)。正确形式是 new hf.Aspira, 而这个事实就写在 audit-doc-numbers.js:207 里 —— 仪器自己写的代码比我记的口径更可靠。造探针前先读权威测量怎么造的, 而不是凭上一个周期的印象拼。",
+    "兜底分支的残留是逐步暴露的: 先把 prototype 分支修好, 实测 1,028 条、残留 5 条下划线前缀, 才意识到 methods.length 为 0 时的 Object.keys 兜底分支会把私有助手绕回来; 补上之后正好 1,023(= 1,510 - 487), 残留归零。只修一处会留下一个看起来修好了的半成品。"
+  ],
+  "remainingGap": "routes() 口径已修正。周期31/33 交接的另一项仍未做: cycle-28 的 164 uncovered modules 清点被 path.join 分段写法的 require 掩盖, 虚高金额未知(已知 kv-cache-persistor.test.js 就是被这样漏掉的一个)。",
+  "nextRecommendation": "doc-honest-numbers 续作: 用能识别 path.join(ROOT, src, ...) 分段写法的探针重测未覆盖模块清点。注意这次要先确认探针的判定口径与声称口径一致(本轮两次构造探针失败都是口径问题)。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "src/ 已改(heartflow.js 的 routes() 枚举口径), 但未新增/修改任何 MCP 工具定义、handler 映射或权限契约; 工具清单仍是 181/181 一对一。routes() 经核对是报表面不参与派发。如实说明: 这与前几轮未改 src/ 的情形不同, 本轮确实改了 src/; 记不重启的理由是口径而非\"没动引擎\"。"
+}

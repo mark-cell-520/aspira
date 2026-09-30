@@ -50,13 +50,36 @@ const testSrc = testFiles.map(f => fs.readFileSync(f, 'utf8'));
 // src 文件内容(用于判断是否被其他模块 require)
 const srcSrc = srcFiles.map(f => ({ rel: path.relative(ROOT, f), src: fs.readFileSync(f, 'utf8') }));
 
-const referencedByTest = (m) => testSrc.some(s => s.includes(m.base));
+const referencedByTest = (m) => testSrc.some(s => hasRequireOf(s, m.base));
 // 被 src 引用: require('./xxx') 或 require('../dir/xxx')，按 basename 匹配
 const requiredBySrc = (m) => srcSrc.some(x => {
   if (x.rel === m.rel) return false;                    // 自己不算
-  const re = new RegExp(`require\\(\\s*['"][^'"]*${m.base}(?:\\.js)?['"]\\s*\\)`);
-  return re.test(x.src);
+  return hasRequireOf(x.src, m.base);
 });
+
+// [第三十七轮] 「有没有人 require 它」的判据。
+//
+// 原判据是 **子串匹配**: testSrc.some(s => s.includes(m.base))。
+// 实测这个口径把 **47 个模块**算成已覆盖 —— 它们的 basename 只是在某个测试
+// 文件里出现过(注释、字符串、散文、或一个更长标识符的一部分)，并不存在
+// 任何 require。子串口径报 280 已覆盖，真实 require 口径只有 233:
+// **缺口被少报 47 个模块**。让死代码看起来被测过，比漏报更危险。
+//
+// 但同时必须补上反方向的盲区: `require(path.join(ROOT,'src','memory','kv-cache.js'))`
+// 这种分段写法里，require( 后面跟的是 path.join( 而不是引号，原正则匹配不上。
+// 本轮实测: 该盲区在 A 类(疑似死代码)里为 0，但两个方向都要认，否则修一个
+// 就会造出另一个。
+//
+// 判据: 在来源里找 require( 之后紧接着的字符串字面量或 path.join 段列表，
+// 其中任一段以 basename(可带 .js)结尾。
+function hasRequireOf(src, base) {
+  // (a) require('.../base') / require(".../base.js")
+  const direct = new RegExp(`require\\(\\s*['"][^'"]*${base}(?:\\.js)?['"]\\s*\\)`);
+  if (direct.test(src)) return true;
+  // (b) require(path.join(..., 'base')) —— 段名出现在 path.join 的字符串参数里
+  const joined = new RegExp(`require\\(\\s*path\\.join\\([^)]*['"]${base}(?:\\.js)?['"]`);
+  return joined.test(src);
+}
 
 const cats = { A: [], B: [], C: [] };
 for (const m of mods) {

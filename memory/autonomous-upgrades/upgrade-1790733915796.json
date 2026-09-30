@@ -1,0 +1,89 @@
+{
+  "ts": "2026-09-30T02:05:15.796Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.71,
+  "confidence": 0.6,
+  "reasoning": "Selected: \"维度健康审计与增强\" (score: 0.71). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"MCP 工具增强\" (0.7); \"误报/召回校准\" (0.69); \"对抗鲁棒性增强\" (0.69); \"性能优化\" (0.67); \"文档诚实数字审计\" (0.65)",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.69
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.69
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 315,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "defects": [
+    {
+      "id": "A",
+      "severity": "high",
+      "title": "SCORE_ONLY 是手写集合，与引擎真实门禁集无任何校验，失同步时仪器静默少报缺陷",
+      "detail": "scripts/dimension-health-audit.js 的 SCORE_ONLY 声称 14 个维度不强制门禁动作，但该集合是手写的，与 src/index.js 的 BLOCK_DIMS/REWRITE_DIMS/VERIFY_DIMS 没有任何一致性检查。若把某个真在 VERIFY_DIMS 里的维度错标为仅打分，silentButShouldPush 就再也筛不到它，仪器不会报错、只会少报——一个会因配置错误而少报的仪器，与一个从不报警的仪器不可区分。实测该风险可触发: 将 vagueness(真实在 VERIFY_DIMS)错标入 SCORE_ONLY，核对立即报出。"
+    },
+    {
+      "id": "B",
+      "severity": "medium",
+      "title": "汇总行把按设计如此的维度报成问题类别，与仪器自身认知矛盾",
+      "detail": "原汇总行打印「曾触发但不推 finding: 1 → evidence」，读起来像一条缺陷。但 evidence 在 src/index.js 是反向测试(if (ev.score < 0.25))，按设计不推 finding；仪器自己在逐维度标记和 silentButShouldPush 两处都已排除它，唯独汇报名单没有——同一仪器对同一事实给出两种口径。已拆为「曾触发、按设计不推 finding」与「曾触发但从不推 finding」两行。"
+    }
+  ],
+  "fixes": [
+    "新增门禁集自洽核对: 从 src/index.js 解析三个真实门禁集，经 canon() 别名规范化(门禁用 bullshit，dimensions{} 用 bullshit_recognition)，断言 SCORE_ONLY 恰好等于不在任何门禁集里的维度；解析失败显式报错而非空过",
+    "汇总行拆分: 按设计不推 finding 与真缺陷分开列",
+    "末尾 exitCode 赋值改为只升不降"
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1401/0",
+    "audit": "86/86, exit 0",
+    "note": "仅改 scripts/dimension-health-audit.js(仪器)，未改 src/ 引擎代码",
+    "corpus": "未改"
+  },
+  "processNotes": [
+    "突变更正了自己修复里的一个真缺陷: 错标 vagueness 后，门禁集自洽核对**打印了 ✗ 但 exit 仍是 0**。原因是脚本末尾  是无条件赋值，把上面任何一处自设的 1 覆盖回 0。仪器报出了缺陷却返回成功，任何消费退出码的调用方都会认为通过。改为只升不降后复测: 基线 exit=0，突变 exit=1。把失败变成静默与失败本身同罪，而这里更糟——它打印了错误却返回成功。",
+    "本轮第一个假设被实测推翻: 我据仪器逐维度清单里没有 ai_writing_tell 推断它未被探测。实测证实 AGENTS.md 的记载是对的——ai_writing_tell 与 pseudo_causal/soft_deflection 一样**不是 dimensions{} 的键**(是三个额外判别器)，所以仪器覆盖 54 键是正确的，uncovered=0 也对。先测再改，又省下一次对正常代码的误修。",
+    "核对的第一版正则是 const BLOCK = new Set([...])，而真实声明是 const BLOCK_DIMS = ...，三个集合全部取空、核对「通过」——一个因前提缺失而通过的核对比没有核对更糟。已在代码里显式检查取空并报错。"
+  ],
+  "remainingGap": "SCORE_ONLY 与门禁集现已一致，但 FINDING_ALIAS 只覆盖 2 个别名；三处命名不一致(dimMap 键/allDims name/门禁集名)本身未收敛，每新增一个别名都要同步改三处。",
+  "nextRecommendation": "doc-honest-numbers: routes() 仍把私有助手计成公开 dispatch route(加一个 _ 前缀方法就把 1510 推到 1511)，并用能识别 path.join 分段写法的探针重测未覆盖模块清点。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "not-performed: 未改 src/ 引擎代码，仅改 scripts/ 下的仪器脚本"
+}

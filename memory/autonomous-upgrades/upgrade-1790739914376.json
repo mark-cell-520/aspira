@@ -1,0 +1,102 @@
+{
+  "ts": "2026-09-30T03:45:14.375Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 315,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "defects": [
+    {
+      "id": "A",
+      "severity": "high",
+      "title": "coverage-sweep 用子串判「有测试引用」, 把 47 个从未被 require 的模块算成已覆盖",
+      "detail": "referencedByTest 的判据是 testSrc.some(s => s.includes(m.base))。子串口径报 280 个模块已有测试引用, 真实 require 口径只有 233 —— 差额 47 个模块的 basename 只是作为**词**出现在测试文件里(注释、散文、字符串、或一个更长标识符的一部分)。抽查 dao-decision / heartbeat / global-workspace / stance-detector: 各只有一个测试文件含该词, 真实 require 数均为 0。后果是未覆盖模块数被少报 47 个, **死代码看起来被测过** —— 比漏报更危险的方向。"
+    },
+    {
+      "id": "B",
+      "severity": "low",
+      "title": "反方向盲区确认存在但当前为 0: require(path.join(...)) 分段写法匹配不上",
+      "detail": "requiredBySrc 的原正则要求 require( 后紧跟引号, 而 require(path.join(ROOT, \"src\", ...)) 的 require( 后是 path.join( 。本轮实测该盲区在 A 类(疑似死代码)里为 0 个模块, 即当前没有仅靠这条漏计的; 但两个方向都补上, 否则修一个就会造出另一个。"
+    }
+  ],
+  "fixes": [
+    "抽出 hasRequireOf(src, base) 统一判据, 两个方向都认: (a) require(.../base.js) 字符串字面量; (b) require(path.join(..., \"base\")) 分段写法。referencedByTest 与 requiredBySrc 共用它",
+    "子串判据整条移除 —— 它不是\"稍微宽松\", 是把覆盖率的定义从\"有代码加载它\"改成了\"有文字提到它\""
+  ],
+  "measured": {
+    "修复前": {
+      "A_疑似死代码": 10,
+      "B_活着没测": 93,
+      "C_有测试引用": 280,
+      "未覆盖合计": 103
+    },
+    "修复后": {
+      "A_疑似死代码": 12,
+      "B_活着没测": 123,
+      "C_有测试引用": 248,
+      "未覆盖合计": 135
+    },
+    "说明": "C 从 280 降到 248 = 233 个真实直接 require + 15 个 path.join 分段写法; 32 个模块从\"已覆盖\"改判为未覆盖。383 = 12 + 123 + 248 自洽。"
+  },
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1401/0",
+    "audit": "86/86, exit 0",
+    "note": "仅改 scripts/coverage-sweep.js(仪器), 未改 src/ 引擎代码",
+    "existingLock": "test/unwired-module-coverage.test.js 未红, 说明它不断言具体的 164/103 数字"
+  },
+  "processNotes": [
+    "我去找 path.join 漏计, 先测了它 —— 在 A 类里为 0。是\"换一个角度看同一个仪器\"时才发现真正的缺陷在镜像那一侧: 子串匹配虚高覆盖。**交接给我的方向是错的, 我没有照着做, 而是先测量了它。** 如果当时直接按交接去修 path.join, 会修一个当前不造成任何误判的盲区, 而让 47 个假覆盖继续躺着。",
+    "旧文档里的 164 uncovered 已无当前声称站点(四个命中全是周期28/31 的历史叙述), 所以本轮不需要同步那个数字; 需要修正的是仪器本身。诚实缺口从 103 变成 135。"
+  ],
+  "remainingGap": "未覆盖模块的真实数是 135 个(而非历史叙述里的 164, 也不是仪器刚才报的 103)。hasRequireOf 仍不认模板字面量与变量拼接写法(require(`../src/${name}`)), 当前未测该写法在本仓的出现次数。",
+  "nextRecommendation": "doc-honest-numbers 续作: 测一遍 src/ 与 test/ 里 require(\\`...\\`) 模板写法与变量拼接写法的出现次数, 若存在则补进 hasRequireOf, 然后重跑清点。以及 routes() 修正后 1,023 这个数已被 audit 锁定, 可考虑给 coverage-sweep 的 135 加一条当前声称, 让它也被 audit 核对。",
+  "excluded": "技能副本过期，无同步任务",
+  "mcpRestart": "not-performed: 未改 src/ 引擎代码, 仅改 scripts/coverage-sweep.js 仪器"
+}

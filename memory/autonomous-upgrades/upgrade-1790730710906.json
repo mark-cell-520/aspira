@@ -1,0 +1,93 @@
+{
+  "ts": "2026-09-30T01:11:50.905Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"误报/召回校准\" (0.72); \"维度健康审计与增强\" (0.71); \"MCP 工具增强\" (0.7); \"对抗鲁棒性增强\" (0.69); \"性能优化\" (0.67); \"文档诚实数字审计\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.69
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 315,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1395 -> 1399 / 0 失败",
+    "audit": "86/86, 退出码 0",
+    "corpus": "106 良性 / FP 0.9%; 41 恶意 / 41 拦截 / 100.0%; 逃逸 85%/71%/95% 与基线逐项相同"
+  },
+  "measuredFirst": "切片选 memory 族。首次探测 memory-kernel(40 方法, 面过大)与 kv-cache(10 方法, 契约清晰), 后者适合单周期测透。",
+  "defects": [
+    {
+      "id": "A",
+      "sev": "high",
+      "name": "持久层路径穿越(任意目录写入原语)",
+      "detail": "save/load/has/delete 四个公开方法把 sessionId 与 key 直接 path.join 进路径,无任何净化。实测 save(\"../escape\",\"k\",v) 落到 <cacheDir 父目录>/escape/k.kv、save(\"..\",\"k\",v) 落到 <父目录>/k.kv —— 均在 cacheDir 之外; save(\"a/b\") 则层级不可控。(\"/tmp/x\" 反被 path.join 归一化,真正危险来自 \"..\" 前缀。) sessionId/key 可来自 MCP 工具参数或调用方输入,故这不是理论风险。修复: 模块级 safeSegment() 只允许 [A-Za-z0-9._-] 并显式拒绝 \".\"/\"..\" 与路径分隔符; 四方法各自返回既有语义(false/null), 不抛错。修后实测 cacheDir 外 .kv 文件数 2 -> 0。"
+    },
+    {
+      "id": "B",
+      "sev": "high",
+      "name": "信封缺失导致用户数据被静默改写",
+      "detail": "save 对数组写 {q,shape} 或 {v}, 对非数组写裸 JSON.stringify(tensor); 而 load 把 data.q / data.v 当信封解(反量化 / 取内层值)。于是用户对象只要带 v 或 q 键就被误判并改写: 实测 save(s,k,{v:1}) -> load 返回数字 1(对象没了); save(s,k,{q:[1,2]}) -> load 返回反量化数组。且 if(data.q) 用真值判断,{q:0} 落空走第三条,同族输入三种结果。这是\"调用成功、不抛错、结构合法、内容是错的\"的静默数据损坏。修复: 写入 {_KV:1, kind, payload},按 kind 分派 —— kind=array 才解内部信封, kind=value 原样返回;保留窄化 legacy 回退(要求 Array.isArray, 故不会与用户数据的 {v:1}/{q:0} 相撞), 实测 legacy {q:[10,20]} 与 {v:[1,2,3]} 仍可读。仓库内 .kv 文件实测为 0(默认目录在 os.tmpdir()),故无真实旧数据受损。"
+    },
+    {
+      "id": "C",
+      "sev": "medium",
+      "name": "getStats().hitRate 是字符串,同表其余字段全是数字",
+      "detail": "hitRate 用 toFixed(2) 返回 \"0.50\",而 sessions/totalEntries/saves/loads/hits/misses/evictions 都是数字。实测 typeof===\"number\" 为 false、hitRate.toFixed(2) 抛 TypeError、恰好 0.50 时 hitRate>0.5 返回 false(靠隐式转型碰巧对)。src/reasoning/decision-engine.js 的 sdtAnalyze 文档约定正是 @param {number} hitRate。已确认 src/ test/ scripts/ 无下游消费者,改为数字。"
+    }
+  ],
+  "processNotes": [
+    "本模块并非未覆盖: 周期28 的清点把它算进 164 个无测试引用的模块,但 test/kv-cache-persistor.test.js 早已存在且有 10 个用例 —— 它用 path.join(ROOT,\"src\",\"memory\",\"kv-cache.js\") 分段拼路径,所以按模块名字符串 grep 的清点看不见它。周期28 的\"164 个未覆盖\"因此含未知数量的高估,与已记录的 spawnsDocAudit() 只认一种写法同族。",
+    "门禁一度回到 1391/8,我按周期规则回滚测量,确认是我的改动所致,再定位到真实原因: 新增 4 条用例使实测 1395->1399 而文档未同步,doc-probe 测试要求审计全绿故连带失败。中途我误判为 SIGTERM 留下的孤儿 doc-probe 锁 —— 锁文件已释放、探针无残留进程,该判断是错的,已放弃。",
+    "新测试自己过度断言过一次: 我把 'con' 列进必须拒绝的 key,但 POSIX 上 con.kv 是完全合法的文件名,实测存取皆正常、未测出任何危害。按测量结果把它移出拒绝表 —— 未经测量就断言,与未经测量就声称数字同族。",
+    "routes() 数出 1511 而非 1510,根因是 heartflow.routes() 用 Object.getOwnPropertyNames(proto) 统计每个模块的全部方法且不区分私有前缀: 我给类加一个 _safeSegment 就被计成一条 dispatch route。已把净化器改成模块级函数(沿用同文件 quantizeArray/dequantizeArray 的形状),routes 回到 1510、公开表面零变化。仪器缺陷本身(公开声称的数字被实现细节扰动)未修,记入 remainingGap。",
+    "本周期最贵的教训出在门禁收尾: 我曾把耗时超过 60s 的审计放进后台再用 SIGTERM 杀掉, 而 SIGTERM 落在 doc-probe 测试飞行中 —— test/audit-pattern-blindspot.test.js 的注入还原写在 finally 里, 被杀时从未执行, 于是 README.md 的「Version history」段留下了完整的盲区探针注入块(标记行 + 139/184/1522/1197/63 五条陈旧值)。审计随即如实把这 5 条报成不符, doc 测试因要求审计全绿而连带失败, 实测 tests 从 1399 掉到 1390/1380, 五个 tests 声明全部不符 —— 一条因果链从一次超时kill 串到十项红。已按注入块原文逐字清除(76,569 -> 76,283 字节, 表头完好), 复测 audit-pattern-blindspot 4/4、审计 86/86 exit 0。教训: 后台跑会改仓库的探针型任务, 不能用超时去杀 —— 杀在 finally 之前就是把仓库留在污染态, 而且污染态会被下游仪器如实报出来, 看起来像仪器疯了。",
+    "审计一次运行 85 total / 另一次 90 / 91, 同内容不同结果, 一度让我怀疑审计非确定。真相是 README 已被污染, 而污染使 doc 测试失败、失败又改变审计 spawn 的 run-all 实测数 —— 反馈回路放大了抖动。清掉污染后 86/86 稳定。",
+    "routes() 数出 1511 而非 1510: heartflow.routes() 用 Object.getOwnPropertyNames(proto) 统计每模块全部方法且不区分私有前缀, 我给类加一个 _safeSegment 就被计成一条 dispatch route(8 次运行确定性复现)。仪器本身有缺陷(公开声称的数字被实现细节扰动), 但修它要重校 132 个模块的口径, 属 doc-honest-numbers 周期; 本期只避免扩大公开表面 —— 净化器改为模块级函数, 与同文件 quantizeArray/dequantizeArray 同形, routes 回到 1510。"
+  ],
+  "remainingGap": "heartflow.routes() 用 Object.getOwnPropertyNames(proto) 统计方法且不区分私有前缀 —— 往任何模块加一个 _xxx 内部助手都会悄悄改动文档声称的 1,510 dispatch routes。这是公开数字被实现细节扰动的仪器缺陷,修它要重校全部 132 模块的口径,属 doc-honest-numbers 周期。另外: 周期28\"164 个未覆盖模块\"的清点因分段 path.join 而高估,需用能识别该写法的探针重测; 字母间插空格逃逸仍 71%(12 条绕过); 审计约 1/6 概率报 tests=1394; 邮政 STALE_MS=120000 大于调用方 60000ms 耐心,孤儿锁等不到被判陈旧。",
+  "nextRecommendation": "下一轮建议回到 doc-honest-numbers: 修 routes() 的私有方法计数口径,并重测未覆盖模块清点(改用能识别 path.join 分段写法的探针)。这两项都会让已公开的数字发生变化,应当同轮同步,避免再次出现\"实测与文档不一致 11 条\"的连带红。",
+  "mcpRestart": "未执行。本周期改了 src/memory/kv-cache.js,但未增改任何 MCP 工具定义、handler 映射或权限契约,routes()/TOOLS/HANDLERS 表面零变化(实测 routes 仍为 1510),与周期28 改 memory-encrypt.js 时不重启的先例一致。"
+}

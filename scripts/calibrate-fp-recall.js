@@ -344,17 +344,67 @@ const EVASIONS = {
   'HTML 实体': (s) => s.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
 };
 
+// [第三十五轮] 逃逸召回的分母此前把两类样本混在一起，使这个数字部分失实。
+//
+// 实测发现: 41 条 MALICIOUS 里有 **2 条** (`i hаte you`、`рass the test`)
+// 在明文下的拦截**不来自任何内容判别** —— 它们的 findings 数组是空的，
+// gate 之所以 rewrite 完全是因为对抗变体层的同形字信号("西里尔字母紧邻
+// 拉丁字母")。而这两个样本的内容本身 (`i hate you` / `pass the test`)
+// 是良性的: 经逃逸变换 + de_cyrillic 后，同形字信号**正当地**消失，
+// 于是没有任何东西可拦。
+//
+// 把这类样本计入逃逸召回的分母，等于在给"信号正确地消失"记一次失败
+// —— 一个没人校验过的数字，比一个错误的数字更难发现，因为它看起来
+// 一直都在涨。
+//
+// 判据刻意选"明文 findings 为空"而非"不属于内容型维度清单"：
+// 后者要维护一份会腐烂的维度名单(本仓库已为这种事付过多次学费)，
+// 而"一个 finding 都没有"机械可测，且正好刻画"内容层什么都没说"。
+function splitByEvidence() {
+  const content = [], signalOnly = [];
+  for (const t of MALICIOUS) {
+    const r = run(t);
+    // [第三十五轮·修正] 判据不能是 findings.length > 0。
+    // 实测: 'i hаte you' / 'рass the test' 的 findings 是
+    // [{dimension: 'none'}] —— 数组非空，但那条 finding 的 dimension 是
+    // 字符串 'none'，是 dimMap 键名解析失败时的回退哨兵，不是真实维度。
+    // 用 length 判据会把它们错分成内容型，于是分母拆分失效(实测 41/0)。
+    // 判据改为: 存在 dimension 不是 'none' 哨兵的 finding。
+    const real = (r.findings || []).filter(f => f && f.dimension && f.dimension !== 'none');
+    (real.length > 0 ? content : signalOnly).push(t);
+  }
+  return { content, signalOnly };
+}
+
+const EVIDENCE_SPLIT = splitByEvidence();
+
 function measureEvasion() {
   const rows = [];
   for (const name of Object.keys(EVASIONS)) {
     const fn = EVASIONS[name];
     let caught = 0; const missed = [];
+    let cCaught = 0; const cMissed = [];
     for (const t of MALICIOUS) {
       const r = run(fn(t));
       const act = r.gate && r.gate.action;
-      if (act === 'block' || act === 'rewrite') caught++; else missed.push(t.slice(0, 44));
+      const hit = (act === 'block' || act === 'rewrite');
+      if (hit) caught++; else missed.push(t.slice(0, 44));
+      if (EVIDENCE_SPLIT.content.indexOf(t) >= 0) {
+        if (hit) cCaught++; else cMissed.push(t.slice(0, 44));
+      }
     }
-    rows.push({ name, caught, total: MALICIOUS.length, missed });
+    let sCaught = 0;
+    for (const t of EVIDENCE_SPLIT.signalOnly) {
+      const r = run(fn(t));
+      const act = r.gate && r.gate.action;
+      if (act === 'block' || act === 'rewrite') sCaught++;
+    }
+    rows.push({
+      name, caught, total: MALICIOUS.length, missed,
+      contentCaught: cCaught, contentTotal: EVIDENCE_SPLIT.content.length,
+      contentMissed: cMissed,
+      signalCaught: sCaught, signalTotal: EVIDENCE_SPLIT.signalOnly.length,
+    });
   }
   return rows;
 }
@@ -393,14 +443,23 @@ if (m.missed.length) {
 // 一动不动——所以单看它会得到虚假的安全感。本节让逃逸第一次变得可见。
 const ev = measureEvasion();
 console.log('\n══════════ 逃逸召回(明文之外的攻击面) ══════════');
-console.log('  变换类              拦截/总数   召回率');
+// [第三十五轮] 分母拆分说明。同一批变换，"全部 41"与"仅内容型 39"是
+// 两个不同的问题: 前者把"信号正确地消失"算成失败。两个都报，不藏任何一个。
+console.log(`  分母拆分: 内容型 ${EVIDENCE_SPLIT.content.length} 条` +
+  ` | 仅信号型 ${EVIDENCE_SPLIT.signalOnly.length} 条(明文 findings 为空, 拦截靠同形字层)`);
+console.log('  变换类              全部     内容型   仅信号型');
 for (const r of ev) {
-  console.log(`  ${r.name.padEnd(18)} ${r.caught}/${r.total}`.padEnd(34) +
-    `   ${(r.caught / r.total * 100).toFixed(0)}%`);
+  console.log(`  ${r.name.padEnd(18)} ${(r.caught + '/' + r.total).padEnd(8)}` +
+    `${(r.contentCaught + '/' + r.contentTotal).padEnd(9)}` +
+    `${r.signalCaught}/${r.signalTotal}`);
 }
-const worst = ev.reduce((a, b) => (a.caught / a.total <= b.caught / b.total ? a : b));
+const worst = ev.reduce((a, b) => (a.contentCaught / a.contentTotal <= b.contentCaught / b.contentTotal ? a : b));
+if (worst.contentMissed && worst.contentMissed.length) {
+  console.log(`\n── 内容型逃逸漏报(以 ${worst.name} 为准，最差的一类) ──`);
+  for (const s of worst.contentMissed) console.log(`  [绕] ${s}`);
+}
 if (worst.caught < worst.total) {
-  console.log(`\n── 逃逸漏报明细(以 ${worst.name} 为准，最差的一类) ──`);
+  console.log(`\n── 全部 41 条的漏报明细(含仅信号型样本，注意其内容本身可能是良性的) ──`);
   for (const s of worst.missed) console.log(`  [绕] ${s}`);
   console.log(`\n  ⚠ 明文召回 ${(m.caught / m.malTotal * 100).toFixed(0)}% 与逃逸召回 ` +
     `${(worst.caught / worst.total * 100).toFixed(0)}% 的差就是仪器此前的盲区。`);

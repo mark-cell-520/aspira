@@ -71,6 +71,34 @@ const LETTER_SPACE_TERMS = Object.freeze([
   'developer mode',
   'no restrictions',
   'reveal your system prompt',
+
+  // [第三十二轮] 代码/密钥类 —— 模块原注释称这 8 条"需要代码语义模式，
+  // 不是词表"。重新测量后修正那个判断: 本模块的**两段判定**已经提供了
+  // 词表无法自带的上下文锚定，因此这些词可以安全收录。
+  //
+  // 为什么不误报(双向实测，见 test/letter-space-evasion.test.js):
+  //   · 第 1 段按序匹配，第 2 段要求命中片段里**至少一个词真的含空白**。
+  //     所以明文 exec / password / eval / select 单独出现一律不报
+  //     (/\s/.test("exec") 为 false)。只有 "e xe c" / "p as sw or d" 才报。
+  //   · 每个词两头都有 \b，所以 exec 不会命中 execute/executive，
+  //     select 不会命中 selection。
+  //   · 规避变换的产物在自然语言里几乎不可出现(字母被切开)，故第 2 段
+  //     本身就是强锚点 —— 这正是它与"需要 eval( 这种语法锚点"方案的区别。
+  //
+  // 收录前提遵守边界规则 1: 下列术语的**明文形式**均已被 src/index.js 的
+  // code_security / 密钥类模式拦下(明文召回 41/41)，故启用空格容忍只可能
+  // 增加召回。逐条实测确认 BENIGN 106 条不新增误报。
+  // 代码执行
+  'eval', 'exec', 'execSync', 'Function',
+  // XSS sink
+  'innerHTML', 'document.write',
+  // SQL 拼接。注意用单词 `SELECT` 而非短语 `SELECT FROM`: 规避变换后
+  // 原文的 `SELECT * FROM` 变成 `S E L E C T * F R O M`，SELECT 与 FROM
+  // 之间隔着 `*`，而编译器要求词间是 `\s+`，短语永远配不上(实测确认)。
+  // 单词 SELECT 由两段判定兜底: 明文 "select" 不含内部空白，不会误报。
+  'SELECT',
+  // 密钥/凭据泄露
+  'BEGIN RSA PRIVATE KEY', 'password',
 ]);
 
 /**

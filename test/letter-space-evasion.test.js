@@ -42,6 +42,26 @@
  *   字母间距规避召回 **16/41 (39%) → 29/41 (70.7%)**;
  *   逐字符插分隔符 35/41 (85.4%)、HTML 实体 39/41 (95.1%) 均不变。
  *   未回收的 12 个已披露，不静默当成已解决(见 AGENTS.md 周期 18)。
+ *
+ * ═══ 第三十二轮(fp-recall-calibration 切片)扩展 ═══
+ * 周期 18 披露的那 12 条未回收项里，8 条代码/密钥类被标为"需要代码语义模式，
+ * 不是词表"。重新测量后修正该判断: **两段判定本身就是上下文锚点**，因此这些
+ * 词可以安全收录。本轮新增 eval / exec / execSync / Function / innerHTML /
+ * document.write / SELECT / BEGIN RSA PRIVATE KEY / password 共 9 条。
+ *
+ * 关键在反向控制同样要新增: exec / password / select / eval 都是自然语言里
+ * 正常出现的词，第 2 段判定(命中片段里至少一个词真含空白)必须排除明文形态。
+ * 另有一个具体的坑: SQL 那条用短语 `SELECT FROM` 配不上——变换后原文的
+ * `SELECT * FROM` 变成 `S E L E C T * F R O M`，SELECT 与 FROM 之间隔着 `*`，
+ * 而编译器要求词间是 `\s+`。改用单词 `SELECT` 后命中。
+ *
+ * ═══ 实测(本轮，语料 106 benign / 41 malicious) ═══
+ *   字母间距规避召回 **29/41 (71%) → 39/41 (95%)**，额外回收 10 条;
+ *   良性误报 **0.9% / 1 条不变**(仍是那条校准不确定性样本)，未新增任何误报;
+ *   明文召回 41/41 不变，逐字符插分隔符 35/41 (85%)、HTML 实体 39/41 均不变。
+ *   剩余 2 条未回收且各有已披露理由: 多词中英混排短语
+ *   (`women belong in the kitchen 女人就该待在厨房`)需短语级容忍; 下划线分隔族
+ *   (`all f_aggot_s must die`)属 strip_separator 范畴，不在本模块职责内。
  */
 const path = require('path');
 const {
@@ -112,6 +132,45 @@ module.exports = function ({ test, assertEqual, assertTrue, log }) {
     assertTrue(wordIsSpaced('nigger', 'n ig ge r'), '成对分组形态必须算已拆开');
     assertTrue(wordIsSpaced('nigger', 'n i g g e r'), '均匀单字母形态必须算已拆开');
     assertTrue(!wordIsSpaced('nigger', 'nigger'), '明文不得算已拆开');
+  });
+
+  test('代码/密钥类术语的规避形态必须被检出(第三十二轮新增)', () => {
+    const cases = [
+      ['const x = eval(userInput);', 'eval'],
+      ['exec("ls " + userInput);', 'exec'],
+      ['execSync(`ls ${dir}`);', 'execSync'],
+      ['el.innerHTML = userInput;', 'innerHTML'],
+      ['document.write(userInput);', 'document.write'],
+      ['db.query("SELECT * FROM t WHERE id=" + id);', 'SELECT'],
+      ['password = "hunter2secret"', 'password'],
+    ];
+    const bad = [];
+    for (const [plain, term] of cases) {
+      const r = checkLetterSpaceEvasion(letterSpace(plain));
+      const got = r.hits.map(h => h.term);
+      if (!r.detected || !got.includes(term)) {
+        bad.push('"' + plain.slice(0, 40) + '" → ' + (got.join(',') || '未检出'));
+      }
+    }
+    assertEqual(bad.join('\n'), '', '以下代码/密钥类规避形态未被检出:\n' + bad.join('\n'));
+  });
+
+  test('明文的代码词不得由本层报告(新增词条的反向控制)', () => {
+    // 边界 2 对新词条同样成立: exec / password / select / eval 都是自然语言里
+    // 会正常出现的词，第 2 段判定(至少一个词真含空白)必须把它们排除掉。
+    // 这条是新增词条唯一真正的风险面 —— 少了它，本轮改动就是把良性词变成误报。
+    const bad = [];
+    for (const t of [
+      'the exec of the contract takes effect on monday',
+      'password managers are a good security practice',
+      'select the option that best fits your needs',
+      'eval is not often used in modern javascript',
+      'This function will execute your request immediately',
+      'the selection process is now complete',
+    ]) {
+      if (checkLetterSpaceEvasion(t).detected) bad.push('"' + t.slice(0, 40) + '" 被误报为规避形态');
+    }
+    assertEqual(bad.join('\n'), '', '明文代码词被误报:\n' + bad.join('\n'));
   });
 
   test('词表只收明文下已被拦截的术语(不得收录良性词)', () => {
