@@ -54,14 +54,21 @@ const SCRIPT = path.join(ROOT, 'scripts', 'audit-doc-numbers.js');
 const README = path.join(ROOT, 'README.md');
 const SKILL = path.join(ROOT, 'SKILL.md');
 const CURRENT_STATE = path.join(ROOT, 'CURRENT_STATE.md');
-const { withDocLock } = require('./_doc-probe-lock.js');
+const { withDocLock, restoreVersionLine, PROBE_VERSION } = require('./_doc-probe-lock.js');
 const { execFileSync } = require('child_process');
 
 function runAudit() {
-  return execFileSync('node', [SCRIPT], {
+  try {
+    return execFileSync('node', [SCRIPT], {
     cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, ASPIRA_AUDIT_SKIP_TESTS: '1' },
-  });
+    });
+      // [第二十二轮] 审计退出码现在承载结论(mismatch/漂移 -> 1)，execFileSync 对
+      // 非零退出抛异常。活体注入要的正是那份 stdout，所以从 e.stdout 取回 ——
+      // 否则一个**正确报出不符**的审计会把探针自己炸掉(周期22 实测 13 例全红)。
+  } catch (e) {
+    return (e.stdout || '').toString();
+  }
 }
 function mismatchCount(out) {
   const m = out.match(/不一致: (\d+)/);
@@ -114,7 +121,9 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
       assertTrue(/engine version \(标签表格\)/.test(out),
         '审计应通过"标签表格"模式把该行纳入 version 核对');
     } finally {
-      fs.writeFileSync(SKILL, backup);
+      // [第二十三轮] 还原写权威值，不写回 backup。写回 backup 在文档已被污染时
+      // 会把 9.9.9 原样写回去，污染从此永久自锁(实测连跑两轮 1364/7 无人能修)。
+      fs.writeFileSync(SKILL, restoreVersionLine(backup));
       if (!/\|\s*Engine version\s*\|\s*1\.0\.0/.test(fs.readFileSync(SKILL, 'utf8'))) {
         throw new Error('恢复失败: SKILL.md 的 Engine version 行异常，请 git checkout -- SKILL.md');
       }
@@ -129,7 +138,8 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
       assertTrue(mismatchCount(out) >= 1, 'CURRENT_STATE 的版本行写错必须被报为不符');
       assertTrue(/版本 \(CURRENT_STATE 行首\)/.test(out), '审计应识别该版本行');
     } finally {
-      fs.writeFileSync(CURRENT_STATE, backup);
+      // [第二十三轮] 同上: CURRENT_STATE 的版本行也按权威值还原。
+      fs.writeFileSync(CURRENT_STATE, backup.replace(/(>\s*版本\s*\|\s*)v?\d+\.\d+\.\d+/, '$1v' + PROBE_VERSION));
       if (!/> 版本 \| v1\.0\.0/.test(fs.readFileSync(CURRENT_STATE, 'utf8'))) {
         throw new Error('恢复失败: CURRENT_STATE.md 版本行异常，请 git checkout -- CURRENT_STATE.md');
       }

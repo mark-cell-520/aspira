@@ -17,12 +17,13 @@
  *
  * 遵循 aspira 约定 #4：位于 test/ 根目录、module.exports=函数 导出。
  */
+const { withDocLock, readDoc } = require('./_doc-probe-lock.js');
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 
-function read(f) { return fs.readFileSync(path.join(ROOT, f), 'utf8'); }
+function read(f) { return readDoc(path.join(ROOT, f)); }
 
 // 从 src/pipeline.js 静态提取真实层名单(按执行顺序)
 function realLayers() {

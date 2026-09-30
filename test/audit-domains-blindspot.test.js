@@ -64,10 +64,17 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
   // 不跳过就会超时。skip 模式只把 m.tests 置 null(测试数无法实测)，
   // **不影响 domains 实测** —— 它读的是 README 表格，与测试套件无关。
   function runAudit() {
-    return execFileSync('node', [SCRIPT], {
+    try {
+      return execFileSync('node', [SCRIPT], {
       cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, ASPIRA_AUDIT_SKIP_TESTS: '1' },
-    });
+      });
+      // [第二十二轮] 审计退出码现在承载结论(mismatch/漂移 -> 1)，execFileSync 对
+      // 非零退出抛异常。活体注入要的正是那份 stdout，所以从 e.stdout 取回 ——
+      // 否则一个**正确报出不符**的审计会把探针自己炸掉(周期22 实测 13 例全红)。
+    } catch (e) {
+      return (e.stdout || '').toString();
+    }
   }
 
   function readmeDomainRows() {

@@ -1,5 +1,6 @@
 // test/security-audit.test.js — 2026-08-06 深度安全审计修复回归测试
 // 保护：S-1 guardPath 路径约束 / S-2 execFileSync 参数化 / I-4 fuser 无藏错 + PORT 守卫
+const { withDocLock, readDoc } = require('./_doc-probe-lock.js');
 const path = require('path');
 const fs = require('fs');
 
@@ -96,7 +97,7 @@ t('I4: fuser 前有 PORT 数字守卫', () => {
 
 // ─── I-5: 文档与代码一致性 ───
 t('I5: SKILL.md 版本与 package.json 对齐', () => {
-  const skill = fs.readFileSync(path.join(PROJECT_ROOT, 'SKILL.md'), 'utf-8');
+  const skill = readDoc(path.join(PROJECT_ROOT, 'SKILL.md'));
   const pkg = require('../package.json');
   const m = skill.match(/version:\s*"([^"]+)"/);
   if (!m || m[1] !== pkg.version) throw new Error(`SKILL.md ${m?.[1]} != package.json ${pkg.version}`);

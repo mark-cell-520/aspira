@@ -1,0 +1,79 @@
+{
+  "ts": "2026-09-29T06:08:49.457Z",
+  "chosen": "doc-honest-numbers",
+  "status": "done",
+  "outcome": "决策引擎的自省数一直是错的(59维/241测试 vs 实测54/310); 并发现一个比偶发红严重得多的单向闩锁——文档一旦被污染, 套件永久红且无人能修, 已修好",
+  "angle": "引擎第 5 次连续选 doc-honest-numbers(0.65 / 置信 0.75)。本轮切入点不是周期22 建议的\"扩展漂移到豁免目录\", 而是引擎自己吐出的 introspection: 它报 dimCount=59、testCount=241, 而实测是 54 维、310 个测试文件、1369→1374 个用例。喂给决策自己的数是错的, 这比周期22 的建议更靠近本切片的本质。",
+  "measuredFirst": {
+    "dimCount": "引擎 59。实测 discriminate().dimensions 54 键。差 5, 正是 AGENTS.md 早已记录的别名: bullshit / appeal_to_authority / pseudo_causal / soft_deflection / ai_writing_tell —— 它们在 dimMap 里是键, 在 dimensions 里不是。引擎数的是 dimMap。",
+    "testCount": "引擎 241。实测: test/ 顶层 241、递归 310。引擎用 readdirSync('test') 只数顶层, 漏掉 test/compliance 等子目录; 且它数的是**文件**, 却被决策提示词写成\"241测试\", 读起来像用例数(实测 1374)。",
+    "engineRuntime": "0.032s。跑一遍 run-all 要 32s —— 为拿一个用例数慢一千倍, 所以用例数**不在此实测**, 改为如实标注。"
+  },
+  "defects": [
+    {
+      "id": "decision-engine-introspection-wrong-numbers",
+      "severity": "high",
+      "what": "scripts/autonomous-upgrade.js 的 introspection 是喂给决策自己的数。dimCount 数 dimMap 的键(含 5 个别名)得 59, 真相是 54; testCount 只数 test/ 顶层得 241, 真相是递归 310。",
+      "consequence": "这两个数不参与算术(切片分数来自静态表), 只进决策的**推理文本**。于是一个错的数不会让任何断言变红, 只会让每一次自主决策都基于虚假的规模 —— 正是本仓库反复记载的形状: 一个从没被测量过的数, 在全绿的报告里和一个锁住的数无法区分。",
+      "fix": "dimCount 改数 dimensions 字面量本身(花括号配平静态解析, 与运行时逐键同序一致, 实测验证过); testCount 改递归计数, 并在用到它的两处都标注它是文件数、用例数未在此实测。",
+      "locks": [
+        {
+          "file": "test/decision-engine-introspection.test.js",
+          "cases": 5,
+          "checks": [
+            "dimCount 必须等于 discriminate().dimensions 的实测键数, 且等于 54",
+            "dimCount **不得**等于 dimMap 的键数(关掉旧错法), 且断言 dimMap 确实多于 dimensions(防止这条锁恒真)",
+            "testCount 必须等于递归数出的文件数",
+            "testCount **不得**等于只数顶层的结果, 且断言递归确实多于顶层(防恒真)",
+            "引擎源码必须标注 testCount 是文件数、用例数未实测, 且不得再把 ${testCount} 直接接在\"测试\"后面"
+          ]
+        }
+      ],
+      "supportingChange": "给引擎加 --introspect-only: 只打印自省数、不决策、不写 journal。原脚本每次运行都 writeFileSync 一个 journal, 测试每跑一遍套件就多一份 —— 那是用污染换覆盖。实测该开关下 journal 数不变。",
+      "verifiedByLiveMutation": "把引擎改回旧错法(dimCount 数 dimMap、testCount 只数顶层)再跑锁: 4/5 用例按名变红, 还原后回 5/5。"
+    },
+    {
+      "id": "probe-pollution-is-a-permanent-latch",
+      "severity": "critical",
+      "what": "活体注入测试的还原写成 `fs.writeFileSync(SKILL, backup)` —— 原样写回它开头读到的内容。若文档开头就已被污染, backup 就是 9.9.9, POISON 的 replace 是空操作, 还原再把 9.9.9 写回去。",
+      "measuredProof": "从污染态起步连跑两轮套件: 都是 **1364 通过 / 7 失败**, SKILL.md 一直停在 `| Engine version | 9.9.9 |`。**污染永久自锁, 每轮都从污染态起步, 每轮都再把污染写回去, 且没有任何东西能把它修好。**",
+      "whyItMatters": "这把周期19-22 追踪的\"偶发红\"重新定性了: 它从来不是偶发, 而是一个**单向闩锁**。污染发生一次(概率低), 套件就从此永久红, 直到有人手工修文档。周期20 记下的\"A hardcoded anchor goes silently dead once the document is polluted\"只说了检查会空转, 没说空转的后果是**永久红**。周期21 看到的 4绿1红、周期22 看到的 5/5, 都只是同一个闩锁在不同起始状态下的两个面。",
+      "fix": "在 test/_doc-probe-lock.js 加 restoreVersionLine(): 还原时把版本行按整行替换成 VERSION 读到的权威值, 不写回 backup。4 个写 SKILL.md/CURRENT_STATE 的探针全部改走它。",
+      "whyThisIsNotTheCycle20Sin": "周期20 的自愈机制栽在\"只能回答'内容与备份不同', 回答不了'谁改的'\"。这里修的是一个**有唯一正确答案的字段** —— 约定 #1 写明 VERSION 是唯一真相源、SKILL.md 必须匹配, 所以不存在\"Engine version 行理应是别的值\"这种合法状态。不是无判据的差异修复。",
+      "verifiedBy": "从污染态起步跑套件: SKILL.md 被自愈回 1.0.0, 套件 1374/0(修复前是 1364/7 且永不恢复)。另跑 5 轮全套件, SKILL.md 的 9.9.9 计数每轮都是 0。"
+    },
+    {
+      "id": "hook-fake-summary-hardcoded-rotting-count",
+      "severity": "medium",
+      "what": "test/audit-self-pollution.test.js 的 HOOK 返回假汇总 `测试结果: 1351 通过, 0 失败` —— 写死的数。文档的测试数声称已涨到 1374。",
+      "consequence": "该审计**每次**都报一条虚假的\"测试数不符\", 而本文件只断言版本类不符, 所以这条假警报一直没人看见。又是一颗会腐烂的数。",
+      "fix": "假汇总改为从 SKILL.md 现读文档声称的测试数。"
+    }
+  ],
+  "driftDetectionPaidOff": {
+    "what": "周期22 加的漂移检测在本轮第一次真实发挥作用。",
+    "measured": "跑审计时退出码 1 而 `不一致: 0`, 输出多出一节 `❌ 审计期间文档被改写且未还原(1 份): SKILL.md`, 并附\"上面的『与实测一致』读自快照, 不能当成文档是干净的来读\"。",
+    "whyItMatters": "周期22 之前, 同一事件只会被报成若干条\"不符\"并责怪 SKILL.md, 没有任何提示说明它是探针污染而非文档缺陷 —— 正是周期19 记录的那个缺陷形态, 现在它被命名了。且该轮结束后 SKILL.md 已是 1.0.0(闩锁修复的自愈跟上), 下一轮审计退出码 0、84/84。"
+  },
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1369 -> 1374 通过 / 0 失败 (本轮 +5 例: 决策引擎自省锁)",
+    "audit": "84/84 退出码 0; 量化偶发: 连测 10 次, 9 绿 1 红(红的那次不一致=0、纯漂移), 且红轮结束后文档已自愈、下一轮即绿",
+    "corpus": "未变(106 benign / FP 0.9%, 41 malicious / recall 100%)",
+    "srcChanged": false,
+    "mcpRestarted": false,
+    "mcpCheck": "未重启(仅 scripts/ 与 test/ 与文档改动); HTTP 401 未认证正确拒绝, 仍在线",
+    "docsSynced": ["README.md", "SKILL.md", "CURRENT_STATE.md"],
+    "docNote": "测试数 1369 -> 1374。同步前套件 1364/7 且 SKILL.md 停在 9.9.9(闩锁的典型表现), 修闩锁并同步后回到 1374/0。"
+  },
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "remainingGap": {
+    "what": "审计仍偶发退出码 1(实测约 1/10), 但**不再有永久红**: 红的轮次不一致=0、纯漂移, 且文档当轮即自愈, 下一轮回到 84/84 退出码 0。",
+    "rootCause": "仍是周期21 定位到但未修的那一个: audit-self-pollution.test.js 的 HOOK 从**不持锁的审计子进程**写 SKILL.md。父测试持锁, 钩子的写不在锁内, 于是窗口内另一份文档读取者能看到 9.9.9。",
+    "whyNotFixedThisCycle": "让钩子持锁会死锁(父测试已持锁并在等审计退出)。要修需要改钩子的工作方式, 不是加一行锁。",
+    "howToReproduce": "node scripts/audit-doc-numbers.js 反复跑; 或 node /tmp/probe21.cjs N(复刻审计第995行的 spawn 并保留子进程 stdout)。"
+  },
+  "nextRecommendation": "(1) **根除最后一个无锁写入**: HOOK 目前从审计子进程直接写 SKILL.md。可考虑让父测试不通过钩子间接污染, 而是让审计自己在 measure() 中途污染(例如给审计加一个仅测试用的入口), 这样写入就在持锁的进程里。或让钩子写一份\"待还原标记\"、由持锁的父测试在审计返回后立刻还原, 把窗口压到父进程内。(2) **漂移检测仍未覆盖豁免目录** —— 探针若弄脏一份被豁免的文档, 审计连它是谁都不知道(周期22 已记, 仍未做)。(3) doc-honest-numbers 已连续 5 轮, 且这 5 轮的共同形状都是\"仪器的暗面\"。切片仍有产出但边际收益持续下降, 下一轮建议认真轮换。"
+}

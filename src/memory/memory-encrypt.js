@@ -330,6 +330,24 @@ function decryptJSON(raw) {
     return parsed.data;
   }
 
+  // [测试覆盖缺口修复·第二十八轮] 未知的 HEARTFLOW_* 版本必须**报错**, 不能静默当明文。
+  // 实测: 把 _enc 从 'HEARTFLOW_v1' 改成 'HEARTFLOW_v2' 再 decryptJSON, 原样返回
+  //   {"_enc":"HEARTFLOW_v2","iv":"...","authTag":"...","data":"<密文>"}
+  // 不抛错、不告警, 调用方把**密文信封**当成记忆内容收下。
+  // 这是契约错配家族的又一例: 调用成功、不抛错、返回结构合法 —— 而内容是死的。
+  // 触发条件一点都不极端: 将来密钥轮换或算法升级把 _enc 提到 v2, 一个还没升级的
+  // 旧进程读到新文件时**不会有任何信号**, 只会静静地交出错误数据, 而且因为它
+  // 结构合法, 下游的 JSON 校验、类型检查、测试断言全都通不过去。
+  // 只认本模块自己的命名空间(HEARTFLOW_ 前缀), 不误伤天然带 _enc 字段的明文对象。
+  if (parsed && typeof parsed._enc === 'string' && parsed._enc.indexOf('HEARTFLOW_') === 0) {
+    throw new Error(
+      '[memory-encrypt] 无法识别的加密版本: "' + parsed._enc + '"。' +
+      '本模块只支持 HEARTFLOW_v1 与 PLAINTEXT_FALLBACK。这通常是写入方比读取方新' +
+      '(升级了加密算法/密钥轮换), 请把读取方升到同一版本, 或用同一版本重写该数据文件。' +
+      '绝不会把它当明文返回 —— 那会把密文信封当成记忆内容。'
+    );
+  }
+
   return parsed;
 }
 
@@ -368,6 +386,23 @@ async function decryptJSONAsync(raw) {
         'encrypted data files to start fresh.'
       );
     }
+  }
+
+  // [测试覆盖缺口修复·第二十八轮] 异步版原先**整个漏了**同步版有的
+  // PLAINTEXT_FALLBACK 拆包(见 decryptJSON 的 v6.0.50 M1 分支), 于是同一条
+  // 降级明文喂给两条路径会得到不同结果: 同步返回内层 data, 异步返回整个信封。
+  // 加上它, 并对齐同步版同款的未知版本守卫。
+  if (parsed && parsed._enc === 'PLAINTEXT_FALLBACK') {
+    return parsed.data;
+  }
+
+  if (parsed && typeof parsed._enc === 'string' && parsed._enc.indexOf('HEARTFLOW_') === 0) {
+    throw new Error(
+      '[memory-encrypt] 无法识别的加密版本: "' + parsed._enc + '"。' +
+      '本模块只支持 HEARTFLOW_v1 与 PLAINTEXT_FALLBACK。这通常是写入方比读取方新' +
+      '(升级了加密算法/密钥轮换), 请把读取方升到同一版本, 或用同一版本重写该数据文件。' +
+      '绝不会把它当明文返回 —— 那会把密文信封当成记忆内容。'
+    );
   }
 
   return parsed;

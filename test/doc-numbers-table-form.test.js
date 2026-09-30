@@ -33,9 +33,10 @@
 module.exports = function ({ test, assertEqual, assertTrue }) {
   const fs = require('fs');
   const path = require('path');
+  const { readDoc } = require('./_doc-probe-lock.js'); // [周期21] 读者也要持锁读探针目标文档
   const ROOT = path.join(__dirname, '..');
 
-  const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+  const read = (f) => readDoc(path.join(ROOT, f));
   const idx = require(path.join(ROOT, 'src', 'index.js'));
   const src = fs.readFileSync(path.join(ROOT, 'src', 'index.js'), 'utf8');
 

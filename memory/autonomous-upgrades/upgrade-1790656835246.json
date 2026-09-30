@@ -1,0 +1,116 @@
+{
+  "ts": "2026-09-29T04:40:35.245Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.65,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.65). Identity alignment: 80%. Alternatives considered: \"维度健康审计与增强\" (0.61); \"MCP 工具增强\" (0.61); \"性能优化\" (0.61); \"误报/召回校准\" (0.6); \"对抗鲁棒性增强\" (0.59)",
+  "all_options": [
+    { "id": "doc-honest-numbers", "label": "文档诚实数字审计", "score": 0.65 },
+    { "id": "dimension-health-audit", "label": "维度健康审计与增强", "score": 0.61 },
+    { "id": "mcp-tool-enhancement", "label": "MCP 工具增强", "score": 0.61 },
+    { "id": "performance-optimization", "label": "性能优化", "score": 0.61 },
+    { "id": "fp-recall-calibration", "label": "误报/召回校准", "score": 0.6 },
+    { "id": "adversarial-robustness", "label": "对抗鲁棒性增强", "score": 0.59 }
+  ],
+  "introspection": {
+    "dimCount": 59,
+    "testCount": 238,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "outcome": "reverted",
+  "outcomeReason": "边车自愈机制本身是个更糟的缺陷: 它把「在探针之外对文档做的合法修改」误判成污染并静默回滚。实测两次自伤: (1) SKILL.md 被并发写入写坏成二进制(grep 判 binary、含 NUL 字节)，周期19/20 条目全丢; (2) 我自己的 AGENTS.md 周期20条目被边车按旧内容回滚抹掉。按升级周期规则「若出现失败条目，立即 REVERT 本次修改」，已整体回退。",
+  "revert": {
+    "files": [
+      "test/_doc-probe-lock.js → 回退到 HEAD(周期20之前)，边车函数残留 0",
+      "test/doc-probe-crash-safety.test.js → 已删除(依赖已回退的 API)",
+      "data/.doc-probe-backups/ → 已清空并删除目录",
+      "AGENTS.md → 从 HEAD 恢复(82759 字节，含周期19条目)，重新插入周期20条目",
+      "README.md / SKILL.md / CURRENT_STATE.md → 测试数 1366 同步回 1359"
+    ],
+    "gateAfterRevert": "verify 15/15, run-all 1359/0, audit 84/84 —— 与本轮开工前逐项一致"
+  },
+  "angle": "周期19发现审计 spawn 跑完整套测试(其中包含改写它要核对的文档的探针)之后才读文档，DOC_SNAPSHOT 修住了审计的「读」这一侧。本轮补上从没修过的「写」这一侧: 探针自身的注入不是崩溃安全的。",
+  "measuredFirst": {
+    "injectingTestFiles": 8,
+    "estimateWasWrong": "周期19估「四五个」，实测 8 个，低估 60% —— 没测量过的计数就是会错的计数",
+    "files": [
+      "audit-domains-blindspot.test.js → README/IDENTITY/SKILL",
+      "audit-gate-scope.test.js → README/SKILL/CURRENT_STATE/IDENTITY",
+      "audit-pattern-blindspot.test.js → README",
+      "audit-self-pollution.test.js → README/SKILL/CURRENT_STATE",
+      "audit-unlocked-measurements.test.js → README/SKILL/CURRENT_STATE",
+      "doc-honest-numbers-chinese.test.js → IDENTITY",
+      "doc-probe-lock-coverage.test.js → README/IDENTITY",
+      "formula-count-measured.test.js → README/CURRENT_STATE"
+    ],
+    "lockApiUsage": "8 个全部只调 withDocLock，直接调 acquire 的次数 = 0(所以边界可以整体加在锁里，一处修改保护八处)",
+    "rootMdCount": 21
+  },
+  "defect": {
+    "id": "probe-backup-dies-with-process",
+    "severity": "high",
+    "what": "8 个探针测试的备份存在内存变量里，恢复写在 finally 里。进程在「已写入、未 finally」之间被杀(SIGTERM/SIGKILL/超时)，恢复代码根本不执行，文档永久停留在污染态。",
+    "measuredConsequence": "周期19实测: 我自己的 60s 超时把信号传到 audit → run-all.js → 探针，探针死在注入与恢复之间，SKILL.md 留下 v9.9.9、README.md 留下 139 modules，审计随后报 7 条假警报全部指责这两个文档——而仓库一个都不声称。",
+    "lesson": "周期16「信任与被污染数据同源的变量的恢复，不是恢复」的进程版: **随进程一起死掉的备份，不是备份。** 内存变量与它要保护的数据同生共死，所以它根本不是备份，只是「还没出事时恰好存在的一份拷贝」。"
+  },
+  "fix": {
+    "REVERTED": true,
+    "file": "test/_doc-probe-lock.js",
+    "touchedEightProbeFiles": false,
+    "whyNotTouchThem": "实测 8 个全走 withDocLock，边界加在锁里即可全覆盖。改八个探针文件是八次弄坏探针的机会，而弄坏的探针恰恰就是本轮要修的那个失败形态。",
+    "steps": [
+      "acquire() 成功后先 recoverStale(): 边车有残留 = 上一个持锁者死了，把它污染过的文档按边车放回。读者也触发自愈(下一个拿到锁的人)。",
+      "withDocLock 拿到锁后立刻 snapshotDocs(): 21 份根层 .md 复制进 data/.doc-probe-backups/。data/ 已被 .gitignore 且被审计整份豁免，边车对 git 和仪器都不可见。",
+      "释放前逐份核对: 漂移则先治病再出声——先从边车放回，再抛错指名道姓。先治病因为静默修复是本仓库反复记载的形状(吞掉错误声称的闸门比没有闸门更糟)；再出声因为探针自己的恢复写错了是真 bug，不能被打包掩盖。"
+    ],
+    "keyProperty": "进程被杀时这段代码一行都不运行，边车就留在磁盘上——这正是重点: 备份现在比它保护的东西活得更久。"
+  },
+  "locks": [
+    {"REVERTED": true, "file": "test/doc-probe-crash-safety.test.js", "note": "已删除; 其 7 例在孤立与并发下均曾变红，见 revert 与 newLessonsRecorded"},
+    {
+      "file": "test/doc-probe-crash-safety.test.js",
+      "cases": 7,
+      "checks": [
+        "崩溃自愈: 探针被杀后，下一个拿到锁的人把文档放回原样(并清掉边车残渣)",
+        "自愈不写未漂移的文档，也不留边车残渣",
+        "探针没把文档放回原样: 先治病(文档已还原)，再出声(抛错指名 SKILL.md)",
+        "探针正常恢复时不得误报(锁不能永远不会失败，也不能随便失败)",
+        "异常路径也治病: 探针抛异常时同样从边车放回",
+        "边界本身能失败(反向证明: 绕过 withDocLock 复现无边界形态，污染必须留在磁盘上；再证 recoverStale 能救回)",
+        "边车范围是根层 .md，子目录文档不在其内(披露而非隐藏)"
+      ]
+    }
+  ],
+  "correctionRecorded": {
+    "what": "新锁的反向证明第一版想用改 module.exports.verifyAndHeal 来撤掉核对，结果那条用例失败。",
+    "cause": "withDocLock 调的是模块内的局部函数引用，改导出对象对它无效。",
+    "fix": "改写为绕过 withDocLock、直接复现「锁存在但没有崩溃安全边界」的旧形态——证明的是真机制，不是机制的幻影。"
+  },
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1359 通过 / 0 失败 (回退后与本轮开工前一致)",
+    "audit": "84/84 (回退后与本轮开工前一致)",
+    "corpus": "未变(106 benign / FP 0.9%, 41 malicious / recall 100%)",
+    "srcChanged": false,
+    "mcpRestarted": false,
+    "mcpCheck": "未重启(仅 test/ 与文档改动); HTTP 401 未认证正确拒绝，仍在线"
+  },
+  "docsSynced": ["README.md", "SKILL.md", "CURRENT_STATE.md", "AGENTS.md"],
+  "docNote": "测试数先 1359→1366(新增 7 例)，回退后 1366→1359，最终与本轮开工前一致。",
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "newLessonsRecorded": [
+    "**自愈机制回滚了合法工作，比它要修的污染更糟。** 边车只认「内容与边车不一致」，不认「这个改动是不是探针造成的」。于是任何在探针之外对文档的合法编辑(插 AGENTS.md 条目、同步测试数)都会被当成污染静默还原——而污染是响亮的、可被审计看见的，被回滚的合法工作是无声的。",
+    "**读不到 pid 时必须按「活着」处理: 宁可多等，也不能出现两个持有者。** mkdirSync 成功与 writeFileSync(pid) 之间有一个窗口，等待者在这个窗口里读不到 pid 就判持有者已死、强拆锁、自己去 mkdir —— 两个进程都自以为持有锁，那正是第七轮引入本锁要消除的事故。实测一整套红 18 个。",
+    "**未持锁的现场，不能用来断言「现场还在」。** 我的锁用例在 release() 之后才断言污染仍在，未持锁的窗口里并发的下一个探针把它自愈掉了，于是这条反向证明自己变红——竞态，不是缺陷。持锁到最后一刻。",
+    "**抬高锁的等待上限，会把「读者不持锁」这个更宽的竞态暴露得更彻底。** 试过 60s→300s，一整套红 10 个: 等待越久、持锁窗口占比越高，持锁探针正在写 AGENTS.md 与不持锁的普通读者正在读它相撞的概率越大。那是本模块管不了的更宽的竞态。",
+    "**硬编码的锚点会在文档被污染时静默失效。** POISON = original.replace('| Engine version | 1.0.0 |', ...) 在 SKILL.md 已被污染成 9.9.9 时 POISON === original，于是整条锁变成永不失败的检查——而它检查的正是污染本身。版本号改为从 VERSION 文件读。"
+  ],
+  "nextRecommendation": "本轮方向是对的(探针注入的写侧确实没有崩溃安全)，但** obvious fix 是错的**: 边车自愈无法区分「探针造成的污染」与「人对文档的合法编辑」，所以它会静默回滚合法工作。下一轮若再碰这一族，必须先解决「谁来声明这份改动是探针干的」——只有探针显式登记自己要碰哪份文档、注入什么标记，自愈才有判据; 在此之前不要做自动回滚。另两条已定位但未修: (a) `audit-doc-coverage.test.js` 与 `doc-probe-lock-coverage.test.js` 没有设 ASPIRA_AUDIT_SKIP_TESTS，持锁期间会 spawn 完整套件，嵌套套件里的探针再抢锁——这是本轮一开始想修的「偶发 1 失败」的真实来源之一; (b) 探针持锁写文档与普通读者不持锁读文档之间的竞态(本轮抬高等待上限时暴露，红 10 个)。该切片已问过十个以上角度仍有产出，暂不标 exhausted。"
+}

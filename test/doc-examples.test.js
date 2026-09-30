@@ -51,6 +51,7 @@
 module.exports = function ({ test, assertEqual, assertTrue }) {
   const fs = require('fs');
   const path = require('path');
+  const { readDoc } = require('./_doc-probe-lock.js'); // [周期21] 读者也要持锁读探针目标文档
   const vm = require('vm');
 
   const ROOT = path.join(__dirname, '..');
@@ -173,7 +174,7 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
 
   test('流水线分层数必须与 SKILL.md 声称一致', () => {
     const hf = require(GATE);
-    const SKILL = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf8');
+    const SKILL = readDoc(path.join(ROOT, 'SKILL.md'));
     // 从文档表里读出声称值，而不是在这里写死——写死就失去了校验文档的意义
     const m = /Pipeline layers \| (\d+) input \/ (\d+) draft \/ (\d+) output/.exec(SKILL);
     assertTrue(!!m, 'SKILL.md 应含 Pipeline layers 一行且为 "N input / N draft / N output" 形态');

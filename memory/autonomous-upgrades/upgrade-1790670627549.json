@@ -1,0 +1,64 @@
+{
+  "ts": "2026-09-29T08:30:27.549Z",
+  "chosen": "doc-honest-numbers",
+  "status": "done",
+  "outcome": "轮换权重已饱和失效 28 个周期: 按累计次数衰减 + 0.05 下限, 把 doc-honest-numbers(33 次)与 test-coverage-gap(37 次)压成同一个常数, consequence_value 对所有候选失去区分度, 排名永久退化成静态 feas/risk/conf 表 —— 而那张表结构性偏袒 doc-honest-numbers, 于是它连选 8 轮。改为近期窗口计数后引擎立刻改选 dimension-health-audit",
+  "angle": "引擎第 8 次连续选 doc-honest-numbers(0.65 / 置信 0.75)。周期 23/24/25 的 nextRecommendation 都写着\"认真轮换切片\", 而轮换逻辑本身 8 轮没动过 —— 所以本轮不换切片, 直接修轮换。这是本切片自己机器里的缺陷, 属于它分内的事。",
+  "measuredFirst": {
+    "doneCounts": "按 journal 统计: test-coverage-gap 37 次、doc-honest-numbers 33 次、adversarial-robustness 9、dimension-health-audit 7、mcp-tool-enhancement 7、fp-recall-calibration 6、performance-optimization 3",
+    "theSmokingGun": "旧权重 cv = max(0.05, base - 0.08*累计次数)。doc 0.5-0.08*33 = -2.14 → 0.05; test-coverage 0.6-0.08*37 = -2.36 → 0.05。**两者被压成同一个 0.05**",
+    "compositeFormula": "decision.js:341 → feasibility*.15 + identity*.25 + consequence_value*.25 + (1-risk_penalty)*.25 + confidence*.10。**cost 根本不在复合分里**。cv 对所有候选相同 ⇒ 该项对区分度贡献为 0",
+    "structuralBias": "于是排名只剩 feas/risk/conf 静态表: doc(0.85/0.15/0.75) 对 test-coverage(0.75/0.20/0.70), doc 全优, 复合分 0.65 vs 0.63 —— 与引擎实测输出完全吻合"
+  },
+  "defects": [
+    {
+      "id": "rotation-weight-saturated-28-cycles-ago",
+      "severity": "high",
+      "what": "scripts/autonomous-upgrade.js 的轮换权重按**累计**完成次数线性衰减 consequence_value, 下限 0.05。",
+      "whyItFailed": "累计次数无上界, 而衰减有下限。两个切片的累计次数都越过触限点(约 6 次)后, 一起被夹在 0.05 上 —— **不同的历史被映射到同一个值**, 权重对候选空间不再有任何区分度。",
+      "measuredProof": "--debug-candidates 实测真实仓库: doc-honest-numbers 近期 6 次 / 累计 27 → cv 0.05; test-coverage-gap 近期 2 次 / 累计 33 → cv 0.32(修复后)。修复前两者都是 0.05。",
+      "consequence": "**一个声称在轮换、实则 28 个周期前就饱和的机制。** 它没有报错, 没有变红, 每个周期都正常输出一个 chosen —— 只是那个 chosen 早就和轮换无关了。",
+      "fix": "改为**近期窗口**计数(RECENT_WINDOW=10): 记录每轮 chosen 的先后顺序(doneSeq), 只对落在最近 10 轮里的次数扣分(每次 0.14)。三个性质: 有界(窗口内最多 10 次, 永远不会把不同切片压成同值)、自愈(离开窗口自动恢复, 不需要 exhausted 冷却期兜底)、直接编码\"别反复做同一件事\"。",
+      "scope": "只改脚本层的候选表, **不动 decision.js 的复合分契约**(aspira_decision_decide 也读它), 所以不触发\"改变共享契约就继承所有旧调用方\"那条。",
+      "verifiedBy": "修复后引擎立即改选 dimension-health-audit(cv 0.7, 近期 0 次), 复合分 0.75; --debug-candidates 显示七个切片的 cv 分散为 0.7/0.65/0.56/0.45/0.41/0.32/0.05, 无一相同。"
+    },
+    {
+      "id": "cooldown-test-asserted-the-saturation-bug",
+      "severity": "medium",
+      "what": "test/exhausted-cooldown.test.js 用例③给所有常驻切片相同的 done 次数, 注释写\"使唯一差异只剩 feasibility/risk/confidence\", 据此断言 doc-honest-numbers 必胜。",
+      "whyItOnlyPassed": "那正是饱和 bug 的产物: doc 基础 cv 0.5 本就**低于** test-coverage-gap 的 0.6, 旧权重把两者压成同一个 0.05 之后, cv 项才不再区分, feas/risk/conf 才成为唯一差异。**这个用例一直在断言那个 bug。**",
+      "fix": "改为显式构造\"近期分布\": doc 近期 0 次(cv 保持 0.5 最高), 其余每个切片近期至少 1 次, 基础值更高的 dimension-health/fp-recall/adversarial 各给 2 次压到 0.5 以下。doc 靠 cv 最高 + feas/risk/conf 三项全优胜出, 冷却期恢复才被真正测到。",
+      "verifiedBy": "4/4 通过。"
+    }
+  ],
+  "processNotes": [
+    {
+      "what": "新锁的三个用例, 前提被实测推翻了三次, 每一次都推翻得有价值。",
+      "detail": "(a) 初版断言\"近期 0 次且基础值最高的切片必胜\" —— 实测 dimension-health(cv 0.7)输给 test-coverage(cv 0.6), 因为后者 feas/risk/conf 三项更优, 而 risk 在复合分里占 0.25。**cv 最高不等于复合分最高。** (b) 二版断言\"换霸屏者则赢家必换\" —— 实测两种历史下 doc 都赢, 因为 doc 的结构性优势大到只要近期 0 次就能赢。改成\"同一个切片在一种历史下胜出、在另一种历史下必须落选\", 这才是真正的响应性。(c) 饱和回归测试初版用 doc×8/test×2 造历史 —— 旧权重下 doc 0.05 而 test-coverage 0.44, **并不相等**, 因为累计次数不够大。真实仓库里是 33/37, 都早就压在下限上。改成 25/25 + 近期尾部, 才同时满足\"新权重下不同、旧权重下相同\"。"
+    },
+    {
+      "what": "为了让权重可观测, 给引擎加了 --debug-candidates。",
+      "detail": "轮换权重以前只能从\"最终选了谁\"反推, 而复合分里 feas/risk/conf 同时在起作用, 于是**权重是否还有区分度根本观测不到** —— 那正是它饱和了 28 个周期没人发现的原因。新开关只打印候选表(含 recentCount/totalDone/衰减后 cv)后退出, 不裁决、不写 journal, 与既有的 --introspect-only 同一形状。"
+    }
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1380 通过 / 0 失败(起点 1375/0; 新增 test/slice-rotation.test.js 5 个用例, 并修好 exhausted-cooldown 的前提)",
+    "audit": "84/84 退出码 0, 连测 5 次 5 绿(同步测试数 1375→1380 之后)",
+    "corpus": "未变",
+    "srcChanged": false,
+    "mcpRestarted": false,
+    "mcpCheck": "未重启(仅 scripts/ 与 test/ 与三份文档)",
+    "docsSynced": ["README.md", "SKILL.md", "CURRENT_STATE.md(测试数 1375→1380)"],
+    "docNote": "SKILL.md 版本行尾部完整(agree 计数 1), 无 9.9.9 残留。"
+  },
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "remainingGap": {
+    "what": "近期窗口计数只覆盖\"被选中的次数\", 不覆盖\"失败/回滚的周期\"。",
+    "detail": "doneSeq 只收 status==='done' 的条目。若某轮失败并 revert(journal status='failed'), 那一轮不进 doneSeq, 于是它对任何切片都不构成\"近期做过\"的证据。当前失败率极低(周期20 之后没有 failed), 所以这是理论缺口; 但若将来出现连续失败, 轮换会基于一个偏乐观的历史。",
+    "alsoNoted": "新锁的源码级用例⑤用 `!/const n = doneCount\\.get\\(opt\\.id\\)/` 作为旧实现的指纹。将来若有人重写权重块并保留这行字面量, 用例⑤ 会假阳; 反过来若重写后不用这行, 指纹失效。更稳的做法是行为锁(③④ 已经是), 源码级只是补充。"
+  },
+  "nextRecommendation": "(1) **轮换已修好, 下一轮引擎会自己选别的切片** —— 这是 8 轮以来第一次。若下一轮仍选 doc-honest-numbers, 说明近期窗口计数还有问题, 应回头看 --debug-candidates 的 recentCount 是否如实反映 journal。(2) 新锁只覆盖\"近期次数不同 ⇒ 衰减值不同\", 没有覆盖\"窗口大小\"本身: RECENT_WINDOW=10 是拍的。可以用真实 journal 分布反推一个更合适的值(例如让窗口至少覆盖 3 次不同切片的轮换)。(3) 老缺口仍在: audit-self-pollution.test.js 的 HOOK 从不持锁的审计子进程写 SKILL.md(周期21 定位, 23/24/25/26 均未修, 让钩子持锁会死锁)。(4) 周期25 记录的 remainingGap 也未做: 锁覆盖率仪器只认一种 spawn 惯用法, 自检只断言 checked > 0。"
+}

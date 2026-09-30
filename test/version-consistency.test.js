@@ -34,6 +34,7 @@
  * 改为在临时目录里复制 version.js + 它 require 的 safe-fs.js，
  * 并**不**放 VERSION 文件——路径解析完全一致，仓库一个字节都不动。
  */
+const { withDocLock, readDoc } = require('./_doc-probe-lock.js');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -72,7 +73,7 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
 
   test('SKILL.md front-matter 版本必须与 VERSION 一致', () => {
     const v = readVersionFile();
-    const s = fs.readFileSync(SKILL_FILE, 'utf8');
+    const s = readDoc(SKILL_FILE);
     const m = s.match(/^version:\s*"([^"]*)"/m);
     assertTrue(!!m, 'SKILL.md 必须有 front-matter version 字段');
     assertEqual(m[1], v,

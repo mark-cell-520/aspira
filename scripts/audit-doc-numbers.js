@@ -1115,8 +1115,47 @@ const bad = rows.filter(r => r.ok === false);
 const unmeasurable = rows.filter(r => r.ok === null);
 const okRows = rows.filter(r => r.ok === true);
 
+// ── [第二十二轮] 审计期间的文档漂移检测 ──
+// 第十九轮引入 DOC_SNAPSHOT 时只问了一个问题: 快照挡住了什么(探针在
+// measure() 期间注入, claims() 读快照于是看不见)。它确实挡住了 —— 但同一个
+// 决定也**放过**了一样东西: 探针若注入后没有还原, 磁盘上的文档就停在污染态,
+// 而审计的每一条声称都读自快照, 于是它报「不一致: 0」——**全绿, 而文档是脏的**。
+// 实测确认过这个盲区(周期22): 审计带 1 条真 mismatch 时退出码是 0,
+// 而探针留下的污染在快照里根本不存在, 连那 1 条都算不上。
+// 这不是理论顾虑: 周期19 自己就是这么发现污染的 —— 它杀掉自己的审计 run,
+// SIGTERM 传到探针, 探针死在注入与还原之间, 污染留在磁盘上。
+// 修法: claims() 之后把每份文档重新读一遍, 与快照逐字节比对。
+// 有差异 = 「审计期间被改写且未还原」, 这是**探针/外部写入的缺陷**, 不是文档
+// 写错了, 所以单独报一类, 不计入 bad(那会把脏文档误判成文档声称不符)。
+// 它也解释了为什么快照必须是双刃的: 它挡住污染进入声称, 就必须让污染在别处发声。
+// [第二十四轮] 漂移必须分方向报, 而修复建议绝不能再让人把污染写回去。
+// 周期23 实测出一个反向误报: 从污染态起步跑审计(上一轮把 SKILL.md 留在 9.9.9),
+// 快照本身就是脏的; 本轮套件里的探针把它**治愈**成 1.0.0, 于是漂移检查报
+// 「被改写且未还原」—— 方向是反的。而旧文案的修法是"把污染还原到快照内容",
+// 照做就会把 9.9.9 写回一份刚刚被修好的文档。
+// **一个把修复方向指反的报告, 比没有报告更糟。**
+// 判据用约定 #1 点名的字段: 带标签的 Engine version 行。它与 VERSION 一致即干净。
+// 没有该行的文档无法判向, 维持旧行为(报 DIRTY)—— 未知方向时按更响的那半边报。
+const PROBE_AUTH_VERSION = fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim();
+function labelledVersionOf(text) {
+  const m = text.match(/\|\s*Engine version\s*\|\s*v?(\d+\.\d+\.\d+)/);
+  return m ? m[1] : null;
+}
+const DRIFT = [];   // 变脏: 快照干净, 当前脏 —— 探针没还原
+const HEALED = [];  // 变干净: 快照脏, 当前干净 —— 上一轮的污染被本轮治愈
+for (const f of DOCS_RECURSIVE) {
+  const cur = readDocRaw(f), snap = DOC_SNAPSHOT.get(f);
+  if (cur === snap) continue;
+  const curV = labelledVersionOf(cur), snapV = labelledVersionOf(snap);
+  if (curV !== null && snapV !== null && curV === PROBE_AUTH_VERSION && snapV !== PROBE_AUTH_VERSION) {
+    HEALED.push(f);
+  } else {
+    DRIFT.push(f);
+  }
+}
+
 if (process.argv.includes('--json')) {
-  console.log(JSON.stringify({ measured: m, rows }, null, 2));
+  console.log(JSON.stringify({ measured: m, rows, drift: DRIFT, healed: HEALED }, null, 2));
 } else {
   console.log('=== 文档诚实数字审计 ===');
   console.log(`实测: dimensions=${m.dimensions} modules=${m.modules} tools=${m.tools} `
@@ -1365,4 +1404,38 @@ if (process.argv.includes('--json')) {
       console.log(`  ${r.doc} 声称「${r.what} = ${r.claimed}」`);
     }
   }
+
+  // [第二十二轮] 漂移必须报在**最后**, 且必须盖过上面那个诱人的全绿。
+  // 「不一致: 0」在这里的含义是"文档的声称都对", 不是"文档是干净的"——
+  // 两者在快照存在的前提下不再是同一件事, 而这个区别此前没有任何输出提示过。
+  if (DRIFT.length) {
+    console.log(`\n--- ❌ 审计期间文档被改写且未还原(${DRIFT.length} 份) ---`);
+    console.log('  这不是文档声称不符, 是探针/外部写入留下了污染。');
+    for (const f of DRIFT) console.log(`  ${f}`);
+    console.log('  这些文档的当前磁盘内容与审计开始时的快照不同; 上面的「与实测一致」');
+    console.log('  读自快照, 所以它**不能**被当成"文档是干净的"来读。');
+    console.log('  修法: 把污染还原到上一行的快照内容, 而不是 git checkout(那会退回旧提交)。');
+  }
+  // [第二十四轮] 反向的那一半: 快照脏而当前干净。这不是缺陷, 是上一轮的污染
+  // 被本轮治愈了。但它必须单独报, 因为**旧的修法在这里是有害的**:
+  // "还原到快照内容"会把 9.9.9 写回一份刚刚被修好的文档。
+  if (HEALED.length) {
+    console.log(`\n--- ⚠️ 审计开始时文档已带污染, 本轮已被治愈(${HEALED.length} 份) ---`);
+    for (const f of HEALED) console.log(`  ${f}`);
+    console.log('  这些文档的**快照**是脏的而当前磁盘是干净的: 污染发生在本审计启动之前,');
+    console.log('  本轮套件里的探针把它修好了。所以上面的「与实测一致」同样**不能**被当成');
+    console.log('  "文档是干净的"来读 —— 它读自那份脏快照。');
+    console.log('  ⛔ 绝不要按快照还原: 那会把污染写回一份刚刚被修好的文档。');
+    console.log('  ✓ 正确修法: 什么都不用做, 当前磁盘内容已经是权威值。');
+    console.log('  若要追责: 看上一轮是谁把文档留在脏状态的(通常是没还原的探针)。');
+  }
 }
+
+// [第二十二轮] 退出码必须承载结论。
+// 实测(周期22): 审计带 1 条真 mismatch 时 `node scripts/audit-doc-numbers.js`
+// 的退出码是 **0**。于是任何用 spawnSync/execFileSync 调它的调用方 —— CI、
+// test/ 里的探针、外部 agent —— 只能靠解析中文文本判断红绿, 而退出码这个最
+// 基本的契约一声不响。一个只通过 stdout 表达失败的门, 在任何只看退出码的
+// 流水线里就是没有门。
+// 漂移与不符都置 1: 两者都是"必须修", 只是一个错在文档、一个错在探针。
+if (bad.length || DRIFT.length) process.exitCode = 1;

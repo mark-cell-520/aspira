@@ -1,0 +1,73 @@
+{
+  "ts": "2026-09-29T09:31:36.355Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.74,
+  "confidence": 0.65,
+  "reasoning": "Selected: \"MCP 工具增强\" (score: 0.74). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.73); \"误报/召回校准\" (0.72); \"维度健康审计与增强\" (0.71); \"对抗鲁棒性增强\" (0.69); \"性能优化\" (0.67); \"文档诚实数字审计\" (0.65)",
+  "all_options": [
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.74
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.69
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 314,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1390 → 1395 通过, 0 失败",
+    "audit": "85/85, 退出码 0, 6/6 绿",
+    "corpus": "106 良性 / 1 升级 / FP 0.9%; 41 恶意 / 41 拦截 / 召回 100.0% —— 与基线逐项相同",
+    "docIntegrity": "SKILL.md agree=1, 9.9.9=0"
+  },
+  "measuredFirst": "181 个工具定义、181 个 handler, 数量一一对应看似完备。逐个实际调用后抓到 3 个已广告但完全不可用: aspira_boundary_check / aspira_decision_decide / aspira_decision_feedback, 均返回结构合法的 error。",
+  "defects": [
+    "aspira_boundary_check 结构上永远不可能工作: handler 声明第二参数 (args, hf) 并读 hf.boundaryGuard, 但中央 dispatch 调的是 handler(args, sessionId), sessionId 是 crypto.randomUUID() 出来的字符串。字符串上读 .boundaryGuard 恒 undefined, bg 恒 null。不是偶尔加载不到, 是契约错配——要的是对象, 传来的是字符串。",
+    "decision / boundaryGuard / decisionFeedback 三个字段只在 heartflow 的 start() 里赋值(start() 开头即 if (this.started) return)。三个 handler 全部 new 完实例直接读字段, 从不调用 start()。实测: 不调 start() 三字段为 null/undefined/undefined; 调用后全部 OK 且 _initErrors=0。而 decisionFeedback 那处赋值的 catch 是空的, 连失败痕迹都不留。"
+  ],
+  "processNotes": [
+    "本周期差点毁掉 src/mcp-server.js。做突变验证时, 还原脚本写成 io.open(p,\"w\").write(io.open(备份).read()) —— Python 先求值左侧(把目标文件截断为 0 字节), 再求值右侧参数, 而备份文件因锚点未匹配从未创建, 于是 FileNotFoundError 抛出时文件已是 0 字节。已从 git HEAD 取回(186236 字节, 周期26/27/28 均未改过此文件, 确认 HEAD 即本轮起点)并逐字重放两处修复, 复测三工具全部可用、测试 5/5。教训: 还原的原文必须先在内存里, 不能依赖先开后读的文件往返; 而 git 只在能证明它就是上一个好状态时才是安全网。",
+    "突变验证重做时把原文读进内存、写盘、跑测试、finally 还原, 全程不依赖临时文件。突变(去 start + 恢复第二参数当引擎)被抓住: 4 通过/1 失败, 还原回 5/5。"
+  ],
+  "remainingGap": "aspira_benchmark_run 仍返回未找到数据包, 但这是诚实错误(data/benchmark/ 确实为空), 未修。审计仍有约 1/6 概率报 tests=1394 而文档称 1395: 复刻审计自身 spawn 形态稳定得 1395, 故为真实间歇抖动, 疑与 data/ 下数百个 _tc_* 临时目录有关的用例数派生, 未定位。164 个未覆盖模块仍只覆盖 1 个; 维度健康仪器的 evidence 假警报仍未修。",
+  "nextRecommendation": "下一轮建议先修那个 1/6 的测试数抖动——它让诚实数字这条核心约定间歇性失效, 且任何按文档数字写的断言都会偶发红。定位方法: 找出用例数由 data/ 目录内容派生的测试文件, 改为固定用例数或让派生源确定。其次再回到 test-coverage-gap 家族的 memory-kernel / kv-cache。",
+  "mcpRestart": "未执行。src/mcp-server.js 的改动仅在三个 handler 内部(自建引擎并 start), 未增改任何工具定义、handler 映射或权限契约, TOOLS/HANDLERS 仍为 181/181 一一对应, 故工具清单与权限模型不变。"
+}

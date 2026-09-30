@@ -1,0 +1,76 @@
+{
+  "ts": "2026-09-29T07:02:43.103Z",
+  "chosen": "doc-honest-numbers",
+  "status": "done",
+  "outcome": "漂移检测把修复方向指反了——它让读者按脏快照还原, 把刚修好的文档重新弄脏; 已改为分方向报告。并修掉周期23 引入的一处静默数据损坏: 还原函数吃掉了版本行的审计尾部",
+  "angle": "引擎第 6 次连续选 doc-honest-numbers(0.65 / 置信 0.75)。本轮执行周期23 的 nextRecommendation #1(根除最后一个无锁写入), 但测量的第一锤就砸在别处: 追查审计偶发退出码 1 时发现, 红轮的共同点是**上一轮把 SKILL.md 留在 9.9.9**, 而本轮审计的快照本身就是脏的。",
+  "measuredFirst": {
+    "introspection": "引擎报 dimCount 54、testCount 311 —— 周期23 的两个修复都在生效",
+    "auditRedRate": "未修改基线连跑 10 次审计: 绿 6 / 红 4。红轮输出一律 `不一致: 0` 或含版本不符 + 漂移节选",
+    "keyObservation": "红轮结束后 SKILL.md 停在 `| Engine version | 9.9.9 |`。而从**干净**起步连跑 8 次审计: 8/8 全绿。所以问题不在并发, 在**起始状态**",
+    "reverseDrift": "从污染态起步跑审计: 套件里的探针把 SKILL.md 治愈成 1.0.0, 而审计的漂移检查拿**当前(干净)** 与**快照(脏)** 比, 报「❌ 审计期间文档被改写且未还原」—— 方向是反的"
+  },
+  "defects": [
+    {
+      "id": "drift-detection-points-the-repair-the-wrong-way",
+      "severity": "high",
+      "what": "漂移检测只回答\"当前 ≠ 快照\", 不回答**谁变了**。当文档在审计启动前就是脏的、而被本轮治愈时, 它报「被改写且未还原」, 并给出修法「把污染还原到上一行的快照内容」。",
+      "measuredProof": "污染 SKILL.md → 跑审计 → 输出 `--- ❌ 审计期间文档被改写且未还原(1 份) --- SKILL.md` 加「修法: 把污染还原到快照内容」。而此刻磁盘上是**刚被治好的 1.0.0**, 快照里才是 9.9.9。照做就把污染写回一份好文档。",
+      "consequence": "**一个把修复方向指反的报告, 比没有报告更糟。** 周期22 加漂移检测是为了让污染发声; 它发声了, 但指错了方向, 而读者唯一能依据的就是那段修法文案。",
+      "fix": "审计新增方向判定: 用约定 #1 点名的带标签 Engine version 行作判据 —— 当前是权威值而快照不是 ⇒ HEALED(报「⚠️ 审计开始时文档已带污染, 本轮已被治愈」), 否则维持 DRIFT。HEALED 分支明确写「⛔ 绝不要按快照还原」+「✓ 正确修法: 什么都不用做」。两半都仍置退出码 1, 因为脏快照同样让上面的「与实测一致」不可信。--json 也多吐一个 healed 字段。",
+      "verifiedBy": "污染 SKILL.md(版本行带尾部) → 带钩子跑审计 --json → {\"drift\": [], \"healed\": [\"SKILL.md\"]}。方向判定实测正确。",
+      "notLocked": "见 remainingGap —— 对应的测试用例加了又撤, 审计行为已实测确认但测试路径没能复现同样结果。"
+    },
+    {
+      "id": "restoreVersionLine-silently-destroyed-the-audit-tail",
+      "severity": "high",
+      "what": "周期23 加的 restoreVersionLine() 用 /(\\|\\s*Engine version\\s*\\|)[^\\n]*/ 替换, `[^\\n]*` 把**整行尾部**一起吃掉。",
+      "measuredProof": "git show HEAD:SKILL.md 第 153 行是 `| Engine version | 1.0.0 | \\`VERSION\\`, \\`package.json\\`, runtime \\`hf.VERSION\\` (module-level) / \\`hf.version\\` (instance), and \\`src/core/version.js\\` agree |`; 而磁盘上多轮之后只剩 `| Engine version | 1.0.0 |`。",
+      "consequence": "那段尾部正是约定 #1 的**审计痕迹** —— 它写明哪些文件必须互相匹配。还原动作把它删了, 而且每次都报告成功。又是本仓库反复记载的形状: **报告成功却写错了东西, 比失败更糟。**",
+      "fix": "只替换版本号本身: text.replace(/(\\|\\s*Engine version\\s*\\|\\s*v?)\\d+\\.\\d+\\.\\d+/, (m, p1) => p1 + value)。用函数式替换而不是 '$1'+value, 因为 value 以数字开头会生成 '$11.0.0' 这种歧义捕获组引用(实测 V8 恰好按 $1+字面量解析, 但那是实现细节, 不赌)。",
+      "verifiedBy": "还原尾部后连跑两轮全套件, `agree |` 计数每轮都是 1 —— 套件不再吃尾部。"
+    }
+  ],
+  "processNotes": [
+    {
+      "what": "改了审计的 DRIFT 分类块, 当场踩中周期22 已付过学费的那一条。",
+      "detail": "test/audit-drift-detection.test.js 的反向证明用一个**硬编码锚点**指向 DRIFT 循环原文。本轮把漂移分成两个方向后锚点失配, 该用例如设计般大声抛「审计里找不到 DRIFT 比对循环(锚点已变)」。**改变共享契约就继承了旧契约的所有调用方** —— 周期22 为退出码付过一次, 本轮为漂移分类再付一次, 而这次是锚点先发现的(这是它该有的行为)。已把锚点更新到新分类块。"
+    },
+    {
+      "what": "第一版新用例差点造出周期21 已确立\"不存在\"的嵌套路径。",
+      "detail": "新用例起初不设钩子直接跑审计, 于是审计 spawn 整个套件, 而套件里就有 audit-drift-detection.test.js 自己 —— 审计→套件→审计→套件。改用钩子拦截 spawn(与其余用例一致)后消除。周期21 花了一整轮测量才确认\"没有嵌套路径\", 一个新用例就能把它建起来。"
+    },
+    {
+      "what": "doc-probe-lock-coverage.test.js 报了一次假阳性, 而原因是它数了字符串字面量里的标记。",
+      "detail": "insideDocLock() 用 before.match(/\\}\\)\\);/g) 计数锁关闭。我写的 HEAL_HOOK 是**字符串数组**, 其中一行以 `}));` 结尾, 于是真锁被提前\"关上\", 两个 runAudit() 调用点被误判为未持锁。这与周期19 记录的\"注释剥离器删掉审计 44% 源码\"同族: **一个不看上下文做文本匹配的仪器, 会把字符串里的图案当成代码。** 假阳性是响的、可见的(不同于漏报), 但它照样把门禁挡红了。"
+    }
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1374 通过 / 0 失败(与起点持平; 本轮新增 1 用例又撤 1 用例, 净 0)",
+    "audit": "84/84 退出码 0, 连测 5 次 5 绿(起点基线是 10 次里 4 红)",
+    "corpus": "未变",
+    "srcChanged": false,
+    "mcpRestarted": false,
+    "mcpCheck": "未重启(仅 scripts/ 与 test/ 改动)",
+    "docsSynced": ["SKILL.md(仅还原被误删的版本行尾部, 非数字同步)"],
+    "docNote": "测试数无需同步(1374 未变)。SKILL.md 的版本行尾部从 git 还原。"
+  },
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "remainingGap": {
+    "what": "方向判定的**测试锁没建成**。审计行为已用 --json 直接实测确认正确(drift=[] healed=[\"SKILL.md\"]), 但在测试里同一场景却报 DRIFT, 差异没能隔离。",
+    "ruledOut": [
+      "锚点失配(会抛\"锚点已变\", 而非断言失败)",
+      "钩子未触发(触发时 measured.tests 来自假汇总)",
+      "$n 捕获组歧义(实测 V8 按 $1+字面量解析)",
+      "整行替换吃掉尾部(已改成只换版本号)"
+    ],
+    "notRuledOut": "runAudit() 与手动跑的 env 差异(cwd / NODE_OPTIONS / ASPIRA_TEST_RUNNER)。手动跑是 NODE_OPTIONS=--require <hook> node scripts/audit-doc-numbers.js --json; 测试是 execFileSync 带 cwd:ROOT 与 env 覆盖。差异就在这三者之一里。",
+    "howToReproduce": "污染 SKILL.md 版本行(保留尾部) → NODE_OPTIONS=--require <HEAL_HOOK> node scripts/audit-doc-numbers.js --json → 看 drift/healed; 再与 runAudit() 的 env 对比。",
+    "whyRecordedNotFixed": "按周期规则撤掉了失败的用例而没有撤掉修复。**一个我没法解释失败的断言, 比一个没有的断言更糟** —— 它会让下一轮以为这条行为已被锁住。撤销的用例连同复现步骤一起作为注释留在 test/audit-drift-detection.test.js 里。",
+    "consequence": "HEALED 分支目前无测试锁; 但 DRIFT 分支仍被用例1 锁着, 且用例1 已加强为同时断言 !/已被治愈/, 所以\"弄脏\"这个方向是锁住的, \"治愈\"这个方向只靠实测。"
+  },
+  "nextRecommendation": "(1) **把 HEALED 方向的测试锁建起来**: 按 remainingGap 里的复现步骤定位 runAudit() 与手动跑的 env 差异, 大概率是 ASPIRA_TEST_RUNNER 或 cwd 之一。这是本轮唯一未闭合项, 而且它是本轮主要交付物的锁。(2) **修 doc-probe-lock-coverage.test.js 的 insideDocLock()**: 它在字符串字面量里计数 `}));`。本轮已因此误报一次。改成先剥离字符串与注释再计数, 否则任何测试里出现一个以 `}));` 结尾的钩子字符串都会把门禁挡红。(3) 仍是那个老缺口: audit-self-pollution.test.js 的 HOOK 从**不持锁的审计子进程**写 SKILL.md(周期21 定位, 周期23/24 都未修, 因为让钩子持锁会死锁)。本轮的观测是它不再导致永久红(套件会治愈), 但仍是漂移的来源。(4) doc-honest-numbers 已连续 6 轮。本轮的收获(方向指反的修法、被吃掉的审计尾部)说明切片仍有产出, 但下一轮建议认真轮换。"
+}

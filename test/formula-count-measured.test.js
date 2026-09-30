@@ -43,14 +43,21 @@ const INSTALL = path.join(ROOT, 'INSTALL.md');
 const CURRENT_STATE = path.join(ROOT, 'CURRENT_STATE.md');
 const FORMULAS_README = path.join(ROOT, 'formulas', 'README.md');
 const FORMULAS_JSON = path.join(ROOT, 'formulas', 'formulas.json');
-const { withDocLock } = require('./_doc-probe-lock.js');
+const { withDocLock, restoreVersionLine, PROBE_VERSION } = require('./_doc-probe-lock.js');
 const { execFileSync } = require('child_process');
 
 function runAudit() {
-  return execFileSync('node', [SCRIPT], {
+  try {
+    return execFileSync('node', [SCRIPT], {
     cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, ASPIRA_AUDIT_SKIP_TESTS: '1' },
-  });
+    });
+      // [第二十二轮] 审计退出码现在承载结论(mismatch/漂移 -> 1)，execFileSync 对
+      // 非零退出抛异常。活体注入要的正是那份 stdout，所以从 e.stdout 取回 ——
+      // 否则一个**正确报出不符**的审计会把探针自己炸掉(周期22 实测 13 例全红)。
+  } catch (e) {
+    return (e.stdout || '').toString();
+  }
 }
 function mismatchedLines(out) {
   const seg = out.split('❌ 与实测不符')[1] || '';
@@ -121,7 +128,8 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
       assertTrue(bad.some(l => /公式库总量 \(CURRENT_STATE 行\) = 1234/.test(l)),
         'CURRENT_STATE 的公式库数字写错必须被报为不符——它此前夸大了约 2 倍(1286 vs 608)');
     } finally {
-      fs.writeFileSync(CURRENT_STATE, backup);
+      // [第二十三轮] 同上: CURRENT_STATE 的版本行也按权威值还原。
+      fs.writeFileSync(CURRENT_STATE, backup.replace(/(>\s*版本\s*\|\s*)v?\d+\.\d+\.\d+/, '$1v' + PROBE_VERSION));
       if (!new RegExp('> 公式库 \\| ' + n + ' formulas').test(fs.readFileSync(CURRENT_STATE, 'utf8'))) {
         throw new Error('恢复失败: CURRENT_STATE.md 的公式库行异常，请 git checkout -- CURRENT_STATE.md');
       }

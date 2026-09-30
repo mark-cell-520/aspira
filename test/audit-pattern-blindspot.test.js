@@ -64,10 +64,17 @@ module.exports = function ({ test, assertTrue }) {
       // ASPIRA_AUDIT_SKIP_TESTS=1: 审计默认会内嵌跑整个 test/run-all.js
       // (1182 个测试)来实测测试数，一次约 40 秒。本探针与测试数无关，
       // 必须跳过，否则 4 个用例 × 40 秒直接超时。
-      out = execFileSync('node', [SCRIPT], {
+      try {
+        out = execFileSync('node', [SCRIPT], {
         cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
         env: { ...process.env, ASPIRA_AUDIT_SKIP_TESTS: '1' },
-      });
+        });
+      // [第二十二轮] 审计退出码现在承载结论(mismatch/漂移 -> 1)，execFileSync 对
+      // 非零退出抛异常。活体注入要的正是那份 stdout，所以从 e.stdout 取回 ——
+      // 否则一个**正确报出不符**的审计会把探针自己炸掉(周期22 实测 13 例全红)。
+      } catch (e) {
+        out = (e.stdout || '').toString();
+      }
     } finally {
       // 无论断言是否通过都必须还原——否则把仓库留在被污染状态
       fs.writeFileSync(TARGET, orig);

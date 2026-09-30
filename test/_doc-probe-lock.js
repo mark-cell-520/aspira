@@ -91,7 +91,21 @@ function release() {
     const pidFile = path.join(LOCK_DIR, 'pid');
     let pid = null;
     try { pid = fs.readFileSync(pidFile, 'utf8'); } catch (_) {}
-    if (pid === null || pid === String(process.pid) || lockAge() > STALE_MS) {
+    // ═══ 周期21: `pid === null` 这个分支本身就是竞态 ═══
+    // 旧代码 `pid === null || pid === 自己 || 陈旧` 就删锁。但 acquire() 是
+    // 「mkdirSync 成功」与「writeFileSync(pid)」两步，两步之间有个窗口，
+    // 此刻 pid 文件不存在。任何进程在这个窗口里调 release()，都会把
+    // **别人刚拿到、还没写 pid 的锁**删掉 —— 两个进程都自以为持有锁，
+    // 那正是第七轮引入本锁要消除的事故。实测后果:
+    //   A 读备份(1.0.0)→写 9.9.9 ; B 读备份(此时已是 9.9.9)→写 9.9.9
+    //   A 还原成 1.0.0 ; B 再把它的"备份"9.9.9 写回 → 文档永久污染，
+    //   而两边都"成功恢复"了。表现为审计间歇性 79/84、探针间歇性红，
+    //   单独跑与直接 spawn 却全绿 —— 典型"偶发失败"长相。
+    // 修法: **绝不删除自己不持有的锁**。pid 读不到按"别人正在写"处理，
+    // 只有确凿陈旧(超过 STALE_MS)才强拆。宁可多等一个窗口，也不能两个持有者。
+    if (pid === String(process.pid)) {
+      fs.rmSync(LOCK_DIR, { recursive: true, force: true });
+    } else if (pid !== null && lockAge() > STALE_MS) {
       fs.rmSync(LOCK_DIR, { recursive: true, force: true });
     }
   } catch (_) {}
@@ -120,4 +134,73 @@ function withDocLock(fn, timeoutMs) {
   return result;
 }
 
-module.exports = { withDocLock, acquire, release, LOCK_DIR };
+/**
+ * 持锁读一份「探针会改写的文档」。
+ *
+ * ═══ 为什么读者也要持锁(周期21) ═══
+ * 这把锁原本只保护**写者**: 8 个探针测试注入文档、跑审计、再还原，全部持锁。
+ * 但**读者不持锁**——7 个测试文件直接 fs.readFileSync 读 README/SKILL 等文档。
+ * 于是探针的「已注入、未还原」窗口对读者完全透明。
+ *
+ * 实测(周期21，非推测): 一个进程持锁往 AGENTS.md 写注入标记再还原，另一个进程
+ * 不持锁读 4000 次，**3992 次看见了注入值**。竞态不是理论上的。
+ *
+ * 而它之所以一直表现为「偶发失败」而不是稳定失败，是因为: 只有当注入值恰好是
+ * 读者检查的那个数时才失败。实测探针持锁时长仅 **0.65s**(带 ASPIRA_AUDIT_SKIP_TESTS
+ * 跑一次审计)，8 个探针加起来不到 8 秒的污染窗口，读者随机落在窗口内的概率是个小数。
+ * **窗口越窄，失败越偶发，越像"环境抖动"而不像缺陷**——这正是它难查的原因。
+ *
+ * 持锁读是安全的: 读者最多等一个探针的 0.65s，离 60s 等待上限极远。
+ * 反过来，若读者不持锁，它读到的是探针的半成品——而半成品恰恰是这一整族
+ * 工作(诚实数字)要防的东西。
+ */
+function readDoc(filePath, timeoutMs) {
+  return withDocLock(() => fs.readFileSync(filePath, 'utf8'), timeoutMs);
+}
+
+// ── [第二十三轮] 版本行的还原必须写权威值，不能写回 backup ──
+// 周期23 实测出一个**单向闩锁**: 探针读 backup → 文档已是 9.9.9 →
+// POISON 的 replace 是空操作 → 还原写回 backup(还是 9.9.9) → 污染永久自锁。
+// 实测: 从污染态连跑两轮套件都是 1364/7，SKILL.md 一直停在 9.9.9，
+// 且**没有任何东西能把它修好** —— 每轮都从污染态起步，每轮都再把污染写回去。
+// 这正是周期20 记下的"A hardcoded anchor goes silently dead once the document
+// is polluted"，但当时的记录只说了"检查会空转"，没说空转的**后果是永久红**。
+//
+// 修法: 还原时把版本行按整行替换成 VERSION 读到的权威值。
+// 为什么不构成周期20 担心的"自愈机制回滚人的合法编辑": 约定 #1 写明
+// "VERSION 是唯一真相源，package.json 和 SKILL.md 必须匹配"，
+// 所以**不存在**"SKILL.md 的 Engine version 行理应是别的值"这种合法状态。
+// 这里修的是一个有唯一正确答案的字段，不是"内容与备份不同"这种无判据的差异。
+const PROBE_VERSION = fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf8').trim();
+// [第二十四轮] 只替换版本号, **不碰行尾**。
+// 周期23 的版本写成 `/(\|\s*Engine version\s*\|)[^\n]*/` → `[^\n]*` 把整行尾部
+// 一起吃掉。而 SKILL.md 那一行后面挂着长长的审计说明:
+//   | Engine version | 1.0.0 | `VERSION`, `package.json`, runtime `hf.VERSION`
+//   (module-level) / `hf.version` (instance), and `src/core/version.js` agree |
+// 实测 git show HEAD:SKILL.md 的第 153 行确实带这段尾巴, 而磁盘上只剩
+// `| Engine version | 1.0.0 |` —— **还原动作把审计痕迹删掉了**, 而且每次都
+// "成功还原"。这正是本仓库反复记载的形状: 报告成功却写错了东西, 比失败更糟。
+// 用函数式替换而不是 '$1'+value: value 以数字开头时会变成 '$11.0.0' 这种
+// 歧义的捕获组引用(实测 V8 恰好按 $1+字面量解析, 但那是实现细节, 不赌)。
+function forceVersionLine(text, value) {
+  return text.replace(/(\|\s*Engine version\s*\|\s*v?)\d+\.\d+\.\d+/, (m, p1) => p1 + value);
+}
+function restoreVersionLine(text) {
+  return forceVersionLine(text, PROBE_VERSION);
+}
+
+// [第二十五轮] 两个名字同一个值, 都导出。
+// 周期24 花了整轮没能解释一个测试失败: 测试导入 `PROBE_AUTH_VERSION`, 而这里
+// 导出的是 `PROBE_VERSION` —— 解构失败**不抛错**, 拿到的是 undefined。于是
+// 探针钩子写出 `p1 + undefined`, 也就是把 SKILL.md 的版本行改成
+// `| Engine version | undefined`。审计的 labelledVersionOf 匹配不到版本号,
+// 只能判成 drift, 而文档被留在一份**看起来像修好了其实写坏了**的状态里。
+// 调用成功、没有异常、返回结构合法 —— 而内容是死的。这正是本仓库反复记载的
+// 契约错配家族: 名字对不上时不响, 只在下游变成一个说不通的结果。
+// 审计侧那个常量叫 PROBE_AUTH_VERSION(scripts/audit-doc-numbers.js), 这里叫
+// PROBE_VERSION; 两边读的是同一个 VERSION 文件, 所以两个名字都指向它。
+module.exports = {
+  withDocLock, acquire, release, readDoc, LOCK_DIR, STALE_MS,
+  restoreVersionLine, forceVersionLine,
+  PROBE_VERSION, PROBE_AUTH_VERSION: PROBE_VERSION,
+};

@@ -1,0 +1,73 @@
+{
+  "ts": "2026-09-29T09:06:46.014Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.77,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.77). Identity alignment: 80%. Alternatives considered: \"误报/召回校准\" (0.72); \"维度健康审计与增强\" (0.71); \"MCP 工具增强\" (0.7); \"对抗鲁棒性增强\" (0.69); \"性能优化\" (0.67); \"文档诚实数字审计\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.77
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.72
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.69
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 313,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1385 → 1390 通过, 0 失败",
+    "audit": "85/85, 退出码 0, 连续 5 次全绿",
+    "corpus": "106 良性 / 1 升级 / FP 0.9%; 41 恶意 / 41 拦截 / 召回 100.0% —— 与基线逐项相同",
+    "docIntegrity": "SKILL.md agree=1, 9.9.9=0"
+  },
+  "measuredFirst": "383 个 src 模块中 164 个无任何测试引用(全部可 require); 分族 memory 22 / cortex 20 / core 19 / shield 12 / emotion 10 / identity 9 / formula 8 / reasoning 8 / dream 7 / workflow 7",
+  "defects": [
+    "memory-encrypt: 未知 _enc 版本被当明文返回。把 _enc 从 HEARTFLOW_v1 改成 HEARTFLOW_v2 再 decryptJSON, 原样返回 {\"_enc\":\"HEARTFLOW_v2\",\"iv\":...,\"authTag\":...,\"data\":\"<密文>\"} —— 不抛错、不告警, 调用方把密文信封当成记忆内容收下。密钥轮换/算法升级后, 未升级的旧进程读新文件时没有任何信号, 且信封结构合法, 下游 JSON 校验与类型检查全都通不过去。",
+    "memory-encrypt: decryptJSONAsync 整个漏了 decryptJSON 有的 PLAINTEXT_FALLBACK 拆包(源码比对证实), 同一条降级明文喂两条路径结果不同: 同步返回内层 data, 异步返回整个信封。"
+  ],
+  "processNotes": [
+    "我的探针 require 了 164 个未覆盖模块来测可加载性, 其中一个的副作用是写出 aspira-audit-report.md。我把它当探针垃圾删掉, 结果 audit-doc-coverage.test.js 立刻红: 该文件是审计豁免表里的合法生成产物, 豁免项变悬空。已用 node src/repo-audit.js 重新生成并复测 8/8。教训: 删文件前先问这个文件是不是别人的契约。",
+    "反向验证用「把守卫改成 if(false)」而非 git checkout —— 案例①⑤ 如期翻红, 还原回 5/5。"
+  ],
+  "remainingGap": "164 个未覆盖模块只覆盖了 1 个(memory-encrypt); 本轮新增 5 条锁全部集中在这一个模块的契约上。维度健康仪器的 evidence 假警报(7630 信号/0 finding)仍未修。audit-self-pollution.test.js 的 HOOK 不持锁写 SKILL.md、spawnsDocAudit() 只认一种 spawn 惯用法, 两项从周期21 起未动。",
+  "nextRecommendation": "下一轮仍从 test-coverage-gap 家族继续, 但换目标: 挑 memory 族里契约同样清晰且可测的模块(如 memory-kernel 的 MemoryKernel、kv-cache 的 KVCachePersistor), 一次一个模块做真契约测试, 不做 require 冒烟。先跑 dimension-health-audit.js 修 evidence 假警报, 它现在每轮都要人工复核一遍。",
+  "mcpRestart": "未执行。src/ 改动仅在 memory-encrypt 的读取路径, 未增改任何 MCP 工具定义或 handler, 工具清单与权限契约不变(tools/list 在 401 下不可验证)。"
+}

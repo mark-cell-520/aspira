@@ -1,0 +1,63 @@
+{
+  "ts": "2026-09-29T08:10:09.831Z",
+  "chosen": "doc-honest-numbers",
+  "status": "done",
+  "outcome": "周期24 花整轮没能解释的测试失败, 根因是一个导出名对不上——解构不抛错只给 undefined, 探针钩子于是把 SKILL.md 版本行写成 | Engine version | undefined; 顺带发现锁覆盖率仪器的闭合检测修的只是误报, 真正的是它根本抓不到锁外调用点",
+  "angle": "引擎第 7 次连续选 doc-honest-numbers(0.65 / 置信 0.75)。本轮执行周期24 的首要交接项: 为 HEALED 方向建测试锁。周期24 记录的现象是\"审计行为手动实测正确, 但测试里同一场景报 DRIFT, 差异没能隔离\", 未排除的三个候选是 cwd / NODE_OPTIONS / ASPIRA_TEST_RUNNER。",
+  "measuredFirst": {
+    "introspection": "dimCount 54、testCount 311 —— 周期23 的两个修复仍生效",
+    "envRuledOut": "ASPIRA_TEST_RUNNER 审计根本不读(grep 全脚本只有 ASPIRA_AUDIT_SKIP_TESTS 一处 env 读取) —— 三个候选里先排掉一个",
+    "branchRuledOut": "带钩子手动跑, 人类可读分支报 \"已被治愈\" 1 次 / \"被改写且未还原\" 0 次; --json 分支报 {\"drift\": [], \"healed\": [\"SKILL.md\"]} —— **两个分支都对**, 周期24 怀疑的\"--json 与人类分支差异\"不成立",
+    "theDecisiveRepro": "恢复用例5 并让钩子留一份到固定路径后, 第一次能稳定复现: 测试里 healed=[] drift=[\"SKILL.md\"]。对照两份钩子, 生成的那份里是 `return p1 + undefined;`"
+  },
+  "defects": [
+    {
+      "id": "export-name-mismatch-yields-undefined-silently",
+      "severity": "high",
+      "what": "test/audit-drift-detection.test.js 导入 `PROBE_AUTH_VERSION`, 而 test/_doc-probe-lock.js 导出的是 `PROBE_VERSION`。解构失败**不抛错**, 只给 undefined。",
+      "measuredProof": "生成的 HEAL_HOOK 里是 `orig.replace(/.../, function (m, p1) { return p1 + undefined; })`。于是钩子把 SKILL.md 版本行写成 `| Engine version | undefined`。审计的 labelledVersionOf 匹配不到版本号 ⇒ 返回 null ⇒ 只能判成 drift。",
+      "consequence": "探针\"成功治愈\"了文档, 写进去的却是垃圾, 而文档被留在一份**看起来修好了、其实写坏了**的状态里。调用成功、没有异常、返回结构合法 —— 而内容是死的。这是本仓库反复记载的契约错配家族: 类对象当命名空间、要对象给字符串、默认导出的具名解构、模块实例化后丢弃、字段从未赋值(缓存), 全部共享同一后果。",
+      "fix": "_doc-probe-lock.js 同时导出两个名字(PROBE_VERSION 与 PROBE_AUTH_VERSION 同指 VERSION); 测试文件加**加载时守卫**: 若 PROBE_AUTH_VERSION 不是形如 x.y.z 的字符串就直接 throw, 报出实测值与 VERSION 文件内容。",
+      "verifiedBy": "反向验证: 把导出名改回错的那一个, 测试在**加载阶段**就失败并打出完整诊断; 改回来 5/5。守卫让错位在加载时炸, 而不是等探针把垃圾写进文档。"
+    },
+    {
+      "id": "lock-coverage-closes-detection-never-matched-real-syntax",
+      "severity": "high",
+      "what": "doc-probe-lock-coverage.test.js 的 insideDocLock() 用 `before.match(/\\}\\)\\);/g)` 计数锁闭合。而 `}));` 从来不是 `withDocLock(() => { ... })` 的真实闭合语法 —— 真实是 `});` 再接 `};`。",
+      "measuredProof": "造一个 require 了锁模块、但把 runAudit() 调用点放在 withDocLock **之外**的文件: 仪器 2/2 通过, 一声不响。即它抓不到任何锁外调用点。",
+      "twoSidedConsequence": "周期24 只看到前半: 钩子字符串里有一行以 `}));` 结尾, 于是真锁被提前\"关上\", 锁内调用点被误判为未持锁(误报, 挡红门禁)。**而只剥字符串不补配对, closes 变 0, opens(1) > closes(0) 永真 —— 任何调用点都判成在锁内**, 一个永不失败的检查, 和没有检查一样。修掉前半会让后半恶化, 这是本轮最危险的发现。",
+      "fix": "改成真正的花括号配对: 先在剥掉字符串/注释的等长副本上定位每个 `withDocLock(() =>`, 再从箭头函数体做括号深度配对求出真实区间, 判断调用点下标是否落在任一区间内。括号不配对时宁可信其无(continue)。",
+      "verifiedBy": "双向实测: 正常态 2/2 通过; 同一个锁外调用点文件现在被精确抓到并报出行号(`test/zz-tmp-nolock.test.js:14 # runAudit() 调用点不在 withDocLock 内`)。"
+    }
+  ],
+  "processNotes": [
+    {
+      "what": "我自己的诊断仪器就是周期24 那个\"尾部被吃掉\"的污染源。",
+      "detail": "手工写的 /tmp/healhook.cjs 用整行替换 `/[^\\n]*/`, 把 SKILL.md 版本行后面的审计尾部删了。于是有一轮用例5 的\"尾部必须还在\"断言失败, 我一度以为是套件在吃尾部 —— 而套件(修好的 restoreVersionLine)连跑两轮都保住尾部, 是我每次手动诊断时又删一次。** instruments that measure are also writers.** 已从 git 还原尾部, 并让 HEAL_HOOK 只换版本号。"
+    },
+    {
+      "what": "第一次反向证明用错了惯用法, 白跑一轮。",
+      "detail": "造的无锁文件用字面量 `['scripts/audit-doc-numbers.js']`, 而 spawnsDocAudit() 只认 `SCRIPT` 常量 + `path.join(...audit-doc-numbers.js)` 的惯用法, 于是文件根本没进扫描。这本身是枚举式过滤器的已知形状(AGENTS.md 已记载\"an enumerating filter leaks once per new way of narrating\"), 但本轮不扩这个面 —— 仪器的自检测试 `checked > 0` 至少保证它不是完全死的。改用真实惯用法后才拿到有效的反向证明。"
+    }
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1375 通过 / 0 失败(起点 1374/0, 新增 1 个用例: HEALED 方向锁)",
+    "audit": "84/84 退出码 0, 连测 5 次 5 绿(同步测试数 1374→1375 之后)",
+    "corpus": "未变",
+    "srcChanged": false,
+    "mcpRestarted": false,
+    "mcpCheck": "未重启(仅 test/ 与三份文档改动)",
+    "docsSynced": ["README.md", "SKILL.md", "CURRENT_STATE.md(测试数 1374→1375)"],
+    "docNote": "SKILL.md 版本行尾部从 git 还原(被我自己的手动钩子删掉的那次)。"
+  },
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "remainingGap": {
+    "what": "锁覆盖率仪器只认一种 spawn 惯用法。",
+    "detail": "spawnsDocAudit() 要求源码里同时出现 `path.join(...audit-doc-numbers.js)` 与 `execFileSync('node', [SCRIPT]` / `execSync(...SCRIPT)` / `spawnSync('node', [...SCRIPT]`。换成 `execFileSync(SCRIPT, ...)`、`spawn('node', [SCRIPT])`、或把路径写成字面量, 都进不了扫描。现有自检只断言 `checked > 0`(至少扫到一个), 不能保证新写法被覆盖。",
+    "whyNotFixed": "本轮预算已花在两个真缺陷上; 且这是枚举式过滤器的已知形状, 不是本轮新引入的回退。记录而非纸包。"
+  },
+  "nextRecommendation": "(1) **周期23 交接项 #3 仍未做: 认真轮换切片。** doc-honest-numbers 已连续 7 轮。本轮与上轮的产出(导出名错配、锁覆盖率仪器修一半变真空)都说明切片仍有矿, 但引擎自己的轮换逻辑 7 轮没动过 —— 下次应直接改轮换权重或手动指定别的切片, 否则第 8 轮还是它。(2) 扩 spawnsDocAudit() 的识别面(见 remainingGap), 并把 `checked > 0` 加强为\"每种 spawn 惯用法各造一个无锁文件都必须被抓\"。(3) 老缺口仍在: audit-self-pollution.test.js 的 HOOK 从**不持锁的审计子进程**写 SKILL.md(周期21 定位, 23/24/25 均未修, 让钩子持锁会死锁)。本轮的观测是它不再造成永久红, 但仍是漂移来源。(4) HEALED 方向现在有锁了(用例5, 断言打在 --json 的 drift/healed 数组上而非中文文案), 下一轮可以转而锁\"两半都必须置退出码 1\"这条。"
+}

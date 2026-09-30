@@ -1,0 +1,114 @@
+{
+  "ts": "2026-09-29T05:09:08.197Z",
+  "chosen": "doc-honest-numbers",
+  "status": "done",
+  "outcome": "两个真缺陷已修并上锁; 一个既有偶发污染已定位到族但未根除, 如实记录",
+  "angle": "周期20以 failed/reverted 收场, 并在 nextRecommendation 里留了两条「已定位未修」。本轮从其中一条切入, 却在测量阶段先把周期20自己的诊断推翻了。",
+  "measuredFirst": {
+    "correctedCycle20Diagnosis": "周期20 记录「audit-doc-coverage.test.js 与 doc-probe-lock-coverage.test.js 没有设 ASPIRA_AUDIT_SKIP_TESTS, 持锁期间 spawn 完整套件」。**这条是错的。** 实测: 这两个文件根本不 spawn 审计, 它们只做源码级分析(fs.readFileSync 读 scripts/audit-doc-numbers.js 的源码、用正则匹配别的测试文件)。当时我用「grep 环境变量名」代替了「grep 真正的 spawn」, 于是把两个纯读者当成了 spawn 者。",
+    "realSpawnersWithoutSkipFlag": 3,
+    "realSpawners": [
+      "test/evasion-recall-instrument.test.js → scripts/calibrate-fp-recall.js",
+      "test/mcp-contract-audit.test.js → scripts/mcp-contract-audit.js",
+      "test/mcp-echo-audit.test.js → scripts/mcp-echo-audit.js"
+    ],
+    "realSpawnersAreNotDocProbes": "这三个 spawn 的是校准/契约脚本, 不是审计, 也不碰文档, 不需要文档锁也不需要跳过标志。而这三个脚本自身 spawn 任何东西的次数 = 0。**嵌套路径不存在。**",
+    "unlockedReadersOfProbeTargetDocs": 7,
+    "unlockedReaders": [
+      "test/dimension-tier-consistency.test.js → AGENTS.md",
+      "test/doc-examples.test.js → AGENTS.md, SKILL.md",
+      "test/doc-numbers-table-form.test.js → README.md, SKILL.md",
+      "test/doc-numbers.test.js → AGENTS.md, README.md, SKILL.md",
+      "test/gate-pipeline-mode.test.js → AGENTS.md",
+      "test/security-audit.test.js → SKILL.md",
+      "test/version-consistency.test.js → SKILL.md"
+    ],
+    "probeLockHoldTime": "0.65s(带 ASPIRA_AUDIT_SKIP_TESTS=1 跑一次审计的实测墙钟)。这个数字决定了「给读者加锁是否安全」——读者最多等 0.65s, 离 60s 等待上限极远。不带标志是 26.35s(会 spawn 完整套件)。",
+    "docsProbesActuallyInject": ["README.md", "SKILL.md", "CURRENT_STATE.md", "IDENTITY.md"],
+    "agentsMdNotInjected": "没有探针注入 AGENTS.md, 所以读 AGENTS.md 的 4 个读者实际安全。如实披露, 没有为一致性而一律改。"
+  },
+  "defects": [
+    {
+      "id": "doc-probe-lock-release-removes-others-lock",
+      "severity": "high",
+      "what": "test/_doc-probe-lock.js 的 release() 旧写成 `if (pid === null || pid === 自己 || 陈旧) rmSync(锁)`。`pid === null` 看着是「清理崩溃残留」, 但它与 acquire() 的实现相撞: acquire() 是 mkdirSync(LOCK_DIR) 与 writeFileSync(pid) **两步**, 两步之间 pid 文件不存在。任何进程在这个窗口里调 release(), 都会把别人刚拿到、还没写 pid 的锁删掉。",
+      "consequence": "两个进程都自以为持有锁 —— 那正是第七轮引入本锁要消除的事故。探针互相踩: A 读 SKILL.md 备份(1.0.0)→写 9.9.9; B 读备份(此刻已是 9.9.9)→写 9.9.9; A 还原成 1.0.0; B 再把它的「备份」9.9.9 写回 → 文档永久停留在污染态, 而 A 和 B 都「成功恢复」了。",
+      "measuredSymptom": "审计间歇性报 79/84(5 条不符)、探针测试间歇性红, 而单独跑、直接 spawn run-all 全绿。**窗口越窄, 失败越偶发, 越像环境抖动而不像缺陷。**",
+      "fix": "只有 pid 确实是本进程才删; pid 读不到时按「别人正在写」处理; 只有确凿陈旧(age > STALE_MS)才强拆。宁可多等一个窗口, 也不能出现两个持有者。",
+      "lesson": "**绝不删除自己不持有的锁。** 与周期20 holderAlive() 踩的是同一个坑的另一个面: 那次是「读不到 pid 就判死」, 这次是「读不到 pid 就删」。两者共同的错误是把「探不到身份」当成了「可以动手」的许可。"
+    },
+    {
+      "id": "doc-readers-do-not-hold-the-lock",
+      "severity": "high",
+      "what": "这把锁自第七轮起只保护写者: 8 个探针测试注入文档、跑审计、再还原, 全部持锁。但读者不持锁 —— 7 个测试文件直接 fs.readFileSync 读 README/SKILL/CURRENT_STATE/IDENTITY。探针「已注入、未还原」的窗口对读者完全透明。",
+      "measured": "一个进程持锁往 AGENTS.md 写注入标记再还原, 另一个进程不持锁读 4000 次, **3992 次看见了注入值**。竞态不是理论上的。",
+      "whyItLooksLikeFlakiness": "只有注入值恰好是读者检查的那个数时才失败。探针持锁仅 0.65s, 8 个探针合计不到 8 秒污染窗口, 读者随机落入的概率是个小数。",
+      "fix": "新增 readDoc(filePath, timeoutMs): 持锁读。5 个读 README/SKILL 的读者改走 readDoc; 4 个只读 AGENTS.md 的读者未改(没有探针注入 AGENTS.md), 并如实披露。",
+      "locks": [
+        {
+          "file": "test/doc-reader-lock-coverage.test.js",
+          "cases": 4,
+          "checks": [
+            "机械覆盖: 每个读探针目标文档的测试文件都必须持锁读(静态, 会漏, 所以配行为证明)",
+            "readDoc 必须真的存在且可导出(否则静态那条是空转)",
+            "持锁注入期间 readDoc 必须被挡住; 同时不持锁的裸读必然看得见(同进程内完成, 无时序依赖 —— 反向证明与行为证明在同一条用例里互相校验)",
+            "锁释放之后 readDoc 必须能正常读到还原后的内容"
+          ]
+        },
+        {
+          "file": "test/doc-probe-lock-release-ownership.test.js",
+          "cases": 2,
+          "checks": [
+            "release() 的所有权边界: 锁目录存在但 pid 未写(acquire 的窗口态)时别人的 release() 不得删锁; pid 属别的进程时不得删锁; 确凿陈旧时必须能强拆(证明这把锁不是永远不失败); 自己持有的必须正常删; 反复交替不残留",
+            "STALE_MS 必须从模块导出(否则上一用例的「陈旧」是 NaN, 检查不到任何东西)"
+          ]
+        }
+      ]
+    }
+  ],
+  "correctionRecorded": [
+    {
+      "what": "周期20 记录的「两个探针测试持锁 spawn 完整套件」整条判断是错的, 已在 measuredFirst 里更正。",
+      "cause": "用「grep 环境变量名 ASPIRA_AUDIT_SKIP_TESTS」代替「grep 真正的 spawn」。两个纯源码分析器因为没设这个环境变量而被当成了 spawn 者。",
+      "lesson": "**没测量过的归因就是会错的归因** —— 与周期19「估四五个注入文件、实测 8 个」同族。"
+    },
+    {
+      "what": "读者锁测试的行为证明/反向证明前后三版都间歇性红。",
+      "versions": [
+        "v1: 父进程持锁再 spawn 持锁读者 → 父等读者、读者等父, 必然 ETIMEDOUT",
+        "v2: 写者与读者都做子进程 → 写者要先和并发探针抢锁, 注入可能发生在读者 6s 轮询窗口之后, 于是「没看见」, 反向证明自己变红",
+        "v3(现版): 同进程内先自己持锁并注入, 再调 readDoc —— 同一进程已持锁, readDoc 必然阻塞到超时。无任何时序依赖"
+      ],
+      "lesson": "**证明一个互斥机制, 不能依赖被这个机制保护的时序。** 用子进程去证锁, 就把锁的竞争状况变成了证明的前提; 同进程内自持锁再调 readDoc, 才把「会被挡住」变成确定命题。"
+    },
+    {
+      "what": "锁所有权测试第一版每个用例各自 clearLock(), 在并发 runner 下把并发探针正持有的锁删了 —— 它造成了它要检测的那个缺陷, 表现为「陈旧锁必须能强拆」间歇性失败。",
+      "fix": "整个文件全程持锁: 这些用例动的是共享锁目录, 不持锁就不能动它。",
+      "lesson": "**一个测试若操作共享状态, 它自己就必须先取得那份状态的锁** —— 否则它就是它要防的那个并发写者。"
+    }
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1365 通过 / 0 失败 (自 1359; 新增 6 例: 读者锁 4 + 锁所有权 2)",
+    "audit": "84/84; 收尾连测 3 次全绿, 但**期间也出现过连续 2 次 79/84 与 78/84** —— 见 remainingGap",
+    "corpus": "未变(106 benign / FP 0.9%, 41 malicious / recall 100%)",
+    "srcChanged": false,
+    "mcpRestarted": false,
+    "mcpCheck": "未重启(仅 test/ 与文档改动); HTTP 401 未认证正确拒绝, 仍在线"
+  },
+  "docsSynced": ["README.md", "SKILL.md", "CURRENT_STATE.md", "AGENTS.md"],
+  "docNote": "测试数 1359 → 1365(本轮 +6 例)。",
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "remainingGap": {
+    "what": "审计间歇性报 5-6 条不符, 且 SKILL.md 间歇性被留在 `| Engine version | 9.9.9 |` 污染态。既有缺陷, 周期20(锁已回退到 HEAD 时)就已观察到。",
+    "rate": "release() 修复前约 50%(84/84 与 79/84 交替); 修复后显著下降, 但未归零(实测出现过 4/4 绿后 1 红、以及连续 2 次红)。",
+    "rootCause": "**未根除。** 已排除: 嵌套 spawn 路径(不存在)、读者不持锁(本轮已修)、我的新测试(移走后仍复现)。",
+    "locatedTo": "写入 9.9.9 到 SKILL.md 的只有两个测试: audit-self-pollution.test.js 与 audit-unlocked-measurements.test.js。单独反复跑任一个、或两者交替并发跑, 都不泄漏; 只有完整 12 路并发套件 + 审计反复 spawn 才复现。已确认 audit-self-pollution.test.js 的 HOOK 是从**不持锁的审计子进程**里写 SKILL.md 的。",
+    "amplifier": "审计的 DOC_SNAPSHOT 在进程启动时快照全部文档。所以一次污染会让后续每次审计都从快照里读到污染态 → **污染会自我延续**, 看起来像持续性缺陷而不是一次性事故。这是周期19 引入快照时未曾预料的反面。",
+    "howToReproduce": "node /tmp/probe21.cjs 6(复刻审计第995行的 spawn 并保留子进程 stdout)。失败时 /tmp/audit-child-fail.txt 有完整输出, 失败用例名与「恢复失败: SKILL.md 的 Engine version 行异常」都在里面。",
+    "instrumentLeftBehind": "/tmp/trace-writes.cjs —— 插桩 fs 写操作, 用 NODE_OPTIONS='--require /tmp/trace-writes.cjs' 可记录每一次对 4 份探针目标文档的写入(含 pid 与调用方)。它查不到 HOOK 的写入, 因为该测试用 NODE_OPTIONS 覆盖掉了继承值。"
+  },
+  "nextRecommendation": "两条路, 按价值排序。(1) **根除剩余污染**: 现在的证据已收敛到「HOOK 从不持锁的审计子进程写 SKILL.md」。下一步应该让 HOOK 也走文档锁(它写在 /tmp 的一个 .cjs 里, 可以让它 require test/_doc-probe-lock.js 并持锁), 或者反过来——让探针的注入与还原都经由一个「探针自己登记目标文档与注入标记」的入口, 这样自愈与核对才有判据(周期20 的结论在此依然成立: 没有登记就没有判据)。(2) **拆掉污染的自我延续**: 审计的 DOC_SNAPSHOT 让一次污染延续到之后每次审计, 应该在报出不符时区分「快照与实测不一致」与「文档当前内容与快照不一致」, 后者才是真污染信号。另: doc-honest-numbers 已连续 21 轮有产出, 仍不标 exhausted, 但下一轮值得认真考虑轮换。"
+}

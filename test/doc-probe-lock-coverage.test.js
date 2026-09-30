@@ -83,12 +83,79 @@ module.exports = function ({ test, assertTrue }) {
     return last[1] || last[2];
   }
 
-  // 某个位置是否落在 withDocLock(() => { ... }) 之内
+  // 把源码里的**字符串字面量与注释**抹成等长空白, 只留真正的代码。
+  // [第二十五轮] insideDocLock() 原来直接在原文上 match /\}\)\);/。而测试里的
+  // 探针钩子是一堆**字符串数组**(HEAL_HOOK/DIRTY_HOOK/...), 其中一行以
+  // `}));` 结尾 —— 原文匹配把它当成锁关闭, 于是真锁被提前"关上",
+  // runAudit() 调用点被误判为未持锁, 门禁被挡红。
+  // 这与周期19 记录的形态同族: **一个不看上下文做文本匹配的仪器,
+  // 会把字符串里的图案当成代码。** 那次是注释剥离器删掉审计 44% 源码;
+  // 这次是锁覆盖率分析器把钩子字符串里的 `}));` 当成了锁的右括号。
+  // 抹成等长空白而不是删掉, 是为了不改变任何下标 —— 调用方传的是原文下标。
+  function stripStringsAndComments(src) {
+    let out = '';
+    let i = 0;
+    const n = src.length;
+    while (i < n) {
+      const c = src[i], d = src[i + 1];
+      if (c === '/' && d === '/') {           // 行注释
+        while (i < n && src[i] !== '\n') { out += ' '; i++; }
+        continue;
+      }
+      if (c === '/' && d === '*') {           // 块注释
+        out += '  '; i += 2;
+        while (i < n && !(src[i] === '*' && src[i + 1] === '/')) {
+          out += (src[i] === '\n' ? '\n' : ' '); i++;
+        }
+        if (i < n) { out += '  '; i += 2; }
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') {   // 字符串(含模板串)
+        const q = c; out += ' '; i++;
+        while (i < n) {
+          if (src[i] === '\\') { out += '  '; i += 2; continue; }
+          if (src[i] === q) { out += ' '; i++; break; }
+          if (src[i] === '\n' && q !== '`') { break; }   // 行串不允许跨行
+          out += (src[i] === '\n' ? '\n' : ' '); i++;
+        }
+        continue;
+      }
+      out += c; i++;
+    }
+    return out;
+  }
+
+  // 某个位置是否落在 withDocLock(() => { ... }) 之内。
+  // [第二十五轮] 旧实现数 `\}));` 当闭合 —— 而那从来不是 withDocLock 的真实
+  // 闭合语法(真实是 `});` 再接 `};`)。后果有两半, 而且**修掉前半会让后半恶化**:
+  //   · 修前: 钩子字符串里有一行以 `}));` 结尾, 于是真锁被提前"关上",
+  //     锁内的调用点被误判为未持锁 —— 周期24 靠这条挡红过一次门禁。
+  //   · 只剥字符串不补配对: closes 变成 0, opens(1) > closes(0) 永真,
+  //     **任何调用点都判成在锁内** —— 一个永不失败的检查, 和没有检查一样。
+  // 实测过那个中间态: 造一个 require 了锁模块、但把 runAudit() 放在锁外的文件,
+  // 仪器 2/2 通过, 一声不响。所以这里改成真正的花括号配对。
   function insideDocLock(src, at) {
-    const before = src.slice(0, at);
-    const opens = (before.match(/withDocLock\(\s*\(\)\s*=>/g) || []).length;
-    const closes = (before.match(/\}\)\);/g) || []).length;
-    return opens > closes;
+    const code = stripStringsAndComments(src);
+    // 找出每个 withDocLock(() => 的括号配对区间
+    const re = /withDocLock\(\s*\(\)\s*=>/g;
+    let m;
+    while ((m = re.exec(code)) !== null) {
+      // 从箭头函数体开始做花括号配对
+      let i = m.index + m[0].length;
+      while (i < code.length && code[i] !== '{') i++;
+      if (i >= code.length) continue;
+      let depth = 0, end = -1;
+      for (let j = i; j < code.length; j++) {
+        if (code[j] === '{') depth++;
+        else if (code[j] === '}') {
+          depth--;
+          if (depth === 0) { end = j; break; }
+        }
+      }
+      if (end < 0) continue;                 // 括号不配对: 宁可信其无
+      if (at > m.index && at < end) return true;
+    }
+    return false;
   }
 
   test('每个 spawn 文档审计的测试都必须持 doc-probe 锁', () => {

@@ -1,0 +1,25 @@
+{
+  "id": "690cb97f",
+  "topic": "是否应该引入自动化测试",
+  "roles": [
+    {
+      "id": "proponent",
+      "label": "支持者",
+      "description": "为命题辩护"
+    },
+    {
+      "id": "opponent",
+      "label": "反对者",
+      "description": "质疑命题"
+    },
+    {
+      "id": "moderator",
+      "label": "主持人",
+      "description": "引导流程，提炼共识"
+    }
+  ],
+  "maxRounds": 6,
+  "rounds": [],
+  "status": "active",
+  "createdAt": 1790669323159
+}

@@ -48,7 +48,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const SCRIPT = path.join(ROOT, 'scripts', 'audit-doc-numbers.js');
 const SKILL = path.join(ROOT, 'SKILL.md');
-const { withDocLock } = require('./_doc-probe-lock.js');
+const { withDocLock, restoreVersionLine, PROBE_VERSION } = require('./_doc-probe-lock.js');
 
 // 剥掉注释后再做源码级匹配 —— 否则修复自己的注释会 quoted 被删掉的代码，
 // 未剥注释的锁会把它的文档当成罪行(cycle-14/15 的陷阱，第三次)。
@@ -57,14 +57,24 @@ function stripComments(src) {
 }
 
 function runAudit(extraEnv) {
-  return execFileSync('node', [SCRIPT], {
-    cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, ASPIRA_AUDIT_SKIP_TESTS: '1', ...(extraEnv || {}) },
-  });
+  // [第二十二轮] 审计退出码现在承载结论(mismatch/漂移 -> 1)，execFileSync 对
+  // 非零退出抛异常。活体注入要的正是那份 stdout，所以从 e.stdout 取回 ——
+  // 否则一个**正确报出不符**的审计会把探针自己炸掉(周期22 实测 13 例全红)。
+  try {
+    return execFileSync('node', [SCRIPT], {
+      cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, ASPIRA_AUDIT_SKIP_TESTS: '1', ...(extraEnv || {}) },
+    });
+  } catch (e) {
+    return (e.stdout || '').toString();
+  }
 }
 
 // 预载钩子: 拦截审计对 run-all.js 的 spawn，在 measure() 执行期间弄脏 SKILL.md，
-// 然后返回一份假的 run-all 输出(省掉真的跑 1351 个用例)。
+// 然后返回一份假的 run-all 输出(省掉真的跑整个套件)。
+// [第二十三轮] 假汇总的条数原来写死 1351 —— 一个会腐烂的数。文档的测试数
+// 声称一路涨到 1374，于是这个审计**每次**都报一条虚假的「测试数不符」,
+// 而本文件只断言版本类不符，所以那条假警报一直看不见。改为从 SKILL.md 现读。
 // 若审计没有快照，claims() 就会读到这份污染并报一条假的版本不符。
 const HOOK = [
   "const cp = require('child_process');",
@@ -77,7 +87,8 @@ const HOOK = [
   "      const orig = fs.readFileSync(p, 'utf8');",
   "      fs.writeFileSync(p, orig.replace(/(\\|\\s*Engine version\\s*\\|\\s*v?)(\\d+\\.\\d+\\.\\d+)/, '$19.9.9'));",
   "    } catch (e) {}",
-  "    return { stdout: '测试结果: 1351 通过, 0 失败, 共 1351 个\\n', status: 0 };",
+  "    const n = (fs.readFileSync(process.cwd() + '/SKILL.md', 'utf8').match(/\\|\\s*Test suite\\s*\\|\\s*(\\d+)\\s*passing/) || [, '0'])[1];",
+  "    return { stdout: '测试结果: ' + n + ' 通过, 0 失败, 共 ' + n + ' 个\\n', status: 0 };",
   "  }",
   "  return real.apply(cp, arguments);",
   "};",
@@ -115,8 +126,15 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
         cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
         env: { ...process.env, NODE_OPTIONS: '--require ' + hookPath },
       });
+    } catch (e) {
+      // [第二十三轮] 假汇总已改为现读文档声称值，不再有腐烂数；文档真错时审计仍会非零退出。
+      // **正确地**报出不符并非零退出。execFileSync 会因此抛异常，但 finally
+      // 照样还原 SKILL.md，所以这里只需把 stdout 收下来继续断言。
+      out = (e.stdout || '').toString();
     } finally {
-      fs.writeFileSync(SKILL, backup);
+      // [第二十三轮] 还原写权威值，不写回 backup。写回 backup 在文档已被污染时
+      // 会把 9.9.9 原样写回去，污染从此永久自锁(实测连跑两轮 1364/7 无人能修)。
+      fs.writeFileSync(SKILL, restoreVersionLine(backup));
       try { fs.unlinkSync(hookPath); } catch (_) {}
     }
     // 钩子确实执行过: SKILL.md 在 spawn 期间被写成 9.9.9，finally 已恢复
@@ -134,7 +152,9 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
       fs.writeFileSync(SKILL, backup.replace(/(\|\s*Engine version\s*\|\s*v?)(\d+\.\d+\.\d+)/, '$19.9.9'));
       out = runAudit();
     } finally {
-      fs.writeFileSync(SKILL, backup);
+      // [第二十三轮] 还原写权威值，不写回 backup。写回 backup 在文档已被污染时
+      // 会把 9.9.9 原样写回去，污染从此永久自锁(实测连跑两轮 1364/7 无人能修)。
+      fs.writeFileSync(SKILL, restoreVersionLine(backup));
     }
     assertTrue(/Engine version[^\n]*9\.9\.9/.test(out) || /9\.9\.9/.test(out),
       'SKILL.md 真的写成 9.9.9 时审计必须报出不符——否则上面的快照锁是个永不会失败的检查');

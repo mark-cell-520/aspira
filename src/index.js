@@ -385,6 +385,31 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
       findings.push({ dimension: d.name, severity: Math.round(d.score * 100), details: `${d.name}(${detail}次)` });
     }
   }
+  // [维度健康审计修复·第二十七轮] perfect_error 的专属推送块。
+  // 修的问题: 它是**唯一一个能改动门禁动作却永远推不出 finding 的维度**。
+  // 实测 scripts/dimension-health-audit.js: 信号触发 143 次, finding 0 次。
+  // 它在 dimMap 有键、在 dimensions{} 的 54 个键里、GUIDANCE_MAP 里有专门文案、
+  // 下方专属门禁规则靠它判 rewrite、pipeline.js:197 还靠它推 rewrite —— 唯独没有推送块。
+  // 后果: 调用方收到 `gate.action='rewrite'` 而 findings 里找不到 perfect_error,
+  // 于是 `findings.some(f => VERIFY_DIMS.has(f.dimension))` 看不见它,
+  // GUIDANCE_MAP 里那句"补充可验证的来源和数据…"是**永远执行不到的死代码** ——
+  // 一句写好了却没有任何 finding 能领到的修改指引。
+  // 门槛用**它自己的分级** `level !== 'pass'`(perfect-error.js:194-198:
+  //   count>=3 或 4+含假精确 → high; 伪权威+假精确 → rewrite; count>=2 → verify),
+  // 而不用 allDims 那个 `score >= 0.15` —— 后者是为单一信号维度校准的。
+  // 实测对比: 若按 0.15 推, 良性语料升级数 1 → 7(FP 0.9% → 6.6%), 6 条新误报
+  // 全是"有出处、带限定的精确数字陈述"(论文指出…91.2%，但泛化性仍需验证 /
+  // SLA 是 99.9% 等), 触发路径是 `findings.length > 1`。
+  // 按自己的分级推, 这些样本 level='pass' ⇒ 不推, FP 回到 0.9%, recall 100% 不变。
+  // (另: 它也不进 allDims —— 聚合信号的 score 源自其他维度, 进逐维度惩罚循环
+  //  等于把底层信号重复计分一次, 与 unsupported_claim/pseudo_causal 跨度双算同类。)
+  if (pe.level && pe.level !== 'pass') {
+    findings.push({
+      dimension: 'perfect_error',
+      severity: Math.round(pe.score * 100),
+      details: `疑似完美错误答案(${pe.count}个信号: ${pe.details || ''})`.slice(0, 120),
+    });
+  }
   // reasoning_coherence 是质量分（高分=好），反向处理：只有"有推理意图但结构差"才提示
   // （有 premise/inference 标记却缺 conclusion 或跳跃 = 推理链断裂；纯陈述句无推理意图不触发）
   const rcIntent = (rc.markers?.premise?.count || 0) + (rc.markers?.inference?.count || 0);

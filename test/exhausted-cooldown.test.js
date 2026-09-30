@@ -119,30 +119,45 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   // ─── ③ exhausted 冷却期满后恢复参选 ────────────────────────
   test('exhausted 冷却期满后必须恢复参选', () => {
     // doc-honest-numbers 很早就被标 exhausted, 之后跑了很多轮 → 应已恢复。
-    // done 次数会递减 consequence_value, 所以给**所有**常驻切片相同的
-    // done 次数, 使唯一差异只剩 feasibility/risk/confidence:
-    //   doc-honest-numbers   feas 0.85 risk 0.15 conf 0.75  ← 三项全优
-    //   test-coverage-gap    feas 0.75 risk 0.20 conf 0.70
-    // 因此若冷却期修复生效, doc 必须胜出。
-    const N = 8;
+    //
+    // [契约修复·第二十六轮] 这里原来给**所有**常驻切片相同的 done 次数,
+    // 注释写"使唯一差异只剩 feasibility/risk/confidence"。那在旧权重下成立,
+    // 但成立的理由正是 bug: 旧权重按**累计**次数衰减 consequence_value 且下限
+    // 0.05, doc-honest-numbers(33 次)与 test-coverage-gap(37 次)都被压成 0.05
+    // —— consequence_value 对所有候选变成同一个常数, 区分度归零, 排名退化成
+    // 静态可行性/风险/置信表。**这个用例一直在断言那个饱和 bug。**
+    // 新权重按**近期窗口**计数, 所以必须显式构造"近期分布"而不是只构造总数:
+    //   · doc-honest-numbers 近期 0 次 → cv 保持 0.5(最高)
+    //   · 其余每个切片近期至少 1 次; dimension-health / fp-recall /
+    //     adversarial 的基础值更高(0.7/0.65/0.7), 各给 2 次压到 0.5 以下
+    // 这样 doc 靠 cv 最高 + feas/risk/conf 三项全优胜出, 冷却期恢复才被真正测到。
     const ids = [
       'dimension-health-audit', 'test-coverage-gap', 'doc-honest-numbers',
       'fp-recall-calibration', 'mcp-tool-enhancement',
       'adversarial-robustness', 'performance-optimization',
     ];
     const journals = [];
+    // 1) 每个切片各跑 8 轮(总量相同, 排除"累计次数"这个变量的影响)
     ids.forEach(id => {
-      for (let i = 0; i < N; i++) {
+      for (let i = 0; i < 8; i++) {
         journals.push(i === 0 && id === 'doc-honest-numbers'
           ? { status: 'done', chosen: id, exhausted: true }
           : { status: 'done', chosen: id });
       }
     });
+    // 2) 尾部 10 轮: doc-honest-numbers **一次都不出现**, 其余按上面说明分布
+    const tail = [
+      'test-coverage-gap', 'mcp-tool-enhancement', 'performance-optimization',
+      'dimension-health-audit', 'fp-recall-calibration', 'adversarial-robustness',
+      'dimension-health-audit', 'fp-recall-calibration', 'adversarial-robustness',
+      'test-coverage-gap',
+    ];
+    for (const id of tail) journals.push({ status: 'done', chosen: id });
     const tmp = mkRepo(journals);
     try {
       const r = run(tmp);
       assertEqual(r.chosen, 'doc-honest-numbers',
-        '冷却期满后 exhausted 切片必须回到候选空间并被选中(feasibility/risk/confidence 三项全优)');
+        '冷却期满后 exhausted 切片必须回到候选空间并被选中(近期 0 次 ⇒ consequence_value 最高, 且 feas/risk/conf 三项全优)');
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   });
 

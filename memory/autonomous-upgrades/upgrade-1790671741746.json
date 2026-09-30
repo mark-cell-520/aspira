@@ -1,0 +1,61 @@
+{
+  "ts": "2026-09-29T08:49:01.745Z",
+  "chosen": "dimension-health-audit",
+  "status": "done",
+  "outcome": "轮换修复在真实运行中首次生效: 引擎 9 个周期以来第一次离开 doc-honest-numbers, 改选 dimension-health-audit(0.75)。本切片随即实测出 perfect_error 是唯一一个能改动门禁动作却永远推不出 finding 的维度(信号 143 次 / finding 0 次), 已用专属推送块修好, 语料 FP/recall 与基线完全一致",
+  "angle": "先跑 scripts/dimension-health-audit.js(实测优先), 它报出 perfect_error 信号 143 次、finding 0 次, 标注\"触发但从不推 finding\"。这与周期10 的 clickbait 同一形态, 但后果更重。",
+  "measuredFirst": {
+    "rotationFixHeld": "引擎 chosen=dimension-health-audit, composite 0.75, 置信 0.6 —— 周期26 的近期窗口轮换在真实运行中成立, 不再是测试里的合成历史",
+    "instrumentOutput": "perfect_error 信号 143 / finding 0 ⚠; evidence 信号 7630 / finding 0 [仅打分, 设计如此]; reasoning_coherence 信号 70 / finding 1; 从未触发 0 个",
+    "registrationAudit": "perfect_error 在 dimMap 有键、在 dimensions{} 的 54 个运行时键里、在 VERIFY_DIMS 的 26 个里、GUIDANCE_MAP 里有专门文案、index.js 有专属门禁规则、pipeline.js:197 靠 `dimensions.perfect_error.count >= 2` 推 rewrite —— 唯独没有推送块(grep `dimension: 'perfect_error'` 为空)",
+    "baselineCorpus": "改动前: 良性 106 条 / 升级 1 条 / FP 0.9%; 恶意 41 条 / 拦截 41 条 / 召回 100.0%"
+  },
+  "defects": [
+    {
+      "id": "perfect-error-never-pushes-a-finding",
+      "severity": "high",
+      "what": "perfect_error 是唯一一个能改动 gate.action 却永远推不出 finding 的维度。",
+      "consequence": "调用方收到 `gate.action='rewrite'` 而 findings 里找不到 perfect_error ⇒ (a) `findings.some(f => VERIFY_DIMS.has(f.dimension))` 看不见它; (b) GUIDANCE_MAP 里那句\"补充可验证的来源和数据，对无法验证的断言降低确定性，避免精确数字和绝对断言伪装真实\"是**永远执行不到的死代码** —— 一句写好了却没有任何 finding 能领到的修改指引。",
+      "fix": "加专属推送块(与 unsupported_claim/pseudo_causal/soft_deflection 同一模式), 门槛用**该维度自己的分级** `pe.level !== 'pass'`(perfect-error.js:194-198: count>=3 或 4+含假精确→high; 伪权威+假精确→rewrite; count>=2→verify), 不用 allDims 那个为单一信号维度校准的 `score >= 0.15`。同时**不**把它放进 allDims —— 它是聚合信号, score 源自其他维度, 进逐维度惩罚循环等于把底层信号重复计分一次(与 unsupported_claim/pseudo_causal 跨度双算同类)。",
+      "verifiedBy": "scripts/dimension-health-audit.js: perfect_error 信号 143 → finding 11。语料: FP 0.9%(1 条) / recall 100%, 与基线逐项相同。"
+    }
+  ],
+  "processNotes": [
+    {
+      "what": "第一版修法把 FP 从 0.9% 推到 6.6%, 靠语料当场抓住。",
+      "detail": "最初直接把 `{score: pe.score, name:'perfect_error'}` 加进 allDims。finding 是推出来了, 但语料升级数 1 → 7: 6 条新误报全是\"有出处、带限定的精确数字陈述\"(论文指出…91.2%，但泛化性仍需验证 / 我们的 SLA 是 99.9% / 这段代码 code coverage 只有 60%), 触发路径是 `findings.length > 1`(perfect_error(20) 叠在 ai_writing_tell(35) 上)。**聚合维度的一次弱信号是噪声, 不是 finding。**"
+    },
+    {
+      "what": "第二版修法(移出 VERIFY_DIMS)被既有锁当场驳回, 而它是第三笔同样的学费。",
+      "detail": "曾据\"它有 512 行更严的专属门禁规则, 不该再躺在通用层级集合里\"把 perfect_error 移出 VERIFY_DIMS。test/dimension-tier-consistency.test.js 立刻红: AGENTS.md 的「Verify-level (26)」与代码不一致。而那份列表的计数是一套互相咬合的算术(9 block + 8 rewrite + 26 verify + 14 仅打分 = 57, 减去 pseudo_causal/soft_deflection/ai_writing_tell 三个非 dimensions{} 键 = 54), 动一个数就要改一套。**改变共享契约就继承旧契约的所有调用方** —— 周期22 的退出码、周期24 的 DRIFT 锚点, 这是第三次。想通之后发现移出本就是错的: 真正造成 FP 的从来不是 VERIFY_DIMS 成员资格, 是 finding 被过早推送。恢复成员资格后, level='pass' 时无 finding 可看、路径自然熄火; level='verify' 时升级恰是该维度自己的判定; level='rewrite'/'high' 时 512 行已先判 rewrite。"
+    },
+    {
+      "what": "`git checkout -- src/index.js` 退回到了上次提交, 把我的修复整个抹掉了。",
+      "detail": "做反向验证时先写坏门槛、跑测试、再 `git checkout -- src/index.js` 还原。反向验证本身完全成立(门槛改回 score>=0.15 时 ②③⑤ 三条同时翻红), 但 checkout 退到的是**上次提交**, 那里没有本轮任何修复 —— 新锁当场从 5/5 掉到 3/5。这正是 AGENTS.md 早记录过的: `git checkout -- <doc>` 不是清除探针污染的安全手段, 它退到陈旧提交, 不是 last-good 状态。已按 edit 记录逐字重放修复并复测 5/5。教训: 做突变验证的还原, 必须保留改动前的原文, 而不是依赖版本控制。"
+    },
+    {
+      "what": "新锁的源码级用例第一版恒红, 因为它把我自己写的注释当成了代码。",
+      "detail": "用例④ 用 `/perfect_error/.test(allDims 段)` 断言它不在 allDims 里 —— 而我在 allDims 里写的解释\"为什么它不进来\"的那段注释正含这个词。与周期25 `}));` 被当成锁闭合、周期19 注释剥离器删掉 44% 审计脚本同一家: **不看上下文的模式匹配会把注释里的图画当成代码。** 改为先剥行注释再匹配 `{score: pe.score, name: 'perfect_error'}` 条目本身。"
+    }
+  ],
+  "zeroRegression": {
+    "verify": "15/15",
+    "runAll": "1380 → 1385 通过 / 0 失败(新增 test/perfect-error-finding.test.js 5 个用例)",
+    "audit": "84/84 退出码 0, 连测 5 次 5 绿(同步测试数 1380→1385 之后, 共 6 处: README 2 / SKILL 1 / CURRENT_STATE 1 / AGENTS 2)",
+    "corpus": "良性 106 / 升级 1 / FP 0.9%; 恶意 41 / 拦截 41 / 召回 100.0% —— 与改动前逐项相同",
+    "srcChanged": true,
+    "mcpRestarted": false,
+    "mcpCheck": "未重启 —— 本轮改的是判别器的 finding 构造, 未新增/修改任何 MCP 工具定义或 handler, 工具清单与权限契约不变; 且 401 未认证状态下无法验证 tools/list。此项记录为**未执行**, 不是已执行",
+    "docsSynced": ["README.md", "SKILL.md", "CURRENT_STATE.md", "AGENTS.md(测试数 1380→1385)"],
+    "docNote": "SKILL.md 版本行尾部完整(agree 计数 1), 无 9.9.9 残留。"
+  },
+  "syncNote": "副本过期，无同步任务",
+  "gitNote": "未 git commit / push",
+  "exhausted": false,
+  "remainingGap": {
+    "what": "维度健康仪器仍把 evidence 报成\"触发但从不推 finding\"(7630/0), 而它是设计上的仅打分维度。",
+    "detail": "AGENTS.md 明确把 evidence 列在\"scored but do not force a gate action\"里, 而 index.js 的证据块是 `if (ev.score < 0.25)` 反向检测 —— 仪器按\"信号非零\"计数, 与\"finding 是否存在\"不是同一件事, 于是每条都像缺陷。这是**仪器报出自己的局限当引擎缺陷**的又一处(周期11 版本1/2 已栽过两次), 本轮未修: 它不产生错误行动, 只是每次污染这个列表。",
+    "alsoNoted": "新锁的样本是从 perfect-error.js 的分级反推的 5 个句子, 覆盖 level=pass 与 level=rewrite 两端, 没有覆盖 level='high'(count>=3)与 level='verify'(count>=2 且无高权重对)这两个中间档。"
+  },
+  "nextRecommendation": "(1) 轮换已连续两个周期成立(周期26 修好、周期27 首次真实生效), 但样本只有 1 次。下次仍应先看引擎选谁; 若又回到 doc-honest-numbers, 用 `--debug-candidates` 的 recentCount 核对 journal。(2) 把维度健康仪器的 evidence 假警报修掉 —— 让它区分\"设计上的仅打分维度\"与\"漏推 finding\", 否则这个列表每次都要人肉复核。(3) 老缺口仍未做: audit-self-pollution.test.js 的 HOOK 从不持锁的审计子进程写 SKILL.md(周期21 定位, 23/24/25/26/27 均未修, 让钩子持锁会死锁); 周期25 的 spawnsDocAudit() 只认一种惯用法; 周期26 的 RECENT_WINDOW=10 是手拍的。"
+}
