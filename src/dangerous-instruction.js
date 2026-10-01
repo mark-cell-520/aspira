@@ -230,6 +230,35 @@ const DANGEROUS_PATTERNS = [
   /(?:炸弹|爆炸物|爆炸装置|雷管|炸药|汽油弹|燃烧瓶|燃烧弹|烟雾弹|催泪弹|土炸药|毒气|神经毒剂|TNT|C4|硝化甘油|硝酸铵|冰毒|海洛因|可卡因|摇头丸|K粉|鸦片|吗啡|大麻|地雷|手雷|榴弹|子弹|bombs?|explosives?|methamphetamine|cocaine|heroin|napalm|ricin)\s*(?:的|之)?\s*(?:制作|制造|合成|配制|制备|生产|制作法|制造法|合成法|配方|making|mak\w+|synthes\w+|extract\w+|recipe|instructions?|steps?|manufactur\w+)\s*(?:的)?\s*(?:步骤|方法|配方|流程|教程|指南|guide|procedure|process|tutorial|recipe|instructions?|steps?)/i,
 ];
 
+// ⑧ [第一百三十七轮] 自杀/自残 —— 单独成表, 因为它是唯一需要
+// **求助框架豁免**的一类(见下方 SELF_HARM_HELP_FRAME)。
+const SELF_HARM_PATTERNS = [
+  // ⑧ [第一百三十七轮] 自杀/自残 —— 本文件此前只覆盖**操作类**危害
+  // (权限提升/凭据泄露/数据销毁/校验绕过) 与**制造类**危害(炸药/毒品)。
+  // 而第一百三十五轮量到: `kill me` / `i want to die` / `i want to kill
+  // myself` / `end my life` 在 54 个维度上与 `hello world` **完全同形**
+  // (只有 evidence=0.50 这个地板值, 见 test/content-layer-self-harm-gap.test.js)。
+  // 明文 'i want to die' 一路 pass —— 这不是混淆逃逸, 是内容层零覆盖。
+  //
+  // 判据刻意收窄到**结束生命的行为/请求**, 不收「情绪低落」「活得没意思」这类
+  // 表达: 后者是求助信号而不是危险指令, 误伤面极大且需要语义理解才能区分,
+  // 而这个引擎自称不是语义理解系统。**只判要求执行的那一类。**
+  //
+  // FP 面已量(第一百三十七轮): 脚本内 177 条字面量中 0 条误判(唯一命中的
+  // `kill me киll` 本身就是恶意样本); 5/5 攻击形态全中。形态学上它与第⑦条
+  // (危险物 + 索取词) 同族, 故放在同一张表里。
+  /\bkill\s+(?:me|myself|himself|herself|themselves|yourself)\b/i,
+  /\b(?:i|we|he|she|they|you)\s*(?:want|wanna|need|wish|going|about)\s+to\s+(?:die|end\s+(?:my|it|this|his|her|their)\s*(?:life|all)|kill\s+(?:myself|himself|herself|themselves|yourself)|hang\s+myself|not\s+be\s+(?:alive|here))/i,
+  /\b(?:how|ways?|best\s+way|method)\s+to\s+(?:kill|hang|end)\s+(?:myself|himself|herself|themselves|yourself)\b/i,
+  /\bend\s+(?:my|his|her|their)\s+life\b|\btake\s+my\s+own\s+life\b/i,
+  /\bsuicide\b|\bself[-\s]?harm\w*\b/i,
+  /(?:自杀|自残|轻生|想死|不想活|结束(?:自己|我)(?:的)?生命|怎么死|如何死)/,
+];
+// 第⑧条整体打上求助豁免标记 —— 求助/预防框架里出现这些词时**只有第⑧条静默**,
+// 第⑦条炸药缉查不受影响(那是另一类危害, 没有「问怎么救人」的歧义)。
+for (const p of SELF_HARM_PATTERNS) p.__helpExempt = true;
+
+
 const DI_LEVEL = 'critical';
 const DI_WEIGHT = 0.85;
 
@@ -296,7 +325,17 @@ function _matchAll(text) {
     return { count: 0, hits: [], score: 0, exempted: true };
   }
   const hits = [];
-  for (const pat of DANGEROUS_PATTERNS) {
+  // [第一百三十七轮] 求助/预防框架豁免 —— **只豁免第⑧条**。
+  // 落盘后第一次实测就见红: 'what is self-harm prevention hotline'
+  // 被判 block —— 那是一个在**问哪里能救命**的人。我在注释里写过
+  // 「不收情绪低落/求助」, 而 `self-harm` 这个词本身会出现在求助语境里。
+  // 词面判不出「求教怎么死」与「问怎么救」的区别, 但**框架词能**。
+  // 因而这一条不写成对整句豁免(那会让它越过第⑦条炸药缉查的边界),
+  // 只让第⑧条在求助/预防框架下静默。
+  const HELP_FRAME = /(?:prevent\w*|prevention|coping|cope|surviv\w*|recovery|support|helpline|hotline|crisis|safety\s+plan|intervention|talk\s+to|reach\s+out|warning\s+signs|教育|预防|求助|热线|心理(?:危机|援助|干预)|自杀死|干预)/i;
+  const isHelpFrame = HELP_FRAME.test(text);
+  for (const pat of DANGEROUS_PATTERNS.concat(SELF_HARM_PATTERNS)) {
+    if (isHelpFrame && pat.__helpExempt) continue;
     const m = _t.match(pat);
     if (m) hits.push({ type: 'dangerous_instruction', matched: m[0].slice(0, 40) });
   }

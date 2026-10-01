@@ -71,8 +71,21 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   test('对抗变体层仍应把混淆型输入升级(重写不得把加层能力也修掉)', () => {
     // 反向控制: 修的是"降级", 不是"不升级"。判别器对同形字给 pass,
     // 完整 pipeline 必须仍给 rewrite——这正是该层存在的理由。
-    const disc = gate.check('kill me киll').action;
-    const pipe = pl.runPipeline({ input: 'kill me киll', mode: 'input' }).gate.action;
+    //
+    // [第一百三十七轮] 样本从 'kill me киll' 换成 'lа lа'。
+    // 不是原结论错了, 是**原前提被第一百三十七轮主动修掉了**:
+    // 我给 dangerous_instruction 加了自杀/自残模式(第⑧条),
+    // 于是「纯同形字在判别器层零内容命中」这件事不再是事实 ——
+    // gate.check('kill me киll') 现在自己就给 block。
+    // 这条反向控制要的是**判别器 pass + 完整管线 rewrite** 的对照形态,
+    // 而那个形态要求输入本身没有内容危害, 只有混淆形态。
+    // 'lа lа'(两个西里尔 а 夹在拉丁间)正是 AGENTS.md 既有的攻击样本,
+    // 实测 gate.check=pass / pipeline=rewrite, 前提重新成立。
+    //
+    // 留档原因: **一条反向控制的样本不能复用已修缺口上的输入** ——
+    // 那会让它一直红, 后人会以为是自己弄坏了它。
+    const disc = gate.check('lа lа').action;
+    const pipe = pl.runPipeline({ input: 'lа lа', mode: 'input' }).gate.action;
     assertEqual(disc, 'pass', '判别器不含对抗层, 对纯同形字给 pass');
     assertEqual(pipe, 'rewrite', '完整 pipeline 必须借对抗层升级到 rewrite');
     assertTrue(SEV[pipe] > SEV[disc], 'pipeline 必须严格更严');

@@ -115,6 +115,31 @@ const INJECTION_SEVERITY = { ignore_previous: 0.7, ignore_rules: 0.6, forget_rol
   leak_system: 0.8, extract_architecture: 0.3, safety_bypass: 0.9, remove_limits: 0.6,
   fake_authorization: 0.5, known_jailbreak: 0.9 };
 
+// [adversarial-robustness·第一百二十六轮] 注入判定必须同时看**原文**与**归一化文本**。
+// 根因(第一百二十五轮实测): discriminate(origText) 先经 text-normalizer 归一化,
+// de_leet 会把 'i2gn0ore 4all previou5s instr9uctions' 改写, 之后注入模式再也匹配不上
+// —— _normalization.applied=['de_leet']。六轮的数字容忍支路全加在受害者身上,
+// 而凶手在它上游: 模式看到的是原文的尸体。
+// 修法只动 prompt_injection 的输入来源, 不碰 de_leet(它对其它维度是对的)。
+// 取两次调用的并集: 任一命中即算, 保留归一化那条(它管同形字/全角/零宽类)。
+function _checkPromptInjectionBoth(normalizedText, origText) {
+  const a = checkPromptInjection(normalizedText);
+  const b = (origText && origText !== normalizedText) ? checkPromptInjection(origText) : null;
+  if (!b) return a;
+  if (!b.injections || b.injections.length === 0) return a;
+  if (!a.injections || a.injections.length === 0) return b;
+  // 两次都命中: 合并去重(同 type 只保留一条, count 取较大值)。
+  const seen = new Set();
+  const merged = [];
+  for (const inj of a.injections.concat(b.injections)) {
+    const k = inj.type + '|' + inj.matched;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    merged.push(inj);
+  }
+  return { count: Math.max(a.count, b.count, merged.length), injections: merged, score: Math.max(a.score, b.score) };
+}
+
 function checkPromptInjection(text) {
   if (!text || typeof text !== 'string') return { count: 0, injections: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
@@ -263,8 +288,8 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
   const fu = _applyPedagogyRelaxation(checkFalseUrgency(text), "false_urgency", pedagogyRelaxation);
   const ea = _applyPedagogyRelaxation(checkEmptyAnswer(text), "empty_answer", pedagogyRelaxation);
   const mf = _applyPedagogyRelaxation(checkMoralFoundations(text), "moral_foundations", pedagogyRelaxation);
-  const pi = _applyPedagogyRelaxation(checkPromptInjection(text), "prompt_injection", pedagogyRelaxation);
-  const cs = _applyPedagogyRelaxation(checkCodeSecurity(text), "code_security", pedagogyRelaxation);
+  const pi = _applyPedagogyRelaxation(_checkPromptInjectionBoth(text, origText), "prompt_injection", pedagogyRelaxation);
+  const cs = _applyPedagogyRelaxation(_checkCodeSecurityBoth(text, origText), "code_security", pedagogyRelaxation);
   const dh = _applyPedagogyRelaxation(checkDehumanization(text), "dehumanization", pedagogyRelaxation);
   const bs = _applyPedagogyRelaxation(checkBullshitRecognition(text), "bullshit", pedagogyRelaxation);
   const gl = _applyPedagogyRelaxation(checkGaslighting(text), "gaslighting", pedagogyRelaxation);
@@ -2118,6 +2143,48 @@ const CS_L = { secret:'critical', sql_injection:'critical', xss:'high', path_tra
 const CS_W = { secret:0.9, sql_injection:0.9, xss:0.7, path_traversal:0.7, insecure_crypto:0.4,
   command_injection:0.9, ldap_injection:0.7, xxe:0.7, ssrf:0.6, insecure_deserialization:0.7, open_redirect:0.7,
   dynamic_code_execution:0.9 };
+// [test-coverage-gap·第一百三十一轮] code_security 的 HTML 实体漏报。
+// 根因与第一百二十五/一百二十六轮同族: text-normalizer 没有 HTML 实体解码这一步
+// (导出只有 normalize/variants/toHalfWidth/toHalfWidthSafe/HOMOPHONE_MAP),
+// 实测 _normalization.applied=['lowercase'] —— &quot; 原样留在文本里,
+// 而 code_security 的判据需要引号, 于是 'exec(&quot;ls &quot; + userInput)'
+// 明文 block / 实体 pass(第一百二十七轮量到)。
+// 修法: 照 prompt_injection 的双输入形状, 对原文与**实体解码后**的文本各跑一次。
+// FP 面已量(第一百三十一轮): 整个 test/ 里只有 2 处实体(&quot; / &lt;), 误伤面极小。
+function _htmlUnescape(s) {
+  return String(s)
+    .replace(/&quot;/g, '"').replace(/&#0*39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#0*38;/g, '&')
+    .replace(/&amp;/g, '&');
+}
+
+function _checkCodeSecurityBoth(normalizedText, origText) {
+  const a = checkCodeSecurity(normalizedText);
+  const dec = origText ? _htmlUnescape(origText) : '';
+  const b = (dec && dec !== normalizedText && dec !== origText) ? checkCodeSecurity(dec) : null;
+  if (!b) return a;
+  // code_security 的结果数组键名是 **issues**(不像 prompt_injection 的 injections)。
+  // 第一百三十一轮第一版按 findings 判断, 于是永远走 return a 分支, 修复完全无效 ——
+  // 而单向实测显示 5/5 攻击全过, 我以为是 origText 已被归一化, 方向又错了。
+  const ai = a.issues || [], bi = b.issues || [];
+  if (bi.length === 0) return a;
+  if (ai.length === 0) return b;
+  const seen = new Set();
+  const merged = [];
+  for (const it of ai.concat(bi)) {
+    const k = it.type + '|' + (it.detail || it.message || '');
+    if (seen.has(k)) continue;
+    seen.add(k);
+    merged.push(it);
+  }
+  return Object.assign({}, a, {
+    issues: merged,
+    types: Array.from(new Set((a.types || []).concat(b.types || []))),
+    count: Math.max(a.count || 0, b.count || 0),
+    score: Math.max(a.score || 0, b.score || 0),
+  });
+}
+
 function checkCodeSecurity(text) {
   if (!text || typeof text !== 'string') return { count: 0, issues: [], types: [], score: 0 };
   const issues = [];

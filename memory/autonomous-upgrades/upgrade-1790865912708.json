@@ -1,0 +1,100 @@
+{
+  "ts": "2026-10-01T14:45:12.708Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 333,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-02T05:20:00Z",
+  "objective": "对抗鲁棒性: 执行第一百三十六轮的 top handoff —— 给 dangerous_instruction 补自杀/自残内容层",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "src/dangerous-instruction.js",
+      "what": "新增 SELF_HARM_PATTERNS(第⑧条, 6 个模式: kill me/myself 族、want to die/kill myself/end my life 族、how to kill myself 族、end/take my life、suicide/self-harm、中文自杀自残轻生想死); 新增 HELP_FRAME 求助/预防豁免, **只豁免第⑧条**; 主循环改为 `DANGEROUS_PATTERNS.concat(SELF_HARM_PATTERNS)`。"
+    },
+    {
+      "file": "test/content-layer-self-harm-gap.test.js",
+      "what": "从「钉现状」改写成「双向锁定」+ 新增求助框架豁免锁 + 新增人身攻击类未决策锁(5 个用例)。"
+    },
+    {
+      "file": "test/pipeline-severity-monotonic.test.js",
+      "what": "反向控制样本从 'kill me киll' 换成 'lа lа'(AGENTS.md 既有攻击样本)。"
+    }
+  ],
+  "measured": {
+    "selfHarm": "**6/6 全部 block**(kill me / i want to die / i want to kill myself / how to kill myself / end my life / kill me киll)—— 此前全部 pass 且与 'hello world' 同形。",
+    "falsePositives": "0/6 良性误判。**但第一版是 1/6 误判**, 见下。",
+    "corpus": "FP **0.0%**(106 良性 0 升级), 明文召回 **100.0%**(41/41) —— 与改动前逐项一致。"
+  },
+  "theFalsePositiveICaughtOnMyOwnFirstDrop": {
+    "v1": "第一版把 6 个模式直接加进 DANGEROUS_PATTERNS, 单向实测就见红: 'what is self-harm prevention hotline' 被判 **block**。",
+    "whyItMattersMoreThanANormalFP": "**那是一个在问「哪里能救命」的句子。判它 block 的引擎比漏报更糟** —— 我注释里刚写完「不收求助」, 一轮后自己就犯了。",
+    "theFix": "新增 HELP_FRAME(prevent/prevention/coping/survivor/recovery/support/helpline/hotline/crisis/intervention/预防/求助/热线/心理危机…), 且**只豁免第⑧条**。",
+    "whyNotAWiderExemption": "**它绝不能写成对整句豁免** —— 那会让第⑦条炸药缉查也一起失效。第⑦条没有「问怎么救人」的歧义, 所以不需要也不该共享这个豁免。"
+  },
+  "theReverseControlIHadToUpdateAndWhy": {
+    "what": "run-all 首跑 2 失败。第二条是 pipeline-severity-monotonic 的『对抗变体层仍应把混淆型输入升级』, 它的样本正是 'kill me киll', 前提是 `gate.check('kill me киll') === 'pass'`。",
+    "whyItWentRed": "**它的前提被我本轮主动修掉了。** 这条锁想表达的「判别器 pass + 完整管线 rewrite」的对照形态现在需要另一个输入。",
+    "theFix": "换成 AGENTS.md 既有的攻击样本 'lа lа'(两个西里尔 а), 实测 gate.check=pass / pipeline=rewrite, 前提重新成立。",
+    "theLesson": "**一条反向控制的样本不能复用已修缺口上的输入** —— 那会让它永远红, 后人会以为是自己弄坏了它。而它与第一百三十一轮的 KNOWN_MISSES 同为这批灯里唯一的红灯, 两次都是正确报「你修好了我钉的东西」。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1508 passed / 0 failed / 1508 total**",
+    "corpus": "FP **0.0%** (106 良性 0 升级); 明文召回 **100.0%** (41/41)",
+    "mcpRestart": "**已重启并核对: 181 个 aspira_* 工具在线**(本轮改了 src/ 引擎代码)"
+  },
+  "lessonRecorded": [
+    "**我在给一个缺口写注释说『不收求助』的同一轮, 就因为让它收求助而见红。** 而救回它的是**第一次实测就红**, 不是我事先想全。**落盘后立刻跑一次混合实测, 比把注释写得更严谨有用。**",
+    "**我要拆两类, 就必须拆得连测试也拆开。** 第一版把 'i hate you' 和 'i want to die' 锁在同一条断言里, 结果只修了自杀类之后它就一直红。**一条永远红的锁等于没有锁, 而它会训练人忽略红灯。**",
+    "**修一个内容缺口, 要去问'还有谁的样本长在这个缺口上'。** 我只想到改自己的新锁, 是 run-all 提醒我 pipeline-severity-monotonic 也踩在上面。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **第一优先仍是文档同步欠账**(run-all 1506 → 1508, 现文档仍写 1506)。② **直接人身攻击类('i hate you' / 'you are an idiot')仍是显式未决策缺口**, 已在测试里钉住; 修它前必须补上良性反向控制(吵架/抱怨场景), 否则会误伤大量正常表达。③ error-memory 四工具的空洞仍在。④ 未覆盖模块 354, 已覆盖 1。⑤ 基线: verify 15/15, run-all 1508/0, audit **exit 0 but 文档声称仍是 1506, 未同步**、FP 0.0%, 明文召回 100%, 逃逸召回 38/41 + 41/41 + 41/41, MCP 181 工具(本轮已重启核对)。"
+}

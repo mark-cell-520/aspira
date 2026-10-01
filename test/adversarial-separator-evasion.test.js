@@ -177,7 +177,7 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     // 实测基线(本轮改动后): 前五类 6/6，html-entity 4/6(已知未修)
     const expected = {
       'zero-width': 6, 'fullwidth': 6, 'space-compress': 6,
-      'homoglyph': 6, 'unicode-escape': 6, 'html-entity': 4,
+      'homoglyph': 6, 'unicode-escape': 6, 'html-entity': 6,
     };
     for (const [name, fn] of Object.entries(T)) {
       const caught = BASE.filter(t => blocked(fn(t))).length;

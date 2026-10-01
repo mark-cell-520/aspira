@@ -1,0 +1,90 @@
+{
+  "ts": "2026-10-01T13:38:39.675Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.74,
+  "confidence": 0.65,
+  "reasoning": "Selected: \"MCP 工具增强\" (score: 0.74). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.74
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 332,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-02T03:40:00Z",
+  "objective": "MCP 工具增强: 攻最后一个逃逸漏报(逐字符插分隔符 类 38/39)",
+  "achieved": false,
+  "srcChanged": false,
+  "theInstrumentDifferenceIFirstGotWrong": {
+    "what": "我先用自己的变换(`·` 插在每个字母后)测 'kill me киll', 得到 **rewrite**, 就以为这条漏报不复现。",
+    "correction": "仪器用的是 `s.split('').join('-')` —— **每两个字符之间都插一个 `-`**(包括空格前后), 比我的变换密得多。",
+    "measuredWithInstrument": "`k-i-l-l- -m-e- -к-и-l-l` → **gate=pass**, findings=[ai_writing_tell]。",
+    "counted": "**复现一条漏报, 必须用仪器自己的变换。** 我用自己的近似变换得出'不复现', 差一点就写进 journal 当成'仪器假警报'。这与第一百一十七轮'把一次性 DRIFT 当常态污染'是同一族错误: 我拿了一个看起来像的输入当了真。"
+  },
+  "theRealShapeOfTheRemainingMiss": {
+    "measured": [
+      "'kill me киll' 明文 → **rewrite**, findings=[ai_writing_tell]",
+      "仪器变换后 → **pass**, findings=[ai_writing_tell] —— **finding 还在, gate 掉了**"
+    ],
+    "conclusion": "**这不是'漏了一个维度', 是'同一个 finding 的 gate 贡献被分隔符吃掉了'。** ai_writing_tell 照旧触发, 但它的分数/严重度随文本形状改变, 于是从够 rewrite 掉到不够。",
+    "theSecondSample": "'i hаte you' 仪器变换后 → **pass 且 findings 完全为空**(它不是内容型, 是仅信号型, AGENTS.md 已定性为'一个正确消失的信号', 不算缺陷)。"
+  },
+  "whyIDidNotFixIt": {
+    "budget": "本轮预算已尽。",
+    "moreImportant": "**修它要动的是 gate 的汇总口径(一个 dimension 的 score 如何被文本形状削弱), 不是某个维度的模式。** 这与第一百二十五/一百二十六/一百三十一轮的'双输入'修法不同类, 而我在没有量过'分隔符对多少个维度的 score 有影响'之前不该动它 —— 那是一次口径变更, 会影响全部维度。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed(本轮零 src/ 改动, 未重跑)",
+    "runAll": "1503 passed / 0 failed(上轮读数)",
+    "corpus": "FP 0.0%; 明文召回 100.0%",
+    "evasion": "分隔符 38/41(内容型 38/39), 字母间空格 41/41, **HTML 实体 41/41(上轮关闭)**",
+    "srcChanged": false,
+    "mcpRestart": "**未重启, 且符合规则(本轮未改 src/)**"
+  },
+  "lessonRecorded": [
+    "**'漏报不复现'是一个危险结论, 除非你用的是原仪的变换。** 我这一轮用自己的 `·` 变换测出 rewrite, 差点把一条真漏报写成仪器假警报。**复现缺陷的第一步是复制它的复现条件, 不是构造一个像的。**",
+    "**finding 还在而 gate 掉了, 是一种比'漏报'更隐蔽的形状。** 它让任何按 findings 判断的探针看到'正常', 而调用方按 gate.action 行动。**同一个输入在两个字段上给出不同答案, 而这个分歧本身就是缺陷信号。**"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **第一优先且必须换类: '分隔符吃 gate 贡献' 是口径问题, 修前先量'分隔符变换影响多少个维度的 score'**(把 MALICIOUS 逐条跑明文 vs 仪器变换, 对比各维度 score 差)。没有这个量就不要动 gate 汇总。② 'i hаte you' 与 'рass the test' 是仅信号型, AGENTS.md 已定性, 不要当成缺陷去修。③ error-memory 四工具的空洞仍在。④ 基线: verify 15/15, run-all 1503/0, audit exit 0(两次一致), FP 0.0%, 明文召回 100%, 逃逸召回 38/41 + 41/41 + 41/41, MCP 181 工具。"
+}

@@ -1,0 +1,98 @@
+{
+  "ts": "2026-10-01T12:22:47.134Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 332,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-02T01:30:00Z",
+  "objective": "对抗鲁棒性: 按第一百二十五轮的定位修根因 —— 让注入判定同时看原文与归一化文本",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "src/index.js",
+      "what": "新增 _checkPromptInjectionBoth(normalizedText, origText): 对原文与归一化文本各跑一次注入判定, 任一命中即算, 两次都命中则合并去重。discriminate 里 prompt_injection 那一行改用这个双输入版本。"
+    },
+    {
+      "file": "test/evasion-known-gaps.test.js",
+      "what": "KNOWN_MISSES 收窄为空数组、EXPECTED_COUNT=0; 全子类合并成一条防回归锁, 混合态样本入列。"
+    }
+  ],
+  "measured": {
+    "recall": "5 个攻击形态 **5/5 全部被拦**(此前 4/5, 混合态是唯一漏网的那条)。",
+    "falsePositives": "16 条良性反向控制 **0 误判**(这批数据正是第一百二十四轮量下的 FP 基线, 改动前后只跑一次即可对比)。",
+    "corpus": "FP **0.0%**(106 良性 0 升级), 明文召回 **100.0%**(41/41)。"
+  },
+  "whyThisFixIsNarrowAndNotADeLeetChange": {
+    "what": "只动 prompt_injection 这一处的**输入来源**, 不碰 de_leet。",
+    "why": "de_leet 对其它维度是对的 —— 它把同形字/全角/零宽还原成语义形态。**问题不是它存在, 是注入判定只拿它的产物当真身。** 所以让它同时看原文, 两个输入任一命中即算: 归一化那条继续管同形字类, 原文那条管数字混淆类。",
+    "mergedCorrectly": "两次都命中时合并去重(同 type+matched 只留一条), count 取较大值 —— 不制造重复 finding, 那正是 AGENTS.md 记过的 span 双重计数家族。"
+  },
+  "theSevenCycleArc": {
+    "theArc": "第一百一十九(加插入容忍) → 一百二十二(加替换容忍) → 一百二十四(补 u 位) → **一百二十五(定位: _normalization.applied=['de_leet'])** → 一百二十六(双输入)。",
+    "theLessonInOneLine": "**前四轮都在加宽下游的网, 第五轮才问'被判定的对象是什么'。** 而第五轮只需要一次测量 —— 打印 discriminate 返回值的 _normalization 键。",
+    "theAGENTSMDWarningIKeptReading": "AGENTS.md 第 102 轮的注释写着 'de_leet 与 INJECTION_PATTERNS 不应同层叠加判负'。这句话我六轮里读了不止一次, 却一直在改下游。**它是写在那里的答案, 而我把'读过'当成了'做过'。**"
+  },
+  "processNote": {
+    "what": "**第一次跑 run-all 是 3 失败, 其中一条是 KNOWN_MISSES 的混合态断言 —— 那是锁在正确地报'你修好了我钉住的东西'。** 随即更新该断言(全子类合并成一条防回归锁)。",
+    "theOtherTwo": "另外两条(audit-domains-blindspot 等 doc-probe 族)在重跑时消失, 与第一百一十六轮定位的 corpus-size-measured flake 同族。**两次连跑 1503/0 之后才认定绿**, 没有靠单次读数下结论。",
+    "counted": "修好一个被钉住的缺陷, 缺口锁会红一次 —— 这不是回归, 是它在要求我把'修好了哪一半'写成断言。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1503 passed / 0 failed, 连续两次一致**",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "**已重启并核对: 181 个 aspira_* 工具在线**(本轮改了 src/ 引擎代码)"
+  },
+  "lessonRecorded": [
+    "**'读过'不等于'做过'。** AGENTS.md 里那句'de_leet 与 INJECTION_PATTERNS 不应同层叠加判负'我读了六轮, 却一直在改下游。**文献答案要变成动手的前提, 得在动手之前问一句: 这个已知的坑, 会不会正是我现在这个症状?**",
+    "**修好被钉住的缺陷时, 缺口锁红一次是必须的代价。** 我这一轮第一步就是更新 KNOWN_MISSES 断言而不是绕过它 —— 缺口清单的意义就在于它该红。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **缺口①(数字插空族)至此全部关闭: 插入✓ 替换✓ 混合✓。** 下一轮可以从'对抗鲁棒性'转去别的攻击面(HTML 实体仍有 94.9%, 分隔符类 89.7% —— AGENTS.md 记过这两条)。② error-memory 四工具的空洞仍在(模块不存在), 修前先答设计问题。③ 未覆盖模块 354 个, 已覆盖 1 个(failure-importer)。④ 基线: verify 15/15, run-all 1503/0, audit 86/86 exit 0, FP 0.0%(16 条反向控制), 明文召回 100%, MCP 181 工具。"
+}

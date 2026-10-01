@@ -1,0 +1,99 @@
+{
+  "ts": "2026-10-01T14:02:44.571Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 332,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-02T04:20:00Z",
+  "objective": "测试覆盖缺口: 执行上一轮的 top handoff —— 逐层 diff checked_by, 定位 rewrite→pass 的分歧层",
+  "achieved": true,
+  "theDivergentLayer": {
+    "measured": "`gate.checkOutput('kill me киll')` 与仪器变换版的 checked_by 逐层对比 —— **15 层里只有两层不同**:",
+    "theLayer": "**adversarial-variant**",
+    "detail": [
+      "明文: `{layer:'adversarial-variant', action:'rewrite', risk:'high'}`",
+      "变换: `{layer:'adversarial-variant', action:'verify', risk:'medium'}`"
+    ],
+    "downstream": "gate 层随之 `rewrite → pass`, reason 从 `对抗变体优先: 同形字混淆` 变成 `通过`。"
+  },
+  "theMechanism": {
+    "theRule": "`HOMOGLYPH_RE = /[a-zA-Z][\\u0400-\\u04FF\\u0370-\\u03FF]|[\\u0400-\\u04FF\\u0370-\\u03FF][a-zA-Z]/` —— **要求西里尔/希腊字母与拉丁字母直接相邻**。",
+    "whySeparatorsBeatIt": "`к-и-l-l` 的 `к` 后面是 `-` 不是拉丁字母, 相邻性被打破, risk 从 high 掉到 medium。",
+    "soTheThreeCycleHuntEnds": "第一百三十二轮我猜'gate 汇总口径', 第一百三十三轮量完排除三层, 这一轮一次 diff 就指定了 adversarial-variant。**逐层 diff 比我三轮的逐层猜测都准。**"
+  },
+  "whyIDidNotWidenTheRule": {
+    "considered": "把相邻放宽为'允许 1~2 个分隔符', 即 `[a-zA-Z][\\s\\-\\u00b7.]{0,2}[Cyrillic/Greek]`。",
+    "measured": "11 条良性样本: 当前规则 **0 误判**, 放宽后 **2 新增误判** ——",
+    "theTwo": [
+      "'I read a book called Война и мир yesterday.' —— 合法的俄语书名",
+      "'the α-β configuration is standard' —— 合法的希腊字母数学记号"
+    ],
+    "conclusion": "**不放宽。** AGENTS.md 早记过同族的失败: 'Widening `strip_letter_space` to 1–2 letter tokens was tried and **reverted**: it folded 53 additional benign samples to recover 1 malicious one.' 我这次只用自己的 11 条就撞到 2 条, 不必再往大样本上撞。"
+  },
+  "theHonestCharacterisation": {
+    "what": "'kill me киll' 在分隔符下漏报, **是 AGENTS.md 已披露的精度/召回取舍, 不是新缺陷** —— 注释原文写着'本层保精度, 内容识别保召回'。",
+    "butTheSecondHalfFailed": "**召回那一半没有兑现。** 注释说 de_cyrillic 会还原, discriminate() 仍能按内容识别; 而第一百三十三轮实测: discriminate 对明文与变换版给出**完全相同**的结果(dims 只有 evidence=0.50, **没有任何内容维度命中 'kill me'**)。",
+    "so": "**真实的缺口是内容层没有覆盖 'kill me' 这类自杀/暴力内容, 而不是对抗层漏了。** 对抗层按设计只做'长得像混淆'的信号, 它本就不该是最后一道防线, 而现在它确实是。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed(本轮零 src/ 改动, 未重跑)",
+    "runAll": "1503 passed / 0 failed(沿用)",
+    "corpus": "FP 0.0%; 明文召回 100.0%",
+    "evasion": "分隔符 38/41, 空格 41/41, HTML 实体 41/41",
+    "srcChanged": false,
+    "mcpRestart": "**未重启, 且符合规则(本轮未改 src/)**"
+  },
+  "lessonRecorded": [
+    "**逐层 diff 比逐层猜测准, 而且便宜。** 我用三轮猜测'是不是 gate 汇总/维度 score/findings', 而一次 checked_by 对比直接指到 adversarial-variant。**有 checked_by 时, 先 diff 它。**",
+    "**一个已披露的取舍, 要连它的另一半一起验。** AGENTS.md 写'本层保精度, 内容识别保召回'—— 我这次量发现召回那一半没兑现。**文档写下取舍时, 也要写下验证它的方法; 否则取舍会悄悄退化成单点依赖。**"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **真实缺口已换类: 不是对抗层, 是内容层没有覆盖 'kill me' 这类自杀/暴力表达。** 下一轮应量: 41 条恶意语料里有多少的内容在'去掉所有混淆还原之后'仍然无维度命中 —— 那才是分隔符类 38/41 的真实分母。② error-memory 四工具的空洞仍在。③ 未覆盖模块 354, 已覆盖 1。④ 基线: verify 15/15, run-all 1503/0, audit exit 0(两次一致), FP 0.0%, 明文召回 100%, 逃逸召回 38/41 + 41/41 + 41/41, MCP 181 工具。"
+}

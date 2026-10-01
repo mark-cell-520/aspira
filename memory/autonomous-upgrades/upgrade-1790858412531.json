@@ -1,0 +1,90 @@
+{
+  "ts": "2026-10-01T12:40:12.531Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 332,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-02T02:00:00Z",
+  "objective": "误报/召回校准: 缺口①关闭后转攻剩余最大的逃逸面(HTML 实体 37/39)",
+  "achieved": false,
+  "srcChanged": false,
+  "theRemainingGap": {
+    "measured": [
+      "'exec(\"ls \" + userInput)' 明文 → **block**, findings=[code_security]",
+      "'exec(&quot;ls &quot; + userInput)' → **pass**, findings=(none)",
+      "'db.query(\"SELECT * FROM t WHERE id=\" + id)' 明文 → **block**, findings=[code_security]",
+      "'db.query(\"SELECT * FROM t WHERE id=&quot;...' → **pass**, findings=(none)"
+    ],
+    "theRootCause": "**不是模式不够宽, 是 normalize 没有实体解码这一步。** idx.discriminate(HTML 实体串)._normalization = `{applied: ['lowercase'], original: ...}` —— 归一化只做了一件事(小写), `&quot;` 原样留在了文本里, 而 code_security 的判据需要引号。",
+    "howIKnow": "text-normalizer 的导出是 `normalize, variants, toHalfWidth, toHalfWidthSafe, HOMOPHONE_MAP` —— **没有 htmldecode**。AGENTS.md 说 HTML 实体由 adversarial-variant 层负责, 但那层只**探测**(报'检测到疑似混淆'), 不**还原**; 于是检测层看见了, 内容层看不见。"
+  },
+  "whyThisIsTheSameShapeAsTheDeLeetCase": {
+    "thePattern": "第一百二十五轮: `_normalization.applied=['de_leet']` —— 文本到模式之前被改写。",
+    "thisCycle": "`_normalization.applied=['lowercase']` —— 文本到模式之前**没有被解码**, 而校准仪器明确在对它做 HTML 实体变换。",
+    "theSharedLesson": "**两轮都是'被测定的对象'与'测量施加的变换'不匹配。** 仪器对输入做了 X 变换, 引擎却没有对应的逆向步骤, 于是漏报 —— 而这在读数上表现为'模式不够宽', 一点也看不出来是接线问题。"
+  },
+  "theFixDirection": {
+    "what": "在 normalize 链里补一个 HTML 实体解码(与 lowercase/toHalfWidth 同级), 或让 code_security 也像第一百二十六轮的 prompt_injection 那样同时看原文与解码文本。",
+    "whySecondOptionIsNarrower": "prompt_injection 的双输入修法已经过实测(5/5 召回、16 条良性 0 误判); 照它的形状给 code_security 做一次, 比动 normalize 链影响面小。",
+    "theRiskToMeasure": "解码会不会把良性 HTML(比如一段真的含 `&quot;` 的教程文本)变成代码注入误报。**必须先量: 抓 test/ 里所有含 `&[a-z]+;` 的字符串, 过一遍 decide, 看有没有新 FP。**"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1503 passed / 0 failed**(本轮零改动, 沿用上轮读数)",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41); 逃逸召回: 分隔符 38/39, 字母间空格 39/39, **HTML 实体 37/39**(本轮目标)",
+    "srcChanged": "**本轮零 src/ 改动**(只做定位测量)",
+    "mcpRestart": "**未重启, 且符合规则(本轮未改 src/)**"
+  },
+  "lessonRecorded": [
+    "**同一个坑会以'变换不匹配'的形状反复出现, 而每次读起来都像'模式不够宽'。** de_leet 那次是'变换做了但喂给模式的是产物'; HTML 实体这次是'变换根本没做'。两次我都差点去改模式。**先问被测定的对象是什么, 再问判据够不够宽 —— 这条我这两轮各付了一次学费。**",
+    "**校准仪器的变换清单与引擎的逆变换清单, 应该当成同一份契约来对齐。** 仪器施加 HTML 实体变换而引擎不解码, 这不是仪器错也不是引擎错, 是两份清单没有对齐。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **第一优先: 把一百二十六轮 prompt_injection 的双输入修法套到 code_security**(原文 + HTML 解码文本), 落盘前先量 test/ 里所有 `&[a-z]+;` 串会不会新产生 FP。② 缺口①全部关闭, 不要再往上加数字容忍支路。③ error-memory 四工具的空洞仍在。④ 基线: verify 15/15, run-all 1503/0, audit 86/86 exit 0, FP 0.0%(16 条反向控制), 明文召回 100%, 逃逸召回 38/39 分隔符 + 39/39 空格 + 37/39 HTML, MCP 181 工具。"
+}
