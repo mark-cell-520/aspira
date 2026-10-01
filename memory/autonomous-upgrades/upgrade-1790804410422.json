@@ -1,0 +1,96 @@
+{
+  "ts": "2026-09-30T21:40:10.422Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-09-30T21:47:16.995069+00:00",
+  "changes": [
+    {
+      "file": "README.md",
+      "what": "两处测试数: 1401 → 1434 tests · 1417 passing / 17 failing, 并附测量日期、已知失败族说明、以及\"数字会腐烂以命令输出为准\"的告示。"
+    },
+    {
+      "file": "SKILL.md",
+      "what": "同左(表格行), 1401 passing / 0 failing → 1417 passing / 17 failing + 同样的告示。"
+    },
+    {
+      "file": "CURRENT_STATE.md",
+      "what": "1401 tests passed / 0 failed → 1417 tests passed / 17 failed, 并注明方差来源。"
+    }
+  ],
+  "whatWasWrong": "三份文档都声称 1401 passing / 0 failing, 而实测是 1434 条(且**并非 0 failing**)。\"0 failing\"这一半是明确的假话。",
+  "theNumberProblem": {
+    "issue": "测试数不是单值。同一份代码, 两种跑法给出两个都对但不同的答案:",
+    "directRun": "node test/run-all.js  → 1424-1425 passing / 9-10 failing (总 1434)",
+    "auditNestedRun": "审计内嵌的那份 run-all → 1417 passing / 17 failing",
+    "cause": "审计族测试的非确定性抖动(period60 用五次测量证明过: 同一基线状态一绿一红)。",
+    "resolution": "文档不挑好看的数字, 而是①采用**审计自己的测量值**(它是校验权威, 否则文档永远与审计不一致), ②把方差和成因写进文档本身, 让读者知道这个数会变。"
+  },
+  "auditVisibilityTrap": {
+    "what": "第一版改写把 CURRENT_STATE.md 从审计覆盖里整个弄丢了, 而审计照样 exit 0、0 不一致——一份不再被审的文档看起来是\"合规\"的。",
+    "mechanism": "scripts/audit-doc-numbers.js:758 的正则是 /(\\d[\\d,]*)\\s+tests?\\s+passed/g, 要求 \"N tests passed\" **紧邻**。我写成 \"1434 tests (1425 passed / 9 failed)\", 括号打断了紧邻, 该文档整份不再产生 tests 类声称。",
+    "howICaughtIt": "对比两轮审计的\"涉及文件\"清单: k60 有 CURRENT_STATE.md, 改后没有。",
+    "lesson": "改文档可能改变**审计能看见什么**, 而不只是改变被看见的值。所以改完必须复核覆盖面(文件数/条数), 不能只看 exit code——\"0 不一致\"在两份文档不再被审时同样成立。"
+  },
+  "gate": {
+    "auditBefore": "86 claims | 81 consistent | 0 inconsistent | 5 unmeasurable",
+    "auditAfter": "84 claims | 84 consistent | 0 inconsistent | 0 unmeasurable | exit 0",
+    "auditImprovement": "不可实测从 5 降到 0——原口径下这 5 条是审计的盲区, 现在全部可审且一致。条数 86→84 是因为改写合并了同一份文档里的重复声称。",
+    "runAll": "未在本轮作为门禁依据(见 theNumberProblem): 两轮直测量得 1424/10 与 1421/11, 审计内嵌量得 1417/17。",
+    "codeChanged": "零。只改文档, 故跳过 MCP 重启。"
+  },
+  "lessonRecorded": [
+    "把文档改成审计能解析的形态, 本轮一连抓到三处真不一致(1434/1417 和两处 9/17)。在此之前这些文档\"0 不一致\"——不是没错, 是**没被审**。可见度比正确性更优先: 先让它被看见, 再让它对。",
+    "遇到一个会变动的数字, 不要挑一个好看的值写进去。本轮同时写下直接跑的数和审计内嵌的数, 并说明成因——这样下一个人看到差异时知道该信命令而不是信文档。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① run-all 门禁不可判定是当前最大债务: 它让\"零回归\"失去意义。建议先修审计族测试的抖动(它们 spawn 自己的 run-all, 与 doc-probe 锁相争), 再谈其他。② import 合同族那 9-10 条失败是稳定的真失败, 值得单独立项修——它是本仓库目前唯一一批**确定**的红灯。③ 文档侧还剩: \"N-layer pipeline\" 的两个口径问题(审计自己标了⚠), 需在文档里说明是静态层名数而非每次运行的层数。"
+}

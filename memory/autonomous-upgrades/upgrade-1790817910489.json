@@ -1,0 +1,88 @@
+{
+  "ts": "2026-10-01T01:25:10.488Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.71,
+  "confidence": 0.6,
+  "reasoning": "Selected: \"维度健康审计与增强\" (score: 0.71). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T01:25:00Z",
+  "changes": [
+    {
+      "file": "scripts/dimension-health-audit.js",
+      "what": "① 新增『仪器视野自检』: 把整池输入的 dimensions 键并进来, 反过来问 DIM_CHECKERS 的哪一维在全池里一次都没出现过键名, 以及引擎是否返回了未登记的键名。② tally 基线从单条探针的 probeKeys 改为全池并集, 逐维度表随之覆盖全部维度, 三个下游循环(uncovered / 逐维度 / never-scoredOnly-ok / engineScoreOnly)一并切换到并集。"
+    }
+  ],
+  "theDefect": {
+    "what": "审计的可见性小于它宣称的覆盖范围。",
+    "mechanism": "tally 的键只来自单条探针句 idx.discriminate('你说得完全对，太厉害了。')——那句话只激得起约 8 个维度。于是剩下 46 维从头到尾不被 tally、不出现在逐维度报告里, 哪怕 DIM_CHECKERS 手写登记了 54 维。",
+    "consequence": "『宣称覆盖 54 维, 报表只打 8 行』。不是没测, 是看不见——报表里看不见的维度被默认当成都测过了。",
+    "whyNotFixDimMapComparison": "周期67 曾设计用 dimMap 键名与 DIM_CHECKERS 对账, 但 dimMap 是 src/index.js 的内部 const, 未导出; 为审计去改引擎导出会动别人的代码。本轮改用审计自己能观测的量(全池取得的键名), 不改引擎。"
+  },
+  "result": {
+    "dimensionTableRows": "8 -> 54",
+    "selfCheck": "DIM_CHECKERS 登记 54 维; 本审计实际取得键名 54 个; ✓ 每个登记维度都在全池取得过键名; ✓ 没有未登记的引擎键名",
+    "summary": "曾触发且推 finding 53; 仅打分 1 (evidence); 从未触发 0",
+    "docAudit": "不一致 5 -> 4(基线对照: 不含本轮改动时为 86/81/5 exit 1, 含本轮为 86/82/4 exit 1 —— 既有的 4 条并非本轮引入, 本轮反而修好 1 条)"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed (exit 0)",
+    "runAll": "1435 passed / 0 failed / 1435 total —— 本会话首次全绿",
+    "docAudit": "4 条不一致, 全部为既有问题(已用 git stash 对照证实与本轮无关)",
+    "mcpRestart": "未重启: 只改了 scripts/ 下的审计脚本, 未触 src/ 引擎代码, 按提示跳过。"
+  },
+  "processNotes": [
+    "改了四轮才对: 三次锚点没命中(我把缩进猜成了 4 空格, 实际 2 空格; 又一次把手写的正则原样当锚点), 最后一次插入的 const dimUnion 落在使用点之后, 报 ReferenceError: Cannot access 'dimUnion' before initialization。前三次是断言拦下的、零副作用; 第四次是**运行期**才炸的——node --check 对 TDZ 完全无感, 又一次印证『node --check 通过不等于字节正确』。",
+    "顺序修正(把声明提到使用之前)后 E=0。审计脚本自身也有『看不见自己故障』的可能: 它 exit 1 时报的是 4 条文档不一致, 而脚本自身崩溃时报的是 ReferenceError, 两种失败形态在 pipeline 里都可能被上层吞掉。"
+  ],
+  "lessonRecorded": [
+    "把报告的可见性当成一个可测项。一个只依据单条探针建立基线的仪表, 会在报表里静默省略掉大半被测量对象——而且省略得越彻底, 报表看起来越干净。『仪表能看见几个维度』和『引擎有几个维度』是两件事。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① run-all 已全绿 1435/1435, 下一周期的价值转向既有 4 条文档不一致(audit-doc-numbers exit 1)与 dimension-health 里那 1 个仅打分维度(evidence)。注意: 那 4 条是别人的文档合同, 修前先分清是文档写错还是审计口径错。"
+}

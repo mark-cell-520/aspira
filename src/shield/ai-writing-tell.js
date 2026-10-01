@@ -213,7 +213,13 @@ const NEGATION_CHAIN = [
 ];
 const INVISIBLE_HOMOGLYPH = [
   /[\u200B\u200C\u200D\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u2060\u2061\u2062\u2063\u2064\u206A\u206B\u206C\u206D\u206E\u206F\uFEFF]/g,
-  /[^\x00-\x7F\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/g,
+  // [误报修复] 原式只放行 ASCII 与 CJK 表意文字, 于是**所有中文标点**都被
+  // 第二式当成"不可见同形字"。实测误报(见 test/fp-cjk-punctuation-homoglyph.js):
+  //   。(U+3002) 「」(U+300C/D) 《》(U+300A/B) …(U+2026) ——(U+2014)
+  // 这些都是规范中文标点, 不是同形字, 也不是零宽字符。
+  // 修法: 补入中文/全角/通用标点的**具体区段**。刻意不含 \u2000-\u206F
+  // ——第一式真正要抓的零宽/双向控制字符就在那一带, 不能整段放行。
+  /[^\x00-\x7F\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3000-\u303f\uff00-\uffef\ufe30-\ufe4f\u2018-\u201d\u2013-\u2014\u2026]/g,
 ];
 
 const AI_TELL_PATTERNS = [

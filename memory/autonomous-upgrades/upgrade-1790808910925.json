@@ -1,0 +1,77 @@
+{
+  "ts": "2026-09-30T22:55:10.925Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "failedAt": "2026-09-30T22:55:00Z",
+  "changes": [],
+  "netCodeChange": "零。改坏了 src/cortex/self-healing-rl.js，已 git checkout 还原；门禁回到周期67 同一基线 1424/10。",
+  "theDefectIWasFixing": {
+    "file": "src/cortex/self-healing-rl.js",
+    "method": "import(data)",
+    "defect": "无入参校验。import(null)/import(undefined) 抛 Cannot read properties of null (reading qTable)——引擎内部错误直接泄露给调用方，看不出是合同违约；import([])/import(string)/import(42)/import(true) 则静默通过，调用方以为导入成功。",
+    "contractPinnedByTest": "test/self-healing-rl-import-contract.test.js 用 throwsContract() 钉死：必须抛 TypeError 且消息匹配 /expects an export object/。成功路径还须返回 {imported: true, qEntries: N}。",
+    "designedFix": "方法开头加 null/undefined/非 object/Array 四种拒绝（TypeError + 期望消息），末尾返回 {imported: true, qEntries: this.qTable.size, hEntries: this.history.length}。空对象 {} 刻意保留为合法输入（须如实回报 0 条）。"
+  },
+  "whyItFailed": {
+    "what": "我用行号区间替换 import(data) 方法，但定位到了错误的那个 import(data)。",
+    "detail": "文件里有多个 import(data) 形态。我的搜索先命中的是一个 2 空格缩进的版本（不是类方法），把它的方法体到下一个 4 空格缩进的右花节整段换成了我的新代码，于是破坏了外层语法。node --check 报 Unexpected token . 于 1468 行。",
+    "symptomThatShouldHaveStoppedMeSooner": "打印出来的 start/end 行号里，first 的缩进是 2 空格，而我以为类方法是 4 空格。这个信息我当时看见了但没有当异常处理——缩进不对就说明找错了地方。",
+    "howIRecovered": "git checkout 立即还原，node --check 通过，run-all 回到 1424/10 与周期67 逐项一致。"
+  },
+  "lessonRecorded": [
+    "行号或字符串替换方法体这种改法，必须先证明找到的是唯一且正确的那一个，再动手。我的锚点同时匹配了多个位置，而我只打印了第一个的行号和内容就往下走了——缩进明显不符合预期却没停下。定位阶段的异常信号和运行阶段的报错同样值得停。",
+    "git checkout 是一次性还原的最后防线，它这次救了我，但它救的是及时发现的情况。如果我把坏文件提交或推送出去，就没有 checkout 可依了。改核心模块前先确认 git status 干净、知道怎么退回，是前置条件而不是事后补救。"
+  ],
+  "partialValue": "诊断已经做实（见 theDefectIWasFixing），下个周期可以直接照 designedFix 做，但要先用 grep -n 数清楚 import(data) 到底有几处、各自缩进和所属作用域，再决定锚点。不要再用行号区间。",
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 重做 import() 合同修复：先用 grep -n 数清楚 import(data) 有几处、各自缩进和所属作用域，用带上下文的唯一锚点（例如连同上方的 export() 一起替换）而不是裸方法名或行号。修完立刻跑 test/self-healing-rl-import-contract.test.js 再跑 run-all。② 修完这 9-10 条，run-all 才有机会全绿——这是当前唯一一批确定性红灯，优先级高于一切新功能。"
+}

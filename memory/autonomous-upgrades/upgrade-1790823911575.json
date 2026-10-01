@@ -1,0 +1,83 @@
+{
+  "ts": "2026-10-01T03:05:11.575Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "failedAt": "2026-10-01T04:05:00Z",
+  "objective": "覆盖最后一条逃逸漏报 all f_aggot_s must die(下划线分隔族)",
+  "achieved": false,
+  "changes": [],
+  "netCodeChange": "零净改动。wordIsSpaced 已按 HEAD 原样恢复; 与 HEAD 的差异回到只剩周期77 的多词短语词条那一处。",
+  "whatIAttempted": {
+    "design": "周期78 留下的正确设计: 判据不看'片段里有没有分隔符', 而看'片段里的分隔符数是否**超过**该词自身的字面分隔符数'。document.write 自带 1 个点, 所以它本身不算规避; 多出下划线或空格才算。",
+    "whyItWasRight": "这条设计确实解决了周期78 的误报根源, 与放宽哪些字符无关。"
+  },
+  "whyItStilFailed": [
+    "只改了 wordIsSpaced(判定端), 没改 COMPILED.full(匹配端)。full 的词内容错仍是只容空白, 所以 f_a_g_g_o_t_s 在 f 与 a 之间就断了, 整条术语根本没匹配上——判定端再对也无从判断。**两处必须同时改。**",
+    "改完之后反而把多词明文短语判成规避: wordIsSpaced('women', 'women belong in the kitchen') 因尾部多出一个分隔符类再接词边界, 把 women 后面的空格吃进匹配, 于是 extra > own 成立。即周期78 修掉的那个尾部剥离 bug 又回来了。",
+    "中途还有一次纯转义事故: 两个 match 正则被写成双反斜杠, 类含义从'空白/下划线/连字符/点'变成'反斜杠/s/下划线/连字符/点', 于是所有判定一律 false。是我在看输出时逐行比对才发现, 不是测试告诉我的。"
+  ],
+  "revert": {
+    "how": "把 wordIsSpaced 整段换回 HEAD 版本(按函数边界定位, 不按行号), 随即验证四个样本的行为与基线一致。",
+    "verified": "FP 0.0%(106 良性 0 升级)恢复; 明文召回 100.0%(41/41)维持; verify 15/15; letter-space-evasion.test.js 10/10; 'n i g g e r' 仍 true(空白族未破), 多词明文仍 false(无误报)。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1434 passed / 1 failed / 1435 total",
+    "theFailure": "本会话反复记录的 audit 活体注入族间歇性红灯(隔离复跑均全绿), 与本改动无关。",
+    "mcpRestart": "未重启: 最终无有效 src/ 行为变更。"
+  },
+  "lessonRecorded": [
+    "**改判定端之前先确认匹配端也通了**。这条 bug 的判定逻辑是对的, 但数据流不到它那里。两次都栽在同一处: 我一直在改'怎么判', 没先确认'有没有东西可判'。",
+    "转义错误不会报错, 只会让判定恒真或恒假。这两个周期的两次事故(双反斜杠改变字符类含义、尾部剥离正则不匹配)都是 node --check 通过、行为全错的类型。**改完必须逐条输出打印确认, 不能只看语法过了。**"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 若再做这一条, 必须**同时**改三处: COMPILED.full 的词内容错与词间分隔、wordIsSpaced 的同名两处、判据(片段分隔符数大于词自身分隔符数), 且必须正确处理自带点号的术语(document.write)。② 更省事的替代: 给词表里自带标点的条目单独走一条'整条字面匹配'分支, 不做字母级拆分——代码类术语本来也不需要字母级容忍。③ 当前基线: run-all 1435/1435(剥掉那条 flaky 后), FP 0.0%, 明文召回 100%, 内容型逃逸漏报 0。"
+}

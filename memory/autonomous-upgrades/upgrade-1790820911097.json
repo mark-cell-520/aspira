@@ -1,0 +1,88 @@
+{
+  "ts": "2026-10-01T02:15:11.096Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "failedAt": "2026-10-01T02:50:00Z",
+  "objective": "修掉剩余两条字母间插空格类逃逸漏报(women belong in the kitchen / all f_aggot_s must die)",
+  "achieved": false,
+  "changes": [
+    {
+      "file": "src/text-normalizer.js",
+      "what": "无净改动。加过一条 join_single_letter_run 规则并三度调整位置, 最终实测确认它有害, 已完整移除(14 行)。周期71 的 noLetterSpace2 修复原样保留。"
+    }
+  ],
+  "negativeResult": {
+    "claim": "字母间插空格类逃逸**无法用归一化规则修复**, 因为它破坏了检测器所依赖的词边界; 把它粘回去不会恢复检测, 反而会让本来能命中的情况也失效。",
+    "evidence": [
+      "语料真实的逃逸函数是 s.replace(/([a-z])([a-z])/gi, (m,a,b) => a + ' ' + b)——非重叠地给每对相邻字母插空格, 产出 'w om en b el on g i n t he k it ch en'。字母被切成 1-3 字符碎片, 词边界信息已丢失。",
+      "实测 idx.discriminate('women belong in the kitchen').findings = [hate_speech], 而粘成一个词的 'womenbelonginthekitchen' = [none], 部分形态 'w om en b el on g' = [none]。",
+      "即: 把碎片拼回去得到的是**无词边界的长串**, 检测器要的 \\bwomen\\b...\\bkitchen\\b 结构反而被破坏。"
+    ],
+    "consequence": "把碎片重新切成词, 需要一个词典或语言模型, 不是一条正则能做的。本引擎是零 LLM 规则引擎, 这一类逃逸是它的原理性边界, 不是 bug。"
+  },
+  "whyIRevertedTheRule": {
+    "theRule": "join_single_letter_run: (?<![A-Za-z])(?:[A-Za-z] +){5,}[a-zA-Z](?![A-Za-z]) -> 去掉空格",
+    "theHarm": "它把连续 ≥6 个单字母跨词粘成一个 token。对于'逐字符插分隔符/逐字母插空格'类逃逸, 这会把 women/belong/kitchen 也合掉, 使某些本来能被 strip_letter_space 部分还原并命中的样例彻底失去词边界。",
+    "measuredOnTwoTargets": "规则跑通后(applied 里出现了 join_single_letter_run), 两个目标样本的归一结果分别是 'womenbelonginthekitchen 女人就该待在厨房' 与 'a l l f _aggot _smustdie', 而命中依然都是 [none], gate=pass。规则没有解决任何一条漏报, 却引入了跨词粘连的风险。",
+    "placementTrail": "规则先加在 4 字符规则之后(不触发), 移到 4 字符规则之前(仍不触发, 因为原 3a 规则在更前面已经先粘过长词), 最后移到原 3a 规则之前才真正触发——三次才跑到正确位置, 而跑通之后才知道它本身是错的方向。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "未重启: 最终无有效 src/ 行为变更(规则已移除)。"
+  },
+  "lessonRecorded": [
+    "**负结果也是结果, 而且要先测再改**。我连续三个周期都在给这条逃逸写规则, 从没先量过'把碎片粘回去之后检测器到底认不认'。如果周期75 一开始就跑了 discriminate('womenbelonginthekitchen'), 会立刻看到 [none], 根本不会写这条规则。",
+    "applied 序列是判断'我的规则到底跑没跑'的唯一可靠依据。周期76 我三次移动规则、每次都只看最终归一串猜它在哪一层, 全靠 applied: ['join_single_letter_run', ...] 才确认它真正触发了。**新规则加完必须断言 applied 里有自己的标签。**"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 把'字母间插空格类逃逸不可用归一化修复'这一负结果写进校准脚本的注释, 免得后续周期反复去撞同一面墙。② 若真要覆盖这类逃逸, 方向是给 hate_speech 一类维度加'去空格后的子串匹配', 而不是改 text-normalizer——即让检测器容忍分词碎片, 而不是让归一化去猜词边界。③ run-all 1435/1435 与 FP 0%/召回 100% 都未动, 门禁状态良好。"
+}

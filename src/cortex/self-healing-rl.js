@@ -1437,19 +1437,43 @@ class HealingMemoryRL {
    */
 
   import(data) {
+    // [周期69 修复] 首版无入参校验, 于是:
+    //   import(null)/import(undefined) 抛 "Cannot read properties of null (reading 'qTable')"
+    //     —— 引擎内部错误直接泄露给调用方, 看不出是合同违约;
+    //   import([])/import("s")/import(42)/import(true) 静默通过——它们都不是导出物,
+    //     却一句话都不说, 调用方以为导入成功了。
+    // 测试钉死的合同(test/self-healing-rl-import-contract.test.js 的 throwsContract):
+    //   TypeError 且消息匹配 /expects an export object/。
+    // 空对象 {} 仍是**合法**输入(须如实回报导入了 0 条), 故只排
+    // null / undefined / 非 object / Array, 不排 {}。
+    // ② null/undefined 是**空输入**, 不是垃圾输入: 如实回报 no-data, 不崩。
+    //    (首版在这里裸抛 "Cannot read properties of null (reading 'qTable')",
+    //     把"调用方没给数据"报成了引擎内部错误。)
+    if (data === null || data === undefined) {
+      return { imported: false, reason: 'no-data' };
+    }
+    // ③ []/string/42/true 是**垃圾输入**: 明确拒绝, 不再静默无操作。
+    if (typeof data !== 'object' || Array.isArray(data)) {
+      const got = Array.isArray(data) ? 'array' : typeof data;
+      throw new TypeError('import() expects an export object (with optional qTable/history), got ' + got);
+    }
 
     if (data.qTable) {
-
       this.qTable = new Map(Object.entries(data.qTable));
-
     }
 
     if (data.history) {
-
       this.history = data.history.slice(-this.maxMemory);
-
     }
 
+    // 如实回报**这一批导入了什么**。静默成功 == 让调用方无法判断导入是否生效。
+    // 注意 qEntries/hEntries 数的是本次输入里的条目, 不是实例当前总量——
+    // 否则 import({}) 在一个已有历史记忆的实例上会报出非 0, 伪装成"导进了东西"。
+    return {
+      imported: true,
+      qEntries: data.qTable ? Object.keys(data.qTable).length : 0,
+      history: data.history ? Math.min(data.history.length, this.maxMemory) : 0
+    };
   }
 
 

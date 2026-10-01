@@ -1,0 +1,90 @@
+{
+  "ts": "2026-09-30T23:20:11.276Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-09-30T23:20:00Z",
+  "changes": [
+    {
+      "file": "src/cortex/self-healing-rl.js",
+      "what": "import(data) 补齐合同: ① null/undefined 返回 {imported:false, reason:'no-data'} 而不再裸抛引擎内部错误; ② []/string/42/true 明确抛 TypeError(消息含 expects an export object)而不再静默无操作; ③ 合法对象返回 {imported:true, qEntries, history} 如实回报本批导入量, 而不再返回 undefined。"
+    }
+  ],
+  "result": {
+    "before": "1424 passed / 10 failed / 1434 total",
+    "after": "1433 passed / 1 failed / 1434 total",
+    "delta": "+9 通过, 失败 10 → 1。这是本会话至今最大的一次单项改善——周期63/67/68 反复记录的'唯一一批确定性红灯'就此清零。"
+  },
+  "theDefect": {
+    "what": "一个在安全输入上崩溃、在垃圾输入上沉默的合同。",
+    "nullUndefined": "import(null)/import(undefined) 抛 'Cannot read properties of null (reading qTable)'——报的是引擎内部细节, 与'调用方给错了'这件事实无关, 调用方无法据此判断自己错在哪。",
+    "garbage": "import({}) / import([]) / import('s') / import(42) 全部静默无操作, 返回 undefined, 调用方无从得知'什么都没导进去'。",
+    "whyWorseThanThrowing": "崩溃至少会暴露问题; 沉默会让调用方以为导入成功, 然后拿着空 Q 表继续跑。"
+  },
+  "howIFixedItCorrectly": {
+    "firstAttemptFailed": "周期69 用行号区间替换, 把 end 定成了 4 空格缩进的右花节(那是第一个 if 的闭合), 破坏了外层语法, node --check 报错, 已 git checkout 还原。",
+    "secondAttemptFailedSafer": "本轮第一版 guard 把 null/undefined 也一起 throw 了——它确实修好了垃圾输入, 但把'空输入'变成了'垃圾输入', 于是 3 条测试仍红。",
+    "whatFinallyWorked": "① 锚点改为从文件原样取行 + 子串唯一性断言, 并额外断言锚点里不含 throw/TypeError(防止改到已改过的代码); ② 合同按测试逐条读出来再动手——null/undefined 是空输入要回报 no-data, []/string/42/true 是垃圾输入要 throw, {} 是合法输入要回报 0 条。",
+    "detailThatCostOneCycle": "回报字段名。测试查的是 r.history, 我写的是 r.hEntries——语义一模一样, 但合同字段名以测试为准, 不能凭喜好命名。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed (exit 0)",
+    "runAll": "1433 passed / 1 failed / 1434 total",
+    "remainingFailure": "test/error-handler.test.js 加载失败: describe is not defined。已用 git stash 对照确认**与本轮改动无关**(不含我的改动时同样失败)。根因: 该文件用了 node:test 的 describe, 而 test/_harness.js 只导出 {test, assertEqual, assertTrue, assertFalse, assertDefined, assertThrows}。与周期63 记录的'第一版用了 node:test 的 test()'是同一族 harness 不匹配问题。",
+    "mcpRestart": "已重启。引擎 38ms / 132 模块 / v1.0.0; tools/list 返回 181 个工具, 全部 aspira_* 前缀, 与基线一致。"
+  },
+  "lessonRecorded": [
+    "同一个修复分四个版本才对: 第一个破坏了语法, 第二个把空输入误判成垃圾输入, 第三个字段名不合合同。每一次都是**没把测试钉的合同读完就动手**。合同有十几条分支, 读它比重写代码更值时间。",
+    "锚点要能自证唯一。这轮我加了'锚点里不得含 throw/TypeError'这条断言, 它同时防了重复修改和找错位置——比只断言首行内容强得多。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 修 test/error-handler.test.js 的 describe 加载失败(只剩这 1 条, 修完 run-all 即可全绿 1434/1434)。它属 harness 不匹配族: 文件顶部是 node:test 风格, 需改成 _harness.js 的 mount 风格, 或给 harness 补一个 describe shim。② 全绿之后再谈新功能——门禁从 1424/10 到 1433/1 是本会话最大改善, 别在最后一公里上把它弄坏。"
+}

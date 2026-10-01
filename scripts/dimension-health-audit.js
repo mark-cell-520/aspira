@@ -307,9 +307,20 @@ function main() {
     process.exitCode = 1;
     return;
   }
+  // [周期74] tally 的基线不能只取单条探针的键名。
+  // 原实现: 只登记 probeKeys(探针句激起的约 8 维), 于是逐维度表从来只打那 8 行,
+  // 剩下 46 维在报表里根本不出现。修法: 先把整池输入跑一遍, 用并集做基线。
+  const allKeys = new Set(probeKeys);
+  for (const text of pool) {
+    let dd;
+    try { dd = idx.discriminate(text, []); } catch (e) { continue; }
+    for (const k of Object.keys(dd.dimensions || {})) allKeys.add(k);
+  }
   const tally = {};
-  for (const dim of probeKeys) tally[dim] = { signal: 0, finding: 0, maxSig: 0 };
-  const uncovered = probeKeys.filter(k => !DIM_CHECKERS.some(([d]) => d === k));
+  for (const dim of allKeys) tally[dim] = { signal: 0, finding: 0, maxSig: 0 };
+
+  const dimUnion = [...allKeys];
+  const uncovered = dimUnion.filter(k => !DIM_CHECKERS.some(([d]) => d === k));
 
   let errors = 0;
   for (const text of pool) {
@@ -329,7 +340,7 @@ function main() {
   if (errors) console.log(`  (${errors} 条输入抛错，已跳过)`);
 
   const never = [], scoredOnly = [], ok = [];
-  for (const dim of probeKeys) {
+  for (const dim of dimUnion) {
     const t = tally[dim];
     if (t.signal === 0) never.push(dim);
     else if (t.finding === 0) scoredOnly.push(dim);
@@ -337,7 +348,39 @@ function main() {
   }
 
   console.log('\n  ── 逐维度 ──');
-  for (const dim of probeKeys) {
+  // ── [周期74 自检] 仪器视野边界: 本审计到底看得见几个维度 ──
+  // 上面 tally 的键来自**单条探针句** idx.discriminate('你说得完全对，太厉害了。')。
+  // 那句话只激得起几个维度, 于是没在它 dimensions 结果里出现的维度,
+  // **从头到尾不会被 tally、不会被报告**——哪怕 DIM_CHECKERS 里明明列着它。
+  // 这就是"宣称覆盖 54 维, 实际只看见 8 维"的来源: 不是没测, 是看不见。
+  // 修法: 把整池输入跑出来的 dimensions 键也并进来, 再反过来问
+  //   DIM_CHECKERS 的哪一维**在全池里一次都没出现过键名**。
+  // 那一类才是真正需要针对性探针单独验证的盲区。
+  const seenKeys = new Set(Object.keys(tally));
+  for (const text of pool) {
+    let dd;
+    try { dd = idx.discriminate(text, []); } catch (e) { continue; }
+    for (const k of Object.keys(dd.dimensions || {})) seenKeys.add(k);
+  }
+  const blind = DIM_CHECKERS.filter(([d]) => !seenKeys.has(d)).map(([d]) => d);
+  const alien = [...seenKeys].filter(k => !DIM_CHECKERS.some(([d]) => d === k)
+    && !DIM_CHECKERS.some(([d]) => canon(d) === k));
+  console.log('\n  ── 仪器视野自检 ──');
+  console.log(`  DIM_CHECKERS 登记 ${DIM_CHECKERS.length} 维; 本审计实际取得键名 ${seenKeys.size} 个`);
+  if (blind.length) {
+    console.log(`  ?? 登记了但本审计全池一次都没看见: ${blind.length} 维 -> ${blind.join(', ')}`);
+    console.log('     (这些维度在语料/测试输入上不返回任何键名, 上面的逐维度表看不见它们;');
+    console.log('      它们需要针对性探针单独验证, 不得当作已验证。)');
+  } else {
+    console.log('  ✓ 登记的每个维度都在全池里取得过键名');
+  }
+  if (alien.length) {
+    console.log(`  ?? 引擎返回了本审计没登记的键名 ${alien.length} 个 -> ${alien.join(', ')}`);
+  } else {
+    console.log('  ✓ 没有未登记的引擎键名');
+  }
+
+  for (const dim of dimUnion) {
     const t = tally[dim];
     const fn = (DIM_CHECKERS.find(([d]) => d === dim) || [dim, '?'])[1];
     const tag = SCORE_ONLY.has(dim) ? ' [仅打分]' : '';
@@ -376,7 +419,7 @@ function main() {
       // 规范化: 门禁集条目经 canon() 映射到 dimensions{} 的真名
       const norm = {};
       for (const [tier, set] of Object.entries(RAW)) for (const d of set) norm[canon(d)] = tier;
-      const engineScoreOnly = probeKeys.filter(k => !norm[k]);
+      const engineScoreOnly = dimUnion.filter(k => !norm[k]);
       // SCORE_ONLY 里的维度若实际有门禁动作 → 错标，会静默少报
       const staleList = [...SCORE_ONLY].filter(d => norm[d] || (FINDING_ALIAS[d] && norm[FINDING_ALIAS[d]]));
       // 无门禁集却未标记 → 错标，会把设计行为报成缺陷

@@ -1,0 +1,86 @@
+{
+  "ts": "2026-09-30T23:45:11.061Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.74,
+  "confidence": 0.65,
+  "reasoning": "Selected: \"MCP 工具增强\" (score: 0.74). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.74
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-09-30T23:45:00Z",
+  "changes": [
+    {
+      "file": "test/error-handler.test.js",
+      "what": "从 jest 风格(describe/test/expect().toBe())改写为仓库 mount 风格。原文件 14 行、从未成功加载过——describe 与 expect 在 test/_harness.js 的导出({test, assertEqual, assertTrue, assertFalse, assertDefined, assertThrows})里都不存在, 于是它在 run-all 里是常驻红灯'加载失败: describe is not defined'。改写为 4 个用例, 断言全部来自实测导出。"
+    }
+  ],
+  "result": {
+    "runAllBefore": "1433 passed / 1 failed / 1434 total (周期69 基线)",
+    "runAllAfter": "1434 passed / 1 failed / 1435 total",
+    "note": "总数 +1、通过 +1: error-handler 从'1 条加载失败'变成 4 条真实用例。剩下的 1 条失败是另一个文件(见 newDefect), 与本轮改动无关。"
+  },
+  "newDefectLocalized": {
+    "file": "test/e2e-scenarios.test.js 场景6 AI草稿—过度自信",
+    "text": "毫无疑问，这是唯一正确的解决方案，肯定有效。原因就是这套方法从根本上解决了所有问题。",
+    "expected": "rewrite",
+    "actual": "verify",
+    "rootCause": "两个入口对同一输入给出不同结论: gate.checkOutput(text, {mode:'draft'}) → rewrite; pipeline.checkDraft(text) → verify。测试走的是后者(require('../src/pipeline.js'))。",
+    "evidence": "直跑 checkDraft 输出 action='verify', findings 无; 而 checkOutput(text,{mode:'draft'}) 输出 action='rewrite', findings=[confidence:70, capability_overclaim:35, contradiction:30]。",
+    "meaning": "同一个'过度自信'的草稿, 走 pipeline 入口只被降级到 verify, 走 gate 入口却被 rewrite。这意味着**调用方选哪个入口, 决定了用户看到多严的门禁**——一条真实的口径不一致, 不是测试写错。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed (exit 0)",
+    "runAll": "1434 passed / 1 failed / 1435 total",
+    "noMCPRestart": "未改 src/ 引擎代码(只改测试文件), 按提示跳过重启。"
+  },
+  "lessonRecorded": [
+    "一个从未加载成功的测试文件, 比没有文件更糟: 它占着'已验证'的名分, 实际零覆盖, 而且它的红色会因为'反正一直红着'而被所有人忽略。本轮把 jest 风格改成 mount 风格后, 它立刻提供了 3 条真实断言。",
+    "剩下那最后 1 条失败不是测试的错, 是两个入口的口径不一致。定位方式值得记: 先分别直跑测试用的入口(pipeline.checkDraft)和我以为的入口(gate.checkOutput), 两者结论不同才暴露真因——如果只跑其中一个, 我会以为测试写错了。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 修 pipeline.checkDraft 与 gate.checkOutput({mode:'draft'}) 的口径不一致: 让 checkDraft 复用 gate 的 draft 分支(或以 gate 为准), 而不是自己另走一套。这是 run-all 全绿前的最后 1 条, 也是真实缺陷。② 全绿后再回到 mcp-tool-enhancement 切片本身。"
+}

@@ -1,0 +1,112 @@
+{
+  "ts": "2026-10-01T02:40:10.913Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "failedAt": "2026-10-01T03:15:00Z",
+  "objective": "覆盖最后一条逃逸漏报 all f_aggot_s must die(下划线分隔族): 把 letter-space-evasion 的词内容错从 \\s* 扩到分隔符类并重测误报",
+  "achieved": false,
+  "changes": [],
+  "netCodeChange": "零。三次改写尝试全部被**计数守卫**拦下(锚点计数字不符即 SystemExit, 未发生任何写入), src/shield/letter-space-evasion.js 仍与周期77 完成时逐字节一致(周期77 加的词条 'women belong in the kitchen' 保留)。",
+  "thePreciseEditSpec": {
+    "file": "src/shield/letter-space-evasion.js",
+    "threeSites": [
+      {
+        "line": 142,
+        "what": "wordIsSpaced 里词内容错",
+        "from": "+ '\\\\s*'",
+        "to": "+ '[\\\\s_.-]*'",
+        "count": "2 处(wordIsSpaced 与 COMPILED.full 各一)"
+      },
+      {
+        "line": 146,
+        "what": "COMPILED.full 里词间分隔",
+        "from": ".join('\\\\s+')",
+        "to": ".join('[\\\\s_.-]+')",
+        "count": "1 处"
+      },
+      {
+        "line": 145,
+        "what": "规避判据: 命中片段必须含分隔符",
+        "from": "/\\s/.test(m[0])",
+        "to": "/[\\s_.-]/.test(m[0])",
+        "count": "1 处"
+      }
+    ],
+    "why": "逃逸产物 'a ll f_a gg ot_s m us t d ie' 里 '_' 落在**词内**, 而 full 的词内容是 \\s*(只容空白), 所以整条正则在 f 与 a 之间就断了, 根本匹配不上。",
+    "guardThatMustSurvive": "判据必须从'含空白'改成'含分隔符(空白/下划线/连字符/点)'。若忘了改这一处, f_a_g_g_o_t_s 这种形式会因片段里没有空白而被判为明文, 修了也看不见。",
+    "measuredBeforeChange": [
+      "'n i g g e r' -> detected=true (空白族仍正常)",
+      "'all f_aggot_s must die' -> detected=false",
+      "'f-a-g-g-o-t-s' -> detected=false",
+      "'f_a_g_g_o_t_s' -> detected=false",
+      "'faggots must die' -> detected=false (正确地不报——这是明文, 由 hate_speech 直接拦)"
+    ]
+  },
+  "riskToMeasureWhenDone": {
+    "fpRisk": "词内容错放开到下划线/连字符/点后, snake_case 标识符可能被误命中(如某变量名恰好拼出词表里的词)。词表准入规则仍是'明文形式已被引擎拦下', 所以理论上可控, 但**必须实测 106 良性样本 + test/letter-space-evasion.test.js 全绿**才能收。",
+    "attackSurfaceOfTheChangeItself": "这个改动放宽的是**检测器**的词内容错, 不是归一化。周期76 已证明动归一化会破坏词边界; 动检测器不会。"
+  },
+  "whyIFailedOnTheMechanics": [
+    "三次都败在**锚点计数**上, 不是败在设计上。前两次我把手写的密集正则(含转义)当锚点, 与实际文件的转义层级不一致; 第三次改用简单子串 '+ \\\\s*' 时, 计数得到 词内=2 词间=1 判定=0, 与守卫期望的 1 不符, 于是整包退出。",
+    "第三条判定锚点的计数在两次运行之间给出不一致结果(一次 1, 一次 0), 我没来得及查清是本轮 heredoc 的转义在两种写法下被 bash/Python 解释得不同, 还是我抄错了字符串。**没有查清就停手是对的, 但停手前应该先把那一行按字节打出来比对。**"
+  ],
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "note": "本轮无代码改动, 门禁沿用周期77 的实测: run-all 1434/1(唯一失败为 audit-scan-set-hygiene 的活体注入用例, 隔离复跑 6/6), FP 0.0%, 明文召回 100.0%, 内容型逃逸漏报 0。",
+    "mcpRestart": "未重启(无 src/ 改动)。"
+  },
+  "lessonRecorded": [
+    "**守卫价值的一次正面验证**: 三次失败全部是零副作用退出。如果其中哪次我写的是'count != 1 就只打印警告继续', 现在这个文件大概已经带着一处语法错误或半截正则了。密集正则行不要手写锚点——按字节打印目标行, 用原行做锚点。",
+    "本条失败的代价极低(零改动、零回归), 但**下次要先花一次调用把三个目标行按字节打印出来**, 那一次的成本远低于三次盲改。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 下一次做这个改动: 先 node -e 把 line 142/145/146 三行按字节打印出来, 拿**原行**做锚点, 再一次性替换三处; 改完立刻跑 test/letter-space-evasion.test.js + calibrate-fp-recall.js 验 FP。② 若三处替换后 FP 出现非 0, 立即 REVERT——词表准入规则容不得放宽后的误报。"
+}

@@ -1,0 +1,84 @@
+{
+  "ts": "2026-10-01T02:47:43.946Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "failed",
+  "failedAt": "2026-10-01T03:45:00Z",
+  "objective": "覆盖最后一条逃逸漏报 all f_aggot_s must die(下划线分隔族): 把 letter-space-evasion 的词内容错从只容空白扩到也容分隔符",
+  "achieved": false,
+  "changes": [
+    {
+      "file": "src/shield/letter-space-evasion.js",
+      "what": "无净改动。改动做过并完整回退。与 HEAD 的差异只剩周期77 的 5 行(多词短语词条)。"
+    }
+  ],
+  "whatHappened": {
+    "didItWork": "功能上完全成立: 词内容错放宽到含下划线/连字符/点之后, 下划线族与连字符族逃逸全部命中——'n i g g e r' true, 'f_a_g_g_o_t_s' true, 'f-a-g-g-o-t-s' true, 'all f_aggot_s must die' true, 逃逸引擎门禁 pass 变 rewrite。",
+    "butItRegressedFP": "良性语料出现 1 条误报: FP 从 0.0% 升到 0.9%。样本是 document.write 写 p 标签那句良性代码说明。",
+    "rootCauseOfTheFP": "词表里有代码类术语 document.write——它**自带一个字面点号**。词内容错放宽到含点号之后, 这个点号被当成词内分隔符, 于是明文的 document.write 也被判成规避形态。",
+    "whyOriginalDesignWasSafe": "原实现词内容错只容空白, 一个自带点号的术语永远不可能被空白拆开, 所以旧判据天然把它排除。放宽词内容错的同时判据也放宽了, 这条安全边界随之消失。",
+    "extraBugOnTheWay": "放宽时漏改了尾部剥离正则, 它仍只匹配 反斜杠s星号 结尾, 而字符串尾部已变成方括号包住的那一份。于是正则尾部多出一个分隔符类再跟词边界, 连 women 后面的空格也被吃进匹配, 明文多词短语一度全部误报。改成按字面匹配那一份之后才好。"
+  },
+  "revert": {
+    "how": "四处站点逐一回退(词内两处、词间一处、判据一处、尾部剥离两处), 每处先计数校验再替换, 全部通过后才写盘。",
+    "verified": "FP 0.0%(106 良性 0 升级)恢复; 明文召回 100.0%(41/41)维持; run-all 1435/1435 全绿; letter-space-evasion.test.js 10/10; git diff 只剩周期77 的 5 行新增。"
+  },
+  "whyIRevertInsteadOfNarrowing": "FP 0.0% 是周期63 从 0.9% 一路修出来的硬属性, 本会话反复以它为基线。按既定规则: 降低了已实测指标的修法是回归, 回退并记原因。不在没有把握一次修对的情况下去补第二个补丁——那会把一个已验证有害的改动继续留在树上。",
+  "correctDesignForNextTime": {
+    "judgmentMustExcludeTermsOwnSeparators": "判据不能只看匹配片段里有没有分隔符, 而要看片段里的分隔符数是否**超过**该术语自身的字面分隔符数。document.write 自带 1 个点号, 所以片段等于 document.write(1 个)不算规避; 若片段里多了下划线才算。",
+    "fpMustBeReMeasured": "改完必须跑校准脚本确认 106 良性 0 升级。本轮单元测试 10/10 全绿, 只有 FP 那一栏现形——只优化召回的改动, 很容易在校准语料上被发现。"
+  },
+  "lessonRecorded": [
+    "放宽判据时, 要先问被检测对象本身长什么样。我扩的是词与词之间允许出现什么, 却没去看词表里有 document.write 这种自带标点的条目。判据的安全边界不在正则里, 在数据的形状里。",
+    "门禁的 FP 那一栏比 recall 那一栏更值得先看。本轮 recall 侧全绿、单元测试 10/10, 只有 FP 从 0% 跳到 0.9%。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "若还要做这一条, 用上面的设计(片段分隔符数大于术语自身分隔符数)重做, 且必须在改完立刻跑校准脚本验 106 良性 0 升级。不做也行: 内容型逃逸漏报已是 0, 剩下 2 条是 HTML 实体类的代码样本, 属代码语义族, 与本类无关。当前基线 run-all 1435/1435、FP 0.0%、明文召回 100%。"
+}

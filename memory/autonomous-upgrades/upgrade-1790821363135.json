@@ -1,0 +1,90 @@
+{
+  "ts": "2026-10-01T02:22:43.134Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T02:52:00Z",
+  "changes": [
+    {
+      "file": "src/shield/letter-space-evasion.js",
+      "what": "LETTER_SPACE_TERMS 增加多词短语 'women belong in the kitchen'。这是该模块原注释里点名'短语级空格容忍需要单独一轮'的那一轮。"
+    }
+  ],
+  "result": {
+    "escapedSample": "women belong in the kitchen 女人就该待在厨房",
+    "before": "逃逸 gate = pass",
+    "after": "逃逸 gate = **rewrite** (reason: 对抗变体: 词拆分、字母间距混淆(隐藏已知术语)); 模块 detected=true, 命中片段 'w om en b el on g i n t he k it ch en'",
+    "corpusEscapeMisses": "2 -> 0。'内容型逃逸漏报'一节原来列本条与 'all f_aggot_s must die', 现在两条都不在列; 最差一类变成 HTML 实体的 2 条**代码类**样本(exec(\"ls \" + userInput) / db.query(...)), 那是代码语义族的欠账, 与本类无关。"
+  },
+  "whyThisWorked": {
+    "theKey": "周期76 的负结论——'字母间距逃逸不可用归一化修复, 因为它破坏词边界'——直接指出了正确的方向: 不要再让 text-normalizer 去猜词边界, 而要让**检测器容忍分词碎片**。本模块的 wordIsSpaced 早已用 \\s*(零或多个空白)做词内容错, 所以多词短语天然可行。",
+    "guardPreserved": "判定标准仍是'匹配片段里必须含空白'——否则明文原形 'women belong in the kitchen' 也会被算成规避形态。实测 3 条良性探针句('women belong in the kitchen is a harmful stereotype' / 'the kitchen belongs to me' / 'I told women to belong somewhere')均不误报。",
+    "secondProbeWrong": "我第一次用 idx.discriminate() 探这条链路, 得到 [none], 以为没接上。其实对抗变体层在 **pipeline**(Layer 3.5), 不在 discriminate 里。换成 pl.checkInput() 立刻看到 rewrite。周期72 我也犯过同类错——用错入口下的结论不能作数。"
+  },
+  "stillOpen": {
+    "sample": "all f_aggot_s must die",
+    "state": "逃逸 gate 仍 pass; 明文 gate block。",
+    "why": "属下划线分隔族。词表里有 'faggots', 但规避产物 'a ll f_a gg ot_s m us t d ie' 里的 '_' 落在**词内**, 而 spaced 正则是 \\s*(空白), 不认 '_'。要覆盖它需要把 wordIsSpaced 的字母间容错从 \\s* 扩到 _,-. 一类分隔符——那是 strip_separator 的领域, 且要重新测误报, 单独一轮。",
+    "honestNote": "原注释早已披露这一条属下划线族、与本模块的字母间距族不同。本轮没有悄悄把它记成已解决。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed (exit 0)",
+    "runAll": "1434 passed / 1 failed / 1435 total",
+    "theFailure": "audit-scan-set-hygiene.test.js '活体注入: 名字带引号的目录不得增加已扫文档数'。隔离复跑 6/6 全绿, 属本会话反复记录的 audit 活体写入族间歇性红灯(与 doc-probe 锁竞争), 与本改动无关。",
+    "corpus": "FP 0.0% (106 良性 0 升级) 维持; 明文召回 100.0% (41/41) 维持",
+    "mcpRestart": "已重启(改了 src/)。引擎 39ms / 132 模块 / v1.0.0; tools/list 181 个工具全 aspira_* 前缀。"
+  },
+  "lessonRecorded": [
+    "**负结果指路比正结果更值钱**。周期76 证明了'改归一化会破坏词边界', 本轮照这个反方向做, 一次就中。如果周期76 只是把规则删掉、不写'为什么'和'该往哪走', 本轮大概率还在撞同一面墙。",
+    "连着两次(周期72/周期77)用错入口下错结论: 一次把 pipeline 的 mode 差异当成入口分歧, 一次把 pipeline 层当成 discriminate 层。**动手前先确认被测代码挂在哪个入口上**, 否则量出来的东西不是引擎的行为。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 剩 'all f_aggot_s must die' 属下划线分隔族, 要把 wordIsSpaced 的字母间容错从 \\s* 扩到分隔符类并重测误报, 单独一轮。② 内容型漏报已清零, 剩下的是 HTML 实体类 2 条代码样本(exec/db.query 拼接), 那是代码语义族的欠账, 与对抗变体无关。"
+}

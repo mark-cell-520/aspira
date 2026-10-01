@@ -1,0 +1,87 @@
+{
+  "ts": "2026-10-01T03:55:10.799Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T06:05:00Z",
+  "objective": "文档诚实数字审计: 从根上消除'套件涨了、文档忘了'这一类漂移(上轮修的是四处称呼点的值, 本轮修的是它们为什么会被忘)",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "scripts/sync-doc-numbers.js",
+      "what": "新增。从实测值(run-all.js 的最后一条汇总)同步四处测试条数称呼点, 与 audit 的核对形态一一对应, 带 --dry 与'非全绿拒绝同步'安全闸。"
+    }
+  ],
+  "whySeparateFromTheAudit": "如果让审计自己修文档, 它就在也无法报红了——'能顺手修好的校验'等于没校验。所以修在 sync(手动调用), 审在 audit(只读)。两条路径分开, 各自保持诚实。这是本轮的设计核心, 写进了脚本头注。",
+  "theMutationTestFoundARealBugInMyOwnScript": {
+    "what": "第一次真写就写错: 实测取了 10 而不是 1435。",
+    "rootCause": "① 我把 stderr 也拼进输出, 于是'最后一个匹配'落到 stderr 里某个测试文件自己的行上; ② 更根本的是我用 match() 取第二条, 那取到的是第二个**完整匹配**而不是第二个分组。",
+    "alreadyDocumented": "audit-doc-numbers.js 的注释里早就写过这个坑, 一字不差: '首版用 exec 取第一条，拿到的是某个测试文件的 10 通过，于是一条正确的文档声称被报成\"实测 10\"——审计自己的 bug 产出假警报。' 我又踩了一遍。已改成与审计逐字对齐: 只读 stdout + matchAll + 取最后一条。",
+    "secondBugTheMutationTestExposed": "第一次真写把 1431/4 写进了四个文档——因为那一次 run-all 恰好抽风报 1431/4(已知的 audit 活体写入族间歇性红灯)。**同步器差点成了漂移的传播者**。已加安全闸: failed !== 0 一律拒绝同步, exit 2。"
+  },
+  "damageAndRepair": {
+    "what": "突变测试期间四个称呼点被写成 1431/4。",
+    "repair": "四处逐一 read 出原文再 edit 修回 1435/0; grep 确认 README/SKILL/CURRENT_STATE 里 1431 残留均为 0。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1435 passed / 0 failed / 1435 total**(末次全绿测量); 但本周期中另有数次读数为 1434 通过 / 1 失败",
+    "theOneFailure": "audit-pattern-blindspot.test.js 的『五种同义写法必须全部被发现(一次注入)』。三条独立证据证明与本轮改动无关: ① 隔离复跑 4/4 全绿; ② 把 sync-doc-numbers.js 整个移走后复跑仍 1434/1; ③ 移除后再跑一次又出现 1435/0 的全绿读数。属本会话反复记录的 doc-probe 活体写入族间歇性红灯。",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "未重启: 本轮只新增脚本, 未动 src/ 引擎代码。"
+  },
+  "lessonRecorded": [
+    "**干跑救了我一次, 突变测试又救了我一次**。第一次真写之前我跑了 --dry, 但它报的是'4 处不一致、→1435', 看起来完全正常——就因为那次我只看输出没看实测值那一行。如果不是紧接着做了突变测试(注入 1401 再让它修), 那个 1431/4 的 flaky 写现在还在四个文档里。**新增的落盘脚本必须做一次真写突变验证, 不能只跑干跑。**",
+    "**同步器是危险的: 它把一次测量固化成'事实'**。落盘前的那个数必须是可信的那一次。非全绿就拒绝, 这条闸现在写在脚本里, 也写在这里。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① sync-doc-numbers.js 已有安全闸与干跑, 但还缺一条测试把它钉住(突变: 注入漂移 -> 同步 -> 断言修好 + 非全绿 -> 断言拒绝)。这条留给下一轮 test-coverage-gap。② 审计间歇性 1434/1 这个 1-in-N 现象, AGENTS.md 里已记为未定位欠账, 仍未定位。③ 当前基线: verify 15/15, run-all 1435/1435(全绿读数), FP 0.0%, 明文召回 100%, 四处称呼点与实测一致。"
+}

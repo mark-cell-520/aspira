@@ -71,6 +71,11 @@ const LETTER_SPACE_TERMS = Object.freeze([
   'developer mode',
   'no restrictions',
   'reveal your system prompt',
+  // [周期77] 多词短语级空格容忍。原注释称这条'短语级空格容忍需要单独一轮'
+  // ——本轮就是那一轮。实测短语的 spaced 正则(词内 \s*, 词间 \s+)能命中
+  // 规避产物 'w om en b el on g i n t he k it ch en'; 判定仍以'匹配片段含空白'
+  // 为准, 否则明文原形也会被算成规避形态。
+  'women belong in the kitchen',
 
   // [第三十二轮] 代码/密钥类 —— 模块原注释称这 8 条"需要代码语义模式，
   // 不是词表"。重新测量后修正那个判断: 本模块的**两段判定**已经提供了
@@ -134,18 +139,28 @@ const LETTER_SPACE_TERMS = Object.freeze([
  */
 function wordIsSpaced(word, haystack) {
   const spaced = new RegExp(
-    '\\b' + word.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*').join('').replace(/\\s\*$/, '') + '\\b',
+    '\\b' + word.split('').map(c => c.replace(/[.*+?^${}()|[\\\]\\]/g, '\\$&') + '[\\s_.-]*').join('').replace(/\[\\s_\.-\]\*$/, '') + '\\b',
     'i');
   const m = haystack.match(spaced);
-  return !!(m && /\s/.test(m[0]));
+  if (!m) return false;
+  // 判据: 片段的分隔符数必须**超过**该词自身的字面分隔符数。
+  // (只看"有没有分隔符"不行——自带点号的术语会被误判, 见 COMPILED 的 literal。)
+  const own = (word.match(/[\s_.-]/g) || []).length;
+  const extra = (m[0].match(/[\s_.-]/g) || []).length;
+  return extra > own;
 }
 
 const COMPILED = LETTER_SPACE_TERMS.map(term => {
   const words = term.split(/\s+/);
   return {
     term,
-    // 整条术语: 词间至少一个空白
-    full: new RegExp('\\b' + words.map(w => w.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*').join('').replace(/\\s\*$/, '')).join('\\s+') + '\\b', 'i'),
+    // [周期80] 自带标点的术语(document.write / exec() 一类)只做整条字面匹配,
+    // 永不判为规避形态: 它的标点是术语自身的一部分, 不是规避插入的分隔符。
+    // 这正是周期78 误报的修复点——当时一视同仁地判"字母间有分隔符",
+    // document.write 自带的 '.' 于是被当成词内分隔符, FP 从 0.0% 抬到 0.9%。
+    literal: /[^a-z0-9\s]/i.test(term),
+    // 整条术语: 词间至少一个分隔符
+    full: new RegExp('\\b' + words.map(w => w.split('').map(c => c.replace(/[.*+?^${}()|[\\\]\\]/g, '\\$&') + '[\\s_.-]*').join('').replace(/\[\\s_\.-\]\*$/, '')).join('[\\s_.-]+') + '\\b', 'i'),
     words,
   };
 });
@@ -159,10 +174,15 @@ function checkLetterSpaceEvasion(text) {
     return { detected: false, hits: [], terms: LETTER_SPACE_TERMS.length };
   }
   const hits = [];
-  for (const { term, full, words } of COMPILED) {
+  for (const { term, literal, full, words } of COMPILED) {
     const m = text.match(full);
     if (!m) continue;
-    // 第二段判定: 至少有一个词在命中片段里真的被空白拆开。
+    // [周期80] 注: 这里**不**为自带标点的术语开特例分支。试过, 开了反而误报——
+    // 分支写的是"full 匹配上就算命中", 于是明文的 document.write 也被算成规避。
+    // 正确的做法全靠下面这条判据兜住: wordIsSpaced 比的是
+    // **片段分隔符数 - 词自身字面分隔符数**, document.write 自带 1 个 '.',
+    // 明文片段也是 1 个, 差为 0, 自然不算规避; 被拆成 d_o_c_u_m_e_n_t.write 时差 > 0。
+    // 第二段判定: 至少有一个词在命中片段里真的被分隔符拆开。
     // 只在 m[0] 里查，避免术语在别处正常出现被误判。
     if (words.some(w => wordIsSpaced(w, m[0]))) hits.push({ term, match: m[0].slice(0, 40) });
   }

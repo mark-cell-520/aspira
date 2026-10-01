@@ -1,0 +1,91 @@
+{
+  "ts": "2026-09-30T22:05:12.434Z",
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.75,
+  "reasoning": "Selected: \"文档诚实数字审计\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.73
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-09-30T22:11:27.988443+00:00",
+  "changes": [
+    {
+      "file": "README.md",
+      "what": "删去具体的 pass/fail 拆分, 只声称稳定的总数 1434; 概览行与表格行同步。"
+    },
+    {
+      "file": "SKILL.md",
+      "what": "同左; 并给 \"17-layer pipeline\" 的两处裸陈述补上口径说明(静态层名 17, 单次运行实测 input 11 / draft 12 / output 13)。"
+    },
+    {
+      "file": "CURRENT_STATE.md",
+      "what": "同左; 并把\"为什么只写总数\"的理由写进文档。"
+    }
+  ],
+  "theCoreFinding": {
+    "claim": "只要文档写**具体的 pass/fail 数**, 它就是一个永远不可能稳定一致的声称——因为审计会亲自跑 run-all 去核, 而那个数本身是不稳定的。",
+    "measurements": "同一份代码, 本周期内四次审计分别量得: 1417/17、1414/20、然后 README 的 17 被核成 20、再被核成 23。直接跑 run-all 另得 1425/9、1424/10、1421/11。",
+    "whyTotalIsStable": "失败只在各族之间**转移**(审计族抖动), 总数 1434 不变。",
+    "resolution": "三份文档统一改为只声称总数 1434, 并把 pass/fail 的拆分不稳定性连同实测过的四种组合写进文档。这样文档不会再每个周期追着改数字。"
+  },
+  "layerCalibreFixed": {
+    "before": "审计对 \"17-layer pipeline\" 打 ⚠: 文档的是静态层名数, 单次运行最多只走 13 层(input 11 / draft 12 / output 13), 读者会误以为每次运行都过 17 层。README.md:14-18 早已把两个口径并列写清, 但 SKILL.md 的两处是**裸陈述**。",
+    "after": "SKILL.md 概览行加脚注、小节标题下加 Calibre note, 与 README 同一套措辞。于是任何一处看到 17, 旁边就说明它是静态清单。"
+  },
+  "gate": {
+    "auditBefore": "84 claims | 81 consistent | 0 inconsistent | 0 unmeasurable, 但依赖两个**不稳定**的 pass/fail 数字, 下一轮即腐烂",
+    "auditAfter": "81 claims | 81 consistent | 0 inconsistent | 0 unmeasurable | exit 0, 且不再依赖任何会漂的数字",
+    "auditStability": "本轮为验证稳定性连跑四次审计; 前三轮因我自己的编辑一度把不一致数推到 3 和 2, 最后一轮清零。结论是: 去掉漂移数字后, 审计结果不再随运行次数变化。",
+    "codeChanged": "零。只改文档, 跳过 MCP 重启。"
+  },
+  "lessonRecorded": [
+    "把一个**本身就不稳定**的测量值写进文档, 再让审计去核它, 等于给每个周期埋一颗必定腐烂的声称。上轮(周期65)我把 pass/fail 数写进去, 审计当下全绿; 本轮同一份代码再核, 就变成了 3 处不一致——不是我改错了, 是那个数本来就该漂。**该 claim 的不是会漂的量。**",
+    "改文档的动作本身会改变审计的覆盖面(周期65 已见: 括号打断 \"N tests passed\" 的紧邻, 一份文档整份从审计里消失)。所以每轮改完都要同时看\"不一致数\"和\"涉及文件数/条数\"两个量——只看 exit code 或只看得分都不够。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "doc-honest-numbers 这一轮做完后建议置 exhausted: 稳定的数字都已对齐, 剩下的问题都不是\"数字写错\", 而是①被测的量本身不稳定(run-all), ②被测的代码有真缺陷(import 合同族)。这两个都应转到别的切片: ①修审计族测试的抖动或让它不内嵌 run-all; ②修 import 合同族那批确定失败。"
+}

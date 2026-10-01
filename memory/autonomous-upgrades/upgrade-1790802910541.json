@@ -1,0 +1,106 @@
+{
+  "ts": "2026-09-30T21:15:10.540Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-09-30T21:22:00.464228+00:00",
+  "changes": [
+    {
+      "file": "src/shield/ai-writing-tell.js",
+      "what": "INVISIBLE_HOMOGLYPH 第二式的放行清单补入中文/全角/通用标点区段: \\u3000-\\u303f / \\uff00-\\uffef / \\ufe30-\\ufe4f / \\u2018-\\u201d / \\u2013-\\u2014 / \\u2026。刻意不含 \\u2000-\\u206F(第一式真正要抓的零宽/双向控制字符就在那一带)。"
+    },
+    {
+      "file": "test/fp-hedge-sentence-known-limitation.test.js",
+      "what": "把周期60 写的\"[已知误报]认知对冲句当前被升级\"改为断言已修; 新增\"规范中文标点零 findings\"边界护栏; 新增一条[已知局限]钉住零宽字符被 normalizeText 先吃掉。共 4 个用例。"
+    }
+  ],
+  "fix": {
+    "fpBefore": "0.9% (106 条良性语料中 1 条被升级)",
+    "fpAfter": "0.0% (被门禁升级 0 条)",
+    "recall": "明文召回维持 100.0% (41/41), 未回归",
+    "rootCause": "INVISIBLE_HOMOGLYPH 第二式 /[^\\x00-\\x7F\\u4e00-\\u9fff\\u3400-\\u4dbf\\uf900-\\ufaff]/g 只放行 ASCII 与 CJK 表意文字, 于是所有中文标点都被判为\"不可见同形字\"。实测误报字符: 。(U+3002) 「」(U+300C/D) 《》(U+300A/B) …(U+2026) ——(U+2014)。",
+    "howILocalizedIt": "周期60 的结论是\"findings.details 不返回命中片段, 无法定位\"。本轮绕过 findings, 直接 require 模块层再调 M.detect(句), 它返回的 findings[0] 就是 {dimension: ai-tell-invisible-homoglyph, severity: 35, trigger: \"，\"}——trigger 字段给出了触发字符本身。再逐个 eval 该文件里的模式集合做二分, 定位到第二式。",
+    "blastRadiusMeasured": "12 个标点样例里 5 个误报(。 「」 《》 … ——), 修后 12/12 全干净。",
+    "recallGuard": "直接测第二式(不经 detect): 中文标点无命中、零宽 U+200B 仍有命中、西里尔 р 仍有命中——放行区段没有顺手把该抓的也放掉。"
+  },
+  "newKnownLimitation": {
+    "name": "零宽字符注入实际是漏的",
+    "mechanism": "detect() 内部先跑 normalizeText(), 而 normalizeText 把 U+200B 等零宽字符直接删掉。于是 INVISIBLE_HOMOGLYPH 第一式(零宽字符表)在 detect() 路径上永远不会命中——那一段是死代码。",
+    "evidence": "实测: M.normalizeText(hello+U+200B+world) === helloworld, 且 M.detect(同输入).findings 为空。而第一式直接测同输入仍为 true。",
+    "fx": "让 detect() 在 normalizeText 之前先对原文跑一次 INVISIBLE_HOMOGLYPH。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed (exit 0)",
+    "runAll": "1421 passed / 11 failed / 1432 total。基线不是 0 失败——见 baselineCorrection。",
+    "corpus": "FP 0.9% → 0.0%; 明文召回 100.0% (41/41) 维持",
+    "mcpRestart": "半完成。旧 server 无 pid 文件(本会话此前未由定时任务拉起), 故无旧实例可恢复。新实例启动成功: 日志\"引擎已启动 (37ms, 132 模块, v1.0.0)\" + \"HTTP SSE 服务已启动\"。但 tools/list 无法验证——/tmp/aspira-mcp.token 不存在, 请求返回 401 Unauthorized。未声称 181 工具已确认。"
+  },
+  "baselineCorrection": {
+    "claim": "周期60 记为基线 1430/0, 本周期实测同一状态下是 1420/12——周期60 那个 0 是抖动中的一次幸运。",
+    "method": "git stash 暂存我的改动后跑 run-all: 1420 passed / 12 failed。我的改动带入后是 1421/11——失败数减少 1, 不是增加。",
+    "preexistingFailures": [
+      "活体注入: measure() 期间弄脏文档",
+      "仪器必须真的抓住一个中文错数",
+      "还原后审计必须无不一致",
+      "标准导出物导入应被如实确认",
+      "应导入 2 个上下文键(实际 undefined)",
+      "import(null/undefined/[]/string/42/true) 6 条合同",
+      "空对象应如实回报导入了 0 条"
+    ],
+    "implication": "run-all 的门禁在本仓库当前不可判定(周期60 已用五次测量证明它会游走, 本周期再证一次: 12→11 的差异来自我的修复, 其余是既有失败)。"
+  },
+  "lessonRecorded": [
+    "周期60 我说\"details 不返回命中片段所以无法定位\"——这个结论只对 gate.checkOutput 那条路径成立。同一信息在模块层是有的: M.detect() 的 findings[0].trigger 直接给出触发字符。当一条路径看不到成因时, 先问\"换个入口还看不看得见\", 再决定是否放弃。我因为停在了最外层 API, 多花了一个周期才拿到本来就拿得到的信息。",
+    "修 FP 与保召回必须同时量。本轮不只量了\"误报消失\", 还直接测了第二式对零宽字符和西里尔同形字是否仍命中——否则\"放行区段写宽了\"这种回归会静悄悄地进去(周期56 正是这样翻车的)。",
+    "基线数字必须在本轮重测。周期60 记的 1430/0 让我差点把既有失败当成自己引入的; 本轮 git stash 一次对照, 才发现真实基线是 1420/12, 而我的改动是净改善。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 修新测出的已知局限: detect() 在 normalizeText 之前先跑一次 INVISIBLE_HOMOGLYPH 第一式(零宽字符注入目前实际是漏的)。② 既有 11 条失败里, import 合同那 7 条(标准导出物导入/上下文键/import 的 null,undefined,[],string,42,true 六种入参/空对象)像是同一个模块的契约测试, 值得单独立项。③ 最大的债务仍是 run-all 门禁不可判定——不解决它, 每个周期的\"零回归\"都无法判定。"
+}

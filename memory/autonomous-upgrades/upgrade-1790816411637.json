@@ -1,0 +1,92 @@
+{
+  "ts": "2026-10-01T01:00:11.636Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T01:00:00Z",
+  "changes": [
+    {
+      "file": "src/doubt-engine.js",
+      "what": "在知识维过度断言探测器(overclaimPatterns)里补一条强确信语气词模式: (毫无疑问|毋庸置疑|不容置疑|板上钉钉)[^，。]{0,30}, type: 'certainty_marker'。"
+    }
+  ],
+  "result": {
+    "e2eScenarios": "10 通过 / 0 失败 / 共 10 场景(改前 9/1)",
+    "runAll": "1434 passed / 1 failed / 1435 total — 那 1 条是 audit-pattern-blindspot.test.js 的已知间歇性红灯, 单跑连测 3 次全绿, 与本改动无关",
+    "corpus": "FP 0.0% (106 良性 0 升级) 维持; 明文召回 100.0% (41/41) 维持",
+    "verify": "15 passed / 0 failed"
+  },
+  "iWasWrongBefore": [
+    "周期72/73 我把这条红灯诊断为 'pipeline.checkDraft 与 gate.checkOutput 的入口口径不一致', 还写了 '同一个输入两个入口给出不同结论'。那是我的探针造成的假象: src/gate.js:65 是把 checkOutput 从 pipeline 重新导出, 而我在调用时传的第二个参数 {mode:'draft'} 被 pipeline.checkOutput(text) 忽略掉——它内部恒为 mode:'output'。所以两个动作差异其实是 output 与 draft 两个模式的合法差异, 不是入口分歧。",
+    "真正的成因是探测器漏检: 那句话有三处过度确信(毫无疑问 / 唯一正确的 / 肯定有效), knowledge.overclaims 只数到 1 条。判据 knowledgeIssues >= 2 才 rewrite 本身没错(同一类断言要多条才构成过度断言), 漏的是探测器。",
+    "教训: 我第一次比较两个入口时, 没先确认第二个参数到底有没有被接收。**一个不被接收的参数会让一次正常的对照实验看起来像系统缺陷。**"
+  ],
+  "theFix": {
+    "whyThisIsRecallNotFP": "新增的模式只收四字强确信标记(毫无疑问/毋庸置疑/不容置疑/板上钉钉), 刻意不收 '肯定/一定' 这类高频泛词。已实测校准语料 185 条字面量里 0 处命中, 所以不引入误报; 而它对真正过度确信的中文文本有召回。",
+    "measured": "该场景 overclaims 1 -> 2, shouldStop false -> true, gate hedge -> rewrite, pipeline.checkDraft verify -> rewrite。正好跨过 knowledgeIssues >= 2 的门槛。"
+  },
+  "theBoundaryIHeld": [
+    "Layer 7 Output Gate 明确写着 (仅output模式), 那是一处既定的设计取舍(注释补在 2026-08-14 的 DSH 桥接实战之后: checkOutput('搜索新闻需要外部接口') 曾被误 block)。我一开始想的是'让 draft 也跑 output-gate', 那会推翻别人写下的合同, 收手改修探测器。",
+    "e2e-scenarios 场景7 的注释明写 'doubt-engine只有1条知识边界, 不是rewrite级别' 且期望 verify——这是一对边界条件: 场景6 两条疑虑要 rewrite, 场景7 一条要 verify。改完后两者都仍成立。"
+  ],
+  "gate": {
+    "verify": "15 passed / 0 failed (exit 0)",
+    "runAll": "1434 passed / 1 failed / 1435 total",
+    "e2e": "10 / 10 场景",
+    "corpus": "FP 0.0%; 明文召回 100.0%",
+    "mcpRestart": "已重启(改了 src/)。引擎 38ms / 132 模块 / v1.0.0; tools/list 181 个工具全 aspira_* 前缀。"
+  },
+  "lessonRecorded": [
+    "一个不被接收的参数会让一次看起来严谨的对照实验指向错误结论。'两个入口不一致'这种结论尤其要当心, 因为系统里真的存在多个入口。下结论前先把'我传的参数对方收没收'验证掉。",
+    "修正自己前两轮的误判, 比继续给它打补丁重要。如果我在周期73 的诊断基础上硬改 pipeline 的 draft 路径, 动的就是一处有注释保护的既定设计, 而且真因仍在。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① audit-pattern-blindspot 这类间歇性红灯的机制(周期已记载: _doc-probe-lock.js 自锁, audit 墙 66s vs waiter patience 60s)仍未根治, 它是 run-all 全绿前的最后障碍, 且与真缺陷无关——属'自己给自己上的锁'。② 本轮只收强确信四字标记; 若后续要收 '肯定有效/一定可行' 这类动词组合, 需另做误报实测。"
+}

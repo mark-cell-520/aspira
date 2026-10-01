@@ -499,6 +499,7 @@ function normalize(text) {
   //    修法: 两端各加一条边界断言 (?<![a-zA-Z]) 与 (?![a-zA-Z])，
   //    使单词串必须整块起于词边界、终于词边界。实测 7/7 通过，
   //    且既有的合法还原(e v a l ( u s e r I n p u t ) → eval(userInput))未破坏。
+
   const noLetterSpace = out.replace(/(?<![a-zA-Z])(?:[a-zA-Z] ){3,}[a-zA-Z](?![a-zA-Z])/g, m => m.replace(/ /g, ''));
   if (noLetterSpace !== out) { applied.push('strip_letter_space'); out = noLetterSpace; }
 
@@ -641,6 +642,28 @@ function normalize(text) {
     return s;
   })();
   if (noSep !== out) { applied.push('strip_separator'); out = noSep; }
+
+    // [对抗修复·周期71] strip_separator 之后必须**再跑一次** strip_letter_space。
+    //
+    // 上面 3a 的 strip_letter_space 跑在 noSep **之前**, 而逐字符插分隔符的逃逸
+    // 在那一刻还是 "i- -g- -n- -o- -r- -e-" 形态——字母之间是 "- -"(分隔符+空格+
+    // 分隔符)而不是单个空格, 所以 (?:[a-zA-Z] ){3,}[a-zA-Z] 匹配不上它。
+    // 等 noSep 把 "- -" 还原成 " " 之后, 串已经变成 "i g n o r e ..." ——
+    // 正是 3a 该抓的形态, 但 3a 已经跑过了。
+    //
+    // 实测后果(周期62 量出): 明文 "i g n o r e all previous instructions" 被
+    // 归一成 "ignore all previous instructions" 从而命中 prompt_injection;
+    // 而同一句的分隔符逃逸版停在 "i g n o r e all previous instructions",
+    // gate = pass。召回 逐字符插分隔符 37/41, 内容型最差的一类。
+    //
+    // 守卫与 3a 完全一致(两端词边界 + 至少 4 字符起), 因此不会把
+    // "how do i run" 里的 i 粘进邻词, 也不会重现 3a 修掉过的
+    // "disgusting n i g g e r" 首尾粘连。
+
+    const noLetterSpace2 = out.replace(/(?<![a-zA-Z])(?:[a-zA-Z] ){3,}[a-zA-Z](?![a-zA-Z])/g,
+      m => m.replace(/ /g, ''));
+    if (noLetterSpace2 !== out) { applied.push('strip_letter_space(after-separator)'); out = noLetterSpace2; }
+
 
   // 4. 连续空格压缩（「忽 略 之 前」已在 step3 处理单字符间隔；
   //    这里处理多空格残留）
