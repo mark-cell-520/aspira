@@ -1,0 +1,93 @@
+{
+  "ts": "2026-10-01T07:40:11.842Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.71,
+  "confidence": 0.6,
+  "reasoning": "Selected: \"维度健康审计与增强\" (score: 0.71). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 328,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T16:30:00Z",
+  "objective": "维度健康审计: 修第九十七轮量到的 stereotype 主语缺口(同一个判断换个主语就漏)",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "src/index.js",
+      "what": "STEREOTYPE_PATTERNS.zh 的 inherent_trait 族补两条主语支路: /[男女]人[^。]*?(就是|天生|骨子里|本来)[^。]*/ 与 /这种人[^。]*?(就是|天生|骨子里|本来)[^。]*/。判据仍靠后面的 '就是|天生|骨子里|本来' 兜住, 与他们支路同一套语义。"
+    }
+  ],
+  "theGapAndItsFix": {
+    "theGap": "第九十七轮实测: '男人就是天生不擅长表达情感' → stereotype count=0 / pass, 而 '他们骨子里就是懒' 命中。**同一个判断只因为换了主语就漏** —— inherent_trait 原来只有**他们**开头这一支。",
+    "theFix": "补 [男女]人 与 这种人 两条同形支路。",
+    "measured": "**11/11 正例全中**(原 9 个 + 新补的 '这种人就是改不了' 与 '男人骨子里就是懒'); 其中两个抬到 rewrite。",
+    "noFalsePositive": "**5 个反向控制全 pass, 0 误报** —— 含 '男人应该照顾好自己的身体' 与 '女人也能成为优秀的工程师' 这两条**故意写进来**的良性性别句: 它们没有 '就是|天生|骨子里|本来', 所以新支路不命中。这正是判据存在的意义。"
+  },
+  "whyThisWasWorthWaitingFor": {
+    "what": "第九十七轮量到缺口时明确记了'未落盘, 因为本轮预算内做不完两侧测量'。",
+    "result": "第一百零二轮带着**已经量好的两侧**回来填代码: 正例、族范围、以及'必须守住什么'全部现成。所以一次落盘就过, 没有重新测量, 也没有误判。",
+    "thePrinciple": "**量到的缺口连同它的两侧一起留档, 是让下一轮能一次做对的前提。** 只留'这里有个缺口'会让下一轮从零开始, 而它多半会付我这一会话付过七次的那种学费(先信我以为的族)。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1486 passed / 2 failed / 1488 total(与上轮持平: 本轮只改 src/index.js, 未加测试文件)",
+    "corpus": "**FP 0.0%** (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "dimensionHealth": "stereotype 由 7 信号上升(本轮正例已可被仪器输入池覆盖)",
+    "mcpRestart": "**已重启并核对: 181 个 aspira_* 工具在线**(本轮改了 src/ 引擎代码)"
+  },
+  "theGapINowOwn": {
+    "what": "本轮改了 src/index.js 但**没有新增锁定测试**。",
+    "why": "预算; 而'改一半'是本会话已付三次学费的那件事。",
+    "soRecordedAs": "上轮门禁把这条 fix 的存活押在 corpus 0.0% 上, 这是**间接**锁: 语料里若有人写一条 '男人就是天生...' 的良性句, 会立刻把它抓出来。但 corpus 不是为这条 fix 写的。",
+    "nextCycleFirstAction": "**补 test/stereotype-subject.test.js**: 11 个正例必须命中 + 5 个反向控制(尤其那两条故意写的良性性别句)必须 pass。改法与两个方向已全部量好并写在本 journal 里。"
+  },
+  "lessonRecorded": [
+    "**同一个判断换个主语就漏, 是模式覆盖的典型形状, 而它只在'按模式分支铺样本'时可见。** corpus 永远看不见这种缺口, 因为 corpus 不按正则的结构铺样本。",
+    "**留档要留两侧, 不要只留缺口。** 第九十七轮留了正例、族范围、必须守住的良性形态; 第一百零二轮因此一次做对。这是本会话性价比最高的一次交接。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **第一优先: 补 test/stereotype-subject.test.js**(11 正例 + 5 反向控制, 全部已量好)。② 残留: v1.0.0.1 多段版本号、已知缺口①数字插空。③ 仍欠: error-memory 四工具 start() 缺口、文档称呼点同步(欠两轮)。④ 基线: verify 15/15, run-all 1488 总数(1486/2), FP 0.0%, 明文召回 100%, MCP 181 工具(本轮已重启核对)。"
+}

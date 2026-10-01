@@ -1,0 +1,93 @@
+{
+  "ts": "2026-10-01T07:22:44.910Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 328,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T16:00:00Z",
+  "objective": "误报/召回校准: 修掉 de_leet 把版本串当 leet 解码的缺陷(v1.0.0 → vi.0.0)",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "src/text-normalizer.js",
+      "what": "在 _deLeetCandidates 的逐 token 还原里加一条护栏: /^v\\d+(?:\\.\\d+)+$/i 的 token 原样返回, 不进 leet 还原。"
+    },
+    {
+      "file": "test/normalizer-deleet-version.test.js",
+      "what": "从上一轮的'钉现状'改成**双向锁定**: 5 个版本串必须原样保留; 6 个良性形态(utf-8 / A-1-B / 3.14 / 2024 / 12 ms / v1.2.3)不得被 de_leet 触碰; 残留缺口 v1.0.0.1 已留档。"
+    }
+  ],
+  "theFixAndItsScope": {
+    "rootCause": "_deLeetCandidates 逐 token 还原时, 原有护栏 /^[\\d.,%:/x\\-+= ]+$/ 只挡'整段都是数字标点'。版本号以 v 开头, 于是漏网, 里面的 0/1 被当 leet 解码。",
+    "theFix": "加一条只认 'v + 点分数字段' 的护栏。",
+    "measured": "v1.0.0 / v1.0.0 is fine / v10.20.30 ok / aspira v1.0.0 here / V1.0.0(→ v1.0.0, 仅 lowercase) **全部原样保留**; **零误伤** —— utf-8 / A-1-B / 3.14 / 2024 / 12 ms / v1.2.3 全部不变。",
+    "whyThisMatters": "它违背的是这个 repo 自己最看重的契约: **诚实数字**。VERSION 与 package.json / SKILL.md 的字面一致性, 前提是版本串被原样读出。归一化层把 v1.0.0 改成 vi.0.0, 是同一条契约在另一个层出现裂缝。"
+  },
+  "theResidualGapDisclosedNotHidden": {
+    "what": "四段版本号 v1.0.0.1 仍被改成 'viool'。",
+    "rootCause": "strip_separator 跑在 de_leet **之前**, 先把点吃掉, 等 de_leet 看见时它已不是点分数字形态, 新护栏认不出来。",
+    "howLocked": "写成测试第三条, 断言当前读数, 失败信息写明'若已修复请改成双向锁定'。**没修完的部分被钉住, 而不是悄悄留白。**"
+  },
+  "howThePreviousCyclesTestWasUsed": {
+    "what": "第一百轮把这个缺陷写成'钉现状'; 第一百零一轮修完, 该测试按它自己的失败信息指示改成了'双向锁定'并新增 6 个良性锚点。",
+    "whyWorthRecording": "这正是我设计'钉现状'这个形态时刻意写的下一步——**测试自己携带移交说明**, 修的人不必回来读 journal 也知道该干什么。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1487 passed / 1 failed / 1488 total(较上轮 1485 净增 3 例; 1 失败为已知 doc-probe 族)",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "**已重启并核对: 181 个 aspira_* 工具在线**(本轮改了 src/ 引擎代码, 按规则执行)"
+  },
+  "lessonRecorded": [
+    "**护栏要加在'该层认识的形态'上, 而形态会被上一层改变。** 我的护栏认 'v + 点分数字', 但 strip_separator 先把点吃了。这不是修错, 是修了主路径并诚实名下残留的那一条。",
+    "**上一轮'只钉不修'省下的学费, 这一轮连本带利收回来了。** 因为第一百轮已经把缺陷的形状、族范围、良性锚点全部量好并钉住, 本轮只需要填一个函数、把测试翻面——没有重新测量, 也没有误判。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 残留: v1.0.0.1 这类多段版本号(修法是让 strip_separator 不吞点分数字串里的点, 或把版本号护栏提到 strip_separator 之前)。② 同源的已知缺口①数字插空仍开着(改法见第九十九轮 journal)。③ 仍欠: stereotype 主语缺口、error-memory 四工具 start() 缺口、文档称呼点同步(欠两轮)。④ 基线: verify 15/15, run-all 1488 总数(1487/1), FP 0.0%, 明文召回 100%, MCP 181 工具(本轮已重启核对)。"
+}

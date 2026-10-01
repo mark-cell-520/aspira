@@ -1,0 +1,86 @@
+{
+  "ts": "2026-10-01T10:18:02.416Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 331,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T21:00:00Z",
+  "objective": "误报/召回校准的下一步: 把 _doc-probe-lock 的等待预算修到远大于持有者工作时长",
+  "achieved": true,
+  "theFixApplied": {
+    "what": "acquire() 的默认等待超时 60000 → 300000, 连同错误信息里的同一数字(那条信息会印 timeoutMs, 不一起改就是在对调用者撒谎)。",
+    "why": "三次测量收口的同一个机制 —— 锁没有租约, 而持有者合法工作可达 60s 级, 于是等待者永远先到期。受害者 corpus-size-measured.test.js 隔离 8/8 绿就是证据。",
+    "keptIntact": "第一百零八轮那条 STALE_MS = 30000 **保留不动**。它修的是另一条真缺陷(孤立锁在调用者窗口内无法回收), 与本 flake 无关。两条都要修, 不能因为修了一条有效就撤另一条。"
+  },
+  "theGateThatActuallyMatters": {
+    "what": "**连跑两次 run-all, 两次都是 1499 通过 / 0 失败 / 共 1499 个。**",
+    "whyItMatters": "这是二十轮来第一次连续两次读到同一个全绿总数。lock 超时这条修完之后, corpus-size-measured 不再摆动, 于是 pass 数确定。",
+    "theConsequence": "全绿 → sync-doc-numbers **exit 0**, 五处称呼点与实测一致。**'测试条数'这个声称二十轮来第一次具备可满足性。**"
+  },
+  "auditStillRedAndWhatItSays": {
+    "progress": "不一致从 **5 条降到 1 条**(sync 修掉了它认识的站点)。",
+    "theRemainingOne": "SKILL.md 声称 test suite = 1499, **audit 的 spawn 实测 1493**。",
+    "theSecondTransientReading": "同一份报告里还出现'SKILL.md 声称 engine version = 9.9.9, 实测 1.0.0' —— 而紧接着 grep 仓库, **9.9.9 根本不在任何文件里**。",
+    "conclusion": "audit 自己的 spawn 仍在读到**中间态**: 它 spawn 的 run-all 与其他进程并发, 于是一次读到 1493、一次读到还没来得及写完的版本行。**这正是 AGENTS.md 里那句'切勿让审计处于在途状态就被 SIGTERM, 否则 SKILL.md 会停在 9.9.9'的另一面: 并发读者会看到写者的半成品。**",
+    "recorded": "如实记为未闭合: run-all 本身稳了, 但 audit 的 spawn 与并发写者之间还需要隔离。修复的方向已经和前两轮一致, 只是目标从'某个用例'变成了'audit 的 spawn'。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1499 / 0 / 1499, 连续两次一致**",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "doc": "sync **exit 0**(称呼点已对齐); audit 仍 exit 1(不一致 5→1, 剩余那条是 audit spawn 读到中间态)",
+    "mcpRestart": "**未重启且不需要**: 只改 test/_doc-probe-lock.js。"
+  },
+  "lessonRecorded": [
+    "**二十轮的坑, 中间跳过了多次'改了某一处却毫无变化', 只因为病因一直没被收窄到层。** 第一百零八轮定性到'等待者早于持有者到期', 第一百一十四轮把受害者收到一个文件, 第一百一十五轮隔离 8/8 绿排除用例自身, 这一轮才敢动那一个参数。**每一步都没白走 —— 但它们本来可以更短, 只要我早点按文件拆日志。**",
+    "**错误信息里印的数字, 和它实际的数字必须同时改。** 我这一轮差点只改 deadline 不改 message —— 那条 message 是给下一个人的全部线索, 印 60000 而实际等 300000, 比不改更糟。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 剩余 1 条不一致的根是 **audit 的 spawn 与并发写者抢状态**(它读到 1493、读到未写完的版本行)。修法是让 audit 的 spawn 与探针写者共用同一把锁(而不是各自为政), 那是 doc-honest-numbers 切片的事。② 缺口①数字插空归 prompt_injection(改法已定)。③ error-memory 四个工具的空洞仍在, 修前先答'error memory 该长什么样'。④ 基线: verify 15/15, run-all **1499/0 全绿且连续两次一致**, FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}

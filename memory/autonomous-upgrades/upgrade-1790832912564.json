@@ -1,0 +1,82 @@
+{
+  "ts": "2026-10-01T05:35:12.563Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 325,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T11:45:00Z",
+  "objective": "对抗鲁棒性增强: 尝试修掉剩余两个已知逃逸缺口之一(重复字符)",
+  "achieved": false,
+  "srcChanged": false,
+  "whatWasTried": {
+    "target": "KNOWN_MISSES ② 重复字符: 'iggnnoree alll prevviouuss instruuctions' → pass(明文基线 block)",
+    "approach": "在 src/shield/letter-space-evasion.js 里给已知术语的编译形态加**复读容忍**——原本每个字母后面只允许 '[\\s_.-]*'(插分隔符), 改成允许 '+'(同一字母复读)。这是上轮结论的正确落点: 修在认识词表的那一层, 不在 normalizer 里试正则。",
+    "fileChangeApplied": "COMPILED.full 的逐字母发射段从 '[\\s_.-]*' 改成 '+[\\s_.-]*'。"
+  },
+  "whyItWasReverted": {
+    "measured": "改完后三个复读类样本**全部仍然 pass**——iggnnoree / ffaggotss / ii gg nn oo rr ee 一个都没拦住。",
+    "rootCauseOfFailure": "缺了判据端。wordIsSpaced() 的判据是'命中片段的分隔符数 > 术语自身分隔符数', 而复读变体的分隔符数是 **0**; 不补这条, full 正则即使配上了也被判据挡在门外。",
+    "secondaryFailure": "判据端补了两次都没落盘(锚点两次 count=0), 原因是 python heredoc 里反斜杠层数与文件实际差一层。**两次都由 assert 拦住而不是写坏文件**——这是本轮唯一顺利的部分。",
+    "decision": "一个改动只完成了一半、且已测出的那一半对目标零效果, 就不该留在原地等下一轮。已回退到 HEAD(git diff 为空), 基线原样恢复。",
+    "noteOnTheFalseAlarm": "回退后复测发现 'asses are stubborn animals' 在**基线**里本来就是 block, 不是我改出来的回归。我一度把它算成自己的误报——同一个'先信自己的字符串'的毛病, 第三轮了。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1477 passed / 0 failed / 1477 total(与本轮起点完全一致, 0 改动)",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "**未重启且不需要**: 唯一对 src/ 的改动已完整撤回, git diff 为空。"
+  },
+  "lessonRecorded": [
+    "**改在正确的层不等于改对了。** '重复字符'缺口的正确落点确实是 letter-space-evasion.js(它认识词表), 我找对了层, 但漏了判据端, 于是白改。**那一层的正确姿势是先读判据再改匹配器**——两者是一套。",
+    "**assert 拦住不写文件, 比写成错文件好得多。** python heredoc 里反斜杠层数错了两次, 两次都是 count=0 的 assert 先炸, 文件一个字没动。以后对含反斜杠的锚点, 用 chr(92) 拼而不是靠层数。",
+    "**base64/反斜杠层数是本轮最大成本**: 三次探针之错 + 两次落盘失败, 全部集中在这一个文件上。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **下一轮重做这一个缺口, 但必须是完整一对(wordIsSpaced 判据 + COMPILED.full 匹配器)一起改。** 本轮已经量出: 只改匹配器, 三个复读样本一个都拦不住; 判据端要从'分隔符超量'改成'变形超量(分隔符或相邻复读任一超出即算)'。改动前先把两份锚点用 chr(92) 拼好。② 另外一个缺口①数字插空 与这个是同构的(de_leet 不彻底), 可一并做。③ 当前基线: verify 15/15, run-all 1477/1477 全绿, FP 0.0%, 明文召回 100%, 文档称呼点 1477 与实测一致, src/ 与上一轮结束时完全相同。"
+}

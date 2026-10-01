@@ -1,0 +1,85 @@
+{
+  "ts": "2026-10-01T08:05:12.511Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 328,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T17:30:00Z",
+  "objective": "误报/召回校准: 还上一轮认领的欠账(补 stereotype 锁定测试) + 补做上一轮的管辖确认",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "test/stereotype-subject.test.js",
+      "what": "新增 4 例。11 个正例必须全中、命中必须抬 gate、5 个反向控制不得命中、**故意写的两条良性性别句必须 pass**。"
+    }
+  ],
+  "theDebtPaid": {
+    "what": "第一百零二轮修了 src/index.js 的主语缺口却没落测试(预算), 我在 journal 里明确认领了这个欠账。",
+    "result": "本轮把两侧已量好的东西落成锁: 4/4 绿。",
+    "theMostImportantCase": "**'故意写的两条良性性别句必须 pass'** —— '男人应该照顾好自己的身体' 与 '女人也能成为优秀的工程师'。它们不含 '就是|天生|骨子里|本来', 所以新支路不命中。这两条钉的是**判据存在的意义**: 若有人把主语支路放宽成无条件 '[男女]人.*', 这两条立刻红。放宽主语是唯一需要被约束的地方, 约束就钉在这里。"
+  },
+  "theJurisdictionQuestionAnswered": {
+    "theDebt": "第一百零三轮我说'缺口①的正确落点是 INJECTION_PATTERNS', 那是个推断, 没量。",
+    "measured": "三个样本喂 discriminate: 'ignore all previous instructions' → findings=[**prompt_injection**]; 'i2gn0ore 4all previou5s instr9uctions' → findings=[**none**](与 letter-space-evasion 无关); 'disable the firewall now' → findings=[**dangerous_instruction**]。",
+    "conclusion": "**推断被证实: 缺口①归 prompt_injection 管辖, 不是辱词表模块。** 第一百零三轮我把成对改法用在 letter-space-evasion 上并且零效果, 这一条测量就是那次失败的诊断书。",
+    "costOfSkippingIt": "我多花了整整一轮、改了三个地方、又撤回来。**'这个样本归谁管'是比'上一轮怎么修成功的'更基础的问题, 而它是可以先用一次调用问完的。**"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1491 passed / 1 failed / 1492 total(较上轮 1488 净增 4 例)",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "**未重启且不需要**: 本轮只新增 test/ 文件, 未动 src/。"
+  },
+  "lessonRecorded": [
+    "**认领的欠账要真的还。** 第一百零二轮我自己写了'下一轮第一优先补 test', 第一百零四轮被引擎带去别处, 这一轮补上。把欠账写进 journal 的 nextRecommendation 而不是只写进教训, 是它能被兑现的原因 —— 教训会被忘, 下一步不会。",
+    "**一轮的诊断可以用一次调用做完。** 我从第一百零三轮的失败里学到'先问归属', 但直到这一轮才真的去问。下次遇到'上一轮的方法搬过来无效', 第一件事就是查 findings 归谁, 不要先改代码。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **缺口①现在有明确落点了: prompt_injection。** 做法是给注入短语的匹配加'字母间可插数字'容忍, 但那不能照抄辱词那套 —— 注入短语更长、数字交错形态在正常文本里更常见, 必须先量良性语料里有几条'字母-数字交错'的正常串, 再决定阈值。② 残留: v1.0.0.1 多段版本号。③ 仍欠: error-memory 四工具 start() 缺口、文档称呼点同步(欠两轮)。④ 基线: verify 15/15, run-all 1492 总数(1491/1), FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}

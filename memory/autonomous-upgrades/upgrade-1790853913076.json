@@ -1,0 +1,96 @@
+{
+  "ts": "2026-10-01T11:25:13.076Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.74,
+  "confidence": 0.65,
+  "reasoning": "Selected: \"MCP 工具增强\" (score: 0.74). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.74
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 331,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T23:00:00Z",
+  "objective": "MCP 工具增强: 让四个 error-memory 工具如实报告能力缺失, 而不是可恢复的'未就绪'",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "src/mcp-server.js",
+      "what": "四处守卫的错误信息从 'error memory not ready' 改为 'error-memory 能力未实现: heartflow._hfCore 与 src/core/error-memory.js 均不存在, 不是初始化时机问题'。保留惰性兜底(万一将来接上 _hfCore 这条路仍有效)。"
+    },
+    {
+      "file": "test/mcp-hollow-error-memory.test.js",
+      "what": "锁从'钉现状(4 处 not ready)'翻转为'(剥注释后)0 处旧信息 + 4 处属实说明'。"
+    }
+  ],
+  "whatThisActuallyFixes": {
+    "before": "四个工具返回 'error memory not ready' —— 这句话暗示**初始化即可恢复**, 于是调用方会去重试/重启/等。",
+    "after": "如实说明**这个能力从未实现**: _hfCore 从未被赋值, src/core/error-memory.js 不存在。",
+    "whyWorthIt": "同一个家族(合同错配: 调用成功、不抛错、响应结构良好而内容已死), 而这里的修复不是'让它工作', 而是**让它诚实**。对调用方, 一句不可恢复的真实说明, 价值高于一句可恢复的谎言。"
+  },
+  "processNotes": {
+    "note1": {
+      "what": "**维护一个从未被实现的工具, 和修好它, 是两件事; 而选择前者需要证据。** 我把它留成现在这样(带兜底), 而不是新建一个 error-memory 模块 —— 因为'error memory 该长什么样'这个问题没有答过: 持久化到 data/feedback/、有界队列、还是复用别的? 没有答案就写模块, 很可能写出一个没人调用的四不像。",
+      "counted": "这是第一百一十一轮就记下的判断, 本轮只是执行它, 没有新增证据也没有推翻它。"
+    },
+    "note2": {
+      "what": "**我的测试第一次跑是红的, 原因是我自己的注释。** 新写的锁断言'(源码里)0 处 error memory not ready', 而我在守卫上方写的解释注释里恰好含这个字符串 —— grep 到 4 处, 全是注释。",
+      "howFixed": "剥掉行注释再匹配(与第九十轮 source-scan 把注释读成代码同族)。",
+      "counted": "instrument-honesty 的老毛病又犯一次: **扫源码当证据的测试, 必须先把注释剥掉。**"
+    }
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1501 passed / 0 failed / 1501 total**",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "liveCall": "重启后实调四个工具, 全部返回新的属实说明。",
+    "mcpRestart": "**已重启并核对: 181 个 aspira_* 工具在线**(本轮改了 src/ 引擎代码)"
+  },
+  "lessonRecorded": [
+    "**当一个能力从未被实现时, '让它诚实'就是可交付的修复。** 我前两轮一直把它当'待修的缺陷', 于是每轮都在原地记原因; 而真正的动作是把那句谎话改掉。**修复不总是让东西工作, 也可以是让东西说真话。**",
+    "**我自己的注释会骗我自己的测试。** 这一轮两处都是(源码扫描扫到注释)。扫源码当证据的测试, 第一步永远是剥注释 —— 这条我写过, 也忘过。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **error-memory 四工具的真实修复仍未做**, 前置问题是'error memory 该长什么样'。若要推进, 先看 data/feedback/false-positives.jsonl 与 src/core/lessons 是否就是它的现成载体 —— 有的话四个工具的落点就清楚了。② 缺口①替换子类(o→0)未开, 修法前必须先量良性语料的误伤面。③ 基线: verify 15/15, run-all 1501/0, audit 86/86 exit 0, FP 0.0%, 明文召回 100%, MCP 181 工具(本轮已重启核对)。"
+}

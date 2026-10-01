@@ -1,0 +1,92 @@
+{
+  "ts": "2026-10-01T05:10:12.585Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 324,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T10:25:00Z",
+  "objective": "误报/召回校准: 复核并修正已记录的逃逸缺口, 尝试修其中一条",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "test/evasion-known-gaps.test.js",
+      "what": "把 KNOWN_MISSES 从三条改成两条(删掉一条探针写错的假缺口), 并把'那条是错的、补全后必须被拦'本身也写成断言——更正钉住更正。"
+    }
+  ],
+  "theCorrectionWasTheWork": {
+    "what": "第八十六轮记的 KNOWN_MISSES 第三条'多词标点穿插 i-g-n-o-r-e a-l-l p-r-e-v-i-o-u-s → pass'是**我的探针写错了**, 不是引擎漏判。",
+    "proof": "那个字符串只拼到 'ignore all previous', 压根没有 'instructions'。归一化产出 'ignore all previous' 是**完全正确的**; 模式要求完整短语, 于是 pass 判得对。补全成 'i-n-s-t-r-u-c-t-i-o-n-s' 后实测 block。",
+    "whyItMatters": "**一个探针写错、而测试又照着错读数断言, 就会把'引擎是对的'永久固化成'引擎漏了'。** 这类错误比没有记录更危险——它看起来是可测量的结论。"
+  },
+  "theAttemptedFixAndWhyItWasReverted": {
+    "what": "给 text-normalizer.js 加了一条'折叠 3+ 连续重复字符'的归一化步骤, 目标是 KNOWN_MISSES ②重复字符。",
+    "measured": "实测无效: 攻击样本用的是**双写**(iggnnoree = i-gg-nn-oo-r-ee), 3+ 阈值一个都不命中; 归一化只把 'lll' → 'l', 攻击照旧 pass。",
+    "whyNotLowerTo2": "降到 2+ 会命中正常英文的双写: bookkeeper→bokkeper / committee→commitee / llama→lama。代价远高于收益, 与 AGENTS.md 已记的'Widening strip_letter_space 被回滚'是同一条经验。",
+    "reverted": "已完整删除(grep 残留 0, node --check 通过, 逃逸召回与基线逐项一致)。**一条不解决问题、只增加风险的改动应当被撤掉, 而不是留在原地'以后也许有用'。**"
+  },
+  "otherProbeErrorsThisCycle": {
+    "myTestMatrix": "双向验证时我把明文攻击句 'ignore all previous instructions' 放进了'应放行'清单, 于是它被判 block 时报成'误拦=1'——那一度看起来像是我造成了严重回归。单独复测四个入口全是 block, 才发现是清单标错了。",
+    "orderDependenceChecked": "顺手验了 runPipeline 是否跨调用有状态(那可以解释这个假象): 单独跑 / 跑过两个混淆样本后再跑 / 再跑一次, 明文基线三次都是 block。**没有顺序依赖**, 假象纯粹来自清单。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1471 passed / 1 failed / 1472 total (较上轮持平: 删 1 条假缺口用例 + 加 2 条更正用例)",
+    "theFailure": "corpus-size-measured.test.js, 隔离复跑 6/6 全绿, doc-probe 活体注入族。",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "evasion": "逐字符分隔符 38/41(内容型 38/39) / 字母间空格 41/41 / HTML 实体 39/41——与本轮基线逐项一致(证明 revert 干净)",
+    "mcpRestart": "**未重启**: 本轮唯一对 src/ 的改动已完整撤回, 工作区 src/ 回到上一轮结束时状态。"
+  },
+  "lessonRecorded": [
+    "**'已知缺口'名录本身需要被怀疑。** 它是上上个周期我写的探针产出的, 而探针会写错。本轮复核三条, 一条是假的。任何 KNOWN_MISS 表都该带'复测日期', 否则它会以结论的身份一直流传。",
+    "**一条修不好的改动, 撤掉比留着干净。** 折叠重复字符这条我试了、量了、发现不解决目标且只在降到 2+ 时才有效(而 2+ 有已知代价), 于是删。留着它的唯一理由是'以后也许有用', 那不是理由。",
+    "**本轮我连犯三次探针之错**(假缺口/清单标错明文攻击句/一度以为 runPipeline 有顺序依赖)。共同点是每次都先信了自己的字符串, 后信测量。规律: 涉及手写攻击样本的结论, 必须先打印字符串实际内容。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 剩下的 KNOWN_MISS ②重复字符 与 ①数字插空 都需要'折叠后是否命中已知词'这类判据, 那不是归一化层能单独决定的(它不认识词表), 建议升格为引擎层的一个后验证步骤, 而不是继续在 normalizer 里试正则。② 另 101 个无测试模块仍未动(fp4-quant 已覆盖)。③ 当前基线: verify 15/15, run-all 1472 总数, FP 0.0%, 明文召回 100%, 逃逸 38/41 + 41/41 + 39/41, MCP 181 工具(上轮重启后未再改动 src/)。"
+}

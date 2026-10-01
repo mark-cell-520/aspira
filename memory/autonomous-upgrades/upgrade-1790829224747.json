@@ -1,0 +1,97 @@
+{
+  "ts": "2026-10-01T04:33:44.747Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.74,
+  "confidence": 0.65,
+  "reasoning": "Selected: \"MCP 工具增强\" (score: 0.74). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.74
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 320,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T08:30:00Z",
+  "objective": "MCP 工具增强: 从'数工具/调工具'推到'各入口答得一致'",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "src/pipeline.js",
+      "what": "① 加 SEVERITY 序(pass<verify<rewrite<block)与 moreSevere(); ② Layer 3.5 改为**仅当严格更严重才覆盖**, 并把 data.adversarial 的记录与 action 解耦(原先 verify 分支只记数据、rewrite 分支才记, 且一覆盖就把判别器的结论丢了); ③ Layer 3 之后把 discResult.gate **播种**进 currentGate。"
+    },
+    {
+      "file": "test/pipeline-severity-monotonic.test.js",
+      "what": "新增 6 例, 把'加层不得降级'这条规则钉住, 而不是只钉 n i g g e r 一个样本。"
+    }
+  ],
+  "theProbeMethod": "cycle-29 已把'数一数不等于调一通'做完(181 定义全在, 三个结构坏的工具已修)。本轮再推一层: **调通不等于答对**。两个探针: ① 逐个调 181 个工具找'调用成功但内容是死的'——结果 0 个, 全绿; ② 拿同一句输入走多个入口, 看闸禁动作是否一致。第二个探针一上来就抓到东西。",
+  "theDefect": {
+    "measured": "同一句 \"n i g g e r\": aspira_gate_check(只跑 54 维判别器) → **block**; aspira_gate_pipeline(跑完整 pipeline, 层更多) → **rewrite**。",
+    "significance": "**入口更全的那个反而更宽松。** 一个发现, 两个工具的行为都错——因为根因在共用的 pipeline.js 里。",
+    "twoRootCauses": [
+      "① Layer 3.5 一见 advResult.action === 'rewrite' 就整条覆盖 currentGate, 把判别器已判定的 block 降级成 rewrite。",
+      "② 更深的一处: currentGate 从 pass 起步, Layer 3 拿到的 discResult.gate 被**整个丢掉**(只记了 score 和 findings), 判别器自己的闸禁结论从未进入管道。不修②, 即使①改成单调, 也只是'不再降级', 而不是'该 block 的就 block'。"
+    ]
+  },
+  "fixIsARuleNotAPatch": "不是给 n i g g e r 加特例, 而是立一条规则:**加层不得降级**。SEVERITY 序 + '仅当严格更严重才覆盖' + 播种判别器结论。测试因此锁规则而不锁样本——根因是覆盖逻辑, 换任何一句都会被同样地降级。",
+  "instrumentSelfCorrection": {
+    "myProbeWasWrongTwice": [
+      "第一版探针给 aspira_gate_pipeline 传 input 参数, 而它的 schema 声明的是 text——引擎回了 'text 是必填参数', 这个报错是对的, 是我的探针错了。**先怀疑仪器, 再怀疑引擎, 这次是仪器的错。**",
+      "第二版四处一致性探针要求 check/checkInput/pipeline/discriminate 四方全等, 于是把 kill me киll 和 i hаte you 报成不一致。但那两个是**文档写明的设计**: 判别器不含对抗层, 对纯同形字给 pass, 完整 pipeline 借对抗层升级到 rewrite。正确的契约不是'四方相等', 而是 **pipeline 不得比判别器宽松**。我按这个契约重写了断言, 并把反向控制(混淆型必须仍被升级)单独列成一条。"
+    ]
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1452 passed / 0 failed / 1452 total**(较上轮 1446 净增 6 例, 即本轮的锁; 本轮拿到了一个全绿读数, 近几轮罕见的 0 失败)",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "docAudit": "exit 0",
+    "dimensionHealth": "53 触发 / 0 从不推 / 0 从未触发",
+    "mcpRestart": "已重启(改了 src/pipeline.js)。39ms / 132 模块 / 181 工具全 aspira_*; 重测 aspira_gate_check 与 aspira_gate_pipeline 对 n i g g e r 现在同为 block。"
+  },
+  "lessonRecorded": [
+    "**'工具都在、都能调'和'工具答得一致'是两回事, 而后者至今没人查过。** cycle-29 数了 181/181, 本轮的 181 个调用也全通, 但跨入口一测就发现两个入口对同一句给出不同闸禁动作。一致性需要单独测量, 它不会随'能调通'自动成立。",
+    "**根因常常在更下面一层。** 我 first 只看到'3.5 层降级', 修法就是加个大小比较; 真正量了才知道 currentGate 从 pass 起步、判别器结论被整个丢掉。只修①会得到'不再降级'却仍然漏 block。**把症状修到能跑, 和把规则立起来, 是两件事。**"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 本轮一致性探针只覆盖了 8 个样本、4 个入口; 可以扩成对全部 181 个工具做跨入口抽样(尤其 gate/family 内返回值互相印证的那些), 但那要先把'哪些工具本该一致'分类清楚。② SEVERITY 序现在只活在 pipeline.js 里; 若其他模块也开始做动作合并, 应该抽成共享工具模块(遵循约定 #2 的 _lazy 注册), 但目前只有一处, 不预先抽象。③ 当前基线: verify 15/15, run-all 1452/1452 全绿, FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}

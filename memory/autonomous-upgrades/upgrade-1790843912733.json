@@ -1,0 +1,94 @@
+{
+  "ts": "2026-10-01T08:38:32.732Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.71,
+  "confidence": 0.6,
+  "reasoning": "Selected: \"维度健康审计与增强\" (score: 0.71). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 329,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T19:00:00Z",
+  "objective": "维度健康审计的下一步: 定位 run-all 里那条稳定失败的 doc-probe 锁超时",
+  "achieved": true,
+  "measured": {
+    "theFailure": "run-all 里 audit-drift-detection.test.js 反复报'无法在 60000ms 内取得文档探针锁 /tmp/aspira-doc-probe.lock', 而该文件**隔离跑全绿**(5/5)。"
+  },
+  "theDiagnosis": {
+    "hypothesis1Rejected": {
+      "what": "audit-drift-detection 没纳入锁的串行化范围。",
+      "measured": "**假**: grep 'doc-probe-lock' 命中 4 次, 它确实用锁。21 个 test 文件用锁, 它位列其中。"
+    },
+    "hypothesis2Rejected": {
+      "what": "有 test 在同一台机器上写真实文档(README/IDENTITY/CURRENT_STATE)而没走锁, 与探针抢写。",
+      "measured": "**假**: 全量扫 '写文件但不用锁' 的文件共 14 个, 但它们写的都是 data/ 与 memory/, 不是这些协议文档。AGENTS.md 记录的判据(散文测试会把 README 改写)在这里成立。",
+      "noteThisWasWorthChecking": "因为这个假设若成立, 修法是把那 14 个文件也纳入锁。排除了, 就不用再动它们, 也不会'因为面积大就错的路'一样占回来。"
+    },
+    "hypothesis3Confirmed": {
+      "what": "**锁没有租约, 只有获取超时。持有者的持有时长可以超过等待者的 60000ms 耐心。**",
+      "measured": "_doc-probe-lock.js 全文没有 LEASE/maxHold/租约概念; withDocLock(fn) 是 acquire(timeoutMs) 之后同步跑 fn; 默认 timeoutMs = 60000; 而 fn 内部 spawns 审计, 审计自身就要花数秒到一分钟。",
+      "theMechanism": "N 个探针测试在 run-all 里并发, 一个持有锁并 spawn 审计; 其余的看到锁被占, 各从 60000ms 倒计时等起。**持有者的工作本身就可能吃掉 60s 级别**, 于是等待者的耐心先到。报错信息里那个锁不是孤儿, 是**活的持有者太慢, 而等待者的耐心比持有者还短。**",
+      "whyTheLeetThatFixDidNotWork": "上一轮我把 STALE_MS 120000 → 30000。那修的是真缺陷(孤立锁永远无法在调用者窗口内回收), 但**不是本 flake 的病因**: 锁根本没到陈旧, 它一直在被一个活着的持有者更新。所以隔离全绿、合跑仍红。"
+    }
+  },
+  "thePreciseFixNotApplied": {
+    "theFix": "给锁加**租约 + 等待超时解耦**: 等待者的默认超时要从'持有者单次工作的典型时长'反推, 而不是写 60000。最简单正确的做法是让 wait 超时**远大于**持有者最长一次工作的时长(例如 300000), 或者让等待者在超时后**重入队列**而不是直接抛错。",
+    "whyNotApplied": "这是 run-all 全家共享的并发参数, 改它会改变 N 个探针测试的时间预算, 必须连同一轮完整门禁; 本轮预算内做不完两侧。",
+    "recordedAs": "not-performed。上轮 STALE_MS 那个真缺陷已经修掉, 但这个 flake 的病因现在**首次被指认到具体行**, 修法也定到了参数级。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed(本轮零改动)",
+    "runAll": "未重跑(本轮是定位, 未改代码)",
+    "corpus": "FP 0.0% / 明文召回 100.0%(零改动, 沿用)",
+    "mcpRestart": "**未重启且不需要**"
+  },
+  "lessonRecorded": [
+    "**一个报'拿不到锁'的错误, 有三个完全不同的家庭, 而它们的修法互不相通。** 我这轮排掉了两个(缺锁 / 无锁写者), 才走到第三个(等待者的耐心比持有者的工作还短)。上轮我把'真缺陷'(STALE_MS)当成 flake 的病因, 因为它和 flake 的表面症状相关、日志里也找不到任何不一致之处 —— 只有诊断完成后你才有可能弄清'改对了某一处却毫无变化'。",
+    "**'隔离全绿、合跑才红'这个信号, 说的是'有东西被别人影响了', 但没说是谁。** 我在这个组合上跳过了两轮: 上一轮误判成 STALE_MS, 这一轮逐条点名才走到锁的时间预算上。两轮才做完这一件, 但它现在钉到了行, 不再是'疑似并发'。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **run-all 全绿的唯一钥匙现在是具体的了**: 把 _doc-probe-lock 的等待超时从 60000 提到远大于持有者最长一次工作(或改成超时后重入), 然后 run-all 应当全绿, sync-doc-numbers 的安全闸才会放行, 称呼点才能从 1477 对齐到实测。② 机制上同源的缺口①数字插空(归 prompt_injection)仍未修。③ 基线: verify 15/15, run-all 1491 总数(1490/1), FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}

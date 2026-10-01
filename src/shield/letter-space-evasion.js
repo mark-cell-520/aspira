@@ -139,7 +139,7 @@ const LETTER_SPACE_TERMS = Object.freeze([
  */
 function wordIsSpaced(word, haystack) {
   const spaced = new RegExp(
-    '\\b' + word.split('').map(c => c.replace(/[.*+?^${}()|[\\\]\\]/g, '\\$&') + '[\\s_.-]*').join('').replace(/\[\\s_\.-\]\*$/, '') + '\\b',
+    '\\b' + word.split('').map(c => c.replace(/[.*+?^${}()|[\\\]\\]/g, '\\$&') + '+[\\s_.-]*').join('').replace(/\[\\s_\.-\]\*$/, '') + '\\b',
     'i');
   const m = haystack.match(spaced);
   if (!m) return false;
@@ -147,7 +147,12 @@ function wordIsSpaced(word, haystack) {
   // (只看"有没有分隔符"不行——自带点号的术语会被误判, 见 COMPILED 的 literal。)
   const own = (word.match(/[\s_.-]/g) || []).length;
   const extra = (m[0].match(/[\s_.-]/g) || []).length;
-  return extra > own;
+  if (extra > own) return true;
+  // [第九十轮] 复读也是变形。判据从'只看分隔符超量'放宽为'变形超量'。
+  // 复读超量 = 命中片段的相邻重复字母对数 - 术语自身的相邻重复字母对数。
+  // 只比**相邻**重复, 所以 llama / committee / bookkeeper 按自身量算, 不超量不报。
+  const deforms = s => (s.replace(/[\s_.-]/g, '').match(/(.)\1/g) || []).length;
+  return deforms(m[0]) > deforms(word);
 }
 
 const COMPILED = LETTER_SPACE_TERMS.map(term => {
@@ -160,7 +165,7 @@ const COMPILED = LETTER_SPACE_TERMS.map(term => {
     // document.write 自带的 '.' 于是被当成词内分隔符, FP 从 0.0% 抬到 0.9%。
     literal: /[^a-z0-9\s]/i.test(term),
     // 整条术语: 词间至少一个分隔符
-    full: new RegExp('\\b' + words.map(w => w.split('').map(c => c.replace(/[.*+?^${}()|[\\\]\\]/g, '\\$&') + '[\\s_.-]*').join('').replace(/\[\\s_\.-\]\*$/, '')).join('[\\s_.-]+') + '\\b', 'i'),
+    full: new RegExp('\\b' + words.map(w => w.split('').map(c => c.replace(/[.*+?^${}()|[\\\]\\]/g, '\\$&') + '+[\\s_.-]*').join('').replace(/\[\\s_\.-\]\*$/, '')).join('[\\s_.-]+') + '\\b', 'i'),
     words,
   };
 });

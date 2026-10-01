@@ -42,7 +42,15 @@ const fs = require('fs');
 const path = require('path');
 
 const LOCK_DIR = '/tmp/aspira-doc-probe.lock';
-const STALE_MS = 120000; // 2 分钟未更新即视为陈旧(持有者已死)
+// [第一百零六轮] STALE_MS 原为 120000(2 分钟), 而第 61 行调用者的默认耐心
+// timeoutMs 是 60000。**一个孤立锁只有在超过 STALE_MS 才会被强拆, 而调用者
+// 在 60000ms 就放弃并抛错了** —— 于是孤立锁在调用者的等待窗口内永远不可能
+// 被回收, 只会在 run-all 里稳定报'无法在 60000ms 内取得文档探针锁'。
+// 这是 AGENTS.md 记了很久、但一直没修的一条(cycle-27 / cycle-31 都提过)。
+// 修法: 把 STALE_MS 压到调用者耐心的**一半以下**, 让孤立锁在超时之前就被拆掉。
+// 30000 是这个折中: 比 60000 的一半更小, 又远大于一次正常探针的持有时长
+// (探针只做几秒钟的文档改写), 不会误拆活着的持有者。
+const STALE_MS = 30000; // 30 秒未更新即视为陈旧(持有者已死)
 
 
 function lockAge() {
@@ -58,7 +66,17 @@ function touch() {
 
 
 function acquire(timeoutMs) {
-  const deadline = Date.now() + (timeoutMs || 60000);
+  // [test-coverage-gap·第一百一十六轮] 默认等待超时 60000 → 300000。
+  // 根因(三次测量收口): **锁没有租约, 等待者的耐心比持有者的工作还短。**
+  //   ① 第一百零八轮: _doc-probe-lock 无 LEASE/maxHold 概念, withDocLock(fn)
+  //      是 acquire(timeoutMs) 后同步跑 fn, 而 fn 内部 spawn 审计(数秒到一分钟);
+  //   ② 第一百零九轮: 锁里多占 3 秒, run-all 失败数从 1 涨到 3, 每个都是同一句超时
+  //      —— 机制被直接放大证实;
+  //   ③ 第一百一十四轮 diff + 第一百一十五轮隔离 8/8 绿: 受害者是
+  //      corpus-size-measured.test.js(隔离全绿, 合跑才红)。
+  // 持有者合法工作可达 60s 级, 等待者 60s 就抛错 → 等待者永远先到期。
+  // 300000 远大于持有者最长一次工作, 又不会让真死锁无限挂起。
+  const deadline = Date.now() + (timeoutMs || 300000);
   for (;;) {
     try {
       fs.mkdirSync(LOCK_DIR);
@@ -74,7 +92,7 @@ function acquire(timeoutMs) {
     if (Date.now() > deadline) {
       // 超时: 不静默失败——静默失败会让探针在无锁状态下跑，
       // 那正是本模块要消除的情况。
-      throw new Error('无法在 ' + (timeoutMs || 60000) + 'ms 内取得文档探针锁 '
+      throw new Error('无法在 ' + (timeoutMs || 300000) + 'ms 内取得文档探针锁 '
         + LOCK_DIR + '；这说明有探针测试卡死或锁未释放');
     }
     // 自旋等待(短 sleep 由 Atomics.wait 提供，避免 busy-loop)

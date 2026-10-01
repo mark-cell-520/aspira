@@ -28,25 +28,42 @@ const { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const DRY = process.argv.includes('--dry');
 
+/**
+ * **纯函数**: 从 run-all.js 的 stdout 文本里解析出 (passed, failed)。
+ *
+ * 为什么单拎出来: 这两个坑都出在这一步, 而不在改文件那一步——
+ *   ① 把 stderr 也拼进输出, 于是"最后一个匹配"落到 stderr 里某个测试文件
+ *      自己的行上, 实测值变成 10;
+ *   ② 用 match() 取第二条(其实是第二个**完整匹配**, 不是第二个分组),
+ *      拿到的同样是某个测试文件的 "10 通过"。
+ * 单拎成纯函数后, 这两个坑都能在**毫秒级**的测试里钉住, 不必每次跑 90 秒 run-all。
+ * test/sync-doc-numbers-parsing.test.js 锁定它。
+ *
+ * ⚠ 这个坑 audit-doc-numbers.js 的注释里已经写过一遍, 我又踩了一次:
+ *   "首版用 exec 取第一条，拿到的是某个测试文件的 10 通过，于是一条
+ *    正确的文档声称被报成'实测 10'——审计自己的 bug 产出假警报。"
+ *
+ * @param {string} stdout run-all.js 的 stdout
+ * @returns {{passed: (number|null), failed: (number|null)}}
+ */
+function parseRunAllOutput(stdout) {
+  const out = (stdout === null || stdout === undefined) ? '' : String(stdout);
+  // 必须取**最后**一条匹配: run-all.js 对每个测试文件都打印一行
+  // "测试结果: N 通过, 0 失败, 共 N 个", 最终汇总行形状与之相同。
+  const all = [...out.matchAll(/测试结果:\s*(\d+)\s+通过,\s*(\d+)\s+失败/g)];
+  const tm = all.length ? all[all.length - 1] : null;
+  if (!tm) return { passed: null, failed: null };
+  return { passed: Number(tm[1]), failed: Number(tm[2]) };
+}
+
 /** 与 audit-doc-numbers.js 同一套取数逻辑(逐字对齐, 包括它注释里记的那个坑)。 */
 function measureTests() {
   const r = spawnSync('node', ['test/run-all.js'], {
     cwd: ROOT, encoding: 'utf8', timeout: 900000, stdio: ['ignore', 'pipe', 'ignore'],
   });
-  // 只读 stdout。首版我把 stderr 也拼进来, 于是**最后一个**匹配落到了 stderr
-  // 里某个测试文件自己的行上, 实测值变成 10——把 1435 写成 10。
-  const out = (r && r.stdout) ? r.stdout.toString() : '';
-  // 必须取**最后**一条匹配: run-all.js 对每个测试文件都打印一行
-  // "测试结果: N 通过, 0 失败, 共 N 个", 最终汇总行形状与之相同。
-  // 首版用 match() 拿第二条(其实是第二个完整匹配, 不是第二个分组),
-  // 拿到的就是某个测试文件的 "10 通过"。
-  // ⚠ 这个坑 audit-doc-numbers.js 的注释里已经写过一遍, 我又踩了一次:
-  //   "首版用 exec 取第一条，拿到的是某个测试文件的 10 通过，于是一条
-  //    正确的文档声称被报成'实测 10'——审计自己的 bug 产出假警报。"
-  const all = [...out.matchAll(/测试结果:\s*(\d+)\s+通过,\s*(\d+)\s+失败/g)];
-  const tm = all.length ? all[all.length - 1] : null;
-  if (!tm) return { passed: null, failed: null };
-  return { passed: Number(tm[1]), failed: Number(tm[2]) };
+  // 只读 stdout。首版我把 stdout+stderr 拼接, 于是"最后一个匹配"落到了
+  // stderr 里, 实测值变成 10, 把 1435 写成 10。
+  return parseRunAllOutput(r && r.stdout ? r.stdout.toString() : '');
 }
 
 /**
@@ -136,4 +153,8 @@ function main() {
   else console.log(`\n共 ${changed} 处不一致。同步后请重跑 node scripts/audit-doc-numbers.js 复核。`);
 }
 
-main();
+// 只在被**直接执行**时同步; 被 require(测试) 时不跑 main,
+// 否则 test/sync-doc-numbers-parsing.test.js 一加载就会去 spawn 整个 run-all。
+if (require.main === module) main();
+
+module.exports = { parseRunAllOutput, SITES, ROOT };

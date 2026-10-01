@@ -31,6 +31,23 @@ const { evaluateRules } = require('./knowledge/classics-value-mapper.js');
 let pipelineAnchor = null;
 
 /**
+ * 闸禁动作的严重度序。单调比较是**加层不得降级**这一规则的依据。
+ *
+ * 为什么需要它: 第八十五轮跨入口实测发现, 同一句 "n i g g e r"
+ * 在 aspira_gate_check(只跑 54 维判别器)读作 **block**,
+ * 在 aspira_gate_pipeline(跑完整 pipeline, 层更多)读作 **rewrite**——
+ * 入口更全的那个反而更宽松。因为 Layer 3.5 一见 rewrite 就整条覆盖 gate。
+ * 一处发现, 两个工具的行为都错。
+ */
+const SEVERITY = { pass: 0, verify: 1, rewrite: 2, block: 3 };
+
+/** 返回四个动作里的较严重者; 动作相同则返回 b(保持既有语义)。 */
+function moreSevere(a, b) {
+  const A = SEVERITY[a], B = SEVERITY[b];
+  return B > A ? b : a;
+}
+
+/**
  * 运行全链路管线
  * @param {object} options
  * @param {string} options.input - 用户输入或 AI 草稿
@@ -82,6 +99,16 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
   checked_by.push({ layer: 'discriminate', score: discResult.overallScore, verdict: discResult.verdict });
   data.discriminate = { verdict: discResult.verdict, score: discResult.overallScore, findings: discResult.findings };
 
+  // [第八十五轮] 把 Layer 3 自己的闸禁结论**种进来**, 后续层只允许加层不许降级。
+  // 在此之前 currentGate 从 pass 起步, discResult.gate 被整个丢掉(只记了
+  // score 和 findings), 于是判别器判 block 的句子走完整 pipeline 可能只拿到
+  // rewrite——实测 "n i g g e r": aspira_gate_check(判别器)读 block,
+  // aspira_gate_pipeline(全层)读 rewrite。**入口更全的那个反而更宽松。**
+  // 播种之后, 这个不一致随 monotonic 规则一起消失。
+  if (discResult.gate && SEVERITY[discResult.gate.action] > SEVERITY[currentGate.action]) {
+    currentGate = { action: discResult.gate.action, reason: discResult.gate.reason, layer: 'discriminate' };
+  }
+
   // ─── Layer 3.2: Classical Knowledge — 古籍思想维度 ─────
   const classicalResult = evaluateRules(input);
   if (classicalResult.classicalRelevant) {
@@ -113,12 +140,17 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
   // 把攻击者的尝试内置成检测器的主动攻击面。
   const advResult = checkAdversarialVariant(input);
   checked_by.push({ layer: 'adversarial-variant', action: advResult.action, risk: advResult.risk });
-  if (advResult.action === 'rewrite') {
-    // 高危变体：建议先归一化再判别（保留原始 gate，追加信号）
-    currentGate = { action: 'rewrite', reason: `对抗变体: ${advResult.signals.map(s => s.name).join('、')}`, layer: 'adversarial-variant' };
-    data.adversarial = { risk: advResult.risk, signals: advResult.signals, normalized: advResult.normalized };
-  } else if (advResult.action === 'verify') {
-    data.adversarial = { risk: advResult.risk, signals: advResult.signals, normalized: advResult.normalized };
+  // data.adversarial 一律记录, 与动作无关——否则某个分支漏写就静默丢了整层证据。
+  data.adversarial = { risk: advResult.risk, signals: advResult.signals, normalized: advResult.normalized };
+  // [第八十五轮] 加层不得降级: 仅当 advResult 的动作**严格更严重**时才覆盖。
+  // 修的是: "n i g g e r" 走到这里时 discriminate 层已判 block(hate_speech),
+  // 而原代码一见 rewrite 就整条覆盖, 于是完整 pipeline 比判别器单跑更宽松。
+  if (advResult.action && SEVERITY[advResult.action] > SEVERITY[currentGate.action]) {
+    currentGate = {
+      action: advResult.action,
+      reason: `对抗变体: ${(advResult.signals || []).map(s => s.name).join('、')}`,
+      layer: 'adversarial-variant',
+    };
   }
 
   // ─── Layer 3.6: Dao Decision — 道论监督 ──────────────────────

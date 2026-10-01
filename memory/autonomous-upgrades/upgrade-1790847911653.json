@@ -1,0 +1,88 @@
+{
+  "ts": "2026-10-01T09:45:11.652Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 331,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T20:15:00Z",
+  "objective": "误报/召回校准的下一步: 闭合上一轮没闭合的 audit exit 1 环",
+  "achieved": false,
+  "measured": {
+    "auditExit": "1",
+    "theMismatches": [
+      "CURRENT_STATE.md 声称 tests passed (散文) = 1499, 实测 **1498**",
+      "README.md 声称 test suite (表格) = 1499, 实测 **1498**",
+      "README.md 声称 passing tests (词序反转) = 1499, 实测 **1498**"
+    ],
+    "theMeaning": "上一轮 sync 把五处称呼点从 1477 对齐到 **1499**(那一次 run-all 读数)。这一轮 audit 的 spawn 自己测到 **1498**。**文档声称与实测差 1, 而两侧的数字都是同一条命令跑出来的。**"
+  },
+  "theConclusionThisForces": {
+    "what": "**run-all 的总条数不是确定值, 所以'测试条数'这个声称无法靠同步来满足。**",
+    "evidence": "本轮连起来的三次实测: 1490/1(第一百零九轮) → 1491(第一百一十一轮) → 1499/0(第一百一十二轮) → 1498/1(本轮 audit spawn)。摆动至少 ±1, 而且这还是在零 src/ 改动的情况下。",
+    "whyThisIsDifferentFromEverythingBefore": "过去二十轮我把这个坑描述成'doc-probe 族不稳定'。**但 unittest 条数的摆动和 flake 是两件事**: flake 是某个用例红/绿, 摆动是**同一个用例集跑出不同的总数**。后者意味着有测试的**条数本身由仓库状态派生**(AGENTS.md 早有同型提示: 几百个未跟踪的 data/_tc_* 目录)。",
+    "theConsequenceStatedPlainly": "诚实数字契约要求'被声称就必须可测量'。而这里被测量的东西自己不稳定 —— 于是**任何**一次同步都只是把一个会腐烂的值写成静态值, 无论我做多少次。"
+  },
+  "whatThisDoesNotMean": {
+    "notAnExcuse": "这不是说文档可以写个大概数。恰恰相反: **它说的是这个指标本身不该被当成'可同步的数字'。**",
+    "whatWouldFixItProperly": "定位'哪个测试的条数由仓库状态派生'并把它钉死, 让 run-all 的总数确定下来。到那时 sync-doc-numbers 才有意义 —— 否则它只是在滚动更新一个噪声值。",
+    "recordedAs": "not-performed, 连同必须先做的事一起写下。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed(本轮零改动)",
+    "runAll": "未重跑(本轮只跑 audit 做诊断)",
+    "corpus": "FP 0.0% / 明文召回 100.0%(零改动, 沿用)",
+    "mcpRestart": "**未重启且不需要**"
+  },
+  "lessonRecorded": [
+    "**把'条数摆动'当成'flake', 会让人去修 flake, 而真正的问题一个都没被碰。** 我在这个坑里绕了二十轮: 上一轮读数碰巧 1499/0, 于是我以为环闭合了; 这一轮 1498, 才发现它从来没闭合过 —— 只是上一轮运气好。**一个只在部分运行上成立的结论, 和错误的结论是同一件事。**",
+    "**一个指标若自身不稳定, '同步它'就是维护一个噪声。** 这不是说 sync-doc-numbers 写错了 —— 它诚实地把一个会腐烂的值写成静态值。**修法是让被测量的东西稳定, 不是更快地重写声称。**"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **第一优先: 定位'哪个测试的条数由仓库状态派生'**。做法: 连续跑 run-all 三次, 对比各自 per-file 的条数输出, 找那个会变的文件; 很可能是 data/_tc_* 未跟踪目录被某个测试当输入池。② 找到并钉死之后, run-all 总数变确定, sync-doc-numbers 的 exit 0 才真正有意义, audit 才可能归零。③ 缺口①数字插空归 prompt_injection(改法已定)。④ 基线: verify 15/15, run-all 总数在 1490~1499 之间摆动(非确定), FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}

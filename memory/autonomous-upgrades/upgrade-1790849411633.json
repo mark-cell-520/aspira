@@ -1,0 +1,86 @@
+{
+  "ts": "2026-10-01T10:10:11.633Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 331,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T20:45:00Z",
+  "objective": "对抗鲁棒性增强(引擎选择), 执行上一轮收窄后的具体动作: 隔离跑 corpus-size-measured.test.js 八次看 flake 形状",
+  "achieved": true,
+  "measured": {
+    "isolation": "连跑八次 **_mount 隔离模式**, 八次全部 **6 通过 / 0 失败 / 共 6 个**。",
+    "contrast": "而在 run-all 合跑里, 两次运行的 diff 显示它会变成 (5,1,6) —— 同一条用例一会儿红。",
+    "conclusion": "**这不是用例自身的不确定, 是并发干扰。** 它隔离 100% 绿, 合跑才红, 与 AGENTS.md 里整个 doc-probe 家族的模式完全一致。"
+  },
+  "whatThisRulesInAndOut": {
+    "ruledOut": [
+      "用例自身有随机输入/时间依赖 —— 隔离八次全同, 可排除;",
+      "'条数由仓库状态派生'(上一轮我带着的预设) —— 隔离与合跑的共 6 个都一样, total 从来没变, 排除。"
+    ],
+    "ruledIn": "**并发。** 而且它是锁家族的一员(grep doc-probe-lock 命中), 于是第一百零八轮的诊断直接适用: _doc-probe-lock **没有租约, 只有获取超时**; withDocLock(fn) 是 acquire(timeoutMs) 后同步跑 fn; fn 里 spawn 审计数秒到一分钟; **持有者的工作可能吃掉 60s 级, 等待者的默认耐心只有 60000ms, 于是等待者先到期。**",
+    "soTheChainIsNowComplete": "doc-probe 家族合跑红 → 等待者早于持有者到期 → **corpus-size-measured 是这条链上一个被量到的受害者**(隔离 8/8 绿, 合跑 5/1/6)。"
+  },
+  "theConcreteFixReadyToApply": {
+    "what": "把 _doc-probe-lock 的默认等待超时从 60000 提到远大于持有者最长一次工作(例如 300000), 或改成超时后重入而不是抛错。",
+    "whyConfident": "这不是猜的: 第一百零九轮那个实验直接证实了机制(我在锁里多占 3 秒, run-all 失败数从 1 涨到 3, 每一个都是同一句超时); 第一百一十四轮 diff 把受害者收到一个文件; 本轮隔离 8/8 绿排除了用例自身。三条测量指向同一个机制。",
+    "recordedAs": "未落盘(预算)。这是二十轮欠账的根, 而它现在有三次测量支撑, 不再是'疑似并发'。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed(本轮零改动)",
+    "runAll": "未重跑(本轮只做隔离测量)",
+    "corpus": "FP 0.0% / 明文召回 100.0%(零改动, 沿用)",
+    "mcpRestart": "**未重启且不需要**"
+  },
+  "lessonRecorded": [
+    "**一个 flake 的形态, 是'隔离是否绿'直接给出的。** 我上一轮收到一个文件名, 这一轮八次隔离跑就把它定性为并发 flake —— 而'并发'这两个字直接把我之前三轮的诊断和实验连成了一条链。**收窄到文件名不是终点, 隔离跑一次才是定性。**",
+    "**排除法要连'我自己的预设'一起排。** 上一轮我带着'总条数会不会变'的预设去 diff, 量出来 total 不变; 这一轮隔离跑又把'用例自己有随机性'排除掉。两个预设都被数据推翻, 剩下的那一个就是答案。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **第一优先, 现在可以动手了: 把 _doc-probe-lock 的默认等待超时 60000 提到 300000(或改超时后重入)。** 三次测量支撑同一个机制, 落盘后连跑两次 run-all 验证 corpus-size-measured 不再摆动; 稳定后 sync-doc-numbers 的 exit 0 才有意义, audit 才可能归零。② 第一百零八轮那条 STALE_MS 30000 保留不动(它是真缺陷, 与本 flake 无关)。③ 缺口①数字插空归 prompt_injection(改法已定)。④ 基线: verify 15/15, run-all 248 文件 / 1321 用例, pass 1320~1321 摆动(单一 flake: corpus-size-measured), FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}

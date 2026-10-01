@@ -1,0 +1,85 @@
+{
+  "ts": "2026-10-01T11:07:44.028Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 331,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T22:30:00Z",
+  "objective": "测试覆盖缺口: 修掉 evasion-known-gaps 因上一轮修复而过时的读数, 并把'半修'钉住",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "test/evasion-known-gaps.test.js",
+      "what": "条目①从 1 条拆成 3 条: ①插入子类**已修, 必须保持拦截**(防回归锁); ②替换子类仍 KNOWN_MISSES; ③混合形态声明它仍 pass(防止'插入类修了'被读成'①已修')。"
+    }
+  ],
+  "whyThisWasTestCoverageWork": {
+    "what": "第一百一十九轮改的是 src/index.js, 而这个测试文件当时没跟着改 —— 它断言 i2gnore/i2gn0ore 某些形态仍 pass, 而其中一部分已被修。",
+    "theTrap": "**一份已知缺口测试若不跟着修复更新, 它就会从'缺口清单'变成'缺口锁定器'** —— 每一条断言都在要求缺陷继续存在。",
+    "measured": "更新后 7/7 绿(原 5 条 + 新增 2 条 + 拆出 1 条)。"
+  },
+  "theHalfFixIsNowPinnedInsteadOfBlurred": {
+    "before": "只有一条断言 '①数字插空: 当前仍未修复' —— 而'仍未修复'现在对插入子类已经为假。",
+    "after": "三条断言各自说清一件事: **插入子类已修且必须保持拦截; 替换子类仍未开; 混合形态(插入+替换)不必被期望拦截。**",
+    "whyTheThirdOneMatters": "没有它, 下一个人可以把'插入类 3/5 命中'读成'①已修', 然后困惑于为什么混合形态还 pass。**把它写成断言, 就把'半修'这件事钉成了可执行的事实。**"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1501 passed / 0 failed / 1501 total**",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "**未重启且不需要**: 本轮只改 test/ 文件(src/index.js 的改动已在第一百一十九轮重启过)。"
+  },
+  "lessonRecorded": [
+    "**修完代码必须回头看锁着'修复前状态'的测试, 否则它会在你背后继续维护缺陷。** 第一百一十九轮修了 src/index.js, 缺口测试没动 —— 这种'修复与锁不同步'比没有锁更危险: 没有锁至少没人被骗, 不同步的锁会主动说谎。",
+    "**半修的正确表达是拆成多条断言, 不是改一个 measured 值。** 我把'仍未修复'拆成'插入类已修且须保持' + '替换子类仍未开' + '混合形态不必被期望'。三条各说一件事, 才不会有人把 3/5 读成 5/5。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **缺口①替换子类未开**(o→0 顶替), 修法前**必须先量良性语料里有多少'字母被数字顶替'的正常串** —— 误伤面比插入类大得多, 这是第一百一十九轮只做插入类的原因。② error-memory 四个工具的空洞仍在(模块不存在), 修前先答'error memory 该长什么样'(持久化 / 有界队列 / 复用 data/feedback/)。③ 基线: verify 15/15, run-all 1501/0, audit 86/86 exit 0, FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}

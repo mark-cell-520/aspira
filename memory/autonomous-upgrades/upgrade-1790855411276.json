@@ -1,0 +1,107 @@
+{
+  "ts": "2026-10-01T11:50:11.276Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 331,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-02T00:20:00Z",
+  "objective": "测试覆盖缺口: 从 354 个未提及模块里挑一个合同清晰的, 探并锁",
+  "achieved": true,
+  "theCensusCorrection": {
+    "what": "重测了'未覆盖模块'这个说法: 把测试文本里 require('../src/a/b.js')、require('x.js') 与 path.join(ROOT,'src','a','b.js') 三种形式都归一化, 得 **354 个未被任何测试文本提及**。",
+    "correction": "这比旧口径(103 of 383)大, 因为旧口径只认 require 形式, 而像 kv-cache-persistor 那样用 path.join 分段构造的模块会被漏算 —— **AGENTS.md 第三十一轮已经记过这条('164 未覆盖'这个数被 path.join 分段形式抬高)。本轮的量法与那次相反, 是补全而不是漏算。**",
+    "honestCount": "真实缺口至少 354, 但其中 archive/ 子系统是死代码分支, 未计入本轮候选。**本轮诚实覆盖数 = 1 个模块, 不是 354。**"
+  },
+  "theModuleAndTheDefect": {
+    "module": "src/benchmark/failure-importer.js(172 行, 导出 { FailureCaseImporter, parseCases })",
+    "contract": "importFromFile 的 report **永不抛错**, 而 report.errors 是调用方唯一能看见'有东西没进来'的地方。",
+    "defect": "**parseCases 的两条分支同族不同约。** 同一个'合法 JSON 但不是用例对象'的输入:",
+    "measured": [
+      "42 → JSONL 分支(带换行): cases=[] errors=**[]** —— 静默丢",
+      "42 → 单行分支(不带换行): cases=[] errors=[**内容不是用例对象**] —— 报错",
+      "\"str\" / null 同形"
+    ],
+    "whyItMatters": "JSONL 文件里混进一行 42 或 \"str\", 用户不会收到任何提示; 而同一个错误写成单行却会被告知。**一半会被发现、一半不会, 而 report.errors 是唯一的通知渠道。**"
+  },
+  "theFix": "JSONL 分支补 else, 与单行分支同口径(报 '第 N 行不是用例对象，已跳过')。",
+  "theLock": {
+    "file": "test/failure-importer-jsonl-contract.test.js",
+    "cases": 4,
+    "shapes": [
+      "① JSONL 分支: 非对象必须报错(不许静默丢)",
+      "② 单行分支: 同一输入族的口径 —— **反向控制**, 防我把单行分支也改坏",
+      "③ 两条分支对同一输入族必须同口径(本轮核心)",
+      "④ 对象行 / 注释 / 空行必须被正确导入或跳过(不许误伤)"
+    ],
+    "note": "case ② 是刻意的反向控制: 本轮改的是 JSONL 分支, 而单行分支是**既有的正确行为**, 必须证明我没把它一起弄坏。"
+  },
+  "processNotes": {
+    "note1": {
+      "what": "**Python 锚点两次失败, 第三次才用落盘铁律的正解。** 我用 heredoc 拼 OLD 字符串, `t.count(OLD)` 两次返回 0; 甚至 print(repr(lines[i+1])) 出来看着完全一样、断言还是红。最后用 read 工具看真实行号 + edit 工具做字面替换, 一次成功。",
+      "counted": "**AGENTS.md 的'落盘铁律'(先 read 目标行, 再 edit 字面替换)不是风格偏好, 是必要的。** 我在 python 里拼多行锚点时, 引号转义和尾随空格每次都能骗过我; 而 read 工具给的是逐行编号的真实内容, edit 匹配的是字面字符串。这不只是慢, 是省不掉的那一步。"
+    },
+    "note2": {
+      "what": "本轮从 354 个里挑模块的标准: **合同清晰 + 可 round-trip + 安全相关**。failure-importer 是'导入别人的失败案例', 它的错误通道就是它的全部价值所在, 值得锁。",
+      "counted": "覆盖数量的诚实边界: 1 个模块 / 354。"
+    }
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "**1505 passed / 0 failed / 1505 total**",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "**已重启并核对: 181 个 aspira_* 工具在线**(本轮改了 src/ 引擎代码)"
+  },
+  "lessonRecorded": [
+    "**'未覆盖模块'的量法本身要归一化, 否则它给出的数字既可能漏算也可能虚高。** 旧口径只认 require, 漏了 path.join 分段构造; 本轮把三种形式都算上, 得 354。量法不写清楚, 这个数就不能引用。",
+    "**python heredoc 拼多行锚点不可靠, read+edit 才是正解。** 两次 count=0, 第三次转用 read 工具 + edit 字面替换, 一次成。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① 未覆盖模块 354 个, 本轮覆盖 1 个(failure-importer 的 JSONL 口径)。若要继续, 优先 benchmark/ 与 shield/ 家族(合同清晰)。② 缺口①剩最后一条混合形态(插入+替换同现), 落盘前先把 '4all' 类形态加入良性反向控制。③ error-memory 四工具的空洞仍在(模块不存在)。④ 基线: verify 15/15, run-all 1505/0, audit 86/86 exit 0, FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}

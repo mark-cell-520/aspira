@@ -1,0 +1,93 @@
+{
+  "ts": "2026-10-01T04:55:01.820Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 322,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T09:50:00Z",
+  "objective": "测试覆盖缺口填补: 把已实测的逃逸缺口钉住 + 给一个无测试模块上契约锁",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "test/evasion-known-gaps.test.js",
+      "what": "新增 6 例。把第八十六轮实测到、当时未修的三个穿透类作为**已知缺口**钉住: 断言当前读数 + 断言条目数不得静默减少 + 明文对照 + 已修类不得回归。"
+    },
+    {
+      "file": "test/fp4-quant-roundtrip.test.js",
+      "what": "新增 10 例。src/core/fp4-quant.js 的首个测试: 4-bit round-trip 精度边界、非白名单/非数值字段必须原样、递归嵌套、_q 标记必须消失、白名单本身是契约。"
+    }
+  ],
+  "theCensusWasImproved": {
+    "what": "cycle-28 记的'164 个 src/ 模块无测试引用'是不准的。",
+    "why": "那一版只按模块**名** grep 引用, 漏掉 `path.join(ROOT,'src','memory','kv-cache.js')` 这类分段拼法。",
+    "thisCycle": "重写普查: 同时按模块名与按分段路径两种方式找引用。**383 个模块里 102 个无任何测试引用。** 数字从 164 降到 102——不是覆盖变多了, 是仪器变准了。"
+  },
+  "whyLockKnownGapsAsTests": "一个缺口只存在于 journal 文字里, 那么'它被修好了'和'它被改坏了'都不会有任何信号。写成测试后: 现状被钉住, **修好会红**(提醒把条目移出 KNOWN_MISSES 并补修法说明), **改坏也会红**(读数变化)。这不是锁住缺陷, 是锁住对缺陷的认知。类名一律 KNOWN_*, 失败信息里直接写下一步该做什么。",
+  "fp4QuantNoDefect_MyProbeWasWrong": {
+    "what": "我一度判定 fp4-quant 整个模块是死的(FP4_ENABLED=true 但压缩什么都没发生)。",
+    "rootCauseOfMyError": "COMPRESSIBLE_FIELDS 是 **Set**, 而我用 JSON.stringify 看它, Set 序列化也是 {} 于是我以为它是空的; 更深一层是 isCompressible() 的键是**字段名**不是**值**, 我传了 0.5 进去, 读到 false, 于是推出'所有东西都不可压缩'。",
+    "measured": "15 个字段名; compressObject 真的量化了置信度/严重度/总分并递归进嵌套对象; decompressObject 还原后 _q 标记彻底消失; 最大还原误差 0.0333, 与 4-bit(16 级, 步长 1/15, 中点还原)的设计完全一致; 压缩率 1.727。",
+    "action": "把'COMPRESSIBLE_FIELDS 是 Set 而非 map'和'isCompressible 以字段名为键'两条写进测试, 让我这个错误**可复现地失败**——下一轮谁再用 JSON.stringify 看 Set 就会红。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1470 passed / 2 failed / **1472 total**(较上轮 1456 净增 16 例 = 6 + 10)",
+    "theTwoFailures": "audit-domains-blindspot.test.js 与 audit-scan-set-hygiene.test.js, 均为 doc-probe 活体注入族; 四个候选家族隔离复跑分别 4/4、6/6、8/8、4/4 全绿。",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "dimensionHealth": "53 触发 / 0 从不推 / 0 从未触发",
+    "mcpRestart": "**未重启**: 本轮只新增两个 test/ 文件, 未动 src/ 引擎代码。"
+  },
+  "lessonRecorded": [
+    "**JSON.stringify 看 Set 会得到 {}, 那看起来和一个空对象一模一样。** 我因此把一个健康模块误判成死的, 而且差点写进'修复'。看一个值是 Set 之前, 先问它是 Set 还是对象——本轮测试里有一条专门钉这个。",
+    "**补覆盖之前先修普查。** 164 → 102 不是覆盖长了, 是仪器准了。带着虚高的缺口数去找模块, 会把力气花在已经覆盖过的地方(cycle-31 记的 kv-cache 正是如此)。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① KNOWN_MISSES 里三条按误伤风险排序, 多词标点穿插风险最低(与既有 noSep 判据同源), 仍建议下一轮先做它。② 还有 **101** 个模块无测试(102 减掉本轮覆盖的 fp4-quant), 优先挑安全关键且可 round-trip 的: src/core/sleep-wake.js / src/core/tiered-memory-fusion.js / src/core/semantic-clusterer.js 都在候选里。③ 当前基线: verify 15/15, run-all 1472 总数 / 净增 16, FP 0.0%, 明文召回 100%, MCP 181 工具(本轮未重启, 上次实测仍有效)。"
+}

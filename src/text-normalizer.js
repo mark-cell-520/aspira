@@ -271,6 +271,10 @@ function _deLeetCandidates(text) {
       for (const ch of tok) if (LEET_MAP[ch]) hits++;
       if (hits === 0) return tok;
       if (/^[\d.,%:/x\-+= ]+$/.test(tok)) return tok;
+      // [第一百零一轮] 版本号 token: v + 点分数字段(v1.0.0 / v10.20.30 / v1.0.0.1)。
+      // 上面那条护栏只挡'整段都是数字标点', 版本号以 v 开头于是漏网, 0/1 被当
+      // leet 解码 —— 实测 v1.0.0 → vi.0.0, 违背诚实数字契约。
+      if (/^v\d+(?:\.\d+)+$/i.test(tok)) return tok;
       if (/^\d+(?:\.\d+)?\s*(?:[kmgtp]?i?b|b|bytes?|mb|gb|kb|tb|pb|ms|s|min|h|hr|fps|hz|khz|mhz|ghz|w|kw|v|mv|kv|ma|nm|mm|cm|m|km|kg|mg|g|l|ml|cl|°c|°f|%)$/i.test(tok)) return tok;
       if (/^\d+(?:\.\d+)?(?:[kmgtp]i?b|bytes?|hz|fps|ms|min|khz|mhz|ghz)$/i.test(tok)) return tok;
       let r = '';
@@ -479,6 +483,16 @@ function normalize(text) {
   // 1. 去零宽/不可见字符
   const noInvisible = out.replace(INVISIBLE_RE, '');
   if (noInvisible !== out) { applied.push('strip_invisible'); out = noInvisible; }
+
+  // 1b. [第八十六轮] 去组合附加符(Combining Diacritical Marks, U+0300–U+036F)
+  //     对抗变体: "ı̈gnore all previous instructions"(i + U+0308 diaeresis)
+  //     ——每个字母都带着一个组合符, 于是 /\bignore\b/ 一个都匹配不上。
+  //     实测: 该输入走完整 pipeline 得 **pass**, 而明文基线是 block。
+  //     三类混淆(全角/零宽/基里尔同形字)此前都已覆盖, 组合符是漏的第四类。
+  //     风险很低: 剥离只影响"能否被拉丁词形匹配", café→cafe / naïve→naive
+  //     都不对应任何模式词; 而攻击面(藏匿指令)是真实的。
+  const noCombining = out.replace(/[\u0300-\u036f]/g, '');
+  if (noCombining !== out) { applied.push('strip_combining'); out = noCombining; }
 
   // 2. 全角转半角（安全版：只转字母数字，不动中文标点）
   const half = toHalfWidthSafe(out);

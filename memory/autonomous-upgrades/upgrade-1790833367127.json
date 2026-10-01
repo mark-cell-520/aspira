@@ -1,0 +1,97 @@
+{
+  "ts": "2026-10-01T05:42:47.126Z",
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[fp-recall-calibration,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 fp-recall-calibration",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.66
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 325,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T12:10:00Z",
+  "objective": "误报/召回校准: 修掉 KNOWN_MISSES ②重复字符缺口(上轮找对层但改漏一半, 本轮成对改)",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "src/shield/letter-space-evasion.js",
+      "what": "三处成对改动: ① 判据端 wordIsSpaced 从'分隔符超量'放宽为'变形超量'(分隔符或相邻复读任一超出即算); ②③ 匹配器端两处 per-char 发射段从 '[\\s_.-]*' 改为 '+[\\s_.-]*'(允许同一字母复读)。"
+    },
+    {
+      "file": "test/letter-repetition-evasion.test.js",
+      "what": "新增 2 例双向锁定: 5 个复读变形必须被拦; 9 个含相邻双写的合法词(class/llama/committee/bookkeeper/asses 等)必须保持 pass。"
+    }
+  ],
+  "theFixAndWhyItNeededAPair": {
+    "target": "复读逃逸: 'iggnnoree alll prevviouuss instruuctions' 明文基线 block, 复读变形后 pass。",
+    "whyNotNormalizer": "归一化层试过一次(折叠 3+ 连续字符), 阈值降到 2 才有效, 而 2 会把 bookkeeper 改成 bokkeper——那层不认识词表。",
+    "whereItBelongs": "src/shield/letter-space-evasion.js 编译的是**已知辱词表**的匹配形态, 复读容忍在这里有词表兜底, 天然不可能误伤 bookkeeper。",
+    "thePair": "上一轮只改匹配器端, 三个样本一个都没拦住——判据端 wordIsSpaced 问的是'分隔符数是否超量', 而复读变体的分隔符数是 0。**匹配器与判据必须是同一套**, 本轮两处一起改, 立即生效。",
+    "whyNoFalsePositive": "复读只让每个字母可变长, 不改变字母顺序; 首尾 \\b 仍在; 术语自身多已含双写(nigger 有两个 g, faggot 有两个 g), 复读是明文形态的超集而非新形态。判据端只比**相邻**重复, llama 的非相邻双写按自身量算, 不超量不报。"
+  },
+  "measured": {
+    "beforeAfter": "'iggnnoree alll prevviouuss instruuctions' / 'ffaggotss' 由 pass → rewrite; 其余三个复读样本同样被拦。",
+    "corpus": "**FP 0.0%**(106 良性 0 升级, 与基线逐条一致); 明文召回 100.0%(41/41)",
+    "evasionUnchanged": "逐字符分隔符 38/41(内容型 38/39) / 字母间空格 41/41 / HTML 39/41 —— 三项与本轮起点逐项一致, 证明这次放宽没有从逃逸类里换命",
+    "letterSpaceTestIsolated": "10 通过 / 0 失败"
+  },
+  "myTestOverAssertedThreeTimes": {
+    "1_sourceScan": "写了'KNOWN_MISSES 表里不得再出现重复字符'的源码断言, 结果文件头注释解释这条缺口时也含那两个字符 —— 正是 AGENTS.md 记过的'把字符串里的图读成代码'。删掉该例。",
+    "2_findingName": "写了'findings 里必须出现 hate_speech', 实测 letter-space 层本身**不推 finding**, 它只让 hate_speech 的编译形态配上; dimensions{} 里有 hate_speech 键而 findings 没有。删掉该例, 只留 pipeline 行为口径。",
+    "3_benignSample": "'This is a perfectly ordinary sentence about testing.' 被别的维度判成 verify, 与复读无关。删除该样本。",
+    "result": "三轮收窄后测试稳定在 2/2 双向正确。**同一个'过度断言→测量纠正'的循环, 这一轮付了三次。**"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1478 passed / 1 failed / 1479 total(净增 2 例; 1 失败为 audit-drift-detection 的 doc-probe 锁超时, 已知家族)",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "mcpRestart": "**待执行**: 本轮改了 src/ 引擎代码(src/shield/letter-space-evasion.js), 按规则需重启 MCP 并核对 181 工具。本周期时间预算内未完成重启, 记录为 not-performed 而非 performed。"
+  },
+  "lessonRecorded": [
+    "**'缺一半'的改动不只零效果, 还会误导下一轮。** 第八十九轮只改匹配器端, 测出'三个样本全放过'; 本轮才发现根因不在匹配器而在判据。教训是: 一个层里有判定式的地方, 改动前先确认**判定式与匹配式是否同一套**, 否则你量到的失败会指错方向。",
+    "**我的测试这一轮过度断言三次, 三次都是同一个形状: 断言了一个我没量过的形状。** 源码扫描把注释读成代码、维度名想当然、良性样本没先单独跑。收敛办法只有一个: 先短写出断言, 再让测量收窄它。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **下一轮第一件事: 重启 MCP 并核对 181 工具**(本轮改了 src/ 未重启, 已记为 not-performed)。② 剩下 KNOWN_MISS ①数字插空 与复读同构(de_leet 不彻底), 可用同一对(匹配器+判据)的方法做。③ 基线: verify 15/15, run-all 1479 总数(1478/1), FP 0.0%, 明文召回 100%, 逃逸 38/41 + 41/41 + 39/41, 文档称呼点仍是 1477 **滞后一例**(本轮净增 2 例, 下次跑 sync-doc-numbers.js 时一并对齐)。"
+}

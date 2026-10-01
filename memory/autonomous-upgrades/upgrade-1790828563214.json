@@ -1,0 +1,103 @@
+{
+  "ts": "2026-10-01T04:22:43.214Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 318,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T07:45:00Z",
+  "objective": "测试覆盖缺口填补: 把最近两轮留下的两个'未钉住'欠账变成双向测试",
+  "achieved": true,
+  "changes": [
+    {
+      "file": "test/dangerous-instruction-weapons.test.js",
+      "what": "新增 5 例, 双向锁定第八十四轮补的第⑦族(武器/爆炸物/毒品制作请求)。20 个恶意全 block + 22 个良性全 pass + 单独提到危险物词不命中 + 反向控制 + 命中维度确认。"
+    },
+    {
+      "file": "test/sync-doc-numbers-parsing.test.js",
+      "what": "新增 6 例, 锁定 sync-doc-numbers.js 的取数逻辑。包括把两个首版 bug 显式复现钉在案。"
+    },
+    {
+      "file": "scripts/sync-doc-numbers.js",
+      "what": "重构: parseRunAllOutput() 单拎成纯函数; module.exports 移到文件末尾并加 require.main 守卫(否则被 require 时一加载就去 spawn 整个 run-all)。"
+    }
+  ],
+  "whyTheseTwo": "第八十四轮的简报里写的是'本轮新族还没有测试钉住——这正是上轮给 sync-doc-numbers.js 留的同类欠账'。两个都是**同一形状的欠账**: 一次性探针/干跑证明的只是'当时那一版能行', 改一个字就静默失效。本轮一次清掉两个。",
+  "theRefactorWasNotCosmetic": {
+    "why": "sync-doc-numbers.js 原先只导出 main() 的执行, 取数逻辑内联在里面。要测它就必须跑 90 秒的 run-all。单拎成纯函数后, 这些用例是毫秒级的, 也才有可能把'多行输出取最后一条'这件事单独钉住。",
+    "twoBugsDuringRefactor": [
+      "把 module.exports 写在 SITES 声明之前 -> TDZ 'Cannot access SITES before initialization'。**node --check 通过, 是测试挂载时才炸的**——本会话第三次遇到这个形状。",
+      "去掉守卫后, 测试一 require 脚本就去 spawn 整个 run-all, 于是测试变成了 90 秒且因非全绿而 exit 2。加 require.main === module 才对。"
+    ]
+  },
+  "theTestCaughtMyOwnProbeError": {
+    "what": "第一版把 'hatch manufacturing tutorial' 同时放进了 EVIL 和 BENIGN。hatch 不在武器词表, 它确实该放行。",
+    "significance": "**是测试先发现的, 不是我发现的**。如果我直接收工, 这个不一致会一直留在测试文件里——正例和反例互相矛盾, 将来谁改第⑦族都会被这条假红灯误导。"
+  },
+  "theParsingTestPinsTwoRealBugs": {
+    "bug1": "首版把 stderr 也拼进输出, 于是'最后一个匹配'落在 stderr 里某个测试文件自己的行上, 实测取到 10 而不是 1435。",
+    "bug2": "首版用 match() 取第二条, 那取到的是第二个**完整匹配**而非第二个分组, 同样拿到某个测试文件的 '10 通过'。",
+    "alreadyDocumentedElsewhere": "audit-doc-numbers.js 的注释里早就一字不差写过这个坑('首版用 exec 取第一条，拿到的是某个测试文件的 10 通过')。我又踩了一遍, 所以这两个用例直接以'首版 bug 复现'命名, 让下一次不必再靠踩来学。",
+    "thirdTestBugOfMyOwn": "CRLF 那条我一开始把空格塞到了逗号前面, 于是改变了输入形状本身('通过 ,' 而非 '通过,'), 测的是一个不存在的输入。改为只加令牌之间的空白。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed",
+    "runAll": "1443 passed / 3 failed / **1446 total**(较上轮 1435 净增 11 例, 正是本轮两个文件的新增用例数)",
+    "theThreeFailures": "audit-pattern-blindspot(4/4 隔离全绿) / audit-scan-set-hygiene(6/6) / audit-self-pollution(8/8)。三者**全部**是 doc-probe 活体注入族, 隔离复跑全绿。注意本轮是 3 条同时红, 比往轮的 1 条更宽, 但仍是同一族。",
+    "corpus": "FP 0.0% (106 良性 0 升级); 明文召回 100.0% (41/41)",
+    "dimensionHealth": "53 触发 / 0 从不推 / 0 从未触发",
+    "mcpRestart": "未重启: 本轮只新增/重构测试与脚本, 其中 scripts/sync-doc-numbers.js 的重构不改变其行为(守卫只在被直接执行时生效), 未动 src/ 引擎代码。"
+  },
+  "lessonRecorded": [
+    "**'没钉住'是欠账, 而且和'未修复'是同一个优先级。** 前两轮各留了一个, 都是'当时那一版能行'的形状。本轮发现: 重构本身就会引入两个新 bug(TDZ 和 require 副作用), 而它们只能靠测试发现——**没测试的代码连重构都不安全**。",
+    "**正反两向的用例会互相矛盾, 而测试会先发现。** hatch 那条同时出现在 EVIL 和 BENIGN 里, 是我手写的错; 跑一遍就红了。双向锁定不只是保护引擎, 也在保护测试自己。"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① doc-probe 活体注入族本轮红到 3 条(以往 1 条), 是往窄处走的信号;_doc-probe-lock.js 的 STALE_MS(120s) 超过其自身调用方的耐心(60s)这个已知欠账仍未修, 建议下轮 test-coverage-gap 或性能优化专门处理。② 两个欠账已清, 下一轮可转向 164 个无测试覆盖的 src/ 模块(cycle-28 记录, 至今只覆盖过 1 个)。③ 当前基线: verify 15/15, run-all 1446 总数 / 净增 11, FP 0.0%, 明文召回 100%。"
+}

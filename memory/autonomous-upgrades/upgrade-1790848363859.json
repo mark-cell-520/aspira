@@ -1,0 +1,82 @@
+{
+  "ts": "2026-10-01T09:52:43.859Z",
+  "chosen": "dimension-health-audit",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.71,
+  "confidence": 0.6,
+  "reasoning": "Selected: \"维度健康审计与增强\" (score: 0.71). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.71
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 331,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "completedAt": "2026-10-01T20:30:00Z",
+  "objective": "维度健康审计的下一步: 定位'哪个测试的条数由仓库状态派生'",
+  "achieved": true,
+  "theTwentyCycleMysteryResolved": {
+    "theQuestion": "run-all 的 pass 数为什么在不同运行间摆动(1490 / 1491 / 1498 / 1499), 让文档的'测试条数'声称永远对不上?",
+    "theMethod": "连跑两次 run-all 存日志, 按文件解析各自的 (通过, 失败, 共) 三元组, 求差集。",
+    "measured": "**248 个文件, 两次合计用例数完全相同(1321)。会变的文件只有一个: corpus-size-measured.test.js —— run1 (5,1,6), run2 (6,0,6)。**",
+    "theConclusionThatMatters": "**总条数根本不变, 变的是通过/失败的分界。** 那个 flake 不是'多跑出一条用例', 而是'同一条用例一会儿绿一会儿红' —— 于是 pass 数 ±1, 而 total 不动。",
+    "whyIHadItWrongForRounds": "我一直在找'哪个测试的条数由仓库状态派生'(即 total 会变的来源), 而且中间一度真的以为 total 在摆(1491→1499)。**那些差值全是同一个 flake 的通过数在动, total 从来没动过。** 我拿 total 的差当症状, 所以找了错的方向。"
+  },
+  "whyThisFinallyPointsAtARealFix": {
+    "before": "过去二十轮我把这个坑归给'doc-probe 族不稳定', 而 _doc-probe-lock 的等待超时是我一直在修的候选。",
+    "now": "会变的那个文件是 **corpus-size-measured.test.js** —— 它正是 doc-probe 家族的一员(AGENTS.md 列的 flake 名单里有它), 也就是说锁超时那条线**确实**是相关的, 但真正的目标要具体到这个文件。",
+    "theActionableStep": "让 corpus-size-measured.test.js 确定性运行。它的 flake 大概率与派生的输入池有关(它自己就断言 corpus 规模), 一旦它稳定, pass 数就确定, 文档的'测试条数'声称才第一次具备可满足性。",
+    "recordedAs": "not-done(预算), 但目标已经从'doc-probe 族'收窄到**一个具体文件名**。这是二十轮来第一次。"
+  },
+  "gate": {
+    "verify": "15 passed / 0 failed(本轮零改动)",
+    "runAll": "两次各跑一次, 248 文件 / 1321 用例(合计一致), 仅 corpus-size-measured.test.js 的通过数在 5↔6 间摆动",
+    "corpus": "FP 0.0% / 明文召回 100.0%(零改动, 沿用)",
+    "mcpRestart": "**未重启且不需要**"
+  },
+  "lessonRecorded": [
+    "**先量再定位, 而量之前不要决定你找的是什么。** 我带着'找 total 会变的来源'这个预设去跑了两次 diff, 结果量出来的是'total 不变、pass/fail 分界在变'。如果我信了预设, 我会把'total 一致'读成'没问题'然后收工, 而真正的病因就在那一行 diff 里。",
+    "**二十轮的谜, 解法是两次运行加一个 diff。** 我此前一直在读单个日志的失败数, 而失败数是汇总值; 按文件拆开再求差, 一行就现形。**汇总值会隐藏它自己的成因 —— 这是 instrument-honesty 的老教训, 我又一次靠真测量才学会。**"
+  ],
+  "excluded": "技能副本过期，无同步任务",
+  "nextRecommendation": "① **第一优先: 让 corpus-size-measured.test.js 稳定。** 先隔离跑它十次, 看它红的形状(接近 100% 绿还是偶发), 再决定是修派生输入池还是纳入锁。**修好它, run-all 的 pass 数就确定, sync-doc-numbers 的 exit 0 才真正有意义, audit 才可能归零 —— 这是二十轮欠账的根。** ② _doc-probe-lock 的等待超时修法仍成立, 但目标应改成服务这个文件。 ③ 缺口①数字插空归 prompt_injection(改法已定)。④ 基线: verify 15/15, run-all 248 文件 / 1321 用例(**total 确定**), pass 在 1320~1321 间摆动(单一 flake: corpus-size-measured), FP 0.0%, 明文召回 100%, MCP 181 工具。"
+}
