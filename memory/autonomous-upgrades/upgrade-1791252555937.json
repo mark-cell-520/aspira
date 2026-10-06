@@ -1,0 +1,70 @@
+{
+  "ts": "2026-10-06T02:09:15.937Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 334,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "result": {
+    "slice": "test-coverage-gap",
+    "delivery": "为引擎从不加载、test/ 零引用的纯配置模块 src/core/decision-router-config.js 补 9 例回归覆盖(全通过)：锁 FIELD_WEIGHTS 归一(=1)、SCENE_WEIGHTS 范围+归一性、FLIP_THRESHOLDS 有限+aBoundaryLow<High、DEFAULT_PROFILE 置信度四档单调、DECISION↔DECISION_PRIORITY 集合一致、MODEL_PROFILES 结构。",
+    "filesChanged": [
+      "test/decision-router-config-coverage.test.js (新增, 9 例)"
+    ],
+    "finding": "覆盖测量据实发现(未修, 非本切片范围, 上报候选): SCENE_WEIGHTS.emotional 三λ和=0.35+0.25+0.2=0.8, 而 general/technical/analytical/creative/reflective 均=1.0。是漏归一还是情感场景有意降权未定; 测试已显式钉住当前现状(恰一个场景≠1且为emotional), 使其不静默漂移; 若有意归一化, 需连同改此断言。",
+    "gate": {
+      "verify": "15/15",
+      "runAll": "1521 通过 / 10 失败 / 共 1531; 较上轮 1522 +9(本文件)全过, 0 新增失败(10 = 9 项 src/benchmark 被 .gitignore:39 漏锚定 + 1 项 audit-doc-coverage 探针抖动)"
+    },
+    "version": "维持 1.0.0 未 bump: 纯补测试覆盖, 非引擎逻辑变更, 按约定不虚涨。",
+    "committed": true,
+    "pushed": false,
+    "commitNote": "已 git 提交(沿用用户对'定时任务运行一次'的提交授权), 未 push。"
+  }
+}
