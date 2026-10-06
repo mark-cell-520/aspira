@@ -1,0 +1,71 @@
+{
+  "ts": "2026-10-06T08:14:34.359Z",
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.73,
+  "confidence": 0.7,
+  "reasoning": "Selected: \"测试覆盖缺口填补\" (score: 0.73). Identity alignment: 80%. Alternatives considered: \"文档诚实数字审计\" (0.7); \"MCP 工具增强\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.73
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 343,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "result": {
+    "slice": "test-coverage-gap",
+    "target": "src/utils/safe-regex.js — 引擎不加载、test/ 零引用(grep basename=0)的纯安全件; escapeRegExp/checkRegexSafe/safeMatch 是动态正则构建与 ReDoS 防护的底层守门。非重复(已覆盖: kv-cache/memory-encrypt/decision-router-config/thought-chain-config)。",
+    "censusNote": "新鲜普查: 372 src 模块 → 127 个零 basename 引用候选(AGENTS 已知此数被 path.join 分段 require 虚增, 已选前据实核对该模块确无测试引用)。pick safe-regex: 纯、契约可往返、与 Aspira 安全/诚实价值直接相关。",
+    "delivery": "新增 test/safe-regex-contract.test.js(6 例全过): escapeRegExp 13 元字符转义可往返 + dot 不再通配; checkRegexSafe 识别嵌套量词(ab+)+ 与重叠交替(a|ab)+ 两类 ReDoS 且放过干净式; safeMatch 空/超长/自定义max 护栏 + 正常匹配。",
+    "filesChanged": [
+      "test/safe-regex-contract.test.js (新增, 6 例)"
+    ],
+    "gate": {
+      "verify": "15/15",
+      "runAll": "并发 1558 通过/16 失败/共 1574; +6(本文件)全过。16 = 10 确定性基线 + 6 doc-probe 并发污染(drift×3 + unlocked×3, 家族成员、单独 exit0)。确定性失败=10=基线, 0 新增。本文件为纯测试、不碰文档/审计, 未增 flaky 面(对比上轮版本 bump 曾把并发失败瞬时推到 17)。probe-flaky 数跨轮 14↔16↔17 浮动=非确定性并发。"
+    },
+    "version": "维持 1.0.1(纯测试, 未 bump)。",
+    "committed": true,
+    "pushed": false,
+    "commitNote": "schedule-3 触发, 已 git 提交(沿用授权), 未 push。测试计数涨至 1574/1558, 文档滞后待下 doc 轮手校。"
+  }
+}
