@@ -1,0 +1,71 @@
+{
+  "ts": "2026-10-06T07:17:27.721Z",
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": null,
+  "once": false,
+  "composite": 0.74,
+  "confidence": 0.65,
+  "reasoning": "Selected: \"MCP 工具增强\" (score: 0.74). Identity alignment: 80%. Alternatives considered: \"测试覆盖缺口填补\" (0.7); \"文档诚实数字审计\" (0.7); \"维度健康审计与增强\" (0.68); \"性能优化\" (0.67); \"对抗鲁棒性增强\" (0.66); \"误报/召回校准\" (0.65)",
+  "all_options": [
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "score": 0.74
+    },
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "score": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "score": 0.7
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "score": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "score": 0.67
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "score": 0.66
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "score": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 341,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "result": {
+    "slice": "mcp-tool-enhancement",
+    "measured": "181 工具, 117 只读且无必填; 实测 12 个只读状态/报告工具(经 HANDLERS[name]({}) live 调用)全部返回真实内容、无结构性合法 error(version/running、hadDrift/score 等)。",
+    "delivery": "新增 test/mcp-readonly-tools-live.test.js(2 例): 9 个只读工具均已广告+有实现; live 调用须返回非 error、非空对象。把 cycle-29 只覆盖 decision/boundary 三兄弟的\"结构合法但内容死\"检测, 扩展到 181 工具里更多从未 live 验证的只读工具。排除带写副作用的记录型工具; 不 spawn 审计、不碰文档。",
+    "filesChanged": [
+      "test/mcp-readonly-tools-live.test.js (新增, 2 例)"
+    ],
+    "selfCorrection": "本 cycle 开头我曾把 +4 audit-probe 并发失败怀疑成自己引入的确定性回归; 读 test/_doc-probe-lock.js + AGENTS.md 后**据实纠正**: 这是本仓长期记载的 doc-probe 锁家族(周期21/106/114/115/116, 锁已迭代26+轮), 单独串跑全 exit 0, 基线本就含\"audit-probe 探针抖动\"白名单; 非本 cycle 回归。遵守周期27教训, 不越切片改这把精密锁(记录而非破坏稳定)。",
+    "gate": {
+      "verify": "15/15",
+      "runAll": "并发 1548 通过/14 失败/共 1562; 较上轮 +2(本文件)全过; +4 为 doc-probe 锁并发家族(单独 exit0), 确定性失败=10=基线, 0 新增。"
+    },
+    "version": "维持 1.0.0 未 bump: 纯测试。",
+    "committed": true,
+    "pushed": false,
+    "commitNote": "schedule-3 触发, 已 git 提交(沿用授权), 未 push。测试计数再涨(1562/1548), 文档 1540 待下 doc 轮手校。"
+  }
+}
