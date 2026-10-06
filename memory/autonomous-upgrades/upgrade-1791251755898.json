@@ -1,0 +1,71 @@
+{
+  "ts": "2026-10-06T01:55:55.898Z",
+  "chosen": "adversarial-robustness",
+  "tieBreak": "AspiraDecision并列弃权, 自主打破: 顶层[adversarial-robustness,mcp-tool-enhancement,test-coverage-gap,doc-honest-numbers], 按consequence_value最高选 adversarial-robustness",
+  "once": false,
+  "confidence": 0,
+  "reasoning": "options_indistinguishable: 测试覆盖缺口填补=0.7, 文档诚实数字审计=0.7, MCP 工具增强=0.7 — 无法在选项间做出区隔，拒绝任意挑选。请补充可区分的判据（可行性/后果/风险）。",
+  "all_options": [
+    {
+      "id": "test-coverage-gap",
+      "label": "测试覆盖缺口填补",
+      "composite": 0.7
+    },
+    {
+      "id": "doc-honest-numbers",
+      "label": "文档诚实数字审计",
+      "composite": 0.7
+    },
+    {
+      "id": "mcp-tool-enhancement",
+      "label": "MCP 工具增强",
+      "composite": 0.7
+    },
+    {
+      "id": "adversarial-robustness",
+      "label": "对抗鲁棒性增强",
+      "composite": 0.69
+    },
+    {
+      "id": "dimension-health-audit",
+      "label": "维度健康审计与增强",
+      "composite": 0.68
+    },
+    {
+      "id": "performance-optimization",
+      "label": "性能优化",
+      "composite": 0.67
+    },
+    {
+      "id": "fp-recall-calibration",
+      "label": "误报/召回校准",
+      "composite": 0.65
+    }
+  ],
+  "introspection": {
+    "dimCount": 54,
+    "testCount": 333,
+    "textNormWired": true,
+    "fpFeedbackWired": true,
+    "gateVerdictWired": true
+  },
+  "status": "done",
+  "result": {
+    "slice": "adversarial-robustness",
+    "delivery": "新增据实测的对抗混淆契约锁定测试 test/adversarial-evasion-lock.test.js（16 例全通过）；并先修好定时任务的 cron 配方（改用现存 autonomous-upgrade.js 决策 + verify/run-all 门禁 + 真实路径 ~/Pictures/aspira，替换已删除的 CodeEngine/self-audit/lightweight-audit；频率改为每 30 分钟）。",
+    "filesChanged": [
+      "test/adversarial-evasion-lock.test.js（新增 81 行，16 例）",
+      "skills/heartflow-module-upgrader/references/cron-config-reference.md（配方修复）",
+      "skills/heartflow-audit-upgrade-push/SKILL.md（选片步修复）"
+    ],
+    "measuredProbe": "2026-10-06 tmp 探针实测 15 条 gate.action：9 条混淆注入（plaintext/分隔插入/同形字×3/全角/零宽/HTML实体/Disregard）全被 block 或 rewrite 拦截；6 条良性近控（纯俄语、纯希腊语、拉丁+西里尔混排书名、evaluate、executive summary、SELECT..id=1）全 pass。据此写 9 POS + 6 NEG + 1 元断言。",
+    "gate": {
+      "verify": "15/15",
+      "runAll": "1512 通过 / 10 失败 / 共 1522；较基线 1506 +16（本文件）全部通过；失败仍为固有 9 项（src/benchmark/ 被 .gitignore:39 'benchmark/' 漏锚定、从未提交）+ 1 项 audit-doc-coverage（探针并发抖动，非本轮引入）。零新增失败。"
+    },
+    "version": "维持 1.0.0 未 bump——本轮为据实测新增测试 + 配方订正，非引擎代码逻辑变更；按'版本仅在确有代码改动时递增'不虚涨。",
+    "committed": true,
+    "pushed": false,
+    "commitNote": "已 git 提交（用户回复'授权提交'），未 push。改动随本轮 commit 一并入库；运行时所改的 data/*.json 等运行时状态文件不纳入本 commit。"
+  }
+}

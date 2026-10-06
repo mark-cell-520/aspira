@@ -1168,7 +1168,7 @@ delegate_task tasks=[...3 more]
 
 每2小时的 cron 升级任务应遵循：
 
-1. **选模块** — 找 `src/core/` 下 1500-5000B 的最小功能不完整模块
+1. **选模块** — `node scripts/autonomous-upgrade.js` 由决策引擎自主裁决切片（旧法“CodeEngine 自审找最小模块”依赖的 `code-engine.js`/`self-audit.js` 已删除，见 `references/cron-config-reference.md` 2026-10-06 修复）；按其 stdout 的 `chosen` 执行本切片
 2. **分析缺失** — 读完整源码判断缺少什么（状态枚举/错误分类/重试策略等）
 3. **升级** — 增加至少50行实际逻辑，保留所有已有功能
 4. **验证** — `node --check` + 功能内联测试

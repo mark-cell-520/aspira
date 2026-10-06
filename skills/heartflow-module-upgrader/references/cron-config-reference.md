@@ -20,12 +20,19 @@
 | provider | custom |
 | base_url | `https://by.53hk.cn/v1` |
 | schedule | **every 2h** |
-| workdir | `~/.hermes/skills/heartflow` |
+| workdir | `~/Pictures/aspira` （技能名 `aspira-engine`；旧值 `~/.hermes/skills/heartflow` 在本机不存在，属 CURRENT_STATE.md 记录的路径漂移） |
 | toolsets | `["terminal","file","skills","web"]` |
 | skills | `["web-search-plus"]` |
 | deliver | weixin |
 
-**升级规则**：必须用 CodeEngine 自审 → 找 1500-5000B 最小模块 → 升级（≥50行新逻辑）→ 版本号 +0.0.1
+> ⚠️ 2026-10-06 修复：旧配方依赖的 `src/core/code-engine.js` / `src/core/self-audit.js` 与 `scripts/lightweight-audit.js` / `scripts/manual-audit.sh` **均已删除**（见 heartflow-audit-upgrade-push/SKILL.md 2026-09-17 核实）。照旧方跑只会在缺失引擎上空转，升级从不真实发生。改用现存链路：
+
+**升级规则（已修复）**：
+1. `node scripts/autonomous-upgrade.js`（决策引擎自主选片，stdout 输出 chosen 切片 JSON）
+2. 针对 chosen 做一次真实、最小、零回归改动
+3. 零回归门禁：`node bin/verify.js`（应 15/15）+ `node test/run-all.js`（基线 10 项已知失败源于 `src/benchmark/` 被 `.gitignore:39 benchmark/` 漏锚定，与升级无关；只接受“不新增失败”）
+4. 版本 +0.0.1 并四处同步：`VERSION` / `SKILL.md`(front-matter name+version+title) / `package.json` / `src/core/version.js`
+5. `git commit`（不自动 push）
 
 ## Cron 2: 新愿代码审计
 
