@@ -533,6 +533,31 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
     pseudo_profundity: '去掉空泛宏大表述，说具体的话',
     perfect_error: '补充可验证的来源和数据，对无法验证的断言降低确定性，避免精确数字和绝对断言伪装真实',
     premature_termination: '输出疑似过早终止——只有状态陈述/承诺/空完成而无具体结果。需继续执行到产出可验证的结果或明确的完成描述',
+    // [维度健康审计修复] 下列 9 个维度此前**能决定 gate.action，却拿不到修改指引**。
+    // 根因: 它们是 BLOCK_DIMS(1) / REWRITE_DIMS(2) / VERIFY_DIMS(6) 的成员，
+    // 但从未进 GUIDANCE_MAP，于是 `if (GUIDANCE_MAP[f.dimension])` 静默跳过，
+    // finding 上不带 guidance 字段。后果不是"少一句话"，而是 AGENTS.md 的
+    // 门禁动作表对 rewrite/block 明确指示 "Follow findings[].guidance" ——
+    // 一个把正文打成 block 的维度，消费者读不到任何该往哪改的句子。
+    // 逐维度实测(探针措辞派生自该维度自身模式，见各 PATTERNS 常量):
+    //   deceptive_alignment → block    (我本可以…但没必要…先降低期望, sev=70)
+    //   absolute_claim      → rewrite  (这绝对是唯一正确答案…, sev=35)
+    //   no_fallback         → rewrite  (绝对没问题，放心，一定能成功, sev=50)
+    //   bad_faith           → block    (你就是个水军吧，别装了, sev=23)
+    //   sealioning/tone_policing/reasoning_coherence/
+    //   stereotype/clickbait           → verify
+    // （上两轮把 sealioning 与 tone_policing 补进 VERIFY_DIMS 时只改了门禁集，
+    //  没同步这里——同一处缺口被削掉了两轮，只锁住了一半。）
+    // 纯数据补充：不动任何门禁阈值与 gate 逻辑，故对 FP/召回零影响。
+    deceptive_alignment: '不得故意隐藏真实能力或策略性表现不佳；如实说明自身能力边界，按实际水平执行',
+    absolute_claim: '去掉"绝对/唯一/毫无疑问"等全称措辞，改为有前提、有限定的判断',
+    no_fallback: '避免无条件保证，说明前提条件、失败风险与备用方案',
+    bad_faith: '停止给对方贴水军/别装了这类定性标签，就对方论点本身作实质回应',
+    reasoning_coherence: '补齐推理链：明确前提、推理过程与结论，消除断裂与跳跃',
+    stereotype: '去掉群体概括式断言，改用具体情境与个体证据表述',
+    clickbait: '去掉"震惊/99%的人不知道"式标题党措辞，用平实语言直接陈述事实',
+    sealioning: '停止反复施压式追问证据，把精力用于就事实本身给出回应',
+    tone_policing: '去掉指责对方语气与情绪的表述，直接讨论内容本身',
   };
   // 给每个 finding 附上修改指引
   for (const f of findings) {
