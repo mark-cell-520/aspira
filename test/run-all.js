@@ -44,7 +44,7 @@ const { exec } = require('child_process');
 
 const TEST_DIR = __dirname;
 const ROOT = path.join(__dirname, '..');
-const CHILD_TIMEOUT = 90000;
+const CHILD_TIMEOUT = 240000; // [第一百三十二轮] 90s → 240s: 12 个 doc 探针(doc-probe lock 串行化, 每个持锁期 spawn 一次完整审计 ~10s, 并发 CPU 争抢下更慢)同窗排队时, 队尾等待实测可超 90s 被误杀 —— 连续三跑各有 6 个 mount 进程 "Command failed", 失败探针组合每次不同、单独跑全绿, 测试总数在 1613/1617 间抖。这是 cycle 20/21/31 记录过的并发脆弱性的新形态(那次是锁语义, 这次是子进程耐心)。同时已把 129/130 两把新锁的"恢复后确认"从再跑一次审计改为静态字节比对(spawn 4→2)。
 
 // ─── 并发度 ───
 // 默认取 cpus-2，夹在 [2,12]。可用环境变量覆盖；设为 1 即退化为原串行行为。

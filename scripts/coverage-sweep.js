@@ -78,7 +78,23 @@ function hasRequireOf(src, base) {
   if (direct.test(src)) return true;
   // (b) require(path.join(..., 'base')) —— 段名出现在 path.join 的字符串参数里
   const joined = new RegExp(`require\\(\\s*path\\.join\\([^)]*['"]${base}(?:\\.js)?['"]`);
-  return joined.test(src);
+  if (joined.test(src)) return true;
+  // (c) require(变量) —— 变量先前被绑定到含 base 的路径。
+  // [第一百三十二轮] cycle 37 修(a)(b)时漏了这第三种形态:
+  //   const SRC = path.join(__dirname, '..', 'src', 'memory', 'slots.js');
+  //   require(SRC)
+  // basename 藏在**变量绑定**里, require( 后是变量名。实测后果: cycle 124
+  // 给 slots / memory-kernel 写的两把锁(都是这个写法)在主视图里**仍显示
+  // "活着但没测"** —— 覆盖清点少报已覆盖模块, 让已有锁看起来不存在。
+  // 两阶段判据: 文件里 `X = path.join(...'base'...)` 或 `X = '...base.js'`,
+  // 且同名 `require(X)`。
+  const binds = [...src.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:path\.join\s*\(([^)]*)\)|(['"][^'"]*['"]))/g)];
+  for (const [, name, joinArgs, str] of binds) {
+    const val = joinArgs || str || '';
+    if (val && new RegExp(`['"]${base}(?:\\.js)?['"]`).test(val)
+      && new RegExp(`require\\(\\s*${name}\\s*\\)`).test(src)) return true;
+  }
+  return false;
 }
 
 const cats = { A: [], B: [], C: [] };
