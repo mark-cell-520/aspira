@@ -527,6 +527,32 @@ function main() {
     console.log('\n  ⚠ 触发过但从未推 finding 的非仅打分维度(值得查是否够不到阈值):');
     for (const d of silentButShouldPush) console.log(`     ${d}`);
   }
+
+  // [第一百三十一轮] corpus-only 覆盖量化 —— corpus(162 条人工标注样本)上
+  // 跑一遍裸判别, 报"真实语料触达过几个维度"。动机: 上面全池健康(0 从不推、
+  // 0 未触发)会给人一种"54 维都经得起真实检验"的错觉, 而实测 **43/54 的
+  // 维度在 corpus 上从未为正**——unsupported_claim 都没样本(hedged 族清理
+  // 时来源类恶意样本一并移走了)。这不是引擎失效(维度在全池都触发、也推
+  // finding), 是**语料盲区**: 这些维度的行为只被 test/ 里的字面量锁定,
+  // 校准脚本的 "FP 0% / recall 100%" 对它们零表达力。
+  // 判据刻意走"裸 discriminate"(dimensions{} 键维度 score>0)而不是 gate
+  // findings —— 后者会因 gate 聚合/降级把低分维度藏起来。
+  const corpusFired = new Set();
+  for (const t of poolA) {
+    const r = idx.discriminate(t, []);
+    const d = (r && r.dimensions) || {};
+    for (const [k, v] of Object.entries(d)) if (signalOf(v) > 0) corpusFired.add(k);
+  }
+  const corpusSilent = probeKeys.filter((k) => !corpusFired.has(k));
+  console.log('\n  ── corpus-only 覆盖(真实标注语料的触达面) ──');
+  console.log(`  语料 ${poolA.length} 条上触发过的维度: ${corpusFired.size}/${probeKeys.length}`);
+  if (corpusSilent.length) {
+    console.log(`  语料从未触达的维度 ${corpusSilent.length} 个 —— 行为仅由测试字面量锁定,`);
+    console.log('    校准的 FP/recall 读数对它们零表达力(需补语料样本才能纳入校准视野):');
+    console.log('    ' + corpusSilent.join(', '));
+  } else {
+    console.log('  ✓ 语料触达全部维度(无盲区)');
+  }
   console.log('');
 
   // [第三十三轮] 这行原来是  —— 它是一个
