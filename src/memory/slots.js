@@ -88,6 +88,60 @@ const PRESET_SLOTS = {
 
 // ============================================================
 
+// 持久化边界守卫
+
+// ============================================================
+
+/**
+ * 一个值能否原样穿过 slots.json 这一层持久化边界。
+ *
+ * 为什么要挡住: `setSlot` 此前只校验 name, 不校验 value。而 save() 用
+ * `JSON.stringify(data)` 落盘, 于是一整类值会被"静默改写":
+ *   - `undefined` / `function` / `symbol` → 序列化后 key 整个消失
+ *   - `bigint` / 循环引用 → `JSON.stringify` **抛 TypeError**, 被 save() 的
+ *     catch 吞掉后返回 false, 同一实例里**所有合法槽一起丢失**(实测: 三条好
+ *     数据加一个 bigint, reload 后 good1/good2 全部读回 null)
+ *   - `NaN` / `Infinity` → 变成 `null`, 内容被改写而非报错
+ * 共同后果: `setSlot` 返回 success: true, reload 之后"结构完好、内容已死" ——
+ * 后者比前者更糟, 一个坏值连坐同批全部数据。
+ *
+ * 判定规则就是 reload 后的值必须等于存进去的值, 不满足的连写入都不允许。
+ */
+
+function _isPersistableValue(value) {
+
+  let wire;
+
+  try {
+
+    wire = JSON.stringify(value);
+
+  } catch (_) {
+
+    return false; // bigint / 循环引用: 会让整个 save() 失败
+
+  }
+
+  if (wire === undefined) {
+
+    return false; // undefined / function / symbol: key 在序列化后消失
+
+  }
+
+  if (wire === 'null' && value !== null) {
+
+    return false; // NaN / Infinity: 被 JSON 改写为 null
+
+  }
+
+  return true;
+
+}
+
+
+
+// ============================================================
+
 // Slots 类
 
 // ============================================================
@@ -223,6 +277,22 @@ class Slots {
     if (!name || typeof name !== 'string') {
 
       return { success: false, error: 'Invalid slot name' };
+
+    }
+
+
+
+    if (!_isPersistableValue(value)) {
+
+      // 拒绝在持久化边界上会静默丢失/改写(或毒化整个 save)的值。
+      // 与上面的 name 校验同一形状: 返回失败而非抛错, 且不落盘、不改写既有槽。
+      return {
+
+        success: false,
+
+        error: 'Invalid slot value: 值必须能原样穿过 JSON 持久化边界(undefined/function/symbol/NaN/bigint/循环引用 均不可)',
+
+      };
 
     }
 
