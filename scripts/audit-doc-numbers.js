@@ -207,7 +207,13 @@ function measure() {
     const inst = new hf.Aspira({ rootPath: ROOT, silent: true });
     if (typeof inst.start === 'function') inst.start();
     m.modules = Object.keys(inst._modules || {}).length;
-    m.initErrors = inst.initErrors != null ? inst.initErrors : null;
+    // [第一百三十轮] initErrors 读取口径对齐文档: SKILL.md 的表格第三列
+    // 明写口径是 `hf._initErrors.length`, 而上面原代码读 inst.initErrors
+    // —— 实例上并没有这个字段(实测两遍均为 undefined), 于是永远 null,
+    // "文档说 0" 沦为"无法实测"。测量口径与声称口径不一致, cycle 44/47
+    // 教过的同族错误, 这是第三次。
+    m.initErrors = Array.isArray(inst._initErrors) ? inst._initErrors.length
+      : (typeof inst.initErrors === 'number' ? inst.initErrors : null);
     try {
       const rt = typeof inst.routes === 'function' ? inst.routes() : null;
       // routes() 返回 {模块名: [路由...]}。文档说的"dispatch routes"是**展开后**的
@@ -901,6 +907,21 @@ function claims() {
         key: 'verifyChecks',
         what: 'verify checks (括号形)' },
 
+      // ── [第一百三十轮] 模块初始化错误数 ──
+      // cycle 11 的 key 集 diff 重演(diff pats 的 key 与 measure() assigned keys)
+      // 发现: initErrors **每轮都被实测**(202-228 行, start() 后读 inst.initErrors),
+      // SKILL/README 的指标表也有声称(| Module init errors | 0 |), 但 actual 从未
+      // 接收它、pats 没有 key —— **一个被测量、被打印的数字与一个被声称的数字
+      // 从未相遇**。本轮实测 0(与声称一致), 缺的是锁: 模块加载一旦出问题,
+      // 没有任何仪器会报"文档说 0 而实测非 0"。
+      { re: /\|\s*Module init errors\s*\|\s*(\d+)\s*\|/g,
+        key: 'initErrors',
+        what: 'module init errors (表格)' },
+      { re: /(\d+)\s+(?:module\s+)?init\s+errors/gi,
+        key: 'initErrors',
+        what: 'module init errors (散文)',
+        reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
+
       // ── [第十一轮] 引擎版本: 只用**无歧义标签**，不用裸语义版本号 ──
       // 约定 #1 点名 VERSION 是唯一真相源，而 version 一直被测量、被打印，
       // 却没有任何模式核对它。实测注入 README 的 v9.9.9 → 0 报告。
@@ -1052,6 +1073,10 @@ const actual = {
   aliveUntested: m.aliveUntested,
   srcModules: m.srcModules,
   suspectedDead: m.suspectedDead,
+  // [第一百三十轮] initErrors: 实测早在 cycle 11 前就存在(m.initErrors),
+  // 却从未进 actual、无 key 核对。紧贴 suspectedDead —— 同族(覆盖类实测),
+  // 且都在这个对象字面量里(rows 构造之前, cycle 44/47 记录的可用位置)。
+  initErrors: m.initErrors,
 };
 
 // 测试条数实测: 必须跑 run-all 取权威数字。
