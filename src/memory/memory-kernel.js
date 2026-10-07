@@ -649,7 +649,16 @@ class MemoryKernel {
 
     this._ensureLoaded();
 
-    const text = input == null ? '' : String(input);
+    // [test-coverage-gap·第一百二十四轮] typeof 守卫: 原实现
+    // `input == null ? '' : String(input)` 对任何非 null 输入都"成功" ——
+    // 实测 NaN->"NaN"、123n->"123"、{任何对象}->"[object Object]" 被原样
+    // 写进记忆, 调用方拿到 entry.id(看起来成功), 而存下来的内容已死。
+    // 契约错配家族。R3 的语义是"用户输入完整保存", 合法形态只有 string;
+    // 其他一律拒绝 —— 与空串同一形状: 返回 null、不落盘、不动索引。
+    // 唯一调用方(engine-memory)前文已有 input.trim(), 恒为 string, 不受影响。
+    if (typeof input !== 'string') return null;
+
+    const text = input;
 
     if (!text.trim()) return null;
 
@@ -692,6 +701,13 @@ class MemoryKernel {
     this._ensureLoaded();
 
     const refined = this._refineOutput(thinkResult, meta);
+
+    // [test-coverage-gap·第一百二十四轮] 空 refined 守卫: 原实现对
+    // undefined/null 输入也照写不误, 产出 decision/confidence/emotion/
+    // insight/thinkCount 全 null 的空记录并返回 id —— 而 recordUser 侧
+    // 拒空输入(返回 null)。两个 API 同一语义两套行为。全 null 即拒,
+    // 与 recordUser 的空输入拒绝对齐。
+    if (!Object.values(refined).some((v) => v !== null && v !== undefined)) return null;
 
     const entry = {
 
