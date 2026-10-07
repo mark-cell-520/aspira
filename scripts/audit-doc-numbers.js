@@ -884,6 +884,23 @@ function claims() {
         reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a),
       },
 
+      // ── [第一百二十九轮] verify 的检查项数 ──
+      // 数字形态机械枚举(cycle 8 方法重演, "已枚举过"是过期读数)发现:
+      // 文档两处声称 bin/verify.js 的检查项数 —— README 的用法示例
+      // "# 14 installation checks" 与 SKILL 的 "verify the installation
+      // (14 checks)" —— 而**实测 15**(cycle 13 把版本一致性加成第 15 项,
+      // 文档没同步)。两处 stale 却没有任何 key 核对它们: **一个被打印的
+      // 数字(verify 每轮都跑 15/15)与一个被声称的数字(14)从未相遇**。
+      // 模式刻意收窄到 verify 语境(installation checks / verify the
+      // installation), 不匹配裸 "N checks"——后者在本仓大量指 guard-abilities
+      // 的 18 项(运行期才能数, 见下方实测注释的披露)与各 skill 的局部检查数。
+      { re: /(\d[\d,]*)\s+installation\s+checks/gi,
+        key: 'verifyChecks',
+        what: 'verify checks (安装检查项数)' },
+      { re: /verify\s+the\s+installation\s*\((\d+)\s+checks?\)/i,
+        key: 'verifyChecks',
+        what: 'verify checks (括号形)' },
+
       // ── [第十一轮] 引擎版本: 只用**无歧义标签**，不用裸语义版本号 ──
       // 约定 #1 点名 VERSION 是唯一真相源，而 version 一直被测量、被打印，
       // 却没有任何模式核对它。实测注入 README 的 v9.9.9 → 0 报告。
@@ -1067,6 +1084,21 @@ if (!SKIP_TESTS) try {
   m.testsFailed = tm ? Number(tm[2]) : null;
   } catch (_) { m.tests = null; }
 
+// [第一百二十九轮] verify 的检查项数实测。刻意**不**放进上面的 SKIP_TESTS
+// 分支: verify.js 只跑 15 项自检(约 5s), 不 spawn 测试套件, 因此跳过模式下
+// 也必须照常实测——否则"跳过模式允许无法实测"会让这个 key 在探针里恒绿。
+// 计数口径: verify.js 每个通过项打印一行 "  ✅ ...", 数 ✅ 行数。
+// 已知残余(披露而非隐藏): README/SKILL 指标表里的 "18 / 18 checks" 指
+// guard-abilities, 它的项数只有跑完(会 spawn 整个 run-all)才知道,
+// 审它 = 审计里再嵌套一轮全量测试, 代价远超收益; 该数字的正确性由
+// guard 自身的输出 "N/18 项检查" 自证, 本轮不加 key。
+try {
+  const { spawnSync } = require('child_process');
+  const rv = spawnSync('node', ['bin/verify.js'], { cwd: ROOT, encoding: 'utf8', timeout: 300000, stdio: ['ignore', 'pipe', 'pipe'] });
+  const vout = (rv && rv.stdout) ? rv.stdout.toString() : '';
+  m.verifyChecks = (vout.match(/^\s*✅/gm) || []).length || null;
+} catch (_) { m.verifyChecks = null; }
+
 
 // 层数实测: 从 src/pipeline.js 的 checked_by.push({ layer: 'X' }) 静态提取。
 // 不能靠跑一次 pipeline 数 checked_by——那条路径只走命中分支(实测同一输入
@@ -1106,6 +1138,10 @@ try {
 actual.routes = m.routes;
 actual.layers = m.layers;
 actual.tests = m.tests;
+// [第一百二十九轮] verify 检查项数。紧贴 actual.tests —— cycle 44/47 记录过:
+// actual 的赋值位置只有这一处被证明可用(rows 构造之前, rows 读 actual[c.key])。
+// 放错地方两次都表现为"无法实测", 而灯从未红过。
+actual.verifyChecks = m.verifyChecks;
 // [第四十七轮] 覆盖清点三项, 紧贴 actual.tests —— 这是本文件里
 // **唯一被证明可用**的位置(它在 rows 构造之前, 而 rows 读 actual[c.key])。
 // 周期44 与 47 第一次都放错了地方: 一次在 rows 之后, 一次在对象字面量里

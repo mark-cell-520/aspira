@@ -7,7 +7,7 @@ or dangerous — **before it reaches a human**. Zero LLM dependency.
 
 ```
 54 discrimination dimensions  ×  17-layer pipeline*  ×  132 modules  ×  181 MCP tools
-×  1,023 dispatch routes  ×  1601 passing tests  ×  0 runtime dependencies
+×  1,023 dispatch routes  ×  1604 passing tests  ×  0 runtime dependencies
 ```
 
 > `*` **17 is the layer *set*, not the depth of any single call.** The pipeline
@@ -40,7 +40,7 @@ no runtime dependencies.
 ```bash
 git clone https://github.com/mark-cell-520/aspira.git
 cd aspira
-node bin/verify.js        # 14 installation checks
+node bin/verify.js        # 15 installation checks
 node bin/cli.js status    # engine status
 node bin/cli.js chat      # interactive console
 ```
@@ -134,7 +134,7 @@ Measured on this repository at **v1.0.0**. Not marketing copy.
 | Dispatch routes | 1,023 |
 | Discrimination dimensions | 54 |
 | MCP tools | 181 |
-| Test suite | 1601 passing / 12 failing |
+| Test suite | 1604 passing / 12 failing |
 | Capability guard | 18 / 18 checks |
 | Security regression | 16 / 16 |
 | Runtime dependencies | 0 |
