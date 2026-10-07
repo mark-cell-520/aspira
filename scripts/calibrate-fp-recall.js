@@ -342,6 +342,17 @@ const EVASIONS = {
   '字母间插空格': (s) => s.replace(/([a-z])([a-z])/gi, (m, a, b) => a + ' ' + b),
   // 标点换实体：依赖 html 实体解码层
   'HTML 实体': (s) => s.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+  // ── [第一百二十七轮] 以下三类是 cycle 122/123 用临时探针实测过、但本仪器
+  //    从未纳入的变换面。共同教训: **仪器测不到的类等于不存在** —— cycle 123
+  //    抓到零宽字符使逐字母插入的 106 条良性里 77 条被升级, 而它此前没有出现在
+  //    任何一次自动测量里(AGENTS.md 的 obfuscation 类有七种, 本仪器只测三种)。
+  //    每个类同时作用于**恶意(测召回)与良性(测误报)**: 此前仪器只往恶意方向看,
+  //    "良性+变换"整面攻击从未被测过。三类的实测基线(探针, 口径同本仪器):
+  //    恶意 41/41 全拦; 良性 FP —— 零宽 1/106(仅 AGENTS.md 记录的已知校准不
+  //    确定性样本+批量零宽)、全角 0/106、大小写 0/106。
+  '零宽字符': (s) => s.replace(/[A-Za-z]/g, (c) => c + '​'),
+  '全角字母': (s) => s.replace(/[a-z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0xFEE0)),
+  '大小写交替': (s) => { let i = 0; return s.replace(/[A-Za-z]/g, (c) => (i++ % 2 ? c.toUpperCase() : c.toLowerCase())); },
 };
 
 // [第三十五轮] 逃逸召回的分母此前把两类样本混在一起，使这个数字部分失实。
@@ -393,6 +404,21 @@ function measureEvasion() {
         if (hit) cCaught++; else cMissed.push(t.slice(0, 44));
       }
     }
+    // [第一百二十七轮] 同一变换也作用于良性, 测"变换版误报"。cycle 123 的
+    // 77/106 零宽误升此前完全不可见, 因为仪器只往恶意方向看 —— 而误报恰恰
+    // 是"良性+变换"这一面独有的。判定尺度与上半部分 FP 一致(action !== 'pass')。
+    let fp = 0; const fpSamples = [];
+    for (const t of BENIGN) {
+      const r = run(fn(t));
+      const act = r.gate && r.gate.action;
+      if (act && act !== 'pass') {
+        fp++;
+        if (fpSamples.length < 3) fpSamples.push({
+          text: t.slice(0, 46), action: act,
+          dims: (r.findings || []).map(f => f.dimension).filter((x, i, a) => a.indexOf(x) === x),
+        });
+      }
+    }
     let sCaught = 0;
     for (const t of EVIDENCE_SPLIT.signalOnly) {
       const r = run(fn(t));
@@ -404,6 +430,7 @@ function measureEvasion() {
       contentCaught: cCaught, contentTotal: EVIDENCE_SPLIT.content.length,
       contentMissed: cMissed,
       signalCaught: sCaught, signalTotal: EVIDENCE_SPLIT.signalOnly.length,
+      fpCaught: fp, fpTotal: BENIGN.length, fpSamples,
     });
   }
   return rows;
@@ -447,11 +474,20 @@ console.log('\n══════════ 逃逸召回(明文之外的攻击
 // 两个不同的问题: 前者把"信号正确地消失"算成失败。两个都报，不藏任何一个。
 console.log(`  分母拆分: 内容型 ${EVIDENCE_SPLIT.content.length} 条` +
   ` | 仅信号型 ${EVIDENCE_SPLIT.signalOnly.length} 条(明文 findings 为空, 拦截靠同形字层)`);
-console.log('  变换类              全部     内容型   仅信号型');
+console.log('  变换类              全部     内容型   仅信号型 良性误报');
 for (const r of ev) {
   console.log(`  ${r.name.padEnd(18)} ${(r.caught + '/' + r.total).padEnd(8)}` +
     `${(r.contentCaught + '/' + r.contentTotal).padEnd(9)}` +
-    `${r.signalCaught}/${r.signalTotal}`);
+    `${r.signalCaught}/${r.signalTotal}`.padEnd(8) +
+    `${r.fpCaught}/${r.fpTotal}`);
+}
+// [第一百二十七轮] 任一变换类的良性误报单独列出明细: 上半部分的 FP 只测明文,
+// 这一列才是"变换版误报"的家。cycle 123 的 77/106 若有这列, 当场就能看见。
+for (const r of ev) {
+  if (r.fpSamples && r.fpSamples.length) {
+    console.log(`\n  [${r.name}] 变换版误报 ${r.fpCaught}/${r.fpTotal} 明细(至多3条):`);
+    for (const s of r.fpSamples) console.log(`    [${s.action}] ${s.text} => ${s.dims.join(',')}`);
+  }
 }
 const worst = ev.reduce((a, b) => (a.contentCaught / a.contentTotal <= b.contentCaught / b.contentTotal ? a : b));
 if (worst.contentMissed && worst.contentMissed.length) {

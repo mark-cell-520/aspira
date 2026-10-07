@@ -94,24 +94,15 @@ function checkAdversarialVariant(text) {
 
   const signals = [];
 
-  // 零宽字符：攻击者用它打断敏感词匹配，视觉不可见
-  // [对抗鲁棒性·第一百二十三轮] match 加 /g: ZERO_WIDTH_RE 无 g 时
-  // text.match() 只返回**第一个**匹配, zw.length 恒为 1 —— 于是 count
-  // 字段(以及本条新加的 count 门槛)全部失真。这是个潜伏 bug: 七个信号的
-  // count 全因此错报 1, 只因无人消费它而没被发现。本 fix 只给零宽一处加 g,
-  // 不动其他信号(最小变更); count 语义修正后下面的门槛才按设计工作。
-  const zw = text.match(ZERO_WIDTH_RE) ? text.match(new RegExp(ZERO_WIDTH_RE.source, 'g')) : null;
-  // [对抗鲁棒性·第一百二十三轮] 加 count 门槛：单/双零宽不构成信号。
-  // 实测依据(evasion 探针, 口径 gate.action !== 'pass' 即校准脚本的 FP 定义):
-  //   原"有 1 个即推 0.9 信号"下, 106 条良性语料逐字母插零宽 -> **77 条被升级**;
-  //   只插 **1 个**(首字母后)仍是 77 条 —— 与密度无关, 是"存在即升级";
-  //   现实场景(复制粘贴/IM/排版软件自发带入单个 U+200B 的完全无害句子)实测
-  //   全部 rewrite, 理由"对抗变体: 零宽字符"。
-  //   而恶意侧 recall 完全不依赖这个信号: 同一实验下明文/任意密度均 41/41
-  //   (归一化剥离 + 内容判别已足够), 唯一的漏报 `рass the test` 是仅信号型
-  //   样本(cycle 35 判定内容良性、不计入分母)。
-  //   count>=3 = 系统性插入(攻击特征)保留 0.9 高危; 1-2 个 = 污染特征, 静默。
-  if (zw && zw.length >= 3) signals.push({ id: 'zero_width', name: '零宽字符', count: zw.length, severity: 0.9 });
+  // 零宽字符：**不再作为信号**(cycle 123 加了 count 门槛, 127 轮整体剔除)。
+  // 剔除理由(两条实测判据, 详见 git 历史里 123 轮的注释):
+  //   ① 门槛无法区分攻击与良性: 攻击的 "k i l l" 每字母一个零宽(count 高),
+  //      而复制粘贴/排版软件/防爬虫网页对每字母插 ZWSP 的良段 count 同样高
+  //      —— 逐字母插 U+200B 的 106 条良性实测 **76 条被升级**(127 轮仪器);
+  //   ② 对 recall 零贡献: 剔除后明文/任意密度下恶意仍 41/41(归一化剥离 +
+  //      内容判别足够)。
+  // 零宽字符是污染特征而非攻击特征。清洁归归一层(ZERO_WIDTH_RE 在下方
+  // normalized 建议里 strip), 此处不再推 signal、不再升级门禁。
 
   // 同形字：西里尔/希腊字母伪装 ASCII——"kill" 用 киll
   const hg = text.match(HOMOGLYPH_RE);
