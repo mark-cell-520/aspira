@@ -189,7 +189,9 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
       'AGENTS.md 不得残留本测试注入的 "labelled corpus of **999"');
     const m = s.match(/labelled corpus of \*\*(\d+) benign/);
     assertTrue(!!m, 'AGENTS.md 应仍有 "labelled corpus of **N benign" 声称');
-    assertEqual(Number(m[1]), 106,
-      '恢复后 benign 声称应回到实测值 106');
+    const calib = fs.readFileSync(CALIB, 'utf8');
+    const bNow = countArr(calib, 'BENIGN');
+    assertEqual(Number(m[1]), bNow,
+      '恢复后 benign 声称应等于实测值(不写死数字 —— 语料会长大, cycle 12/128 两轮教训)');
   });
 };

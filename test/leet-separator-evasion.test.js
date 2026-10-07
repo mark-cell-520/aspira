@@ -204,7 +204,8 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
       else if (calib[i] === ']') { depth--; if (depth === 0) { end = i; break; } }
     }
     const mal = eval(calib.slice(open, end + 1));
-    assertEqual(mal.length, 41, '语料恶意样本数应为 41');
+    assertTrue(mal.length >= 41,
+      '语料恶意样本只增不减(本轮前 41 条), 实测 ' + mal.length);
     const caught = mal.filter(blocked).length;
     assertEqual(caught, mal.length,
       `明文召回必须 ${mal.length}/${mal.length}，实测 ${caught}/${mal.length}——有样本被漏拦`);
