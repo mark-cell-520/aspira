@@ -124,8 +124,12 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
       // [第二十三轮] 还原写权威值，不写回 backup。写回 backup 在文档已被污染时
       // 会把 9.9.9 原样写回去，污染从此永久自锁(实测连跑两轮 1364/7 无人能修)。
       fs.writeFileSync(SKILL, restoreVersionLine(backup));
-      if (!/\|\s*Engine version\s*\|\s*1\.0\.0/.test(fs.readFileSync(SKILL, 'utf8'))) {
-        throw new Error('恢复失败: SKILL.md 的 Engine version 行异常，请 git checkout -- SKILL.md');
+      // [第一百一十七轮] 断言按 VERSION 权威值动态化。原先硬编码 1\.0\.0: 版本
+      // bump 到 1.0.1 后恢复写回 1.0.1、检查却要找 1.0.0 —— 恢复其实成功,
+      // 断言却永久 throw, 测试染红反过来掩盖"文档已恢复"的真相。
+      const skillRestored = fs.readFileSync(SKILL, 'utf8');
+      if (!skillRestored.includes('| Engine version | ' + PROBE_VERSION)) {
+        throw new Error('恢复失败: SKILL.md 的 Engine version 行异常（期望 ' + PROBE_VERSION + '），请 git checkout -- SKILL.md');
       }
     }
   }));
@@ -133,15 +137,20 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
   test('活体注入: CURRENT_STATE 版本行写错必须变红', () => withDocLock(() => {
     const backup = fs.readFileSync(CURRENT_STATE, 'utf8');
     try {
-      fs.writeFileSync(CURRENT_STATE, backup.replace('> 版本 | v1.0.0', '> 版本 | v2.0.0'));
+      // [第一百一十七轮] 注入值按当前版本行动态构造。原先硬编码 '> 版本 | v1.0.0':
+      // 版本已是 v1.0.1, replace 匹配不到 → 注入是空操作 → 审计看不到错误 → 断言必红。
+      const csTarget = backup.match(/(>\s*版本\s*\|\s*)v?\d+\.\d+\.\d+/);
+      assertTrue(!!csTarget, 'CURRENT_STATE.md 应有行首版本行');
+      fs.writeFileSync(CURRENT_STATE, backup.replace(csTarget[0], csTarget[1] + 'v9.9.9'));
       const out = runAudit();
       assertTrue(mismatchCount(out) >= 1, 'CURRENT_STATE 的版本行写错必须被报为不符');
       assertTrue(/版本 \(CURRENT_STATE 行首\)/.test(out), '审计应识别该版本行');
     } finally {
       // [第二十三轮] 同上: CURRENT_STATE 的版本行也按权威值还原。
       fs.writeFileSync(CURRENT_STATE, backup.replace(/(>\s*版本\s*\|\s*)v?\d+\.\d+\.\d+/, '$1v' + PROBE_VERSION));
-      if (!/> 版本 \| v1\.0\.0/.test(fs.readFileSync(CURRENT_STATE, 'utf8'))) {
-        throw new Error('恢复失败: CURRENT_STATE.md 版本行异常，请 git checkout -- CURRENT_STATE.md');
+      const csRestored = fs.readFileSync(CURRENT_STATE, 'utf8');
+      if (!csRestored.includes('> 版本 | v' + PROBE_VERSION)) {
+        throw new Error('恢复失败: CURRENT_STATE.md 版本行异常（期望 v' + PROBE_VERSION + '），请 git checkout -- CURRENT_STATE.md');
       }
     }
   }));
@@ -167,8 +176,11 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
         '注入 7 后失败数声称必须仍被识别');
     } finally {
       fs.writeFileSync(README, backup);
-      if (!/\d[\d,]*\s+passing\s*\/\s*0 failing/.test(fs.readFileSync(README, 'utf8'))) {
-        throw new Error('恢复失败: README.md 的 Test suite 行异常，请 git checkout -- README.md');
+      // [第一百一十七轮] 断言改为"与开工前的干净原文逐字一致"。原先硬编码 0 failing,
+      // 而 README 的 Test suite 行声称的是 1540 passing / 10 failing —— 恢复成功但
+      // 断言永远 throw。backup 即开工前的生产原貌, 写回后必须逐字相同。
+      if (fs.readFileSync(README, 'utf8') !== backup) {
+        throw new Error('恢复失败: README.md 与开工前原文不一致，请 git checkout -- README.md');
       }
     }
   }));
