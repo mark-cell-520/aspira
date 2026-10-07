@@ -40,13 +40,16 @@ function introspect() {
   return JSON.parse(out);
 }
 
-function walkTestFiles(dir) {
+function walkTestFiles(dir, skipArchive) {
   let n = 0;
   let entries = [];
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return 0; }
   for (const e of entries) {
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) n += walkTestFiles(p);
+    // [第一百二十六轮] skipArchive 对齐 run-all.js 的口径: test/archive/ 是
+    // cycle 15 记录的"历史失效测试, 目标模块已删除, runner 永不执行"。周期23
+    // 的本函数不跳它, 于是与引擎的同种错法互锁, 354=325 live+29 死文件一直绿着。
+    if (e.isDirectory()) { if (skipArchive && e.name === 'archive') continue; n += walkTestFiles(p, skipArchive); }
     else if (e.name.endsWith('.test.js')) n++;
   }
   return n;
@@ -79,9 +82,20 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
 
   test('自省的 testCount 必须等于递归数出的测试文件数', () => {
     const { testCount } = introspect().introspection;
-    const recursive = walkTestFiles(path.join(ROOT, 'test'));
+    const recursive = walkTestFiles(path.join(ROOT, 'test'), true); // 跳 archive 的 live 口径
     assertEqual(testCount, recursive,
       `testCount 必须等于递归计数；引擎报 ${testCount}，实测 ${recursive}`);
+  });
+
+  test('testCount 不得把 test/archive/ 的死文件数进来(周期126修掉的第三态)', () => {
+    const { testCount } = introspect().introspection;
+    const live = walkTestFiles(path.join(ROOT, 'test'), true);
+    const withArchive = walkTestFiles(path.join(ROOT, 'test'), false);
+    assertTrue(withArchive > live,
+      `本断言的前提: archive 里必须真有测试文件, 实测含 ${withArchive} / 不含 ${live} —— 前提失效请重新设计`);
+    assertTrue(testCount !== withArchive,
+      `引擎仍把 archive 的 ${withArchive - live} 个死文件数成测试面(实测 ${testCount} vs live ${live})`);
+    assertEqual(testCount, live, `testCount 必须等于 live 口径 ${live}, 实测 ${testCount}`);
   });
 
   test('testCount 不得等于只数顶层的结果(那正是周期23 修掉的另一个错法)', () => {

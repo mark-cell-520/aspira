@@ -102,7 +102,12 @@ let testFileCount = 0;
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
   for (const e of entries) {
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) walk(p);
+    // [dimension-health·第一百二十六轮] 跳过 test/archive/: run-all.js:70 同样跳过
+    // (cycle 15: 历史失效测试, 目标模块已删除, runner 永不执行)。原实现把它数进来 ——
+    // introspection 的 testCount = 354 = 325 live + 29 死文件, 而候选切片描述把它
+    // 广告成"当前 354 个测试文件", 决策引擎据此高报 9% 的测试面。周期23 修过它的
+    // 两个前身(只数顶层/漏子目录), 这是同族第三态: **数了永不执行的死文件**。
+    if (e.isDirectory()) { if (e.name === 'archive') continue; walk(p); }
     else if (e.name.endsWith('.test.js')) testFileCount++;
   }
 })(path.join(ROOT, 'test'));
