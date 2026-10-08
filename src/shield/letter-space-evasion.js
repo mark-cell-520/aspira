@@ -171,6 +171,60 @@ const COMPILED = LETTER_SPACE_TERMS.map(term => {
 });
 
 /**
+ * 把一条模式的源码编译成 **space-tolerant** 版本: 相邻的拉丁字母之间允许
+ * [\s_.-]*(letter-space 变换与同族分隔符 obfuscation 的产物)。
+ *
+ * 判据为什么是"原模式不中而 tolerant 中": tolerant 是原模式的**超集**
+ * ([\s_.-]* 匹配零个), 所以:
+ *   · 明文命中 → 原模式已中(由 dangerous_instruction 层 block), 这里 continue;
+ *   · 仅 tolerant 中 → 该形态只有靠容忍字母间距才可达 = 纯混淆形态才报。
+ * 这是零新增 FP 的接入方式(cycle 18 的边界教训: 容忍版绝不允许把良性词变成
+ * 命中——族模式全部是明文下已被 block 的犯罪方法请求)。
+ *
+ * 状态机要点: 跳过字符类 [...](范围里的字母插分隔符会破坏语义)、
+ * 跳过反斜杠转义(\s/\w/\b 的字母不是字面字母)。
+ */
+function spaceTolerant(source) {
+  let out = '';
+  let inClass = false;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (c === '\\') {
+      const n = source[i + 1];
+      // \w+ / \w* 也要容忍空格: letter-space 把 "working" 拆成 "w or ki ng"
+      // 后 \w(不匹配空格)断链。[\w\s]+ 是 \w+ 的超集, 保持"tolerant ⊇ orig"。
+      if ((n === 'w') && (source[i + 2] === '+' || source[i + 2] === '*')) {
+        out += '[\\w\\s]' + source[i + 2]; i += 2; continue;
+      }
+      out += c + (n || ''); i++; continue;
+    }
+    if (inClass) { out += c; if (c === ']') inClass = false; continue; }
+    if (c === '[') { inClass = true; out += c; continue; }
+    out += c;
+    const n = source[i + 1];
+    if (n !== undefined && /[a-zA-Z]/.test(c) && /[a-zA-Z]/.test(n)) out += '[\\s_.-]*';
+  }
+  return out;
+}
+
+// [第一百三十四轮] 犯罪方法传授族(7c)的 space-tolerant 通道。
+// cycle 128 实测: letter-space 变换把 7c 的动词拆成 "w ri te" 后原模式失配,
+// 5 条英文样本(小说/虚构世界/论文包装/渐进/逻辑胁迫)在该变换类全漏。
+// 只对含拉丁字母的 7c 模式建 tolerant(纯中文模式不受该变换影响)。
+const CRIME_COMPILED = (() => {
+  try {
+    const { CRIME_TEACHING_PATTERNS } = require('../dangerous-instruction.js');
+    return CRIME_TEACHING_PATTERNS
+      .filter(re => /[a-zA-Z]/.test(re.source))
+      .map(orig => {
+        try { return { orig, tolerant: new RegExp(spaceTolerant(orig.source), orig.flags) }; }
+        catch (_) { return null; } // 编译失败(边界模式)跳过, 不影响其他
+      })
+      .filter(Boolean);
+  } catch (_) { return []; }
+})();
+
+/**
  * 检测"用字母间距隐藏的已知恶意术语"。
  * @returns {{ detected: boolean, hits: Array<{term: string, match: string}>, terms: number }}
  */
@@ -190,6 +244,18 @@ function checkLetterSpaceEvasion(text) {
     // 第二段判定: 至少有一个词在命中片段里真的被分隔符拆开。
     // 只在 m[0] 里查，避免术语在别处正常出现被误判。
     if (words.some(w => wordIsSpaced(w, m[0]))) hits.push({ term, match: m[0].slice(0, 40) });
+  }
+  // [第一百三十四轮] 犯罪方法传授族通道: 原模式不中而 space-tolerant 中 = 纯混淆。
+  for (const { orig, tolerant } of CRIME_COMPILED) {
+    if (orig.test(text)) continue; // 明文命中由 DI 层负责(7c 本来就 block)
+    const m = text.match(tolerant);
+    if (!m) continue;
+    const span = m[0];
+    // 第二阶段: 片段里必须真的出现字母-分隔符-字母(letter-space 的产物)。
+    // tolerant 匹配零分隔符也能中(它是超集), 没分隔符就不是混淆形态。
+    if (/[a-zA-Z][\s_.-]+[a-zA-Z]/.test(span)) {
+      hits.push({ term: 'crime_family', match: span.slice(0, 40) });
+    }
   }
   return { detected: hits.length > 0, hits, terms: LETTER_SPACE_TERMS.length };
 }

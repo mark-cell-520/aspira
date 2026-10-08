@@ -228,6 +228,15 @@ const DANGEROUS_PATTERNS = [
   // 之前, 后面跟 步骤/方法/配方/流程/教程 一类索取词。少了这一条, "给我一份
   // 炸药制作步骤" 这类**索取材料**的表述整族漏过。
   /(?:炸弹|爆炸物|爆炸装置|雷管|炸药|汽油弹|燃烧瓶|燃烧弹|烟雾弹|催泪弹|土炸药|毒气|神经毒剂|TNT|C4|硝化甘油|硝酸铵|冰毒|海洛因|可卡因|摇头丸|K粉|鸦片|吗啡|大麻|地雷|手雷|榴弹|子弹|bombs?|explosives?|methamphetamine|cocaine|heroin|napalm|ricin)\s*(?:的|之)?\s*(?:制作|制造|合成|配制|制备|生产|制作法|制造法|合成法|配方|making|mak\w+|synthes\w+|extract\w+|recipe|instructions?|steps?|manufactur\w+)\s*(?:的)?\s*(?:步骤|方法|配方|流程|教程|指南|guide|procedure|process|tutorial|recipe|instructions?|steps?)/i,
+];
+
+// [第一百三十四轮] 7c 犯罪方法传授族拆为独立表再 push 回主表 —— 为了可导出:
+// letter-space-evasion 需要这些模式的源串来编译 space-tolerant 变体。
+// cycle 128 实测: letter-space 变换(字母成对插空格)把 7c 的动词拆成
+// "w ri te", 原模式失配 —— 5 条英文犯罪方法样本在该变换类全漏。
+// cycle 18/32 的答案是在原文上做容忍匹配(恢复则有损), 故这里导出源串
+// 供 letter-space-evasion 把每个字母间编译为 [\s_.-]*。
+const CRIME_TEACHING_PATTERNS = [
   // ⑦c [第一百二十八轮] 犯罪方法传授族 —— 本表原有"操作类"(关安全/删数据)
   // 与"制造类"(炸药/毒品)危害, 独缺"教授如何犯罪"这一族。实测(12 个新攻击
   // 形状探针): 以下 4 句在 54 个维度上与良性文本**同形**(findings 全空,
@@ -267,6 +276,8 @@ const DANGEROUS_PATTERNS = [
   // 中文: 入侵他人系统/账号
   /(?<![识别检测辨别辨认防范预防打击][^。]{0,3})(?:如何|怎么|怎样|请教|教|教一?我、?教会|请|教我)\s*(?:我\s*)?(?:入侵|黑掉|黑进|攻击|攻破|突破)\s*(?:别人|他人|对方)\s*(?:的)?\s*(?:服务器|账号|账户|网站|系统|电脑|手机|网络|微信|QQ|邮箱|社交账号|网盘|云盘)/i,
 ];
+DANGEROUS_PATTERNS.push(...CRIME_TEACHING_PATTERNS);
+
 
 // ⑧ [第一百三十七轮] 自杀/自残 —— 单独成表, 因为它是唯一需要
 // **求助框架豁免**的一类(见下方 SELF_HARM_HELP_FRAME)。
@@ -390,5 +401,6 @@ module.exports = {
   checkDangerousInstruction,
   isDevDebugContext,
   DANGEROUS_INSTRUCTION_LEVEL: DI_LEVEL,
+  CRIME_TEACHING_PATTERNS,
   DEV_EXEMPTIONS: require('./dev-exemptions.js'),
 };

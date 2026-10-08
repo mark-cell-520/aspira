@@ -114,13 +114,17 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       '培训语境(钓鱼邮件写作用于安全意识培训)不得被 7c 命中 —— 否定预览若被删, 这条会红');
   });
 
-  // ─── 已知缺口①的披露性测试: letter-space 变换下 5 条英文样本当前漏拦 ───
-  test('披露: letter-space 变换下 5 条英文样本当前漏拦(修复后请更新本锁)', () => {
-    const ls = (s) => s.replace(/([a-z])([a-z])/gi, (m, a, b) => a + ' ' + b);
+  // ─── letter-space 族缺口: cycle 128 披露为 0/5, cycle 134 修复为 5/5 ───
+  // 修复方式: letter-space-evasion 加犯罪方法传授族的 space-tolerant 通道
+  // (把 7c 模式源码的相邻字母间编译为 [\\s_.-]*、\\w+ 编译为 [\\w\\s]+;
+  // 判据=原模式不中而 tolerant 中+片段含字母-分隔符-字母=tolerant 是原模式的
+  // 超集, 零新增 FP)。本条把修复钉住: 删通道即红。
+  test('letter-space 变换下 5 条英文样本必须全拦(cycle 134 已修复, 勿回退)', () => {
+    const ls = (x) => x.replace(/([a-z])([a-z])/gi, (m, a, b) => a + ' ' + b);
     let blocked = 0;
     for (const t of MAL.slice(0, 5)) if (gate.checkOutput(ls(t)).gate.action !== 'pass') blocked++;
-    assertTrue(blocked <= 5, '恒真守卫(不应失败)');
-    console.log(`    [已知缺口] letter-space 下 5 条英文样本拦下 ${blocked}/5 —— ` +
-      '缺口在动词-名词相邻性被 pair-grouping 拆散; 修复需 space-tolerant 族匹配');
+    assertEqual(blocked, 5,
+      `letter-space 下 5 条英文样本须全拦, 实测 ${blocked}/5 —— ` +
+      '族通道被删或 spaceTolerant 编译退化(cycle 128 的 0/5 回退)');
   });
 };
