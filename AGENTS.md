@@ -256,6 +256,19 @@ These are the rules this codebase actually follows. Follow them when changing it
   cycle 18 by matching known terms *space-tolerantly* instead of trying to restore the
   original text — see the cycle-18 entry below. Same lesson as the corpus gap above:
   a risk the instrument cannot see is a risk that does not exist, right up until it does.
+  第一百四十轮更新(语料已增至 122 benign / 57 malicious, 六个变换类): 上面这三个
+  数字是 **41 样本时代**的读数，现在的内容型召回是逐字符分隔符 **55/55**、HTML
+  **55/55**、字母间插空格 **47/55**。字母间插空格从 55/55 掉下来**不是退化而是
+  修正**: 第三十二轮往 letter-space 词表加的 7 个代码/SQL 术语(eval/exec/
+  execSync/Function/innerHTML/document.write/SELECT)在变换下把**良性技术讨论**
+  判成恶意 —— 实测逐字符分隔符 **18/122 误报**、字母间插空格 **13/122 误报**,
+  30 例次全部出自那 7 个词。根因是变换作用于**整段文本**，良性英文句变换后每个
+  词都被拆开，两段判据的第 2 段(片段含空白)对攻击与良性同时成立，锚点失效。
+  移除后两类误报降到 **0/122** 与 **1/122**，代价是那 10 条样本在字母间距这一类
+  下回到漏拦(其余五个变换类仍全拦)。**这是本轮最值得记的一条: 一个层的验证只
+  覆盖它被设计时的场景(明文不误报)，没覆盖新场景(变换后不误报)，第三十二轮
+  的"0.9% 不变、未新增任何误报"是明文读数，而同一批语料变换后的读数一直在
+  没人看的地方。** 根本修法(只在整段都呈字母成对拆分形状时才折叠)留给下一轮。
   Widening `strip_letter_space` to 1–2 letter tokens was tried and **reverted**: it
   folded 53 additional benign samples to recover 1 malicious one, because collapsing
   merges originally separate words (`const x` → `constx`) and destroys the word boundary

@@ -43,25 +43,34 @@
  *   逐字符插分隔符 35/41 (85.4%)、HTML 实体 39/41 (95.1%) 均不变。
  *   未回收的 12 个已披露，不静默当成已解决(见 AGENTS.md 周期 18)。
  *
- * ═══ 第三十二轮(fp-recall-calibration 切片)扩展 ═══
- * 周期 18 披露的那 12 条未回收项里，8 条代码/密钥类被标为"需要代码语义模式，
- * 不是词表"。重新测量后修正该判断: **两段判定本身就是上下文锚点**，因此这些
- * 词可以安全收录。本轮新增 eval / exec / execSync / Function / innerHTML /
- * document.write / SELECT / BEGIN RSA PRIVATE KEY / password 共 9 条。
+ * ═══ 第一百四十轮(adversarial-robustness 切片)部分回退 ═══
+ * 第三十二轮加的 9 个代码/密钥术语里，**7 个代码/SQL 术语本轮被移除**，
+ * 只保留密钥类 2 条(password / BEGIN RSA PRIVATE KEY)。第三十二轮
+ * "这些词可以安全收录"的结论是错的: 它只测了"明文不误报"，没测
+ * "变换后不误报"。变换作用于**整段文本**，良性英文句变换后每个词都被
+ * 拆开，于是第 2 段判定(片段含空白)对攻击与良性同时成立 —— 锚点失效。
  *
- * 关键在反向控制同样要新增: exec / password / select / eval 都是自然语言里
- * 正常出现的词，第 2 段判定(命中片段里至少一个词真含空白)必须排除明文形态。
- * 另有一个具体的坑: SQL 那条用短语 `SELECT FROM` 配不上——变换后原文的
- * `SELECT * FROM` 变成 `S E L E C T * F R O M`，SELECT 与 FROM 之间隔着 `*`，
- * 而编译器要求词间是 `\s+`。改用单词 `SELECT` 后命中。
+ * 实测(校准脚本六变换类, 122 benign):
+ *   移除前: 逐字符插分隔符 **18/122 误报**、字母间插空格 **13/122 误报**;
+ *           30 例次命中的术语**全部**出自那 7 个代码/SQL 词。
+ *   移除后: 两类误报分别降到 **0/122** 与 **1/122**;
+ *           明文召回 57/57 不变; letter-space 变换类内容型召回
+ *           55/55 → **47/55**(那 10 条在其余五个变换类仍全部被拦)。
+ * 根因与"为何不可修"记在 src/shield/letter-space-evasion.js 的注释里
+ * (尾边界判据与代码标点锚点都实测无效: 良性 'eval("1+1")' 与恶意
+ * 'eval(res.data)' 在该变换下结构同构)。根本修法(整段形状判定后才折叠)
+ * 留给下一轮，本轮不动归一化层。
  *
- * ═══ 实测(本轮，语料 106 benign / 41 malicious) ═══
+ * ═══ 实测(第三十二轮，语料 106 benign / 41 malicious) ═══
  *   字母间距规避召回 **29/41 (71%) → 39/41 (95%)**，额外回收 10 条;
  *   良性误报 **0.9% / 1 条不变**(仍是那条校准不确定性样本)，未新增任何误报;
  *   明文召回 41/41 不变，逐字符插分隔符 35/41 (85%)、HTML 实体 39/41 均不变。
  *   剩余 2 条未回收且各有已披露理由: 多词中英混排短语
  *   (`women belong in the kitchen 女人就该待在厨房`)需短语级容忍; 下划线分隔族
  *   (`all f_aggot_s must die`)属 strip_separator 范畴，不在本模块职责内。
+ *   ⚠️ 上面这个 0.9%/1 条的读数是**明文**读数; 变换后同批语料的读数见本轮
+ *   记录(18/122 与 13/122) —— 一个维度/层的验证只覆盖它被设计时的场景，
+ *   正是第三十二轮漏掉"变换后"的那一课。
  */
 const path = require('path');
 const {
@@ -134,15 +143,10 @@ module.exports = function ({ test, assertEqual, assertTrue, log }) {
     assertTrue(!wordIsSpaced('nigger', 'nigger'), '明文不得算已拆开');
   });
 
-  test('代码/密钥类术语的规避形态必须被检出(第三十二轮新增)', () => {
+  test('密钥类术语的规避形态必须被检出(第三十二轮新增, 第一百四十轮只保留这类)', () => {
     const cases = [
-      ['const x = eval(userInput);', 'eval'],
-      ['exec("ls " + userInput);', 'exec'],
-      ['execSync(`ls ${dir}`);', 'execSync'],
-      ['el.innerHTML = userInput;', 'innerHTML'],
-      ['document.write(userInput);', 'document.write'],
-      ['db.query("SELECT * FROM t WHERE id=" + id);', 'SELECT'],
       ['password = "hunter2secret"', 'password'],
+      ['-----BEGIN RSA PRIVATE KEY-----', 'BEGIN RSA PRIVATE KEY'],
     ];
     const bad = [];
     for (const [plain, term] of cases) {
@@ -152,7 +156,46 @@ module.exports = function ({ test, assertEqual, assertTrue, log }) {
         bad.push('"' + plain.slice(0, 40) + '" → ' + (got.join(',') || '未检出'));
       }
     }
-    assertEqual(bad.join('\n'), '', '以下代码/密钥类规避形态未被检出:\n' + bad.join('\n'));
+    assertEqual(bad.join('\n'), '', '以下密钥类规避形态未被检出:\n' + bad.join('\n'));
+  });
+
+  test('变换后的良性技术讨论不得由本层报告(第一百四十轮新增反向控制)', () => {
+    // 这是第三十二轮漏掉的那一面: 它只测了"明文代码词不误报"，没测
+    // "变换后的良性技术讨论不误报"。变换作用于整段文本，于是每个英文词
+    // 都被拆开 —— 'how do i run this function in node' 变换后
+    // 'f un ct io n' 命中 Function、'The retrieval process' 变换后
+    // 'ev al' 命中 eval(retrieval 的子串)。这 7 个代码/SQL 术语本轮已移除。
+    const bad = [];
+    for (const t of [
+      'how do i run this function in node',
+      'The retrieval process takes about 200ms.',
+      'eval("1+1") returns 2 in JavaScript.',
+      'SELECT * FROM users WHERE id = 1',
+      'The executive summary was clear and concise.',
+      'I need to evaluate the results carefully before deciding.',
+      'el.innerHTML = "<p>hello</p>" renders a paragraph',
+      'document.write("<p>ok</p>") writes to the document',
+    ]) {
+      const v = letterSpace(t);
+      const r = checkLetterSpaceEvasion(v);
+      if (r.detected) bad.push('"' + v.slice(0, 46) + '" → ' + r.hits.map(h => h.term).join(','));
+      // 逐字符分隔符变换同构: 'f-u-n-c-t-i-o-n' 一样会命中
+      const s = checkLetterSpaceEvasion(t.split('').join('-'));
+      if (s.detected) bad.push('[sep] "' + t.slice(0, 40) + '" → ' + s.hits.map(h => h.term).join(','));
+    }
+    assertEqual(bad.join('\n'), '', '变换后的良性技术讨论被误报为规避形态:\n' + bad.join('\n'));
+  });
+
+  test('术语表不得再含代码/SQL 类词(第一百四十轮锁住移除)', () => {
+    // 源级锁: 删掉本轮移除会立刻红。这 7 个词在变换下把良性技术讨论判成
+    // 恶意(实测 30 例次误报), 而尾边界判据与代码标点锚点都修不了
+    // (良性 'eval("1+1")' 与恶意 'eval(res.data)' 结构同构)。
+    const banned = ['eval', 'exec', 'execSync', 'Function', 'innerHTML', 'document.write', 'SELECT'];
+    const present = LETTER_SPACE_TERMS.filter(t => banned.includes(t));
+    assertEqual(present.join(','), '', '代码/SQL 类术语不得回到 letter-space 词表: ' + present.join(','));
+    // 密钥类必须仍在(它们语料零误报, 且是 block 级高危目标)
+    assertTrue(LETTER_SPACE_TERMS.includes('password'), 'password 必须保留在词表中');
+    assertTrue(LETTER_SPACE_TERMS.includes('BEGIN RSA PRIVATE KEY'), 'BEGIN RSA PRIVATE KEY 必须保留');
   });
 
   test('明文的代码词不得由本层报告(新增词条的反向控制)', () => {
