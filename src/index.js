@@ -1512,8 +1512,9 @@ function checkPseudoCausal(text) {
   //      却因 "提升 3 倍" 命中 PSEUDO_CAUSAL_ZH 而 gate=verify。
   // 判据(实测 4/4 自带对冲的放过, 5/5 无对冲的仍命中):
   //   样本量仅 N / 有待确认 / 尚需验证 / 初步结果 / 限于样本 …
-  const HEDGE_RE = /样本量\s*(?:仅|只有|不足|偏)?\s*\d+|有待\s*(?:确认|验证|考证|观察|检验)|尚需\s*(?:进一步)?(?:确认|验证|观察|检验)|初步\s*(?:结果|数据|显示|发现|分析)|限于\s*样本|样本\s*(?:量)?(?:较|偏)?(?:小|少|不足)|\b(?:preliminary|initial|early|small-sample|limited-sample)\s+(?:results?|data|findings?|analysis)\b|\bneeds?\s+(?:further|more)\s+(?:validation|verification|study|testing)\b/i;
-  if (HEDGE_RE.test(text)) return { count: 0, hits: [], score: 0, hedged: true };
+  const HEDGE_RE = /样本量\s*(?:仅|只有|不足|偏)?\s*\d+|有待\s*(?:确认|验证|考证|观察|检验)|尚需\s*(?:进一步)?(?:确认|验证|观察|检验)|初步\s*(?:结果|数据|显示|发现|分析)|限于\s*样本|样本\s*(?:量)?(?:较|偏)?(?:小|少|不足)|\b(?:preliminary|initial|early|small-sample|limited-sample)\s*(?:results?|data|findings?|analysis)|\bneeds?\s*(?:further|more)\s*(?:validation|verification|study|testing)/i;
+  const _hedgeText = text.replace(/([A-Za-z])\s+(?=[A-Za-z])/g, '$1');
+  if (HEDGE_RE.test(text) || HEDGE_RE.test(_hedgeText)) return { count: 0, hits: [], score: 0, hedged: true };
   const patterns = [...PSEUDO_CAUSAL_ZH, ...PSEUDO_CAUSAL_EN];
   const _raw = [];
   for (const pat of patterns) {
@@ -1625,8 +1626,9 @@ function checkUnsupportedClaim(text) {
   // 故恢复样本并在此加豁免——改样本去迁就模式是错的方向。
   // 判据须与 pseudo_causal 的对冲判据同族(句内自限)，实测:
   //   自带对冲 → 放过; 无对冲的 "according to a study … 47%" → 仍命中。
-  const HEDGE_RE = /样本量\s*(?:仅|只有|不足|偏)?\s*\d+|有待\s*(?:确认|验证|考证|观察|检验)|尚需\s*(?:进一步)?(?:确认|验证|观察|检验)|初步\s*(?:结果|数据|显示|发现|分析)|限于\s*样本|样本\s*(?:量)?(?:较|偏)?(?:小|少|不足)|\b(?:preliminary|initial|early|small-sample|limited-sample)\s+(?:results?|data|findings?|analysis)\b|\bneeds?\s+(?:further|more)\s+(?:validation|verification|study|testing)\b|\bthough\s+the\s+sample\b|\bsample\s+(?:was|is|size\s+was|size\s+is)\s+(?:only\s+)?(?:small|limited|tiny|modest)\b|\bwith\s+(?:a\s+)?(?:small|limited|modest)\s+sample\b|\b(?:but|though|although)\s+[^.]{0,40}\b(?:sample|n)\s*(?:=|of|is|was)?\s*(?:only\s*)?\d+/i;
-  if (HEDGE_RE.test(text)) return { count: 0, claims: [], score: 0, hedged: true };
+  const HEDGE_RE = /样本量\s*(?:仅|只有|不足|偏)?\s*\d+|有待\s*(?:确认|验证|考证|观察|检验)|尚需\s*(?:进一步)?(?:确认|验证|观察|检验)|初步\s*(?:结果|数据|显示|发现|分析)|限于\s*样本|样本\s*(?:量)?(?:较|偏)?(?:小|少|不足)|\b(?:preliminary|initial|early|small-sample|limited-sample)\s*(?:results?|data|findings?|analysis)|\bneeds?\s*(?:further|more)\s*(?:validation|verification|study|testing)|\bthough\s*the\s*sample|\bsample\s*(?:was|is|size\s*was|size\s*is)\s*(?:only\s*)?(?:small|limited|tiny|modest)|\bwith\s*(?:a\s*)?(?:small|limited|modest)\s*sample|\b(?:but|though|although)\s+[^.]{0,40}\b(?:sample|n)\s*(?:=|of|is|was)?\s*(?:only\s*)?\d+/i;
+  const _hedgeText2 = text.replace(/([A-Za-z])\s+(?=[A-Za-z])/g, '$1');
+  if (HEDGE_RE.test(text) || HEDGE_RE.test(_hedgeText2)) return { count: 0, claims: [], score: 0, hedged: true };
   const patterns = [...UNSUPPORTED_CLAIM_ZH, ...UNSUPPORTED_CLAIM_EN];
   const _raw = [];
   for (const [idx, pat] of patterns.entries()) {

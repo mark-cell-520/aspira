@@ -184,13 +184,25 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertTrue(hedgeCount >= 2,
       `应有至少 2 处 HEDGE_RE(pseudo_causal 与 unsupported_claim 各一处)，实测 ${hedgeCount}`);
     // 两处都必须真的 return(不能定义了不用)
-    const earlyReturn = (src.match(/if \(HEDGE_RE\.test\(text\)\) return/g) || []).length;
+    // [第一百四十一轮] 提前返回的条件从"只测原文"扩为"原文 ∪ 去掉字母间空格的
+    // 副本": letter-space 变换把 'though the sample was small' 拆成
+    // 't ho ug h t he s am pl e w as s ma ll'，判据即便改成 \s* 也匹配不上
+    // (字母之间还有空格)，必须再测折叠副本。故锚点由完整的
+    // `if (HEDGE_RE.test(text)) return` 放宽为前缀匹配。
+    const earlyReturn = (src.match(/if \(HEDGE_RE\.test\(text\)/g) || []).length;
     assertTrue(earlyReturn >= 2,
       `应有至少 2 处 HEDGE_RE.test(text) 提前返回，实测 ${earlyReturn}`);
+    const foldCopy = (src.match(/HEDGE_RE\.test\(_hedgeText2?\)/g) || []).length;
+    assertTrue(foldCopy >= 2,
+      `两处 HEDGE_RE 都应测"去掉字母间空格"的副本(变换文本字母间还有空格)，实测 ${foldCopy}`);
     // 对冲判据必须包含"though the sample"这类英文对冲，
     // 否则误报二会复现
-    assertTrue(src.includes('though\\s+the\\s+sample'),
-      'HEDGE_RE 应覆盖 "though the sample …" 形态');
+    // [第一百四十一轮] \s+ → \s*: 整段间距化折叠会把 'though the sample was small'
+    // 粘成 'thoughthesamplewassmall'(插入的空格与原有空格同形，词边界不可恢复)，
+    // 若判据仍要求空格，对冲豁免在折叠产物上失效 —— 实测该 benign 样本会从 pass
+    // 变 verify。故判据必须容忍无空格形态。
+    assertTrue(src.includes('though\\s*the\\s*sample'),
+      'HEDGE_RE 应覆盖 "though the sample …" 形态(且容忍无空格形态)');
     assertTrue(src.includes('有待\\s*(?:确认|验证'),
       'HEDGE_RE 应覆盖"有待确认/验证"形态');
   });

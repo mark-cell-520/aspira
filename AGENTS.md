@@ -269,6 +269,20 @@ These are the rules this codebase actually follows. Follow them when changing it
   覆盖它被设计时的场景(明文不误报)，没覆盖新场景(变换后不误报)，第三十二轮
   的"0.9% 不变、未新增任何误报"是明文读数，而同一批语料变换后的读数一直在
   没人看的地方。** 根本修法(只在整段都呈字母成对拆分形状时才折叠)留给下一轮。
+  第一百四十一轮更新(那一轮就是 fp-recall-calibration，根本修法已实施):
+  字母间插空格的内容型召回 **47/55 → 53/55**，变换版误报 **1/122 不变**(那 1 条
+  是禁用折叠的对照下也存在的既有误报，零宽类同样有)。修法不是 cycle 18 那个
+  "放宽到 1-2 字母 token"——那一次净负是因为**没有形状判据**; 本轮判据是整段
+  形态(空格分隔的 token 里 ≤2 字母的纯字母 token 占比 ≥0.6 且 token 数 ≥8)，
+  且本条**不做任何判断**、只负责还原: 形状判据对变换后的良性英文句同样成立
+  (攻击与良性在该层同构)，还原后是良性还是攻击交给下游维度裁决。两个必须同时
+  成立的门槛各修掉一条实测误报: 中文占比 <30%(中英混排句折叠后 'racecondition'
+  是不存在的词，absolute_claim 因它误报)、HEDGE_RE 容忍无空格与字母间空格形态
+  (折叠把 'though the sample was small' 粘成一个词，豁免原本要求空格)。
+  仍未回收 2 条并已锁在 test/letter-space-collapse.test.js 里:
+  'eval(res.data)' 变换后只有 6 个 token 够不到 ≥8 门槛; 'new Function(userInput)'
+  折叠成 'newFunction(userInput)' 后 code_security 的模式仍不匹配(它要求 new 与
+  Function 之间有空格)——折叠的固有代价: 插入的空格与原有空格同形，词边界不可恢复。
   Widening `strip_letter_space` to 1–2 letter tokens was tried and **reverted**: it
   folded 53 additional benign samples to recover 1 malicious one, because collapsing
   merges originally separate words (`const x` → `constx`) and destroys the word boundary

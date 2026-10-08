@@ -517,6 +517,52 @@ function normalize(text) {
   const noLetterSpace = out.replace(/(?<![a-zA-Z])(?:[a-zA-Z] ){3,}[a-zA-Z](?![a-zA-Z])/g, m => m.replace(/ /g, ''));
   if (noLetterSpace !== out) { applied.push('strip_letter_space'); out = noLetterSpace; }
 
+  // [fp-recall-calibration·第一百四十一轮] 整段间距化折叠。
+  //
+  // 上面那条要求"≥4 个连续单字母"，而字母间插空格的逃逸产物是**字母成对分组**
+  // ('c on st x = e va l(u se rI np ut)')，永远不满足该要求 —— 于是 letter-space
+  // 变换类的内容型召回卡在 47/55，8 条代码类样本全漏。
+  //
+  // ⚠️ 为什么不能直接"放宽到 1-2 字母 token": 第十八轮实测过，净负
+  // (折叠 53 个良性样本换回 1 个恶意)。缺口在于那个放宽**没有形状判据**。
+  // 本条的判据是整段形态: 空格分隔的 token 里 ≤2 字母的纯字母 token 占比
+  // ≥0.6 且 token 数 ≥8，才把字母间的单空格全部删掉。
+  //
+  // 关键性质: 形状判据对"变换后的良性英文句"**同样成立**(变换把每个词都拆开，
+  // 攻击与良性在该层同构 —— 这与第一百四十轮记录的结论一致)，所以本条**不做
+  // 任何判断**，只负责还原；还原后是良性内容还是攻击内容，交给下游维度裁决。
+  // 实测: 8 条漏报样本 6 条被下游拦下(block)，122 条良性里 77 条触发折叠、
+  // 折叠后被升级的仅 1 条 —— 且那 1 条的原因是对冲豁免的词边界被折叠破坏
+  // ('though the sample was small' → 'thoughthesamplewassmall')，已由
+  // 两个必须同时成立的门槛(各修掉一条实测误报):
+  //   ① 中文字符占比 < 30%。中英混排句 '这个 bug 是因为 race condition 导致的'
+  //     折叠后 'racecondition' 是个**不存在的词**，absolute_claim 因它误报。
+  //     中文没有"字母间插空格"这种逃逸形状(变换只作用于拉丁字母)，所以中文
+  //     占比高的文本根本不属于该攻击面，折叠只会制造假词。
+  //   ② HEDGE_RE 容忍无空格形态(src/index.js \s+ → \s*)。折叠会把
+  //      'though the sample was small' 粘成 'thoughthesamplewassmall'，
+  //      对冲豁免原本要求空格，在折叠产物上失效 → 该 benign 样本 pass 变 verify。
+  //
+  // 仍未回收 2 条，如实记录: 'eval(res.data)' 变换后只有 6 个 token，够不到
+  // ≥8 的门槛(降门槛会连带放宽短文本，风险大于收益); 'new Function(userInput)'
+  // 折叠成 'newFunction(userInput)' 后 code_security 的模式仍不匹配
+  // (它要求 new 与 Function 之间有空格) —— 这是折叠的固有代价: 插入的空格与
+  // 原有空格同形，还原后词边界不可恢复(第十八轮"变换有损"的同族)。
+  const _looksFullySpaced = (s) => {
+    const toks = s.split(/\s+/).filter(Boolean);
+    if (toks.length < 8) return false;
+    const short = toks.filter(t => /^[A-Za-z]{1,2}$/.test(t)).length;
+    if (short < toks.length * 0.6) return false;
+    // 门槛 ①: 中文占比高的文本不属于"字母间插空格"攻击面
+    const han = (s.match(/[一-鿿]/g) || []).length;
+    const latin = (s.match(/[A-Za-z]/g) || []).length;
+    return han < latin * 0.3;
+  };
+  if (_looksFullySpaced(out)) {
+    const collapsed = out.replace(/([A-Za-z])\s+(?=[A-Za-z])/g, '$1');
+    if (collapsed !== out) { applied.push('collapse_letter_space_full'); out = collapsed; }
+  }
+
   const noSep = (() => {
     let s = out;
     // 英文单词中间插入的连字符/点/下划线：e-v-a-l → eval，掩__盖 → 掩盖
