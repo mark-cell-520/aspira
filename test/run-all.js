@@ -122,7 +122,24 @@ function emitResult({ label, out, err }) {
     const fm = line.match(/^\s*✗\s+(.+?)\s*$/);
     if (fm) failures.push({ name: fm[1], error: `(${label.trim()})` });
   }
-  const keep = out.split('\n').filter(l => l.includes('通过') || l.includes('✗') || l.includes('失败'));
+  // [doc-honest-numbers·第一百四十三轮] 保留 ✗ 行**后面的缩进消息行**。
+  //
+  // 原实现只保留含"通过/✗/失败"的行，于是 harness 打出的断言消息
+  // (`    期望 truthy，实际 false。<原因>`)被整行丢掉 —— 每个失败只剩一个标题。
+  // 后果正是铁律 3 要求"逐个说明来源"时最需要的那个来源: **清单有名字、没有原因**，
+  // 于是每一轮排查都要重新单独跑那个文件(而它单独跑往往全绿，因为是并发/嵌套
+  // 探针残留)，或去读源码猜断言。本轮实测被这个形状挡住: 套件里
+  // audit-domains-blindspot 间歇红，输出只有标题，无法判断是三条断言里的哪条。
+  //
+  // 判据: 上一保留行是 ✗ 行、且本行是缩进的非空行 → 它是该失败的消息，保留。
+  // (harness 的消息行固定为 4 空格缩进; 用"上一行是 ✗"锚定，不会误收测试自己的输出。)
+  const all2 = out.split('\n');
+  const keep = [];
+  for (const l of all2) {
+    if (l.includes('通过') || l.includes('✗') || l.includes('失败')) { keep.push(l); continue; }
+    const prev = keep.length ? keep[keep.length - 1] : '';
+    if (/^\s+\S/.test(l) && prev.includes('✗')) keep.push(l);
+  }
   console.log(keep.join('\n') || '  (无输出)');
 }
 
