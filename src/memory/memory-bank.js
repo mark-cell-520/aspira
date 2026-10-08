@@ -50,6 +50,15 @@ class MemoryBank {
   constructor(options = {}) {
     // 可选：注入已有的 MemoryAdapter/MeaningfulMemory 实例，共享底层存储
     this._underlyingMemory = options.memory || null;
+    // [test-coverage-gap·第一百三十六轮] 实例级 bank 路径: 原 _getBankPath() 直接返回
+    // 模块级常量 BANK_PATH(<repo>/data/memory-bank.json), 无视构造选项 —— 任何
+    // new MemoryBank({dataDir: tmp}) 都在读写同一个生产文件。实测(冒烟): 临时目录
+    // 下构造的实例读到了仓库真实记忆(5 条 + 数天前的 session); 测试若 save 会
+    // 污染生产数据; 多实例并发 save 互相覆写。修法: options.bankPath 优先,
+    // 其次 options.dataDir 拼接, 都不传才回落全局 BANK_PATH —— 不传 dataDir 的
+    // 生产调用方行为不变。
+    this._bankPath = options.bankPath
+      || (options.dataDir ? path.join(options.dataDir, 'memory-bank.json') : BANK_PATH);
 
     // 会话索引：sessionId -> { id, label, startTime, endTime, memoryIds, stats }
     this.sessions = new Map();
@@ -101,7 +110,7 @@ class MemoryBank {
   // ─── 持久化 ────────────────────────────────────────────────────────────
 
   _getBankPath() {
-    return BANK_PATH;
+    return this._bankPath;
   }
 
   _loadFromDisk() {
@@ -269,13 +278,16 @@ class MemoryBank {
     const content = encryptJSONAsync ? await encryptJSONAsync(safeExport) : encryptJSON(safeExport);
     const tempPath = bankPath + '.tmp.' + Date.now() + '.' + crypto.randomBytes(4).toString('hex');
     const target = path.resolve(bankPath);
-    if (_asyncFs) {
-      await _asyncFs.writeFile(tempPath, content);
-      await fs.promises.rename(tempPath, target);
-    } else {
-      await fs.promises.writeFile(tempPath, content, 'utf8');
-      await fs.promises.rename(tempPath, target);
-    }
+    // [test-coverage-gap·第一百三十六轮] 本文件的 fs 是 **safe-fs 包装**(顶部
+    // require('../utils/safe-fs')), 实测它**没有 promises 属性**(keys 里无它)。
+    // 原 async 路径 fs.promises.writeFile/rename 抛 "Cannot read properties of
+    // undefined (reading 'rename')", 被 save() 的 catch 吞成一句 warn ——
+    // **文件没写成, 而 await mb.save() 照常返回**。契约错配: 调用方以为落盘了
+    // (结构上成功), 数据已死。修法: 改用 safe-fs 实际持有的同步原语
+    // (writeFileSync/renameSync, 与 _doSave 同步路径同形状; 记忆库 5000 条
+    // 上限, 单次写入 MB 级, 同步可接受), 不再依赖不存在的 fs.promises。
+    fs.writeFileSync(tempPath, content, 'utf8');
+    fs.renameSync(tempPath, target);
   }
 
   async _exists(filePath) {
