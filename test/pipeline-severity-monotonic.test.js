@@ -84,11 +84,23 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     //
     // 留档原因: **一条反向控制的样本不能复用已修缺口上的输入** ——
     // 那会让它一直红, 后人会以为是自己弄坏了它。
-    const disc = gate.check('lа lа').action;
+    //
+    // [第一百四十六轮] 前提**第二次**被主动修掉，且这次是 cycle 137 那次换样本
+    // 的同一手法: 第一百四十六轮给 gate.check 接入对抗层(它此前只跑
+    // discriminate，对混淆输入一律 pass —— 见 test/mcp-lightweight-gate-
+    // adversarial.test.js)。于是 gate.check('lа lа') 现在自己就给 rewrite，
+    // "gate.check=pass + pipeline=rewrite" 这个对照形态不复存在。
+    // 本条要的对照是**判别器 vs 加层后的入口**，故判别器那一端改用
+    // idx.discriminate —— 它仍然不含对抗层，这才是"没有对抗层时的结论"。
+    const idx = require('../src/index.js');
+    const disc = (idx.discriminate('lа lа', []).gate || {}).action;
+    const light = gate.check('lа lа').action;
     const pipe = pl.runPipeline({ input: 'lа lа', mode: 'input' }).gate.action;
     assertEqual(disc, 'pass', '判别器不含对抗层, 对纯同形字给 pass');
+    assertEqual(light, 'rewrite', '轻量门禁(已接入对抗层)必须升级到 rewrite');
     assertEqual(pipe, 'rewrite', '完整 pipeline 必须借对抗层升级到 rewrite');
     assertTrue(SEV[pipe] > SEV[disc], 'pipeline 必须严格更严');
+    assertTrue(SEV[light] > SEV[disc], '轻量门禁也必须严格更严');
   });
 
   test('良性输入不受影响(加层规则不得把 pass 变成别的东西)', () => {
