@@ -121,7 +121,20 @@ const TOOLS = [
         fullText: { type: 'boolean', description: 'report 用：是否存全文(默认false，隐私铁律)' },
         id: { type: 'string', description: 'confirm 用：要确认的记录 id' }
       },
-      required: ['action']
+      required: ['action'],
+      // [MCP 工具增强·第一百三十三轮] 条件 required: 原 schema 只 required
+      // ['action'], 而 action 的 enum 第一值 'report' 分支要求
+      // text/gateAction/dimension/reason 四个字段(false-positive-feedback.js
+      // 的 report() 逐项校验)。调用方按 schema 合法调用(=按 required 只传
+      // action)必得 {error:'text 不能为空'} —— **schema 广告的合法值必然
+      // 导致错误**, 契约错配家族。用 JSON Schema 的 if/then 按 action 分支
+      // 声明条件必填: report → 四字段; 其他 action → 仍只要 action。
+      // 不理解 if/then 的 client 退化为原行为(只传 action 仍可查 stats),
+      // 不会比现在更差。
+      allOf: [{
+        if: { properties: { action: { const: 'report' } }, required: ['action'] },
+        then: { required: ['text', 'gateAction', 'dimension', 'reason'] },
+      }],
     },
   },
 
