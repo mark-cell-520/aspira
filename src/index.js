@@ -461,7 +461,25 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
   const rcIntent = (rc.markers?.premise?.count || 0) + (rc.markers?.inference?.count || 0);
   // 事实陈述豁免：报告/数据显示/调查/统计/年报 + 具体数据 = 数据引用句，不是推理链断裂
   const FACT_STATEMENT = /报告显示|数据显示|调查了|统计显示|年报|研究表明|结果显示|同比增长|数据来自|覆盖|根据[^，。]{0,20}(文献|研究|论文|数据|资料|公开)|是[^。]{0,25}(领域|问题|方向|话题|现象)/i;
-  const rcBroken = rcIntent > 0 && !FACT_STATEMENT.test(text) && (rc.structure === '结构碎片' || rc.structure === 'unknown' || (rc.markers?.leap?.count || 0) > 0) && rc.score < 0.4;
+  // [dimension-health-audit·第一百五十轮] 原闸门是
+  //   (rc.structure === '结构碎片' || rc.structure === 'unknown' || leap.count > 0)
+  // 实测**前两个是死值** —— checkReasoningCoherence 从不把它们赋给 structure。
+  // 它会赋的是: 完整推理链 / 有前提有推理无结论 / 有前提有结论缺推理 /
+  // 无前提直接推理结论 / 跳跃推理（无依据）/ 直接结论无推理 / 无推理结构 /
+  // 部分结构碎片; 另有 no_text(提前 return)。unknown 只是初始值, 而每条分支
+  // (含 else 兜底)都会给 structure 赋值, 所以它也取不到。
+  // 后果: 闸门实际只剩 leap.count > 0。这正是维度健康审计读数
+  // "reasoning_coherence 信号 88 / finding 2" 的原因 —— 88 个输入让 score
+  // 非零, 但只有带跳跃标记的那 2 个能变成 finding, 其余 86 个信号到此为止。
+  //
+  // **本轮不按注释意图补上 '有前提有推理无结论' 等**: 实测那样会在 16 条良性
+  // 样本上开火(代码片段 const data = await fetch(...)、两条 hedge 护栏样本
+  // "实验显示转化率…结论有待确认"、以及"这个 bug 是因为 race condition 导致的"
+  // 这类正常技术陈述), FP 从 0.0% 升到 13%。根因在 REASONING_MARKERS 过宽
+  // ('因为'/'因此'/'then' 就把一句陈述算成有推理意图), 修它需要产品判断,
+  // 不是一行正则。死条件在此删去并留证: 下一个动这个闸门的人请先读这一段,
+  // 并先跑 scripts/calibrate-fp-recall.js。
+  const rcBroken = rcIntent > 0 && !FACT_STATEMENT.test(text) && (rc.markers?.leap?.count || 0) > 0 && rc.score < 0.4;
   if (rcBroken) {
     findings.push({ dimension: 'reasoning_coherence', severity: Math.round((0.5 - rc.score) * 100), details: `推理连贯性差(${rc.structure})` });
   }
