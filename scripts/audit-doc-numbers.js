@@ -699,6 +699,14 @@ function claims() {
       // **读到 ≠ 核对, 读到错目标比读不到更危险**。现在要求前缀是
       // "coverage-sweep.js across", 只匹配 README 那一句。
       { re: /coverage-sweep\.js across (\d+)\s+modules/g, key: 'srcModules', what: 'src modules counted by coverage-sweep' },
+      // [doc-honest-numbers·第一百五十四轮] suspectedDead 的 pattern ——
+      // 它是**三个覆盖读数里唯一一个连 pattern 都没有的**: srcModules 与
+      // aliveUntested 至少各有一条 re，而文档里早已不写那两种形态，于是三条
+      // 全是死的；suspectedDead 更彻底，measured 之后直接没有比对对象。
+      // 本轮把三个读数写回 SKILL.md 的 metric 表(用这三条 re 能匹配的形态)，
+      // 三个 key 从此进入闭环: 数字变了审计就红，逼着同步，与 tests 同机制。
+      // 形态要求 "N suspected dead" 紧跟在这句话里，避免误抓别处的 suspected。
+      { re: /(\d+)\s+suspected dead/g, key: 'suspectedDead', what: 'suspected dead src modules' },
       { re: /(\d+)\s+modules\s*[×,.]/g, key: 'modules', what: 'modules' },
       // ── [审计盲区修复·第七轮] "N domains" 从未被任何模式覆盖 ──
       // 连续第七轮 doc-honest-numbers，上轮结论是「六个角度已推进完毕、
