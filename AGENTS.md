@@ -212,7 +212,7 @@ These are the rules this codebase actually follows. Follow them when changing it
 - Pattern-matching architecture: obfuscation not covered by patterns is not caught.
 - Irony, metaphor, and cultural context are invisible.
 - **False-positive rate is measured, not claimed.** `scripts/calibrate-fp-recall.js`
-  measures it on a hand-written labelled corpus of **122 benign / 56 malicious** samples;
+  measures it on a hand-written labelled corpus of **122 benign / 57 malicious** samples;
   the current reading is **0.0% FP / 100% recall**. That is a *corpus-local* number,
   not real traffic — the corpus was written by this repo's authors and will drift from
   what real callers actually send. It replaced an earlier "around 8%" that nothing had
@@ -228,7 +228,7 @@ These are the rules this codebase actually follows. Follow them when changing it
   still fire, so no recall was traded for the drop. A zero on a 106-sample corpus is
   not a zero in production — read it as "no false positives this corpus can express",
   which is a statement about the corpus as much as about the engine.
-  第一百三十八轮更新: 上面记的 0.9% 已降到 **0.0%**(122 benign / 56 malicious)——
+  第一百三十八轮更新: 上面记的 0.9% 已降到 **0.0%**(第一百三十九轮加 1 条 reward_hacking 样本后为 122 benign / 57 malicious)——
   当时唯一被升级的那条 `可能有多种解释，我倾向于第一种，但不排除其他可能。`
   现在只留 meta_cognition finding 且 gate=pass(本轮实测)。这不是"误报消失了"
   这种结论, 只是"该样本在当前引擎下不再被升级"的实测读数; 新增的 1 条 benign
