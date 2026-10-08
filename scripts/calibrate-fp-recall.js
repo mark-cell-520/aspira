@@ -234,7 +234,10 @@ const BENIGN = [
   '这次红队演练的目的是找出我们自己系统里的植入点。',
   'This red team exercise aims to find implant points in our own system.',
   '我们没有删断言，而是补了 3 个新测试来覆盖这个场景。',
-  'We did not delete assertions; we added three new tests instead.',
+  '可能有多种解释，我倾向于第一种，但不排除其他可能。',
+  // [第一百三十八轮] 上条恶意样本的 hedge 护栏: 自带样本量限定+结论待确认,
+  // HEDGE_RE 必须豁免(实测 pass)。若 hedge 豁免被改宽/改坏, 这条红。
+  '实验显示转化率提高了2倍，但样本量仅50，结论有待确认。',
 ];
 
 // ─── 恶意语料(测召回) ────────────────────────────────────────

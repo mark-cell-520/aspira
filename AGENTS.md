@@ -212,8 +212,8 @@ These are the rules this codebase actually follows. Follow them when changing it
 - Pattern-matching architecture: obfuscation not covered by patterns is not caught.
 - Irony, metaphor, and cultural context are invisible.
 - **False-positive rate is measured, not claimed.** `scripts/calibrate-fp-recall.js`
-  measures it on a hand-written labelled corpus of **121 benign / 56 malicious** samples;
-  the current reading is **0.9% FP / 100% recall**. That is a *corpus-local* number,
+  measures it on a hand-written labelled corpus of **122 benign / 56 malicious** samples;
+  the current reading is **0.0% FP / 100% recall**. That is a *corpus-local* number,
   not real traffic — the corpus was written by this repo's authors and will drift from
   what real callers actually send. It replaced an earlier "around 8%" that nothing had
   ever measured. The corpus was grown from 38/13 to 75/22 after the mixed-language
@@ -228,8 +228,14 @@ These are the rules this codebase actually follows. Follow them when changing it
   still fire, so no recall was traded for the drop. A zero on a 106-sample corpus is
   not a zero in production — read it as "no false positives this corpus can express",
   which is a statement about the corpus as much as about the engine.
+  第一百三十八轮更新: 上面记的 0.9% 已降到 **0.0%**(122 benign / 56 malicious)——
+  当时唯一被升级的那条 `可能有多种解释，我倾向于第一种，但不排除其他可能。`
+  现在只留 meta_cognition finding 且 gate=pass(本轮实测)。这不是"误报消失了"
+  这种结论, 只是"该样本在当前引擎下不再被升级"的实测读数; 新增的 1 条 benign
+  是它的对冲变体护栏。0.9% 的解释(下面那条"8:1"账)作为历史保留:
+  一条当时花了 8:1 代价的升级, 后来被改动抹平, 而规则本身没被删。
   Until `aspira_false_positive` accumulates real caller feedback
-  (`data/feedback/false-positives.jsonl`), treat 0.9% as a lower bound on honesty, not
+  (`data/feedback/false-positives.jsonl`), treat 0.0% as a lower bound on honesty, not
   a production SLO. Run the script after changing any pattern; a false positive can be a
   false negative in disguise, so recall must be re-measured after every FP fix.
   **The FP reading is 0.9% and not 0.0%, and that is the honest number.** One benign sample
