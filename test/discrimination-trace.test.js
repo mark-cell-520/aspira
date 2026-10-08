@@ -1,5 +1,5 @@
 /**
- * discrimination-trace.test.js — HeartFlow 判别可解释性 trace 模块回归测试
+ * discrimination-trace.test.js — Aspira（新愿）判别可解释性 trace 模块回归测试
  *
  * 保护从心虫吸收的 src/discrimination-trace.js：
  *   buildTrace / summarizeTrace / extractDimensionEvidence / EVIDENCE_FIELDS

@@ -1,3 +1,37 @@
+## [1.0.25] - 2026-10-08
+
+品牌落实收尾。1.0.0 那次只动了展示层标题，留下一批引擎自称「心虫」的尾巴——
+其中三处直接出现在用户眼前的判别理由里。本次把自称统一为「新愿」，
+外部来源、历史档案与运行时契约一律保留。
+
+### Changed
+- **运行时输出**：`src/gate-verdict.js` 三个 block/verify/pass 级 `reason` 文案
+  （心虫防火墙 / 心虫自验证 / 心虫未发现信号）改为「新愿」。这是唯一会出现在
+  用户判别结果里的品牌残留，优先级最高。
+- **模块 docstring**：7 个 src + 2 个 test 的 `HeartFlow — xxx` 标题改为
+  `Aspira（新愿）— xxx`。
+- **注释自称**：gate-verdict / reward-hacking / multi-turn-tactics /
+  manipulation-tactics / text-normalizer / quotation-context /
+  false-positive-feedback / discrimination-trace / dangerous-instruction
+  共 14 处「心虫」自称改为「新愿」；两处测试对 docstring 原话的引用跟随同步。
+- **技能名称与备注**：`SKILL.md` 的 title 与 description 首行落实「新愿 Aspira」品牌。
+
+### 刻意保留（是契约与历史，不是残留）
+- `src/core/heartflow.js` 文件名、`heartflow` 变量/方法名、`HEARTFLOW_*` 环境变量：
+  59 处 `require('heartflow')` 依赖此文件名，见 `docs/DECOUPLING.md` 兼容层表。
+- `[吸收心虫]` / `[解耦·吸收心虫]` / 「移植自 HeartFlow xxx.js」溯源标记，
+  以及 `archive/` 下 HeartFlow 原样吸收存档（22 处）。
+- `CHANGELOG` 1.0.0 的品牌更替记录、`SKILL.md` 的 Absorbed-from 出身声明、
+  `reward-hacking.js` 的「心虫 v6.7.109」版本基线引用。
+- `memory/autonomous-upgrades/*.json` 运行时产物（升级铁律禁改）。
+
+### Verified
+- `node --check` 14 个改动文件全过；`bin/verify.js` 15 passed 0 failed；
+  `test/run-all.js` 1641 通过 / 12 失败，失败清单与 v1.0.24 基线逐条一致
+  （audit-drift 3 + benchmark 7 + failure-importer 1 + recovered-modules 1，
+  均为已披露的 benchmark 模块缺失 baseline 项，零新增）；
+  `test/security-audit.test.js` 16/16。
+
 ## [1.0.0] - 2026-09-21
 
 架构解耦 + 品牌升级，版本号重置为 1.0.0（不再延续 HeartFlow 的 6.7.x 序列）。

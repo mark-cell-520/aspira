@@ -1,7 +1,7 @@
 /**
- * HeartFlow — Discrimination Trace（判别可解释性）
+ * Aspira（新愿）— Discrimination Trace（判别可解释性）
  *
- * 来源：心虫 decision.decide 选定（0.92 分，confidence 0.85）。
+ * 来源：新愿 decision.decide 选定（0.92 分，confidence 0.85）。
  *
  * 诊断实证：block 判定的 findings 只有 {dimension, severity, details}——
  *   "dangerous_instruction(4次)"

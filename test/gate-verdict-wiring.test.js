@@ -6,7 +6,7 @@
  * **一条可执行命令**。但它和 false-positive-feedback.js 同属"从未被 require
  * 的孤儿模块"——代码写好了，没有任何调用方。
  *
- * 后果正是模块 docstring 自己描述的那个: "心虫判了但没人听见"。think-pipeline
+ * 后果正是模块 docstring 自己描述的那个: "新愿判了但没人听见"。think-pipeline
  * 在 result 上产出 _blockedByFirewall / _highRiskOutput / _selfContradictory /
  * _restrainedBy / _inputCheckIssues / _verification / _outputChecklistIssues /
  * _inputCheck / _epistemicSafety / _driftCorrected，实测一个输入上这样的

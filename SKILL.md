@@ -1,9 +1,9 @@
 ---
 name: aspira-engine
-title: "Aspira — AGI Layer 1: The Discriminator"
-version: "1.0.24"
+title: "新愿 Aspira — AGI Layer 1: The Discriminator"
+version: "1.0.25"
 description: |-
-  Aspira is the first layer of AGI — the discriminator. A pure rule engine that
+  新愿（Aspira）is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
   it reaches a human. 54 discrimination dimensions × 17-layer pipeline × 132 modules ×
   181 MCP tools. Zero LLM dependency.
@@ -150,7 +150,7 @@ from marketing copy.
 
 | Metric | Value | How it was measured |
 |--------|-------|---------------------|
-| Engine version | 1.0.24 | `VERSION`, `package.json`, runtime `hf.VERSION` (module-level) / `hf.version` (instance), and `src/core/version.js` agree |
+| Engine version | 1.0.25 | `VERSION`, `package.json`, runtime `hf.VERSION` (module-level) / `hf.version` (instance), and `src/core/version.js` agree |
 | Modules registered | 132 | `Object.keys(hf._modules).length` after `start()` |
 | Module init errors | 0 | `hf._initErrors.length` |
 | Dispatch routes | 1,023 | sum of **public** method entries in `hf.routes()` (`_`-prefixed private helpers excluded) |

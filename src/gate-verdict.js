@@ -1,21 +1,21 @@
 /**
- * HeartFlow — GateVerdict 聚合器
+ * Aspira（新愿）— GateVerdict 聚合器
  *
  * 问题：think() 产出 30+ 个辨别信号（_verification/_inputCheck/_highRiskOutput/
  * _blockedByFirewall/_selfContradictory...），全部散落在 result 对象的下划线字段里。
- * 调用方要么自己解读每一个字段（等于没帮上忙），要么干脆不读（= 心虫判了但没人听见）。
+ * 调用方要么自己解读每一个字段（等于没帮上忙），要么干脆不读（= 新愿判了但没人听见）。
  *
  * 本模块做一件事：把散落信号收敛成**一条可执行命令**。
  *
  *   buildGateVerdict(thoughtChain) → {
  *     action: 'block' | 'rewrite' | 'verify' | 'pass',
- *     reason: '人心虫为什么这么说',
+ *     reason: '人/新愿为什么这么说',
  *     signals: ['命中的信号名'],
  *     guidance: ['该做什么']
  *   }
  *
- * 这是"从标注到门禁"的关键一跳——不是让心虫多判一个维度，
- * 是让心虫已经判出来的东西**真的能拦住输出**。
+ * 这是"从标注到门禁"的关键一跳——不是让新愿多判一个维度，
+ * 是让新愿已经判出来的东西**真的能拦住输出**。
  *
  * 设计原则：
  * 1. 纯规则、零依赖、纯函数（不读全局状态，可单测）
@@ -28,7 +28,7 @@
 
 /** 阻断级信号——命中即不应当输出 */
 const BLOCK_SIGNALS = [
-  { key: '_blockedByFirewall', label: '防火墙拦截', reason: '输出被心虫防火墙判定为不可接受' },
+  { key: '_blockedByFirewall', label: '防火墙拦截', reason: '输出被新愿防火墙判定为不可接受' },
   { key: '_highRiskOutput', label: '高风险输出', reason: '输出触发高风险检测' },
 ];
 
@@ -41,7 +41,7 @@ const REWRITE_SIGNALS = [
 
 /** 验证级信号——需要证据支撑 */
 const VERIFY_SIGNALS = [
-  { key: '_verification', label: '自验证未过', reason: '心虫自验证发现问题', scoreThreshold: 0.5 },
+  { key: '_verification', label: '自验证未过', reason: '新愿自验证发现问题', scoreThreshold: 0.5 },
   { key: '_outputChecklistIssues', label: '输出清单问题', reason: '输出清单存在未通过项' },
   { key: '_inputCheck', label: '输入检查', reason: '输入检查发现风险信号' },
   { key: '_epistemicSafety', label: '认知安全', reason: '认知安全检查未通过' },
@@ -204,7 +204,7 @@ function buildGateVerdict(result) {
   }
 
   // ── 无信号：pass ──
-  return { action: 'pass', reason: '心虫未发现阻断/改写/验证信号', signals: [], guidance: [], score: 1 };
+  return { action: 'pass', reason: '新愿未发现阻断/改写/验证信号', signals: [], guidance: [], score: 1 };
 }
 
 /**

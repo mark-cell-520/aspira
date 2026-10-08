@@ -1,7 +1,7 @@
 /**
- * HeartFlow — False Positive Feedback Loop（误报反馈闭环）
+ * Aspira（新愿）— False Positive Feedback Loop（误报反馈闭环）
  *
- * 来源：心虫 decision.decide 选定（0.92 分，confidence 0.80）。
+ * 来源：新愿 decision.decide 选定（0.92 分，confidence 0.80）。
  *
  * 问题：被 gate 拦（block/rewrite）的调用方没有渠道回报"这是误报"。
  * 结果：阈值只能靠内部 203 样本调，无法感知真实世界的误报分布——

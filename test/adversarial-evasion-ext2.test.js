@@ -5,7 +5,7 @@
 // 全部断言值来自 2026-10-06 runPipeline(mode:output) 实测(非印象)：
 //   POS(须拦截 block/rewrite): leet_ignore / dotted_I(U+0130 İ) / soft_hyphen(U+00AD)
 //   NEG(须 pass):            多语日语 / 阿拉伯语 / 表情+英文问候
-// 心虫实测读到 POS 三者均 action=block；NEG 三者均 action=pass(虽带 ai_writing_tell finding,
+// 新愿实测读到 POS 三者均 action=block；NEG 三者均 action=pass(虽带 ai_writing_tell finding,
 // 但门禁不升级)。据实锁之=零回归。
 'use strict';
 const path = require('path');

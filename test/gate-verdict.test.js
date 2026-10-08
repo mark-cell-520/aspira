@@ -1,5 +1,5 @@
 /**
- * gate-verdict.test.js — HeartFlow GateVerdict 聚合器回归测试
+ * gate-verdict.test.js — Aspira（新愿）GateVerdict 聚合器回归测试
  *
  * 保护从心虫吸收的 src/gate-verdict.js：
  *   buildGateVerdict / isAllowed / BLOCK_SIGNALS / REWRITE_SIGNALS / VERIFY_SIGNALS
