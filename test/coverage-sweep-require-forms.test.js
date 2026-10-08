@@ -93,11 +93,19 @@ module.exports = function ({ test, assertTrue }) {
     // [第一百三十六轮] 原下界写死 b >= 111("两把锁移出后"), 本轮给
     // memory-bank 加锁(它确实从 B 移到 C)后 B = 110 —— 硬下界被覆盖推进
     // 自己打红。下界的意图(防判据过宽把未覆盖模块算成已覆盖)改用**具体
-    // 锚点**承担: B 类之王 formula-bridge(1581 行, 无任何测试引用)必须仍在
-    // B —— sweep 判据若过宽, 它会被第一个误判, 这里红。
+    // 锚点**承担: 当前 B 类之王必须仍在 B —— sweep 判据若过宽, 它会被第一个
+    // 误判, 这里红。
+    //
+    // [第一百四十八轮] 锚点从 formula-bridge.js 换成 src/dream/dream.js:
+    // 本轮给 formula-bridge 加了**第一个**测试引用
+    // (test/formula-registry-eu-contract.test.js), 它于是合法地离开 B 类。
+    // 注意这不是"覆盖了它" —— 那个测试只调 3/99 个公开方法, 其余 96 个
+    // (含本轮实测发现用错模型的 irtTestInformation)仍未测。sweep 的 C 类判据
+    // 是"有测试引用"而非"测过多少", 所以 C=261 这个读数本身就偏乐观;
+    // 换锚点是让本条继续测"判据有没有退化", 不是承认 formula-bridge 已覆盖。
     assertTrue(b <= 111,
       `B 类只减不增(覆盖推进方向; 实测 ${b}) —— 变回 111 说明本轮新覆盖的模块掉回了 B`);
-    assertTrue(/formula-bridge\.js/.test(bSection(out)),
-      'formula-bridge.js(B 类之王, 无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
+    assertTrue(/dream\/dream\.js/.test(bSection(out)),
+      'src/dream/dream.js(当前 B 类之王, 1529 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
   });
 };

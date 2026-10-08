@@ -127,10 +127,18 @@ class FormulaRegistry {
     });
 
     // --- 决策效用 ---
+    // [test-coverage-gap·第一百四十八轮] 这两处 impl 原来把两个平行数组
+    // (probs, utils) 传给 expectedUtility(outcomes)，而后者只收一个
+    // [{prob, utility}] 对象数组 —— o.prob 对数字是 undefined → 每一项贡献
+    // 0 → **恒返回 0**。registry.call('decision_utility','expected_utility',
+    // [0.5,0.5],[10,0]) 实测返回 0，正确值 5；subjective_utility 同因恒 0。
+    // 调用成功、不抛错、结构合法、内容已死 —— 本仓库反复记录的契约错配形状。
+    // 修法：改调同语义且已正确的 subjectiveUtility(probs, utils)
+    // (emotion_arousal/subjective_utility 一直在用它，实测 5)。
     this.register('decision_utility', {
       id: 'expected_utility',
       formulaId: 'expected_utility',
-      impl: (probs, utils) => _b.expectedUtility(probs, utils),
+      impl: (probs, utils) => _b.subjectiveUtility(probs, utils),
       doc: '期望效用 EU = Σ p_i·u(x_i)',
     });
     this.register('decision_utility', {
@@ -142,7 +150,9 @@ class FormulaRegistry {
     this.register('decision_utility', {
       id: 'subjective_utility',
       formulaId: 'subjective_utility',
-      impl: (outcomeUtils, probs) => _b.expectedUtility(probs, outcomeUtils),
+      // 同上一处: 原 impl 把两个平行数组传给只收对象数组的 expectedUtility，
+      // 恒返回 0(实测)。改调 subjectiveUtility(probs, utils)。
+      impl: (outcomeUtils, probs) => _b.subjectiveUtility(probs, outcomeUtils),
       doc: '主观效用 = 期望效用的别名',
     });
 
