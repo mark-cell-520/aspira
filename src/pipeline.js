@@ -123,14 +123,32 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
           layer: 'classical-knowledge'
         };
       }
-      data.discriminate.findings.push(...classicalResult.findings.map(f => ({
+      // [dimension-health-audit·第一百五十五轮] 补 guidance。
+      // 这条 push 走 data.discriminate.findings，**绕过了 discriminate() 内部的
+      // guidance 附加循环**(那个 for..of 只处理它自己 push 的 findings)，于是古典
+      // finding 永远不带 guidance。实测:
+      //   本研究存在局限：样本集中于一线城市，外推需谨慎。
+      // 推出 dimension=moral_foundations 的古典 finding，guidance 缺失。
+      // GUIDANCE_MAP 已提到 src/index.js 模块级并导出 guidanceFor()，此处复用同一份。
+      //
+      // ⚠️ guidanceFor 必须**函数内** require: src/index.js 的 module.exports 里有
+      // checkIndirectInjection: require('./pipeline').checkIndirectInjection，
+      // 顶部 require 会成循环依赖，拿到还没赋完的 exports(guidanceFor=undefined)。
+      // 与上面 Layer 3 的 require('./index.js').discriminate 同一风格。
+      const guidanceFor = require('./index.js').guidanceFor;
+      const _cf = classicalResult.findings.map(f => ({
         dimension: f.dimensions?.[0] || 'classical_knowledge',
         severity: f.signal === 'warn' ? 50 : f.signal === 'pass' ? 20 : 30,
         details: `[古典${f.ruleId}] ${f.reason}`,
         classical: true,
         signal: f.signal,
         evidence: f.evidence
-      })));
+      }));
+      for (const _f of _cf) {
+        const _g = guidanceFor && guidanceFor(_f.dimension);
+        if (_g) _f.guidance = _g;
+      }
+      data.discriminate.findings.push(..._cf);
     }
   }
 
