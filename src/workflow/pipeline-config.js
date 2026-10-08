@@ -1587,14 +1587,28 @@ function estimateComplexity(input) {
 
   // ── 维度 1: 长度因子（权重 0.25）─────────────────────
 
-  // v5.12.0: 阈值从200→80，中文100字已属中长输入，应有机会触发深层分析
-
-  const LENGTH_THRESHOLD = 80;
-
-  const LENGTH_MAX = 500;
-
-  const lengthScore = Math.min(1, Math.max(0, (text.length - LENGTH_THRESHOLD) / (LENGTH_MAX - LENGTH_THRESHOLD)));
-
+  // [test-coverage-gap·第一百四十五轮] 长度阈值改为**按字符密度归一**。
+  //
+  // 原实现用固定 80 字符阈值，对中文是系统性偏差: 中文 59 字已能完整表达一个
+  // 复杂决策("换工作+风险+家庭+求助分析")，却因不足 80 字符而得 0 分; 而英文
+  // 同义句 175 字符(英文天然冗长)反而拿到 0.057。实测后果: 典型中文高复杂度
+  // 输入(换工作决策/婚姻矛盾/教育抉择/情绪困扰)的 total 全部落在 0.19-0.24，
+  // 永远够不到 0.4 门槛 —— **最需要 System 2 慢思考的中文输入全部走了 fast
+  // (7 层)**。这是中英混排后英文基准跑在中文文本上的又一处(同族形状本仓库
+  // 已记录多次)。
+  //
+  // 修法: 以**有效语义单元数**而非字符数为尺度 —— 中日韩字符按 1 个单元计，
+  // 拉丁字母按约 4 个字母 1 个词(即 4 字符 1 单元)折算。归一后两种语言的
+  // "信息量"可比。阈值 20 单元(≈中文 20 字 / 英文 80 字符，正好接住原 80 的
+  // 英文语义)，上限 125 单元(≈中文 125 字 / 英文 500 字符，同上)。
+  const CJK_RE = /[一-鿿㐀-䶿]/g;
+  const cjkCount = (text.match(CJK_RE) || []).length;
+  const latinCount = text.length - cjkCount;
+  // 有效语义单元: CJK 每字 1 单元, 拉丁每 4 字符 1 单元
+  const semanticUnits = cjkCount + latinCount / 4;
+  const LENGTH_THRESHOLD = 20;
+  const LENGTH_MAX = 125;
+  const lengthScore = Math.min(1, Math.max(0, (semanticUnits - LENGTH_THRESHOLD) / (LENGTH_MAX - LENGTH_THRESHOLD)));
   score += lengthScore * 0.25;
 
 
@@ -1631,8 +1645,24 @@ function estimateComplexity(input) {
 
   // ── 维度 4: 从句结构（权重 0.20）─────────────────────
 
-  // 从句越多，复杂度越高
-
+  // [test-coverage-gap·第一百四十五轮] 从句增益从 0.03/个 提到 0.05/个。
+  //
+  // 根因: 中文的复杂度主要靠**标点分层**表达，而不靠连接词(英文的 and/but/
+  // however 在中文里常被逗号吸收)。实测 10 个中文高频复杂表达(换工作/舍不得/
+  // 中考/攒钱/吵架/提不起兴趣…)在 decision+emotional 两张词表里的覆盖是 **1/10**
+  // —— 词表枚举对中文表达必然持续漏(这是"枚举式判据漏一次 per 新说法"的又一例)。
+  // 于是中文输入的决策/情感两维几乎不得分(各 0.05)，唯一可靠的信号就是分句数。
+  //
+  // 而原实现每分句只 +0.03、上限 0.20，需要 **7 个分句**才满 —— 中文典型复杂句
+  // (换工作+风险+家庭+求助)只有 4-5 个分句，clauseScore 停在 0.12-0.15。
+  // 三个维度合计最高 0.24，永远够不到 0.4 门槛。
+  //
+  // 为什么改这里而不是加词: 加词是枚举，漏一次修一次; 分句数是**结构信号**，
+  // 与词汇无关 —— 中文分句多就是复杂度高，这对良性/恶意、中/英文都成立。
+  // 提增益后 4 个分句即 0.20(原 0.12)，配合本模块本轮的长度归一修正，
+  // 典型中文复杂输入可过 0.4 门槛。
+  // ⚠️ 上限仍保持 0.20: 分句数不该单独把输入推到满分，那会让"一逗到底的
+  // 长篇大论"也拿到高复杂度(实测: 20 个逗号的句子 clauseScore 封顶在 0.20)。
   const clauseDelimiters = COMPLEXITY_SIGNALS.multiClause;
 
   let clauseCount = 0;
@@ -1645,13 +1675,10 @@ function estimateComplexity(input) {
 
   }
 
-  // 每个从句 +0.03，上限 +0.20
-
-  const clauseScore = Math.min(0.20, clauseCount * 0.03);
+  // 每个从句 +0.05，上限 +0.20
+  const clauseScore = Math.min(0.20, clauseCount * 0.05);
 
   score += clauseScore;
-
-
 
   // 归一化到 [0, 1]（实际最大 0.25+0.30+0.25+0.20 = 1.0）
 
@@ -1717,9 +1744,20 @@ function selectMode(input) {
 
   const complexity = estimateComplexity(text);
 
-
-
-  if (complexity < 0.4) {
+  // [test-coverage-gap·第一百四十五轮] System 2 门槛 0.4 → 0.35。
+  //
+  // 原门槛 v1.2.0 定下时从未针对中文校准，而本模块另三个维度此前对中文系统性
+  // 低估(长度按字符数而中文密度高、决策/情感词表对中文表达覆盖 1/10)。修完
+  // 长度归一与从句增益后重新标定: 典型中文复杂输入的复杂度落在 0.30-0.38，
+  // 而所有简单/启动类输入 ≤0.05、中等输入 0.16 —— 0.4 这个位置下它们**全部**
+  // 走 fast(7 层)，最需要深度慢思考的中文输入反而拿不到。
+  //
+  // 取 0.35 而非 0.30: 实测分离度(见 test/pipeline-mode-selection.test.js)——
+  // 降到 0.35 只有"多分句+多决策词"的复杂句过线; 降到 0.30 会把仅有 3 个
+  // 分句的中等输入也推入 full，而 12 层管线的成本对它们是浪费。
+  // ⚠️ 这是一个**重新标定**而不是放宽标准: 门槛的语义("多少复杂度值得慢思考")
+  // 未变，变的是复杂度分数对中文的可比性。
+  if (complexity < 0.35) {
 
     return 'fast';   // System 1 — 直觉快速响应
 
