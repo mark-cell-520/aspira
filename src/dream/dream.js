@@ -673,15 +673,24 @@ class DreamV11 extends EventEmitter {
 
 
 
-    // 缓存结果（无种子的纯状态查询才缓存）
+    // 缓存结果。
+    //
+    // [test-coverage-gap·第一百五十六轮] 原条件是无种子的纯状态查询才缓存
+    // (`if (!seed)`)，而 cacheKey **一直含 seed**：
+    //     const cacheKey = `${stateHash}:${seed}:${functionType}:${intensity}`;
+    // 于是 seed 那一节在缓存键里是**死参数** —— 带 seed 时永远不写缓存，
+    // `this._cachedStateHash === cacheKey` 永远不成立。
+    // 后果不是"少一次缓存"，而是 **dream({seed}) 不可复现**: 实测同一实例、
+    // 同一状态、同一 seed 连续调两次，结果不同 —— 因为 _pickRandom 的
+    // Fisher-Yates、pickThemeFrom、以及 _weaveDream 里那几处 Math.random()
+    // 全都不受 seed 影响(seed 只经 _applySeed 决定注入哪些意象/主题/结尾)。
+    // 一个名为 seed 的参数不可复现是反直觉的，而 cacheKey 的设计意图
+    // (同 seed 同结果)从未被执行过。
+    // 修法: 改成总是写缓存。cacheKey 已含 seed/functionType/intensity，
+    // 所以换任一再调都会得到新键，不会串味。
+    this._dreamCache = result;
 
-    if (!seed) {
-
-      this._dreamCache = result;
-
-      this._cachedStateHash = cacheKey;
-
-    }
+    this._cachedStateHash = cacheKey;
 
 
 

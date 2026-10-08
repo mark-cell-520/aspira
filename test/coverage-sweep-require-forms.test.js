@@ -105,7 +105,15 @@ module.exports = function ({ test, assertTrue }) {
     // 换锚点是让本条继续测"判据有没有退化", 不是承认 formula-bridge 已覆盖。
     assertTrue(b <= 111,
       `B 类只减不增(覆盖推进方向; 实测 ${b}) —— 变回 111 说明本轮新覆盖的模块掉回了 B`);
-    assertTrue(/dream\/dream\.js/.test(bSection(out)),
-      'src/dream/dream.js(当前 B 类之王, 1529 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
+    // [第一百五十六轮] 锚点从 src/dream/dream.js 换成 src/workflow/thought-chain.js:
+    // 本轮给 dream.js 加了**第一个**测试引用
+    // (test/dream-seed-reproducibility.test.js)，它于是合法地离开 B 类
+    // (B 106 → 107 那轮的 107 又回到 106)。这不是"覆盖了它" —— 那个测试
+    // 只覆盖 seed 可复现性一条契约，13 个方法里 _weaveDream / _collectMemoryItems /
+    // _getFullPhilosophy 等主力路径仍未测。sweep 的 C 类判据是"有测试引用"
+    // 而非"测过多少"，所以 C 类读数本身就偏乐观；换锚点是让本条继续测
+    // "判据有没有退化"，不是承认 dream.js 已覆盖。
+    assertTrue(/thought-chain\.js/.test(bSection(out)),
+      'src/workflow/thought-chain.js(当前 B 类之王, 1467 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
   });
 };
