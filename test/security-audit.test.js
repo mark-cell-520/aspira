@@ -72,8 +72,20 @@ t('S2: _verifyGitCommit 真实工作（参数化后仍命中版本）', () => {
     console.log('  ⏭️ S2 跳过：非 git 副本（无 .git，git commit 卫生检查不适用）');
     return;
   }
-  const log = execFileSync('git', ['-C', PROJECT_ROOT, 'log', '--oneline', '--all'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
-  const tags = execFileSync('git', ['-C', PROJECT_ROOT, 'tag', '--list'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  // [doc-honest-numbers·第一百四十二轮] git 可执行文件不得依赖 PATH。
+  // 实测缺陷: 本用例在 run-all 里间歇性红，报 spawnSync git ENOENT，而单独跑全绿。
+  // 根因不是并发也不是 git 缺失 —— git 在 /usr/bin/git，而测试进程的 PATH 只含
+  // /usr/local/bin(由调用方环境决定)。也就是说这个检查的可用性取决于谁调用它:
+  // 从 PATH 更全的入口跑就绿，从 run-all 跑就红。后果正是铁律 3 警告的形状 ——
+  // 失败只出现在通道 b 的文件级汇总行里，而失败的测试清单从不收录它，于是任何
+  // 以清单 diff 为唯一依据的比对都会漏判; 文档的测试数读数也会随入口在 1638/12
+  // 与 1637/13 之间抖，AGENTS.md 记了六轮的那个间歇红，根因就在这。
+  // 修法: 显式在若干标准位置找 git 二进制，找到即用绝对路径; 找不到才回退到
+  // PATH 查找(那时 ENOENT 才是真实的 git 缺失)。
+  const GIT_CANDIDATES = ['/usr/bin/git', '/usr/local/bin/git', '/bin/git', '/opt/homebrew/bin/git'];
+  const gitBin = GIT_CANDIDATES.find(p => fs.existsSync(p)) || 'git';
+  const log = execFileSync(gitBin, ['-C', PROJECT_ROOT, 'log', '--oneline', '--all'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+  const tags = execFileSync(gitBin, ['-C', PROJECT_ROOT, 'tag', '--list'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
   const commitHit = log.split('\n').filter(l => l.includes(pkg.version) || l.includes('v' + pkg.version)).length;
   const tagHit = tags.split('\n').filter(t => t.trim() === pkg.version || t.trim() === 'v' + pkg.version).length;
   if (commitHit + tagHit < 1) throw new Error(`git log/tag 未命中 ${pkg.version}（commit ${log.split('\n').length} 条，tag ${tags.split('\n').length} 条）`);
