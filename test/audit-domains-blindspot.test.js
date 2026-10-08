@@ -159,6 +159,40 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
     assertTrue(/不一致:\s*0/.test(after), '恢复 README 后审计应重新全绿');
   }));
 
+  // [doc-honest-numbers·第一百五十三轮] 本锁此前只查了两件事:
+  //   ① README 标题 vs README 表格行数(自洽)
+  //   ② README 标题 vs SKILL.md 标题(两份文档互相一致)
+  // **没有查 SKILL.md 标题 vs SKILL.md 自己的列表** —— 而实测它在那儿撒了谎:
+  // SKILL.md 写 "Capability map (7 domains, 132 modules)", 紧随的编号列表
+  // 却有 **8 项**(第 8 项 "Classical texts" 是后来加的，标题没跟着改)。
+  // 审计也看不见: 它的 domains 实测读的是 README 表格(7 行)，而 SKILL.md 的
+  // "7 domains" 被 `(\d+)\s+domains?` 抓到后与那个 7 一比就绿了。
+  // 这是本切片反复的形状 —— **一个测试读不到的地方，正是文档可能撒谎的地方**，
+  // 只不过这次撒谎的是第二份文档的第三处文本。
+  test('SKILL.md 标题的 domains 数必须等于它自己列表的项数', () => {
+    const s = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf8');
+    const title = (s.match(/Capability (?:domains|map)\s*\((\d+)\s+domains?/i) || [])[1];
+    assertTrue(!!title, 'SKILL.md 应有 "Capability map (N domains, ...)" 标题');
+    // 列表项: 该小节里 `^\d+\. \*\*Domain\*\*` 形态的编号项
+    const i = s.search(/^##\s+Capability (?:domains|map)/m);
+    assertTrue(i >= 0, '前提失效: 找不到 SKILL.md 的 Capability 小节');
+    const nextSec = s.indexOf('\n## ', i + 10);
+    const sec = s.slice(i, nextSec > 0 ? nextSec : s.length);
+    const items = [...sec.matchAll(/^(\d+)\.\s+\*\*[^*]+\*\*/gm)].map(m => Number(m[1]));
+    assertTrue(items.length >= 2,
+      `前提失效: SKILL.md 的能力域列表只解析到 ${items.length} 项, 解析失效会让本条恒绿`);
+    // 编号必须连续(1..N)，否则"数项数"本身不可靠
+    for (let k = 0; k < items.length; k++) {
+      assertEqual(items[k], k + 1,
+        `SKILL.md 能力域列表编号不连续(第 ${k + 1} 项写成 ${items[k]}) —— 项数判据会因此失真`);
+    }
+    assertEqual(Number(title), items.length,
+      `SKILL.md 标题声称 ${title} domains, 但它自己的列表有 ${items.length} 项 —— ` +
+      '两者必须一致。本轮(第一百五十三轮)实测此处曾是 7 vs 8: 第 8 个域 ' +
+      '"Classical texts" 加进来时标题没跟着改, 而 README 的表格与标题都是 7, ' +
+      '于是审计读 README 得一 7、抓 SKILL.md 的 7, 全绿。');
+  });
+
   test('README 与 SKILL.md 的 domains 声称必须一致', () => {
     const r = fs.readFileSync(README, 'utf8');
     const rTitle = (r.match(/###\s*Capability domains\s*\((\d+)\s+domains?/) || [])[1];

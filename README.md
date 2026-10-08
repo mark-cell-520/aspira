@@ -7,7 +7,7 @@ or dangerous — **before it reaches a human**. Zero LLM dependency.
 
 ```
 54 discrimination dimensions  ×  17-layer pipeline*  ×  132 modules  ×  181 MCP tools
-×  1,023 dispatch routes  ×  1692 passing tests  ×  0 runtime dependencies
+×  1,023 dispatch routes  ×  1693 passing tests  ×  0 runtime dependencies
 ```
 
 > `*` **17 is the layer *set*, not the depth of any single call.** The pipeline
@@ -109,7 +109,7 @@ intent-anchor -> rewriter -> error-memory -> self-diagnosis -> output
 The gate aggregates findings from every layer and emits a single action:
 `block` / `rewrite` / `verify` / `pass`.
 
-### Capability domains (7 domains, 132 modules)
+### Capability domains (8 domains, 132 modules)
 
 | Domain | Representative modules |
 |--------|------------------------|
@@ -120,6 +120,7 @@ The gate aggregates findings from every layer and emits a single action:
 | Memory | memory, memoryBank, memoryIntegrity, forgetting, knowledgeGraph |
 | Identity / ethics | identityCore, personaCore, virtueEthics, moralDevelopment, meaningPurpose |
 | Creation / collaboration | skillEvolution, worldModel, multiAgentDialogue, codeExecutor, formula |
+| Classical texts | classics-value-mapper, classics-rules, classics-feedback |
 
 ---
 
@@ -134,7 +135,7 @@ Measured on this repository at **v1.0.0**. Not marketing copy.
 | Dispatch routes | 1,023 |
 | Discrimination dimensions | 54 |
 | MCP tools | 181 |
-| Test suite | 1692 passing / 12 failing |
+| Test suite | 1693 passing / 12 failing |
 | Capability guard | 18 / 18 checks |
 | Security regression | 16 / 16 |
 | Runtime dependencies | 0 |
