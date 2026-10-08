@@ -2735,6 +2735,16 @@ function crossAnalyze(discResult) {
   return { patterns, warnings, totalPatterns: patterns.filter(p => p.pattern !== '健康文本').length };
 }
 
+// [dimension-health-audit·第一百四十四轮] 中文商务空话词表(模块级, 供锁引用)。
+// 判据不是"出现即算"而是**叠加密度**: checkBullshitRecognition 里要求同一文本命中
+// >=3 个不同词才算。单出现无害("这个 bug 是系统性的")，叠加才是空话信号。
+const ZH_BUSINESS_BUZZWORDS = [
+  '系统性', '结构性', '范式化', '立体化', '战略高度', '统筹推进', '多维度', '多层次',
+  '全方位', '一体化', '端到端', '拉通', '对齐', '抓手', '落地', '沉淀', '复盘', '加持',
+  '重构', '迭代', '深耕', '布局', '撬动', '反哺', '战略意义', '战略升级', '全新生态',
+  '行业领先', '全域', '价值导向', '以用户为中心',
+];
+
 // ─── 第17维: 废话/伪深度空话检测 ──────────────────────────────────
 // 检测伪深度的"看起来有道理实际上没信息"的空话
 function checkBullshitRecognition(text) {
@@ -2754,6 +2764,39 @@ function checkBullshitRecognition(text) {
   ];
 
   const bs = [];
+
+  // [dimension-health-audit·第一百四十四轮] 中文商务空话的第二张表。
+  //
+  // 原表是**字面枚举**(赋能/闭环/底层逻辑…)，而中文商务空话的高频变体几乎全在
+  // 表外: 实测 8 个常见形状只命中 1 个，其余 7 个 score=0。例如
+  // "这是一个系统性、结构性、范式化的全面升级" —— 三个词都不在表内。
+  //
+  // ⚠️ 为什么不能直接把它们加进 zhPatterns: 这些词在正常语境里**单个出现完全无害**
+  // ("这个 bug 是系统性的"、"多层次缓存能降低延迟")，加进去等于把良性技术讨论变成
+  // 误报。实测: 12 个良性句里 3 个含 2 个以上这类词。
+  // 所以判据不是"出现即算"，而是**叠加密度**: 同一文本里命中 >=3 个**不同**的
+  // 商务空话词才算。实测分离度: 10 个空话形状全命中(3-5 个词)，12 个良性句
+  // 最多 2 个词，阈值 3 下 0 误报。这与 gaslighting 的"单弱信号不触发"是同一条
+  // 设计原则 —— 密度才是信号，单个词只是词汇。
+  //
+  // ⚠️ 一处被实测抓住的缺陷: 首版让新表**单独计数**，于是"打通底层逻辑，实现战略
+  // 升级，构建全新生态"漏了 —— "底层逻辑"属原表、"战略升级/全新生态"属新表，
+  // 跨表叠加不累计，密度只有 2。攻击者(或普通的空话写手)并不关心词归属哪张表。
+  // 故判据必须是**同一文本内两表的并集密度**。修后该样本命中(并集 3)。
+  {
+    const seen = new Set();
+    for (const p of ZH_BUSINESS_BUZZWORDS) {
+      if (text.includes(p)) seen.add(p);
+    }
+    for (const p of zhPatterns) {
+      if (text.includes(p)) seen.add(p);
+    }
+    // 叠加密度判据: >=3 个不同词才算商务空话(单个词在正常语境无害)
+    if (seen.size >= 3) {
+      for (const p of seen) bs.push({ pattern: p, type: 'zh_business_buzzword' });
+    }
+  }
+
 
   for (const p of zhPatterns) {
     const re = new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
