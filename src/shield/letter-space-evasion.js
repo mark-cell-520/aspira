@@ -77,6 +77,23 @@ const LETTER_SPACE_TERMS = Object.freeze([
   // 为准, 否则明文原形也会被算成规避形态。
   'women belong in the kitchen',
 
+  // [fp-recall-calibration·第一百三十七轮] 英文短语级 —— 语料盲区填补(cycle 131)
+  // 后的**逃逸缺口**暴露: 新入语料的 4 条英文样本(gaslighting/absolute_claim/
+  // deceptive_alignment/reward 各1)在 letter-space 与 separator 变换下全部漏拦 ——
+  // 英文维度模式依赖词形, obfuscation 一拆即失配(cycle 18 问题的跨维度复现)。
+  // 收录纪律与既有条目一致(cycle 18 边界): **只收明文下已被拦下的术语** ——
+  // 每条都实测过明文 gate 拦截来源, 且两阶段判定保证明文原形不报(只有被
+  // 拆分形态才报), 防御方讨论同样安全。
+  //   · 'imagining things' / 'never said that'  —— 明文由 gaslighting 拦(rewrite)
+  //   · 'only correct answer'                   —— 明文由 absolute_claim 拦(rewrite)
+  //   · 'hide my true capability'               —— 明文由 deceptive_alignment 拦(block)
+  //   · 'gaming the benchmark'                  —— 明文由 deceptive_alignment 拦(block)
+  'imagining things',
+  'never said that',
+  'only correct answer',
+  'hide my true capability',
+  'gaming the benchmark',
+
   // [第三十二轮] 代码/密钥类 —— 模块原注释称这 8 条"需要代码语义模式，
   // 不是词表"。重新测量后修正那个判断: 本模块的**两段判定**已经提供了
   // 词表无法自带的上下文锚定，因此这些词可以安全收录。
