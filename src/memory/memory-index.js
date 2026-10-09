@@ -280,7 +280,14 @@ class MemoryIndex {
 
         const data = JSON.parse(fs.readFileSync(this.indexFile, 'utf-8'));
 
-        this.index = { ...this._getDefaultIndex(), ...data };
+        // [test-coverage-gap·第一百七十九轮] 与 updateUser/addPausedTask 同族的
+        // 类型闸。磁盘文件被外部写成数组时(手改/别的工具覆盖), `{...defaults,
+        // ...data}` 会把下标展开成顶层键, 于是 getIndex() 拿到的是
+        // {"0":..., "meta":...} 而 meta/identity/user 全丢。JSON.parse 的顶层
+        // 只可能是对象/数组/字面量, 这里只放行普通对象。
+        this.index = (data && typeof data === 'object' && !Array.isArray(data))
+          ? { ...this._getDefaultIndex(), ...data }
+          : this._getDefaultIndex();
 
       } else {
 
@@ -565,7 +572,15 @@ class MemoryIndex {
    */
 
   updateUser(updates) {
-
+    // [test-coverage-gap·第一百七十九轮] 入口类型闸。
+    // 原实现 `{ ...this.index.user, ...updates }` 的对象展开会把**非对象**也展开:
+    // 字符串按字符索引展开, 数组按下标展开。实测:
+    //   updateUser("字符串")  → user = {"0":"字","1":"符","2":"串", role:null, ...}
+    //   addPausedTask([1,2]) → 条目 = {"0":1,"1":2,"pausedAt":...}
+    // 调用成功、不抛错、返回值 undefined, 而索引已被污染并**持久化到磁盘** ——
+    // 调用方以为存了一条用户更新/一个暂停任务, 实际存的是一堆数字键。
+    // 闸: 只接受普通对象(不含 null 与数组), 其余原样返回不改状态。
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) return;
     this.index.user = { ...this.index.user, ...updates };
 
     this._saveIndex();
@@ -693,7 +708,12 @@ class MemoryIndex {
    */
 
   addPausedTask(task) {
-
+    // [test-coverage-gap·第一百七十九轮] 入口类型闸, 与 updateUser 同因:
+    // `{...task}` 会把字符串/数组展开成索引键。实测 addPausedTask("字符串任务")
+    // → {"0":"字","1":"符",...,"pausedAt":...}, addPausedTask([1,2,3])
+    // → {"0":1,"1":2,"2":3,"pausedAt":...} —— 调用成功、不抛错、落盘,
+    // 而调用方以为存了一个任务。
+    if (!task || typeof task !== 'object' || Array.isArray(task)) return;
     this.index.context.pausedTasks.push({
 
       ...task,

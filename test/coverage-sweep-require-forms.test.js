@@ -144,7 +144,15 @@ module.exports = function ({ test, assertTrue }) {
     // 里其余 30+ 个后置检查块(DeepEmotion/自对弈/宪法AI/门控信号等)仍未测。
     // sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以 C 类读数本身就偏乐观;
     // 换锚点是让本条继续测"判据有没有退化"，不是承认 think-pipeline 已覆盖。
-    assertTrue(/memory-index\.js/.test(bSection(out)),
-      'src/memory/memory-index.js(当前 B 类之王, 932 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
+    // [第一百七十九轮] 锚点从 src/memory/memory-index.js 换成
+    // src/shield/ethics/value-internalizer.js: 本轮给 memory-index.js 加了第一个
+    // 测试引用(test/memory-index-spread-guard.test.js)，它于是合法地离开 B 类
+    // (102 → 101 那轮的 102 又回到 101)。这不是"覆盖了它" —— 那个测试只覆盖
+    // 三处对象展开的类型闸，MemoryIndex 21 个方法里 getBootSummary /
+    // printBootSummary / recordBoot / updateUser 之外的主力路径仍未测。
+    // sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以 C 类读数本身就偏乐观;
+    // 换锚点是让本条继续测"判据有没有退化"，不是承认 memory-index 已覆盖。
+    assertTrue(/value-internalizer\.js/.test(bSection(out)),
+      'src/shield/ethics/value-internalizer.js(当前 B 类之王, 914 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
   });
 };
