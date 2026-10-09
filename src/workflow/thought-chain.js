@@ -981,8 +981,15 @@ class ThoughtChain {
     ];
 
     for (const pattern of constraintPatterns) {
-      if (pattern.test(input)) {
-        constraints.push(pattern.toString());
+      const m = input.match(pattern);
+      if (m) {
+        // [test-coverage-gap·第一百五十九轮] 原实现 push 的是 pattern.toString()
+        // —— 正则的**字面量源码**，不是提取结果。实测:
+        //   _extractConstraints('必须提高效率') → ['/必须|一定|不要/']
+        //   _extractConstraints('如果不能按时完成') → ['/如果|假如|假设/','/不能|不可以|不允许/']
+        // 调用方拿到的是正则本身，且**同一 pattern 命中的任何输入都返回同一个值**，
+        // 提取结果与具体输入无关。改为返回实际匹配到的片段。
+        constraints.push(m[0]);
       }
     }
 
@@ -1000,8 +1007,15 @@ class ThoughtChain {
     ];
 
     for (const pattern of goalPatterns) {
-      if (pattern.test(input)) {
-        return pattern.toString();
+      const m = input.match(pattern);
+      if (m) {
+        // [test-coverage-gap·第一百五十九轮] 与 _extractConstraints 同一形状:
+        // 原实现返回 pattern.toString()，即正则字面量源码。实测
+        //   _extractGoal('为什么要测试') → '/想|要|希望/'
+        //   _extractGoal('需要更多时间') → '/想|要|希望/'
+        // 两个完全不同的输入返回同一个值，且那个值是正则本身。
+        // 该值经 PARSE 阶段透出到 result.parse.goal，调用方读到的就是这个。
+        return m[0];
       }
     }
 
