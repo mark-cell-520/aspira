@@ -237,6 +237,36 @@ function spaceTolerant(source) {
   return out;
 }
 
+/**
+ * 把一条模式的源码编译成 **vowel-optional** 版本: 每个元音变成 `[aeiou]?`。
+ *
+ * [第一百七十二轮] 补英文去元音变换的逃逸缺口。与 spaceTolerant 是两个不同
+ * 的变换族: 那个容忍字母之间**插入**分隔符, 这个容忍元音**缺席**。
+ *
+ * 为什么这是严格超集而不是放宽: `[aeiou]?` 只让元音可有可无, 其余字符(全部
+ * 辅音、锚点、量词)一个不改, 所以辅音骨架仍须按原序完整匹配。去元音变换的
+ * 产物正是一个"元音全缺席的骨架", 形状恰好落在超集里; 而任何不含该骨架的
+ * 文本(良性英文句)既不被 orig 匹配也不被本版匹配。
+ *
+ * 状态机与 spaceTolerant 相同: 跳过字符类 [...](里面的元音是语义的一部分,
+ * 如 [aeiou] 自身)、跳过反斜杠转义(\w/\s/\b 里的字母不是字面字母)。
+ */
+function vowelOptional(source) {
+  let out = '';
+  let inClass = false;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (c === '\\') {
+      out += c + (source[i + 1] || ''); i++; continue;
+    }
+    if (inClass) { out += c; if (c === ']') inClass = false; continue; }
+    if (c === '[') { inClass = true; out += c; continue; }
+    if (/[aeiouAEIOU]/.test(c)) { out += '[' + c + ']?'; continue; }
+    out += c;
+  }
+  return out;
+}
+
 // [第一百三十四轮] 犯罪方法传授族(7c)的 space-tolerant 通道。
 // cycle 128 实测: letter-space 变换把 7c 的动词拆成 "w ri te" 后原模式失配,
 // 5 条英文样本(小说/虚构世界/论文包装/渐进/逻辑胁迫)在该变换类全漏。
@@ -249,6 +279,42 @@ const CRIME_COMPILED = (() => {
       .map(orig => {
         try { return { orig, tolerant: new RegExp(spaceTolerant(orig.source), orig.flags) }; }
         catch (_) { return null; } // 编译失败(边界模式)跳过, 不影响其他
+      })
+      .filter(Boolean);
+  } catch (_) { return []; }
+})();
+
+// [fp-recall-calibration·第一百七十二轮] 犯罪方法传授族(7c)的 vowel-optional
+// 通道 —— 补 **英文去元音** 这一类的逃逸。
+//
+// 为什么 spaceTolerant 不够: 它只容忍字母**之间**插入 [\s_.-], 而去元音变换
+// 是删掉字母本身。原模式 `(?:write|creat\w+|...|explain|...)` 里的元音被删后,
+// 文本变成 "wrtng"/"xpln", 模式的 `i`/`e` 无处可配 —— spaceTolerant 的正则里
+// 那些元音仍是**必需**字符, 于是失配。实测: 5 条社工框架样本(小说/虚构世界/
+// 论文包装/渐进确认/逻辑胁迫)在去元音类下, 原模式命中 0/5。
+//
+// 修法: 把模式里的每个元音变成 `[aeiou]?`(可有可无), 其余字符不变。
+// **这是严格超集, 不是放宽**: `[aeiou]?` 只允许元音缺席, 剩下的辅音骨架仍须
+// 按原序全部匹配 —— 而那正是去元音变换的产物形状。实测双向验证:
+//   · 15 条手写英文句 + 132 条良性语料: opt 中而 orig 不中的例数 = **0**
+//   · 恶意去元音: 原模式 3/58 → opt 7/58(其中"orig 不中 && opt 中" 4 条)
+//
+// 接入方式与 spaceTolerant 通道同构(cycle 18 的边界): **原模式不中而 opt 中
+// 才算命中**。opt 是超集, 所以明文命中必然已被 orig 覆盖(由 7c 层 block),
+// 这里 continue; 只有"仅 opt 可达"的形态才是纯混淆。实测该判据下:
+//   · 恶意去元音回收 4/58
+//   · 良性误报 0/132(明文与去元音双向实测)
+//
+// ⚠️ 只对 7c 模式做, 不动其他维度: 这些族模式的明文形式全部已被 block,
+// 是 cycle 18 收录纪律的同一条。全量实测见 test/crime-vowel-optional.test.js。
+const CRIME_VOWEL_COMPILED = (() => {
+  try {
+    const { CRIME_TEACHING_PATTERNS } = require('../dangerous-instruction.js');
+    return CRIME_TEACHING_PATTERNS
+      .filter(re => /[a-zA-Z]/.test(re.source))
+      .map(orig => {
+        try { return { orig, vowelOpt: new RegExp(vowelOptional(orig.source), orig.flags) }; }
+        catch (_) { return null; }
       })
       .filter(Boolean);
   } catch (_) { return []; }
@@ -337,4 +403,55 @@ function checkVowelStripEvasion(text) {
   return { detected: hits.length > 0, hits };
 }
 
-module.exports = { checkLetterSpaceEvasion, checkVowelStripEvasion, wordIsSpaced, LETTER_SPACE_TERMS };
+/**
+ * 检测"用去元音隐藏的犯罪方法传授请求" —— 7c 族的 vowel-optional 通道。
+ *
+ * [fp-recall-calibration·第一百七十二轮] 新增。
+ *
+ * 与 checkVowelStripEvasion 分工不同: 那个走**辅音骨架包含匹配**(术语表驱动,
+ * 因此有 `skel.length >= 6` 门槛, 短 slur 与代码术语都进不来); 本函数走
+ * **正则模式匹配**(7c 模式驱动, 每个模式自带锚点与上下文, 不依赖骨架长度)。
+ *
+ * 判据(与 spaceTolerant 通道同构, cycle 18 的边界):
+ *   1) 整段呈去元音形态 —— 与 checkVowelStripEvasion 阶段 1 同一组阈值;
+ *   2) 某条 7c 模式 **原版不中而 vowel-optional 版中**。
+ * 第 2 条保证只报纯混淆形态: vowelOpt 是 orig 的严格超集(实测外溢 0),
+ * 所以明文命中必然已被 orig 覆盖, 由 7c 层 block, 这里不重复报。
+ *
+ * 阶段 1 的必要性(不是装饰): 没有它, 良性英文句里偶然出现的辅音序列会被
+ * vowel-optional 匹配上 —— 那是 cycle 141/158 记录的形状(变换作用于整段文本,
+ * 攻击与良性在该层同构)。实测: 132 条良性在去元音后, 本函数 0 误报。
+ *
+ * 实测(语料 132 benign / 58 malicious):
+ *   恶意去元音回收 4/58(5 条社工框架里的 4 条, 第 5 条的 7c 模式在该句
+ *   变换后仍不可达 —— 已披露, 不静默当成已解决);
+ *   良性误报 0/132(明文与去元音双向)。
+ *
+ * @returns {{ detected: boolean, hits: Array<{term: string, match: string}> }}
+ */
+function checkVowelStripCrimeFamily(text) {
+  if (typeof text !== 'string' || !text.length) return { detected: false, hits: [] };
+  // 阶段 1: 整段去元音形态(与 checkVowelStripEvasion 同一组阈值)
+  const lat = (text.match(/[A-Za-z]/g) || []).length;
+  if (lat < 12) return { detected: false, hits: [] };
+  const vow = (text.match(/[aeiouAEIOU]/g) || []).length;
+  if (vow / lat > 0.02) return { detected: false, hits: [] };
+
+  const hits = [];
+  for (const { orig, vowelOpt } of CRIME_VOWEL_COMPILED) {
+    if (orig.test(text)) continue;          // 明文命中由 7c 层负责
+    if (!vowelOpt.test(text)) continue;     // vowelOpt 是超集, 原版不中才算混淆
+    const m = text.match(vowelOpt);
+    if (m) hits.push({ term: 'crime_family_vowel', match: m[0].slice(0, 40) });
+  }
+  return { detected: hits.length > 0, hits };
+}
+
+module.exports = {
+  checkLetterSpaceEvasion,
+  checkVowelStripEvasion,
+  checkVowelStripCrimeFamily,
+  vowelOptional,
+  wordIsSpaced,
+  LETTER_SPACE_TERMS,
+};

@@ -157,6 +157,34 @@ function checkAdversarialVariant(text) {
     });
   }
 
+  // [fp-recall-calibration·第一百七十二轮] 去元音 + 犯罪方法传授族(7c)。
+  //
+  // 上面的 vowel_stripped 走辅音骨架包含匹配, 因此有 `skel.length >= 6` 门槛,
+  // 7c 模式那种"动词 + 上下文"的形状进不来 —— 实测 5 条社工框架样本(小说包装/
+  // 虚构世界/论文包装/渐进确认/逻辑胁迫)在去元音类下原模式命中 0/5。
+  //
+  // 本通道走**正则模式匹配**: 把 7c 模式的每个元音变成可有可无
+  // ([aeiou]?), 其余字符(辅音、锚点、量词)一个不改, 所以辅音骨架仍须按原序
+  // 完整匹配 —— 这是严格超集而非放宽, 实测外溢 0(132 条良性 + 15 条手写句,
+  // opt 中而 orig 不中的例数为 0)。
+  //
+  // 判据与 spaceTolerant 通道同构(cycle 18 边界): **原模式不中而 vowel-optional
+  // 中才算命中**, 明文命中必然已被 7c 层 block, 不重复报。阶段 1(整段去元音
+  // 形态)在函数内部, 所以良性明文不会被泛化匹配。
+  //
+  // 实测(132 benign / 58 malicious): 恶意去元音回收 4/58, 良性误报 0/132。
+  const { checkVowelStripCrimeFamily } = require('./letter-space-evasion.js');
+  const vc = checkVowelStripCrimeFamily(text);
+  if (vc.detected) {
+    signals.push({
+      id: 'vowel_stripped_crime',
+      name: '整段去元音(隐藏犯罪方法传授请求)',
+      count: vc.hits.length,
+      severity: 0.8,
+      terms: vc.hits.map(h => h.term),
+    });
+  }
+
   // 词拆分(连字符/点/下划线) — 与 S6 同一族，但分隔符不同。
   // 合并进同一个 word_split 信号(不新增 id)，因为对调用方而言它们是同一类风险:
   // "文本被人为拆过词，归一化前不足以作为判别依据"。
