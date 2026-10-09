@@ -816,14 +816,42 @@ function normalize(text) {
   const _HAN_N = (out.match(/[一-鿿]/g) || []).length;
   const _KO_N = (out.match(/[가-힯]/g) || []).length;
   const _KANA_N = (out.match(/[぀-ヿ]/g) || []).length;
+  // [fp-recall-calibration·第一百七十五轮] 第四路: 西里尔 + 希腊。
+  //
+  // 为什么单独一路而不是并进前三路: **西里尔/希腊行文词间本来就有空格**,
+  // 这与汉字/假名/韩文(词间无空格)是相反的性质。所以"删空格"那一层
+  // (strip_cjk_space)对它们是**破坏而非还原** —— 实测把它的字符类扩到
+  // 西里尔希腊后, 132 条良性里 13 条被折叠成 "Привет, какдела?"(词被粘住),
+  // 且还原后的串仍命中不了注入模式(俄罗斯注入明文 block → 折叠后仍 pass)。
+  // 该方向已实测判死, 不要重试。
+  //
+  // 但**标点折叠**这一层对它们成立, 且两侧完全分离:
+  //   132 条良性原文: 本路最大密度 **0.154**, >=0.6 的 **0** 条;
+  //   俄语注入(每个西里尔字母后插半角标点)变换后密度 **1.000**。
+  // 理由与中文路同族: 西里尔行文用词间空格断句, **词内不放标点**。
+  //
+  // 实测收益: 语料 4 条西里尔恶意里, 俄语注入(明文 block)在插逗号/插点号/
+  // 插连字符三个变换类下由 pass 回到拦截。另 3 条短样本(kill me киll /
+  // i hаte you / рass the test)主体字符 <6 够不到门槛, 但它们的明文由
+  // adversarial-variant 的同形字层拦截, 不是本层的责任面。
+  //
+  // 阿拉伯语**不在本路**: 它是 RTL 文字, 双向算法下的邻居判定与 LTR 不同族,
+  // 且语料 2 条阿拉伯样本全是良性(零恶意), 没有可测的攻击面。留白并记录,
+  // 不为一个不存在的面加判据。
+  const _CY_N = (out.match(/[Ѐ-ӿͰ-Ͽ]/g) || []).length;
   const _HAN_P = (out.match(new RegExp(`[一-鿿][${_PUNCT_INNER}]`, 'g')) || []).length;
   const _KO_P = (out.match(new RegExp(`[가-힯][${_PUNCT_INNER}]`, 'g')) || []).length;
   const _KANA_P = (out.match(new RegExp(`[぀-ヿ][${_PUNCT_INNER}]`, 'g')) || []).length;
+  const _CY_P = (out.match(new RegExp(`[Ѐ-ӿͰ-Ͽ][${_PUNCT_INNER}]`, 'g')) || []).length;
   const _hanOk = _HAN_N >= 6 && _HAN_P / _HAN_N >= 0.6;
   const _koOk = _KO_N >= 6 && _KO_P / _KO_N >= 0.6;
   const _kanaOk = _KANA_N >= 6 && _KANA_P / _KANA_N >= 0.6;
-  if (_hanOk || _koOk || _kanaOk) {
-    const _noHanPunct = out.replace(/([぀-ヿ㐀-䶿一-鿿가-힯豈-﫿])[,|*.;:!?~^&%$#@。，；]+(?![A-Za-z])/g, '$1');
+  const _cyOk = _CY_N >= 6 && _CY_P / _CY_N >= 0.6;
+  if (_hanOk || _koOk || _kanaOk || _cyOk) {
+    // [第一百七十五轮] 折叠范围补入西里尔与希腊(与判据的第四路同一套字符)。
+    // 后瞻 (?![A-Za-z]) 保留: 西里尔词内插标点的攻击产物后面不接拉丁字母,
+    // 而中英边界「为,race」仍受保护。
+    const _noHanPunct = out.replace(/([぀-ヿ㐀-䶿一-鿿가-힯豈-﫿Ѐ-ӿͰ-Ͽ])[,|*.;:!?~^&%$#@。，；]+(?![A-Za-z])/g, '$1');
     if (_noHanPunct !== out) { applied.push('collapse_cjk_punct'); out = _noHanPunct; }
   }
 
