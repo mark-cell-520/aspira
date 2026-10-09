@@ -136,7 +136,15 @@ module.exports = function ({ test, assertTrue }) {
     // _stabilizeWinner 等主力路径仍未测。sweep 的 C 类判据是"有测试引用"
     // 而非"测过多少"，所以 C 类读数本身就偏乐观; 换锚点是让本条继续测
     // "判据有没有退化"，不是承认 global-workspace 已覆盖。
-    assertTrue(/think-pipeline\.js/.test(bSection(out)),
-      'src/core/think-pipeline.js(当前 B 类之王, 1029 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
+    // [第一百七十一轮] 锚点从 src/core/think-pipeline.js 换成
+    // src/memory/memory-index.js: 本轮给 think-pipeline.js 加了第一个测试引用
+    // (test/think-pipeline-formula-bridge-wiring.test.js)，它于是合法地离开
+    // B 类(103 → 102 那轮的 103 又回到 102)。这不是"覆盖了它" —— 那个测试只覆盖
+    // 公式计算段的接线(一个此前从未被导入的 getFormulaBridge)，runThinkPipeline
+    // 里其余 30+ 个后置检查块(DeepEmotion/自对弈/宪法AI/门控信号等)仍未测。
+    // sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以 C 类读数本身就偏乐观;
+    // 换锚点是让本条继续测"判据有没有退化"，不是承认 think-pipeline 已覆盖。
+    assertTrue(/memory-index\.js/.test(bSection(out)),
+      'src/memory/memory-index.js(当前 B 类之王, 932 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
   });
 };

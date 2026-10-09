@@ -10,6 +10,28 @@
 const path = require('path');
 const _FirewallCheck = () => require('../identity/identity-rules.js');
 
+// ── formula-bridge 懒加载 ────────────────────────────────
+// [test-coverage-gap·第一百七十一轮] 这一行原先不存在。
+// 下面第 362 行的公式计算段调用了 `getFormulaBridge()`, 而本文件**从未定义
+// 也从未 require 过它** —— 整个 1028 行的文件里这个名字只出现一次, 就在调用处。
+// 调用被包在 try 里, 于是每次 think() 都抛一次 ReferenceError 并被吞掉:
+// 那段约 90 行、8 个主题分支、20+ 个公式的计算**一次都没有执行过**。
+// 实测(修复前): 输入"认知失调与情绪动机" → result._formulaCalculations 为
+// undefined, _formulaEvidence 为 undefined, conclusion 不带 [公式验证],
+// warnings 为空数组 —— 调用成功、不抛错、返回结构完全合法, 内容已死。
+// 同一形状在 src/cortex/sustained-drift-detector.js:312 同样存在(那里也
+// 没有 import), 本轮不越界只修本文件。
+// 懒加载而非顶层 require: 与本文件既有的 _FirewallCheck 惯例一致;
+// formula-bridge 零顶层依赖, 首次 require 实测 1ms, 二次走 require 缓存。
+let _formulaBridge = null;
+const _getFormulaBridge = () => {
+  if (_formulaBridge === null) {
+    try { _formulaBridge = require('../formula/formula-bridge.js').getFormulaBridge(); }
+    catch (_) { _formulaBridge = false; }  // 不可用时记住"不可用", 不反复重试
+  }
+  return _formulaBridge || null;
+};
+
 // ── DeepEmotion 单例 ──────────────────────────────────────
 // 避免每次 think() 重复构造触发器与状态表
 let _deepEmotionInstance = null;
@@ -359,7 +381,7 @@ async function runThinkPipeline(result, input, engine) {
   // ─── [v6.3.7] FormulaBridge 综合计算——输入含领域关键词时自动调用相关公式 ──
   try {
     if (input && typeof input === 'string') {
-      const bridge = getFormulaBridge();
+      const bridge = _getFormulaBridge();
       if (bridge) {
         const calc = {};
         const t = input.toLowerCase();
