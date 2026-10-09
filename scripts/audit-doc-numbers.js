@@ -726,6 +726,16 @@ function claims() {
       // **一个从未被测量过的数字，在全绿的报表里与已被测量的数字
       //   无法区分。**
       { re: /(\d+)\s+domains?/g, key: 'domains', what: 'capability domains' },
+      // [doc-honest-numbers·第一百六十四轮] 中文形态 "N 大域"。
+      // 上面的 pattern 只认英文 domains，而 IDENTITY.md 用的是中文:
+      //   「132 个模块真实加载、真实调用，分 7 大域：」
+      // 于是那个数字**从不被核对**。第一百六十三轮把能力域从 7 扩到 8
+      // (补 Classical texts 第 8 域)，README/SKILL 都改成了 8 domains，
+      // IDENTITY.md 的 "7 大域" 与它自己列出的 7 个域一起留在了旧值上 ——
+      // 而审计全绿，因为那个形态不在任何 pattern 里。
+      // 这与第一百五十三轮 SKILL.md 的 "Capability map (N domains)" 是同一形状:
+      // **同一个数字在第二份文档里用了不同措辞，就成了审计的盲区。**
+      { re: /(\d+)\s*大域/g, key: 'domains', what: 'capability domains (中文)' },
       // ── [第八轮·穷举法] 语料规模是 FP 率与召回率的分母 ──
       // 机械化穷举(而非人工提问)发现的盲区: pats 的 key 集 vs 文档
       // 实际出现的"数字+单位词"形态，`benign` / `malicious` 双双落空。

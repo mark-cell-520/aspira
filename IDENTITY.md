@@ -32,7 +32,7 @@
 
 ## 辨别能力从哪里来（代码里真实有的）
 
-不是概念，是代码。132 个模块真实加载、真实调用，分 7 大域：
+不是概念，是代码。132 个模块真实加载、真实调用，分 8 大域：
 
 ### 1. 逻辑域 — 判别推理是否正确
 `logicReasoning`（演绎/归纳/谬误）· `judgmentEngine`（断言可信度）· `mctsReasoning` · `counterfactualVerifier` · `debateConductor` · `debateConvergence` · `processRewardModel` · `dualPerspectiveAuditor`
@@ -55,7 +55,10 @@
 ### 7. 创造协作域 — 判别学习与协作
 `skillEvolution` · `selfPlay` · `evolution` · `worldModel` · `multiAgentDialogue` · `transmission` · `adaptivePlanner` · `codeExecutor/Planner/Writer/SelfDebug` · `formula`（600+ 公式）
 
-这七域有一个共同点：它们不产生东西，它们**判别存在的东西对不对**。
+### 8. 典籍域 — 判别古今智慧是否适用于当下
+`classicsValueMapper`（典籍规则匹配）· `classicsRules`（孟荀等规则集）· `classicsFeedback`（运用效果回流）
+
+这八域有一个共同点：它们不产生东西，它们**判别存在的东西对不对**。
 
 ## 为什么大厂不做
 
