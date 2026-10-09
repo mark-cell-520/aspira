@@ -152,7 +152,17 @@ module.exports = function ({ test, assertTrue }) {
     // printBootSummary / recordBoot / updateUser 之外的主力路径仍未测。
     // sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以 C 类读数本身就偏乐观;
     // 换锚点是让本条继续测"判据有没有退化"，不是承认 memory-index 已覆盖。
-    assertTrue(/value-internalizer\.js/.test(bSection(out)),
-      'src/shield/ethics/value-internalizer.js(当前 B 类之王, 914 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
+    // [第一百八十二轮] 锚点从 src/shield/ethics/value-internalizer.js 换成
+    // src/reasoning/self-play.js: 本轮给 value-internalizer.js 加了第一个测试
+    // 引用(test/value-internalizer-input-guard.test.js)，它于是合法地离开 B 类
+    // (101 → 100 那轮的 101 又回到 100)。这不是"覆盖了它" —— 那个测试只覆盖
+    // 三处入口的类型闸(calculateValueAlignmentScore / adaptWeights /
+    // generateBoundaryRequest)，ValueInternalizer 25 个方法里
+    // loadCoreValues / _detectOscillation / _resolveConflict / getStatus 等
+    // 主力路径仍未测。sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以
+    // C 类读数本身就偏乐观; 换锚点是让本条继续测"判据有没有退化"，不是承认
+    // value-internalizer 已覆盖。
+    assertTrue(/self-play\.js/.test(bSection(out)),
+      'src/reasoning/self-play.js(当前 B 类之王, 891 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
   });
 };

@@ -365,9 +365,32 @@ class ValueInternalizer {
    */
   calculateValueAlignmentScore(action, selfModel = {}, context = {}) {
     // 参数验证
+    // [test-coverage-gap·第一百八十二轮] 这里原先调 `this._makeScoreResult(...)`
+    // —— 而**整个 913 行的文件里这个名字只出现这一次**, 从未定义。于是
+    // "action 为 null"这条本该是最安全的防御分支, 反而是唯一会崩的路径:
+    // 实测 evaluateAction(null) → TypeError: this._makeScoreResult is not a function。
+    // 这与第一百七十一轮 think-pipeline 的 getFormulaBridge 是同型缺陷(调用一个
+    // 从未导入/定义的名字), 且更讽刺: **守卫自己是坏的**。
+    // 改成内联构造与下方成功路径同一形状的结果对象(见本函数末尾的 result)。
     if (action === null || action === undefined) {
-      return this._makeScoreResult(0, false, [], '行动为空');
+      return {
+        score: 0,
+        passed: false,
+        matchedValues: [],
+        matchDetails: [],
+        negativeMatch: null,
+        threshold: this.weights ? this.weights.threshold : 0.6,
+        baseThreshold: this.weights ? this.weights.threshold : 0.6,
+        conflicts: [],
+        oscillation: { oscillating: false, flipRate: 0, details: '行动为空' },
+        timestamp: new Date().toISOString(),
+      };
     }
+    // [第一百八十二轮] context 归一化: 原实现在 context 为 null 时于
+    // `context.severity` 处抛 TypeError(实测 evaluateAction('x', {}, null) 即崩)。
+    // 函数签名给了默认值 `context = {}`, 但默认值只在**传 undefined** 时生效,
+    // 显式传 null 不生效 —— 这是默认值参数的经典陷阱。
+    const ctx = (context && typeof context === 'object' && !Array.isArray(context)) ? context : {};
 
     const actionStr = typeof action === 'string'
       ? action.toLowerCase()
@@ -407,7 +430,7 @@ class ValueInternalizer {
     const matchDetails = [];
 
     // 基础信任分数：在低风险上下文中，给予一定的基础信任
-    const baseTrustScore = (context.severity === 'low') ? 0.18 : 0;
+    const baseTrustScore = (ctx.severity === 'low') ? 0.18 : 0;
     score += baseTrustScore;
 
     for (const [value, categories] of Object.entries(positiveIndicators)) {
@@ -476,13 +499,13 @@ class ValueInternalizer {
     }
 
     // 3. 上下文自适应阈值
-    const adaptiveThreshold = this._computeAdaptiveThreshold(context, matchedValues);
+    const adaptiveThreshold = this._computeAdaptiveThreshold(ctx, matchedValues);
 
     // 4. 冲突检测
-    const conflicts = this._detectValueConflicts(matchedValues, context);
+    const conflicts = this._detectValueConflicts(matchedValues, ctx);
 
     // 5. 记录决策历史（用于震荡检测）
-    this._recordDecision(score >= adaptiveThreshold, actionStr, context);
+    this._recordDecision(score >= adaptiveThreshold, actionStr, ctx);
 
     // 6. 震荡检测
     const oscillation = this._detectOscillation();
@@ -698,8 +721,17 @@ class ValueInternalizer {
    * @returns {object} 边界协商请求
    */
   generateBoundaryRequest(action, context = {}) {
-    // 分析历史：同类请求被拒绝的频率
-    const actionStr = typeof action === 'string' ? action : JSON.stringify(action);
+    // [test-coverage-gap·第一百八十二轮] actionStr 归一化。
+    // 原实现 `typeof action === 'string' ? action : JSON.stringify(action)`, 而
+    // **JSON.stringify(undefined) 返回 undefined**(不是字符串), 于是下面
+    // `actionStr.substring(0, 30)` 抛 TypeError。实测 generateBoundaryRequest()
+    // / (null) / (42) 三种调用全崩在这一行。
+    // 同一形状在本文件里出现过三次(本次修的三处), 全是"把一个可能为 undefined
+    // 的值当字符串用"。修法: 统一兜底成空串。
+    const actionStr = typeof action === 'string'
+      ? action
+      : (JSON.stringify(action) || '');
+    const ctx = (context && typeof context === 'object' && !Array.isArray(context)) ? context : {};
     const similarRequests = this._boundaryHistory.filter(h => {
       const hAction = typeof h.action === 'string' ? h.action : JSON.stringify(h.action);
       return hAction.includes(actionStr.substring(0, 30));
@@ -750,9 +782,9 @@ class ValueInternalizer {
 
     // 根据上下文严重度选择模板
     let selectedTemplate;
-    if (context.severity === 'critical' || context.severity === 'high') {
+    if (ctx.severity === 'critical' || ctx.severity === 'high') {
       selectedTemplate = templates[2]; // one_time — 最严格
-    } else if (context.readOnly) {
+    } else if (ctx.readOnly) {
       selectedTemplate = templates[1]; // read_only
     } else {
       selectedTemplate = templates[0]; // temporary_permission
@@ -764,7 +796,7 @@ class ValueInternalizer {
       suggested_request: selectedTemplate.template,
       suggested_tone: tone,
       urgency,
-      context,
+      ctx,
       history: {
         similar_requests: totalSimilar,
         rejected_count: rejectedCount,
@@ -827,6 +859,20 @@ class ValueInternalizer {
    * @param {boolean} [options.persist=true] - 是否持久化到文件
    */
   adaptWeights(options = {}) {
+    // [test-coverage-gap·第一百八十二轮] 入口归一化。
+    // 原实现 `const { persist = true } = options;` 在 options 为 **null** 时抛
+    // TypeError(实测 adaptWeights(null) → Cannot read properties of null
+    // (reading 'persist'))。默认值参数只对 undefined 生效, 显式传 null 不生效
+    // —— 与 calculateValueAlignmentScore 的 context 同族。
+    // 同文件的 logBoundaryNegotiation 已有正确的结构化校验(makeError +
+    // ErrorType.VALIDATION), 这里对齐那个形状。
+    if (options === null || options === undefined) options = {};
+    if (typeof options !== 'object' || Array.isArray(options)) {
+      throw makeError(ErrorType.VALIDATION,
+        'adaptWeights: options 必须是对象',
+        { received: typeof options }
+      );
+    }
     const { persist = true } = options;
     const recentDecisions = this._decisionHistory.slice(-20);
     if (recentDecisions.length < 5) return; // 数据不足
