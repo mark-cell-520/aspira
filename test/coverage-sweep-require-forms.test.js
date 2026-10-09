@@ -120,7 +120,15 @@ module.exports = function ({ test, assertTrue }) {
     // 返回形状，20 个方法里 _buildChain(816 行)/_classifyTask/run 等主力路径仍未测。
     // sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以 C 类读数本身就偏乐观;
     // 换锚点是让本条继续测"判据有没有退化"，不是承认 thought-chain 已覆盖。
-    assertTrue(/meta-learning\.js/.test(bSection(out)),
-      'src/cortex/self-evolution/meta-learning.js(当前 B 类之王, 1326 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
+    // [第一百六十七轮] 锚点从 src/cortex/self-evolution/meta-learning.js 换成
+    // src/consciousness/global-workspace.js: 本轮给 meta-learning.js 加了第一个
+    // 测试引用(test/meta-learning-select-strategy.test.js)，它于是合法地离开
+    // B 类(104 → 105 那轮的 105 又回到 104)。这不是"覆盖了它" —— 那个测试只
+    // 覆盖 selectStrategy 一个方法的 null 防御与策略分派，19 个方法里
+    // conceptualLearning / analogyLearning / detectOscillation 等主力路径仍未测。
+    // sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以 C 类读数本身就偏乐观;
+    // 换锚点是让本条继续测"判据有没有退化"，不是承认 meta-learning 已覆盖。
+    assertTrue(/global-workspace\.js/.test(bSection(out)),
+      'src/consciousness/global-workspace.js(当前 B 类之王, 1062 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
   });
 };

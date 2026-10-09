@@ -238,7 +238,14 @@ class MetaLearning {
 
   selectStrategy(context) {
 
-    const input = this._safeInput(context.input || '');
+    // [test-coverage-gap·第一百六十七轮] null/undefined 防御。
+    // 原实现是 `this._safeInput(context.input || '')` —— `context.input` 在读
+    // _safeInput **之前**求值，所以 selectStrategy(null) 直接抛
+    // TypeError: Cannot read properties of null (reading 'input')。
+    // 同文件的其它公开方法都走 _safeInput(它对 null/非字符串都有防御)，
+    // 只有这一处把防御写在了取字段之后 —— 防御的次序错了，等于没有防御。
+    // 实测: selectStrategy(null) / (undefined) 修复前抛错，修复后走空输入兜底。
+    const input = this._safeInput((context && context.input) || '');
 
     if (!input) {
 
