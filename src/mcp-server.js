@@ -2674,6 +2674,17 @@ function handleFullDiscriminate(args) {
  function handleBulkDiscriminate(args) {
    const { texts, evidence } = args || {};
    if (!texts || !Array.isArray(texts) || texts.length === 0) return { error: 'texts[] array required' };
+   // [mcp-tool-enhancement·第一百六十八轮] 元素类型校验。
+   // 原实现在循环里直接 `text.substring(0, 200)`，假设 texts[i] 是字符串。
+   // 传数字/对象/null 时抛 TypeError，被外层 catch 接住后 `return { error: e.message }`
+   // —— 于是调用方收到的是 **JS 内部错误消息**:
+   //   texts=[1,2]  → { error: 'text.substring is not a function' }
+   //   texts=[null] → { error: 'Cannot read properties of null (reading 'substring')' }
+   // 与 cycle 17 修掉的 aspira_check_outbound(raw TypeError)同一形状:
+   // 中央 dispatch 只校验**顶层**参数类型，数组元素在里面，校验不到。
+   // 修法: 入口处逐元素校验，报出下标(与上面的 'texts[] array required' 同风格)。
+   const badIdx = texts.findIndex(t => typeof t !== 'string');
+   if (badIdx >= 0) return { error: `texts[${badIdx}] must be a string` };
    try {
      const idx = require('./index.js');
      const results = [];
@@ -3735,7 +3746,16 @@ const HANDLERS = {
       const engine = typeof heartflow === 'undefined' ? null : heartflow;
       if (!engine || !engine.daoDecision) return { error: 'daoDecision not ready', timestamp: Date.now() };
       const input = args || {};
-      return engine.daoDecision.evaluate({ text: input.text || '', intent: input.intent || '', action: input.action || '', history: input.history || [] });
+      // [mcp-tool-enhancement·第一百六十八轮] history 元素类型校验。
+      // 原实现直接把 input.history 透给 daoDecision.evaluate，元素是数字/对象时
+      // 下游调 `.includes` 抛 TypeError，被外层 catch 接住后
+      // `return { error: e.message }` —— 调用方收到 'h.includes is not a function'。
+      // 与 aspira_bulk_discriminate / aspira_decision_decide 同族(见各自注释)。
+      const _hist = input.history || [];
+      if (!Array.isArray(_hist) || _hist.some(h => typeof h !== 'string')) {
+        return { error: 'history[] must be an array of strings' };
+      }
+      return engine.daoDecision.evaluate({ text: input.text || '', intent: input.intent || '', action: input.action || '', history: _hist });
     } catch (e) { return { error: e.message }; }
   },
   aspira_supervise_uncertainty: (args) => {
@@ -4060,7 +4080,17 @@ const HANDLERS = {
       try { if (inst.start) inst.start(); } catch (e) { /* 模块已接线, 见上 */ }
       const hfd = inst.decision;
       if (!hfd || !hfd.decide) return { error: 'decision.decide not available' };
-      const r = hfd.decide({ task: args?.task || '', options: args?.options || [], constraints: args?.constraints || {} });
+      // [mcp-tool-enhancement·第一百六十八轮] options 元素类型校验。
+      // 原实现直接把 args.options 透给 hfd.decide，元素是 null/数字时下游读
+      // `.label` 抛 TypeError，被外层 catch 接住后 `return { error: e.message }`
+      // —— 调用方收到 'Cannot read properties of null (reading 'label')'。
+      // 与 aspira_bulk_discriminate / aspira_supervise_dao 同族(见各自注释)：
+      // 中央 dispatch 只校验顶层参数类型，数组元素在里面，校验不到。
+      const _opts = args?.options || [];
+      if (!Array.isArray(_opts) || _opts.some(o => !o || typeof o !== 'object')) {
+        return { error: 'options[] must be an array of objects with a label field' };
+      }
+      const r = hfd.decide({ task: args?.task || '', options: _opts, constraints: args?.constraints || {} });
       return { decision: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
