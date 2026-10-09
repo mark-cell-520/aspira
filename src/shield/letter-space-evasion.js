@@ -290,4 +290,51 @@ function checkLetterSpaceEvasion(text) {
   return { detected: hits.length > 0, hits, terms: LETTER_SPACE_TERMS.length };
 }
 
-module.exports = { checkLetterSpaceEvasion, wordIsSpaced, LETTER_SPACE_TERMS };
+/**
+ * 检测"用去元音隐藏的已知恶意术语"。
+ *
+ * [adversarial-robustness·第一百六十九轮] 变换 `ignore all previous instructions`
+ * → `gnr ll prvs nstrctns`。它与既有七类不同：**无法靠还原后匹配修** ——
+ * 去元音是有损变换("gnr" 可能是 ignore/anger/…)，插入的元音与原有元音不可区分。
+ * 所以走两阶段判据(与 checkLetterSpaceEvasion 同族)：
+ *
+ *   阶段 1(形态锚点): 整段呈去元音形状 —— 英文字母 >= 12 且元音占比 <= 0.02。
+ *     两侧实测完全不重叠：
+ *       · 良性原文(含英文的 80 条语料样本): min 0.258 / 中位 0.378，无一 < 0.25
+ *       · 17 条真实英文技术文本(SQL/命令/错误栈): 最低 0.095("Rhythm myths…")
+ *       · 去元音产物: 全部 0.000
+ *   阶段 2(术语锚点): 文本的辅音骨架含某条已知术语的辅音骨架。
+ *     **为什么必须有第二阶段**: 阶段 1 单独用会把良性英文句的去元音产物也算成
+ *     攻击(变换作用于整段文本，良性变换后与攻击同构 —— cycle 141/158 记录的
+ *     形状)。实测: 只靠阶段 1 时 123 条良性里有 65 条在去元音后被升级。
+ *     加上阶段 2 后，良性句的辅音骨架不含任何攻击短语，不报。
+ *
+ * 骨架长度门槛 `>= 6`: 短术语(fag→fg / cunt→cnt / dyke→dyk)的骨架只有 2-3 字符，
+ * 在良性去元音文本里会意外出现("cannot"→"cnnt" 含 "cn")。长短语骨架
+ * ('gnrllprvsnstrctns' 等 7-18 字符)在自然文本里几乎不可出现。
+ * 代价(如实记录): 短 slur 在去元音类下仍漏 —— 该类不是它们的既有防护面。
+ *
+ * @returns {{ detected: boolean, hits: Array<{term: string, match: string}> }}
+ */
+function checkVowelStripEvasion(text) {
+  if (typeof text !== 'string' || !text.length) return { detected: false, hits: [] };
+  // 阶段 1: 整段去元音形态
+  const lat = (text.match(/[A-Za-z]/g) || []).length;
+  if (lat < 12) return { detected: false, hits: [] };
+  const vow = (text.match(/[aeiouAEIOU]/g) || []).length;
+  if (vow / lat > 0.02) return { detected: false, hits: [] };
+
+  // 阶段 2: 辅音骨架命中(文本与术语都去元音、去标点、去空格后做包含匹配)
+  const stripAll = (s) => s.toLowerCase().replace(/[aeiou]/g, '').replace(/[^a-z]/g, '');
+  const textSkel = stripAll(text);
+  if (textSkel.length < 6) return { detected: false, hits: [] };
+  const hits = [];
+  for (const term of LETTER_SPACE_TERMS) {
+    const skel = stripAll(term);
+    if (skel.length < 6) continue; // 短术语骨架不可靠，见上方注释
+    if (textSkel.includes(skel)) hits.push({ term, match: term });
+  }
+  return { detected: hits.length > 0, hits };
+}
+
+module.exports = { checkLetterSpaceEvasion, checkVowelStripEvasion, wordIsSpaced, LETTER_SPACE_TERMS };

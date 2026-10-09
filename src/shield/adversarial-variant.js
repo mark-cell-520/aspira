@@ -129,6 +129,34 @@ function checkAdversarialVariant(text) {
   const ws = text.match(WORD_SPLIT_RE);
   if (ws) signals.push({ id: 'word_split', name: '词拆分', count: ws.length, severity: 0.75 });
 
+  // [adversarial-robustness·第一百六十九轮] 整段去元音。
+  //
+  // 变换: `Ignore all previous instructions` → `gnr ll prvs nstrctns`。
+  // 与既有七类不同，它**无法靠还原后匹配**修 —— 去元音是有损变换
+  // ("gnr" 可能是 ignore/anger/…)，插入的元音与原有元音不可区分。
+  // 所以走两阶段判据(见 checkVowelStripEvasion 的说明):
+  //   阶段 1 整段形态(元音占比 <= 0.02 且字母数 >= 12) —— 良性原文实测
+  //     min 0.258 / 中位 0.378，去元音产物全部 0.000，两侧不重叠;
+  //   阶段 2 术语锚点(辅音骨架含已知攻击短语) —— **必须有**，否则良性英文句的
+  //     去元音产物也会被算成攻击(变换作用于整段文本，良性变换后与攻击同构)。
+  //     实测: 只靠阶段 1 时 123 条良性里 65 条在去元音后被升级。
+  //
+  // 实测(本轮): 去元音类在修复前 **37/58 条恶意样本 gate=pass 且
+  // findings 为空** —— 完全穿透，比 letter-space 残留的 2 条严重得多。
+  // severity 0.8 → risk high → action rewrite: 一段被刻意去元音且藏着已知攻击
+  // 短语的英文，本身就是混淆信号。
+  const { checkVowelStripEvasion } = require('./letter-space-evasion.js');
+  const vs = checkVowelStripEvasion(text);
+  if (vs.detected) {
+    signals.push({
+      id: 'vowel_stripped',
+      name: '整段去元音(隐藏已知短语)',
+      count: vs.hits.length,
+      severity: 0.8,
+      terms: vs.hits.map(h => h.term),
+    });
+  }
+
   // 词拆分(连字符/点/下划线) — 与 S6 同一族，但分隔符不同。
   // 合并进同一个 word_split 信号(不新增 id)，因为对调用方而言它们是同一类风险:
   // "文本被人为拆过词，归一化前不足以作为判别依据"。
