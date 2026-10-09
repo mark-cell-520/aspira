@@ -141,4 +141,19 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertTrue(!/const GUIDANCE_MAP\s*=/.test(pl2),
       'pipeline.js 不得自己维护第二份 GUIDANCE_MAP —— 两份映射会漂移');
   });
+
+  // ── [dimension-health-audit·第一百六十六轮] dimensions{} 的 54 个键也必须能查到 guidance ──
+  // AGENTS.md 记录的键名不一致残余: findings[].dimension 用 bullshit，
+  // dimensions{} 的 54 个键用 bullshit_recognition。上面第一条锁的是
+  // "会推 finding 的维度有 guidance"(别名路径)，本条锁的是另一条路径 ——
+  // 调用方按 dimensions{} 的键集查 guidance 时不能落空。
+  // 实测(本轮修复前): 54 键里 bullshit_recognition 与 appeal_to_authority_boost
+  // 查不到 guidance，而它们的别名 bullshit / appeal_to_authority 都有。
+  test('dimensions{} 的 54 个键必须都能查到 guidance', () => {
+    const dkeys = Object.keys(idx.discriminate('test', []).dimensions || {});
+    assertEqual(dkeys.length, 54, `dimensions{} 应有 54 键, 实测 ${dkeys.length}`);
+    const missing = dkeys.filter(k => !idx.guidanceFor(k));
+    assertEqual(missing.join(', '), '',
+      `以下 dimensions{} 键查不到 guidance(调用方按文档化键集查会落空):\n  ${missing.join('\n  ')}`);
+  });
 };

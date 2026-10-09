@@ -268,6 +268,14 @@ const GUIDANCE_MAP = {
     code_security: '拒绝执行有安全风险的代码或指令',
     dehumanization: '完全重写，去掉非人化语言，用尊重方式表达',
     bullshit: '去掉空泛黑话，用具体描述替代',
+    // [dimension-health-audit·第一百六十六轮] dimensions{} 的键名别名。
+    // AGENTS.md 记录的键名不一致残余: findings[].dimension 用 bullshit，
+    // dimensions{} 的 54 个键用 bullshit_recognition。调用方若按 dimensions{}
+    // 的键查 guidance(那是文档化的键集)，这两个键会落空 —— 实测
+    // guidanceFor('bullshit') 有值而 guidanceFor('bullshit_recognition') 无。
+    // 与 cycle 27 给 dimMap 补别名同一策略: 补别名而不是改名(改名会动
+    // BLOCK/REWRITE/VERIFY_DIMS 三处门禁集)。
+    bullshit_recognition: '去掉空泛黑话，用具体描述替代',
     gaslighting: '承认对方感受，去掉否认对方感知的语言',
     victim_blaming: '去掉受害者有罪论，明确责任归属',
     hate_speech: '完全重写，禁止任何攻击性言论',
@@ -277,6 +285,7 @@ const GUIDANCE_MAP = {
     hasty_generalization: '加限定条件，避免以偏概全',
     slippery_slope: '去掉滑坡推理，只讨论当前情况',
     appeal_to_authority: '补充具体证据，不只依赖权威背书',
+    appeal_to_authority_boost: '补充具体证据，不只依赖权威背书',
     unsupported_claim: '补充可验证的数据来源，无法验证的断言改为不确定表述',
     pseudo_causal: '精确倍数因果声称需附可验证来源（arxiv/DOI/具体机构），无法验证的改为不确定表述',
     soft_deflection: '去掉伪开放伪谦逊话术，直接陈述结论或明确局限',
