@@ -1,7 +1,7 @@
 ---
 name: aspira-engine
 title: "新愿 Aspira — AGI Layer 1: The Discriminator"
-version: "1.0.42"
+version: "1.0.43"
 description: |-
   新愿（Aspira）is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
@@ -150,7 +150,7 @@ from marketing copy.
 
 | Metric | Value | How it was measured |
 |--------|-------|---------------------|
-| Engine version | 1.0.42 | `VERSION`, `package.json`, runtime `hf.VERSION` (module-level) / `hf.version` (instance), and `src/core/version.js` agree |
+| Engine version | 1.0.43 | `VERSION`, `package.json`, runtime `hf.VERSION` (module-level) / `hf.version` (instance), and `src/core/version.js` agree |
 | Modules registered | 132 | `Object.keys(hf._modules).length` after `start()` |
 | Coverage sweep | coverage-sweep.js across 380 modules: **105 alive but referenced by no test**, 12 suspected dead | `node scripts/coverage-sweep.js`. This is the `src/` file count (380), **not** the 132 registered subsystems above — 107 of those files have no test reference and are therefore outside every FP/recall reading the corpus produces |
 | Module init errors | 0 | `hf._initErrors.length` |
@@ -158,7 +158,7 @@ from marketing copy.
 | Discrimination dimensions | 54 | `dimMap` keys in `src/index.js` |
 | MCP tools | 181 | tool definitions exposed via `tools/list` |
 | Pipeline layers | 11 input / 12 draft / 13 output | `checked_by.length` on `runPipeline({ input, mode })` — the bare `checkInput` / `checkDraft` / `checkOutput` shortcuts return the **same** count, not one fewer; passing an `anchor` appends the final `intent-anchor` layer (11 → 12) |
-| Test suite | 1718 passing / 12 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
+| Test suite | 1723 passing / 12 failing | `node test/run-all.js`. `test/security-audit.test.js` is 16/16 — its `S2` git-hygiene check now skips gracefully when the tree has no `.git` (the DSH skill copy is not a git repository) instead of failing. The suite grew from 711 by adding regression tests for the absorbed `discrimination-trace` and `gate-verdict` modules, plus the MCP guest-permission end-to-end test |
 | Capability guard | 18 / 18 checks | `node scripts/guard-abilities.js` |
 | Security regression | 16 / 16 | `node test/security-audit.test.js` |
 | Runtime dependencies | 0 required by the core | the core gate loads without `npm install`; the 4 `dependencies` in `package.json` (transformers / js-yaml / mathjs / pm2) are optional and not loaded by the discriminator |

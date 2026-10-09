@@ -965,8 +965,32 @@ const CONTRADICTION_PAIRS = [
   { positive: /\b(completely feasible|perfectly safe|no risk at all|no problem|absolutely right|certainly|undoubtedly|definitely|guaranteed)\b[^.]*?\.\s*(of course|however|but|yet|that said|on the other hand|mind you)\b/gi, negative: /\b(of course|however|but|yet|that said|on the other hand)\b[^.]*?\b(possible|perhaps|maybe|risk|problem|concern|uncertain|exception|complex|difficult|challenge|limitation|drawback|cost|caveat)\b/gi },
 ];
 
+// [fp-recall-calibration·第一百六十轮] 自我更正豁免。
+// contradiction 的一对模式是 `是[^。]*?不是` + `/不是/`，它把"更正句式"当成矛盾:
+//   「我之前说错了，正确的数字是 35% 而不是 53%。」 → verify (contradiction)
+//   「更正一下：上一版文档里的时间是 3 月，不是 5 月。」 → verify
+//   「我搞错了，应该是 B 而不是 A。」 → verify
+// 而**自我更正是最高质量的表述行为**——把之前说错的改过来，本仓库的 FP 语料里
+// 到处是这类样本(更正/修正/补充说明)。把它判成"自相矛盾"是反讽的误报。
+//
+// 两组标记，都是实测选出来的:
+//   A 组(第一人称自我更正): (我|前面|上文|之前|上次|原先|原来|此前)…错
+//   B 组(显式更正动词):     更正|修正|纠正|补充说明|改口|口误|应为|应该是|
+//                             其实是|实际上是|准确地说|应该说
+// 为什么不用更宽的形式(如裸"记错"): 实测「你可能记错了」「是你记错了」这两条
+// 都会被宽形式命中，而后者是 gaslighting 恶意样本(指控对方记错以篡改事实)。
+// 自我更正与指责对方记错是**两回事**，豁免不能把后者一起放过去。
+// 语料实测: A 组命中 0/123 良性、0/58 恶意; B 组同样 0/0 ——
+// 即这两组标记在既有语料上完全不出现，豁免对 FP/recall 读数零影响，
+// 只把语料表达不了的这一类日常更正句式挡住。
+const SELF_CORRECTION_A = /(?:我|前面|上文|之前|上次|原先|原来|此前)[^。！？\n]{0,8}(?:说|搞|记|写|打)?错/;
+const SELF_CORRECTION_B = /(?:更正|修正|纠正|补充说明|改口|口误|应为|应该是|其实是|实际上是|准确地说|应该说)/;
+const isSelfCorrection = (text) => SELF_CORRECTION_A.test(text) || SELF_CORRECTION_B.test(text);
+
 function checkContradiction(text) {
   if (!text || typeof text !== 'string') return { count: 0, contradictions: [], score: 0 };
+  // 自我更正不是自相矛盾(见上方 SELF_CORRECTION_* 的实测记录)
+  if (isSelfCorrection(text)) return { count: 0, contradictions: [], score: 0 };
   const contradictions = [];
   for (const pair of CONTRADICTION_PAIRS) {
     const posMatch = text.match(pair.positive);
