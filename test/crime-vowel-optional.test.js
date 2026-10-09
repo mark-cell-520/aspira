@@ -179,8 +179,14 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     const chkBody = src.slice(iChk, src.indexOf('\n}', iChk));
     assertTrue(/if \(orig\.test\(text\)\) continue/.test(chkBody),
       '接入必须是两段: 原模式已中则跳过(明文命中由 7c 层负责)');
-    assertTrue(/vowelOpt\.test\(text\)/.test(chkBody),
-      '接入必须测 vowel-optional 版');
+    // [fp-recall-calibration·第一百八十三轮] 断言对象从 vowelOpt.test(text) 改成
+    // vowelOpt.test(\S): 本轮给 checkVowelStripCrimeFamily 加了拉丁字母间空白的
+    // 整段折叠, 匹配对象从原始 text 变成折叠后的 t(未折叠时 t === text)。
+    // 断言的本意(接入必须测 vowel-optional 版)不变, 只是变量名变了 ——
+    // 与 coverage-sweep 锚点连锁同族: 覆盖推进/实现细化会让按字面量搜索的锁失效,
+    // 此时该修锁的锚点而不是把实现改回去。
+    assertTrue(/vowelOpt\.test\(\w+\)/.test(chkBody),
+      '接入必须测 vowel-optional 版(text 或折叠后的 t)');
     // 4.3 阶段 1 必须在函数内
     assertTrue(/vow \/ lat > 0\.02/.test(chkBody),
       '阶段 1(整段去元音形态判据)必须在函数内 —— 没有它良性英文句会被泛化匹配');

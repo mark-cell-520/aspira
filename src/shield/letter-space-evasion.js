@@ -250,6 +250,22 @@ function spaceTolerant(source) {
  *
  * 状态机与 spaceTolerant 相同: 跳过字符类 [...](里面的元音是语义的一部分,
  * 如 [aeiou] 自身)、跳过反斜杠转义(\w/\s/\b 里的字母不是字面字母)。
+ *
+ * [fp-recall-calibration·第一百八十三轮] `\s+` / `\s*` 一律编译成 `\s*`。
+ *
+ * 由来: 本轮用临时探针测**变换组合**(此前仪器只测单类), 发现"去元音 + 字母间
+ * 插空格"叠加后 4 条社工框架样本从 rewrite 变 pass。控制测量确认这 4 条是
+ * **组合新增**(单去元音拦得住, 叠加后漏), 不是去元音的既有残余。
+ *
+ * 根因: 归一化层的 strip_letter_space / collapse_letter_space_full 会把字母间
+ * 空格折叠掉, 于是模式里的 `how\s+to` 在折叠产物 "…hwtpcklck." 里无处可配
+ * —— `\s+` 要求至少一个空白, 而折叠把词间空白删了。实测同一个模式:
+ *   未折叠(逗号后仍有空格) → 命中; 折叠后 → 不命中。
+ *
+ * 为什么 `\s*` 安全(仍是严格超集): `\s*` 匹配**零个**空白, 所以它只是把
+ * "必须有空白"放宽成"可有可有", 与 `[aeiou]?` 同一性质 —— 辅音骨架与词序
+ * 要求一个都没松。实测三形态全通(折叠版/空格版/明文各命中 1 条模式),
+ * 且 137 条良性语料在"去元音 + 阶段 1 形态判据"下误报 **0**。
  */
 function vowelOptional(source) {
   let out = '';
@@ -257,7 +273,13 @@ function vowelOptional(source) {
   for (let i = 0; i < source.length; i++) {
     const c = source[i];
     if (c === '\\') {
-      out += c + (source[i + 1] || ''); i++; continue;
+      const n = source[i + 1];
+      // [第一百八十三轮] \s+ / \s* → \s*: 折叠会删掉词间空白, 要求至少一个
+      // 空白的量词在折叠产物上永远配不上。\w+ 之类的量词不动(它们不涉及空白)。
+      if (n === 's' && (source[i + 2] === '+' || source[i + 2] === '*')) {
+        out += '\\s*'; i += 2; continue;
+      }
+      out += c + (n || ''); i++; continue;
     }
     if (inClass) { out += c; if (c === ']') inClass = false; continue; }
     if (c === '[') { inClass = true; out += c; continue; }
@@ -437,11 +459,37 @@ function checkVowelStripCrimeFamily(text) {
   const vow = (text.match(/[aeiouAEIOU]/g) || []).length;
   if (vow / lat > 0.02) return { detected: false, hits: [] };
 
+  // [fp-recall-calibration·第一百八十三轮] 拉丁字母间空白的整段折叠。
+  //
+  // 由来: 本轮用临时探针测**变换组合**(此前仪器只测单类), 发现"去元音 +
+  // 字母间插空格"叠加后 4 条社工框架样本从 rewrite 变 pass。控制测量确认这
+  // 4 条是**组合新增**(单去元音拦得住), 不是去元音的既有残余。
+  //
+  // 根因两层:
+  //  (a) 本函数由 adversarial-variant 层调用, 而那一层收到的是**未归一化的
+  //      原始 input**(pipeline.js:159 `checkAdversarialVariant(input)`), 所以
+  //      text-normalizer 的 strip_letter_space 折叠产物到不了这里;
+  //  (b) 7c 模式里有 `how\s+to` 这类**词间空白**要求, 而字母空格变换的产物
+  //      正是把词间空白拆开的状态。
+  // 实测(修复前): checkVowelStripCrimeFamily(未折叠) → false; 同一个字符串
+  // 手工折叠后 → true, 且 checkOutput(折叠版) → rewrite。
+  //
+  // 判据与阶段 1 及 collapse_cjk_space 同族(整段形态, 只还原不判断):
+  // 拉丁字母数 >= 12 且"字母后紧跟空白"比例 >= 0.6。实测该变换产物的比例是
+  // 0.683(字母成对分组, 非均匀单字母), 故 0.6 这个门槛能覆盖它。
+  // 良性侧: 137 条良性语料在同样判据下不进入折叠(正常英文句的比例远低于
+  // 0.6), 所以不会把良性文本粘成一团。
+  let t = text;
+  const _latGap = (t.match(/[A-Za-z]\s/g) || []).length;
+  if (_latGap / lat >= 0.6) {
+    t = t.replace(/([A-Za-z])\s+/g, '$1');
+  }
+
   const hits = [];
   for (const { orig, vowelOpt } of CRIME_VOWEL_COMPILED) {
     if (orig.test(text)) continue;          // 明文命中由 7c 层负责
-    if (!vowelOpt.test(text)) continue;     // vowelOpt 是超集, 原版不中才算混淆
-    const m = text.match(vowelOpt);
+    if (!vowelOpt.test(t)) continue;        // vowelOpt 是超集, 原版不中才算混淆
+    const m = t.match(vowelOpt);
     if (m) hits.push({ term: 'crime_family_vowel', match: m[0].slice(0, 40) });
   }
   return { detected: hits.length > 0, hits };
