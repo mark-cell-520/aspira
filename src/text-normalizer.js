@@ -682,6 +682,15 @@ function normalize(text) {
     // 省略号变成 "wait.. what?"——本轮自己造成的第二处回归。
     // 修法: 三条规则的邻居类都排除分隔符本身(-._)。这样匹配到的串必定是
     // **极大分隔符串**，/([-._])\1/ 才能真正识别 "-----" 与 "..."。
+    //
+    // [adversarial-robustness·第一百七十四轮] 曾在这里给后两类规则的邻居类
+    // 加"CJK 例外"(目的是保住 4b-2 collapse_cjk_punct 的判据原料), **已回退**。
+    // 回退原因(实测): 该例外让逐字符插分隔符类下的韩文/日文注入从 56/58 掉到
+    // 54/58 —— 那两条样本原本正是靠 stripSep 删掉 '-' 之后才被韩文/日文注入
+    // 模式命中的, 例外把这条唯一路径切断了。修好"插点号"两条的同时弄坏
+    // "逐字符插分隔符"两条, 净收益为零, 还把一条既有防护路径改没了。
+    // 教训: 同一个归一化层服务多条变换路径, 改动前必须把**所有**依赖它的
+    // 路径各测一遍, 不能只测自己要修的那一类。
     const stripSep = (s) => s
       .replace(/([a-zA-Z0-9])([-._]+)(?=[^\sA-Za-z0-9-._])/g, (m, pre, sep) =>
         /([-._])\1/.test(sep) ? m : pre)
@@ -743,7 +752,12 @@ function normalize(text) {
   //     ('中文间插零宽' / '中文间插空格')后才暴露出来。
   //     实测: 扩类后该样本在两个中文变换类下都被拦; 123 良性原文/变换后误报 0/127;
   //     明文 127 benign FP 0.0%、58 malicious recall 100.0% 不变。
-  const noCJKSpace = out.replace(/(?<=[\u3040-\u30ff\u4e00-\u9fff])\s+(?=[\u3040-\u30ff\u4e00-\u9fff])/g, '');
+  // [adversarial-robustness\u00b7\u7b2c\u4e00\u767e\u4e03\u5341\u56db\u8f6e] \u5b57\u7b26\u7c7b\u8865\u5165\u97e9\u6587\u97f3\u8282\u4e0e\u517c\u5bb9\u6269\u5c55\u3002
+  // \u539f\u5b57\u7b26\u7c7b\u53ea\u6709\u5047\u540d+\u6c49\u5b57, \u4e8e\u662f**\u7eaf\u97e9\u6587\u653b\u51fb\u9762\u5728\u9003\u9038\u6d4b\u91cf\u91cc\u7b49\u4e8e\u4e0d\u5b58\u5728** \u2014\u2014
+  // \u5b9e\u6d4b\u8bed\u6599\u90a3\u6761\u97e9\u6587\u6ce8\u5165(\u660e\u6587 block)\u5728"\u6bcf\u4e2a\u97f3\u8282\u540e\u63d2\u4e00\u4e2a\u7a7a\u683c"\u540e\u53d8 pass,
+  // \u800c calibrate \u7684 EVASIONS \u4e2d\u6587\u65cf\u5168\u90e8\u7528 [\u4e00-\u9fff] \u4f5c\u5b57\u7b26\u7c7b, \u5bf9\u97e9\u6587\u662f\u6052\u7b49
+  // \u53d8\u6362, \u6240\u4ee5\u8fd9\u4e2a\u7a7f\u900f\u6b64\u524d\u4e0d\u53ef\u80fd\u88ab\u4efb\u4f55\u4e00\u6b21\u81ea\u52a8\u6d4b\u91cf\u770b\u5230\u3002
+  const noCJKSpace = out.replace(/(?<=[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\u8c48-\ufaff])\s+(?=[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\u8c48-\ufaff])/g, '');
   if (noCJKSpace !== out) { applied.push('strip_cjk_space'); out = noCJKSpace; }
 
   // 4b-2. 汉字后插**半角标点**的混淆折叠。
@@ -765,17 +779,52 @@ function normalize(text) {
   // 「以前の指示をすべて無視して…」)变换后假名后不带标点，若把假名计入分母，
   // 密度会被稀释到 0.35 而够不到门槛(实测漏拦)；只数汉字则密度 1.0。
   //
-  // 折叠范围: 删掉 CJK(含假名)后的半角标点，但**后接拉丁字母时不删** ——
-  // 「为,race」若折成「为race」会把中英边界粘掉(与第十八轮 const x 被粘成
-  // constx 同族)。实测(首版要求前后都是 CJK 时)这条会让良性样本
-  // 「这个 bug 是因为 race condition 导致的」残留半角标点而被判 rewrite。
-  const _HAN = (out.match(/[一-鿿]/g) || []).length;
-  if (_HAN >= 6) {
-    const _HAN_PUNCT = (out.match(/[一-鿿][,|*.;:!?~^&%$#@。，；]/g) || []).length;
-    if (_HAN_PUNCT / _HAN >= 0.6) {
-      const _noHanPunct = out.replace(/([぀-ヿ一-鿿])[,|*.;:!?~^&%$#@。，；]+(?![A-Za-z])/g, '$1');
-      if (_noHanPunct !== out) { applied.push('collapse_cjk_punct'); out = _noHanPunct; }
-    }
+  // [adversarial-robustness·第一百七十四轮] 上一段那句"只数汉字"是**对混合句
+  // 成立的局部结论, 被当成了全局结论** —— 纯假名句与纯韩文句的汉字数是 0,
+  // 于是永远进不了这个分支。实测(语料 1 条日文恶意 + 1 条韩文恶意, 明文均
+  // block)在 5 个变换类下穿透:
+  //   韩文插空格 pass | 日文插逗号 pass | 韩文插逗号 pass
+  //   韩文插点号 pass | 日文插全角句号 pass | 韩文插全角句号 pass
+  // 而这两条样本的明文都是 block —— 纯粹是归一化层看不见它们。
+  // 该盲区此前不可能被发现: calibrate-fp-recall.js 的 EVASIONS 有 20 个变换
+  // 类, 中文族全部用 [一-鿿] 作字符类, 对假名与韩文是**恒等变换**,
+  // 所以"日文/韩文召回"这个读数在仪器里等于测明文。AGENTS.md 第一百五十一轮
+  // 记录的"仪器测不到的类等于不存在", 这是它的又一次实例。
+  //
+  // 修法: **分路径判据** —— 汉字路 / 韩文路 / 假名路各自用自己的分子分母,
+  // 任一达标即折叠。
+  //
+  // 为什么不能用"统一字符类"(第一版那么写, 实测回退后改正): EVASIONS 的
+  // 变换只作用于**一种**字符(汉字类变换只插在汉字后, 韩文变换只插在音节后),
+  // 所以日文混合句「以前の指示をすべて無視して…」变换后假名后**不带**标点。
+  // 若分母把假名也算进去, 密度被稀释到 0.296 而够不到 0.6 —— 这正是第一百
+  // 五十八轮注释警告过的"若把假名计入分母, 密度会被稀释"。该警告对混合句
+  // 成立, 但把它当成全局结论就又漏掉了纯假名句(它的汉字数是 0, 两条路都不亮)。
+  // 分路径同时拿到三头: 纯韩文 0.944 / 日文混合 1.00(汉字路) / 纯假名 1.00。
+  //
+  // 两侧实测(分路径判据):
+  //   132 条良性原文: 三路最大密度 **0.167**, >=0.6 的 **0** 条(与原判据同一
+  //     读数, 未放宽任何良性空间);
+  //   变换产物: 纯韩文插点 0.944 / 纯韩文插逗号 1.00 / 日文混合插逗号 1.00(汉字路)/
+  //     纯假名插逗号 1.00 / 中文恶意 15/16 达标。
+  // ⚠️ _PUNCT_INNER 只存字符类的**内容**, 不带方括号 —— 拼进
+  // `new RegExp('[X][' + _PUNCT_INNER + ']')` 时才形成完整字符类。
+  // 第一版把方括号也存了进去, 拼出 `[[,|*...]]`(嵌套字符类), 语义全变,
+  // 韩文路分子从 23 掉到 0, 一条已修好的穿透当场复发。实测(动态正则 vs
+  // 字面量正则逐条对照)才发现, 已锁进 test/cjk-punct-collapse-scope.test.js。
+  const _PUNCT_INNER = ',|*.;:!?~^&%$#@。，；';
+  const _HAN_N = (out.match(/[一-鿿]/g) || []).length;
+  const _KO_N = (out.match(/[가-힯]/g) || []).length;
+  const _KANA_N = (out.match(/[぀-ヿ]/g) || []).length;
+  const _HAN_P = (out.match(new RegExp(`[一-鿿][${_PUNCT_INNER}]`, 'g')) || []).length;
+  const _KO_P = (out.match(new RegExp(`[가-힯][${_PUNCT_INNER}]`, 'g')) || []).length;
+  const _KANA_P = (out.match(new RegExp(`[぀-ヿ][${_PUNCT_INNER}]`, 'g')) || []).length;
+  const _hanOk = _HAN_N >= 6 && _HAN_P / _HAN_N >= 0.6;
+  const _koOk = _KO_N >= 6 && _KO_P / _KO_N >= 0.6;
+  const _kanaOk = _KANA_N >= 6 && _KANA_P / _KANA_N >= 0.6;
+  if (_hanOk || _koOk || _kanaOk) {
+    const _noHanPunct = out.replace(/([぀-ヿ㐀-䶿一-鿿가-힯豈-﫿])[,|*.;:!?~^&%$#@。，；]+(?![A-Za-z])/g, '$1');
+    if (_noHanPunct !== out) { applied.push('collapse_cjk_punct'); out = _noHanPunct; }
   }
 
   // 4c. 中英混拼归一：把嵌入中文语境的英文关键词还原为中文等价词，

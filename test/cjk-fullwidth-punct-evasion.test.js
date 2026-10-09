@@ -99,10 +99,13 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   });
 
   // ── 三、源级: 判据与折叠的字符类都必须含全角三兄弟 ──────
+  // [adversarial-robustness·第一百七十四轮] 切片起点原锚在 `const _HAN_PUNCT`
+  // 上, 该变量在第一百七十四轮的分路径重构里改名(_PUNCT_INNER 承载字符类内容)。
+  // 断言的本意(判据与折叠两处都含全角三兄弟)不变, 故改锚点为 _PUNCT_INNER。
   test('源级: collapse_cjk_punct 的判据与折叠都必须覆盖全角标点', () => {
     const src = fs.readFileSync(path.join(ROOT, 'src', 'text-normalizer.js'), 'utf8')
       .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-    const seg = src.slice(src.indexOf('const _HAN_PUNCT'), src.indexOf('collapse_cjk_punct') + 30);
+    const seg = src.slice(src.indexOf('_PUNCT_INNER ='), src.indexOf('collapse_cjk_punct') + 30);
     assertTrue(seg.includes('。') && seg.includes('，') && seg.includes('；'),
       '判据与折叠的字符类都必须含全角三兄弟(。，；) —— 只含半角时全角句号类 11/18 穿透');
     // 两处(判据统计 + 折叠正则)都要覆盖
@@ -110,7 +113,7 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertTrue(occurrences >= 6,
       `判据与折叠两处都该含全角三兄弟(共 6 个字符), 实测 ${occurrences} 个 —— 有一处漏了`);
     // 自证: 谓词必须能判"只含半角"为缺陷
-    const halfOnly = "const _HAN_PUNCT = (out.match(/[一-鿿][,|*.;:!?~^&%$#@]/g) || []).length;";
+    const halfOnly = "const _PUNCT_INNER = ',|*.;:!?~^&%$#@';";
     assertTrue(!/[。，；]/.test(halfOnly), '自证失效: 谓词分不清全角与半角, 本条是恒真锁');
   });
 

@@ -105,17 +105,25 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   });
 
   // ── 三、源级: 判据与折叠的四道门槛 ──────────────────────
+  // [adversarial-robustness·第一百七十四轮] 本条的①②③原锚在变量名
+  // (`_HAN >= 6` / `_HAN_PUNCT = (out.match(/[一-鿿][`) 上。第一百七十四轮把
+  // 判据重构为**汉字路/韩文路/假名路三条**, 变量随之改名(_HAN_N/_HAN_P/
+  // _KO_N/_KO_P/_KANA_N/_KANA_P), 三条断言当场失效。
+  // 断言的本意(汉字数门槛、密度门槛、分子只数汉字、不粘中英边界)在分路径版
+  // 里**全部仍然成立**, 只是形态变了 —— 所以修锁的锚点而不是把代码改回去。
+  // 分路径版的锁在 test/cjk-punct-collapse-scope.test.js(6 例, 四方向变异)。
   test('源级: collapse_cjk_punct 的判据与折叠范围必须正确', () => {
     const src = fs.readFileSync(path.join(ROOT, 'src', 'text-normalizer.js'), 'utf8')
       .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
     assertTrue(src.includes('collapse_cjk_punct'), '必须记录 collapse_cjk_punct 变换');
-    const seg = src.slice(src.indexOf('collapse_cjk_punct') - 900, src.indexOf('collapse_cjk_punct'));
-    // ① 汉字数门槛
-    assertTrue(/_HAN\s*>=\s*6/.test(seg), '必须有 汉字数>=6 门槛');
+    const seg = src.slice(src.indexOf('collapse_cjk_punct') - 1400, src.indexOf('collapse_cjk_punct'));
+    // ① 汉字数门槛(分路径后是 _HAN_N, 阈值 6 不变)
+    assertTrue(/_HAN_N\s*>=\s*6/.test(seg), '必须有 汉字数>=6 门槛');
     // ② 密度门槛 0.6
     assertTrue(/0\.6/.test(seg), '必须有 汉字后半角标点比例>=0.6 门槛');
     // ③ 分子只数汉字(不数假名) —— 日文混汉字样本靠这条才够密度
-    assertTrue(seg.includes('_HAN_PUNCT = (out.match(/[一-鿿]['),
+    //    分路径后形态是 new RegExp(`[一-鿿][${_PUNCT_INNER}]`)
+    assertTrue(seg.includes('_HAN_P = (out.match(new RegExp(`[一-鿿][${_PUNCT_INNER}]`'),
       '密度分子必须只数汉字(不含假名) —— 否则日文混汉字注入的密度被稀释到 0.35');
     // ④ 折叠不得粘掉中英边界
     assertTrue(/\(\?!\[A-Za-z\]\)/.test(seg),
