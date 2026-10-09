@@ -664,6 +664,7 @@ const NARRATIVE = /removed|was written|was\s|were\s|曾是|已删|此前|原先|
 
 function claims() {
   const out = [];
+  const HITS = new Map();   // [第一百六十五轮] 死 pattern 自检: what → 全部文档的总匹配数
   for (const f of DOCS_RECURSIVE) {
     // [第九轮] 标记当前文档是否为引擎自述文档，供 selfRef 判断作用域。
     // 只对**顶层**文件生效: 子目录里若也有 README.md(如
@@ -1005,7 +1006,9 @@ function claims() {
     for (const p of pats) {
       let mm;
       const re = new RegExp(p.re.source, 'g');
+      let _nMatch = 0;   // [第一百六十五轮] 死 pattern 自检: 数这条模式真的匹配到几次
       while ((mm = re.exec(s)) !== null) {
+        _nMatch++;
         // reject 过滤器: 排除「匹配到了但不是引擎当前规模声称」的假阳性。
         // 没有 reject 的模式行为不变。
         // ── [第九轮] 通用判据: 行内代码跨度内的数字是被引用的字面量 ──
@@ -1031,8 +1034,26 @@ function claims() {
         if (typeof p.reject === 'function' && notScoped(s, mm.index)) continue;
         out.push({ doc: f, what: p.what, key: p.key, claimed: mm[1] });
       }
+      // [doc-honest-numbers·第一百六十五轮] 死 pattern 自检。
+      // 一条 re 写在 pats 里却**在所有文档都 0 匹配**，它看起来在检查，实际永远
+      // 空转 —— 与 cycle 154 记录的 "measured but no pattern" 是同一形状的反面:
+      // 那次是"有声称没模式"，这次是"有模式没声称"。两者共同后果是 pats 表
+      // 的**表面覆盖比真实覆盖更全**，读者无法从全绿报告里看出差别。
+      // 本轮实测(重跑 cycle 8 穷举枚举后): 7 条死 pattern，全部是"为不存在的
+      // 形态而写"的中文/英文防御性 pattern(文档实际不用"个维度/个测试/tests
+      // passing"这些措辞，表格形态的数字在标签之后而散文模式要求数字在前)。
+      // **不删它们** —— 删掉就丢了将来的防线(IDENTITY.md 的"分 7 大域"正是
+      // 中文形态漂移而英文 pattern 抓不到，见 cycle 164)。改为把死 pattern
+      // **报出来**，让 pats 表的真实覆盖率可见。
+      HITS.set(p.what, (HITS.get(p.what) || 0) + _nMatch);
     }
   }
+  // 死 pattern = 该模式在**所有**文档的总匹配数为 0。
+  // 必须用总数判死，不能按文档判: pats 是全局列表(每份文档都跑同一份)，
+  // 一条只在 SKILL.md 出现过的 pattern 会在其余文档里 0 匹配 —— 按文档判
+  // 会把这种假阳性算成死 pattern(本轮实测 49 条里绝大多数是它，与 cycle 11/16
+  // 记录的"仪器报自己的局限为引擎缺陷"同族)。
+  out.dead = [...HITS.entries()].filter(([, n]) => n === 0).map(([what]) => ({ what }));
   return out;
 }
 
@@ -1549,6 +1570,17 @@ if (process.argv.includes('--json')) {
     + '这个百分比是**有构成说明的下界**而非疏漏率——"可审 ${nScannable}" 里仍含序数、括号内引用、'
     + '叙事引用、多义形态(如中文「N 维度」)等已知不审类别，故真实可审集比它更小、百分比比它更高)');
   console.log(`\n文档声称总数: ${rows.length} | 与实测一致: ${okRows.length} | 不一致: ${bad.length} | 无法实测: ${unmeasurable.length}`);
+  // [第一百六十五轮] 死 pattern 自检: 写在 pats 里但所有文档 0 匹配的模式。
+  // 不删(它们是防御性 pattern)，但必须报出来 —— 否则 pats 表的表面覆盖
+  // 比真实覆盖更全，而全绿报告看不出这个差别。
+  const _dead = cl.dead || [];
+  if (_dead.length) {
+    console.log(`  ⚠️ 死 pattern ${_dead.length} 条(写在 pats 里但在全部 ${DOCS_RECURSIVE.length} 份文档总匹配数为 0 —— 看起来在检查，实际永远空转):`);
+    for (const d of _dead) console.log(`     · ${d.what}`);
+    console.log('     (不删: 它们是防御性 pattern —— 删掉就丢了将来的防线，IDENTITY.md 的'
+      + '「分 7 大域」正是中文形态漂移而英文 pattern 抓不到，见第一百六十四轮。'
+      + '但要知道: pats 表的表面覆盖比真实覆盖更全，全绿报告看不出这个差别)');
+  }
   if (bad.length) {
     console.log('\n--- ❌ 与实测不符(必须修) ---');
     for (const r of bad) console.log(`  ${r.doc} 声称「${r.what} = ${r.claimed}」实测 ${r.actual}`);
