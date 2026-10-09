@@ -771,9 +771,9 @@ function normalize(text) {
   // 「这个 bug 是因为 race condition 导致的」残留半角标点而被判 rewrite。
   const _HAN = (out.match(/[一-鿿]/g) || []).length;
   if (_HAN >= 6) {
-    const _HAN_PUNCT = (out.match(/[一-鿿][,|*.;:!?~^&%$#@]/g) || []).length;
+    const _HAN_PUNCT = (out.match(/[一-鿿][,|*.;:!?~^&%$#@。，；]/g) || []).length;
     if (_HAN_PUNCT / _HAN >= 0.6) {
-      const _noHanPunct = out.replace(/([぀-ヿ一-鿿])[,|*.;:!?~^&%$#@]+(?![A-Za-z])/g, '$1');
+      const _noHanPunct = out.replace(/([぀-ヿ一-鿿])[,|*.;:!?~^&%$#@。，；]+(?![A-Za-z])/g, '$1');
       if (_noHanPunct !== out) { applied.push('collapse_cjk_punct'); out = _noHanPunct; }
     }
   }
