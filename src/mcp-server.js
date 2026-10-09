@@ -2904,7 +2904,9 @@ function handleFormulaCalculate(args) {
 
 function handleBridgeAnalyze(args) {
   const { input } = args;
-  if (!input) throw new Error('input is required');
+  // [mcp-tool-enhancement·第一百五十七轮] 与其余 17 个 throw 型工具一致的中文形态。
+  // 实测 18 个 throw 型工具里 16 个是 "X 是必填参数"，本工具是唯一一个英文的。
+  if (!input) throw new Error('input 是必填参数');
   try {
     const { ToneAnalyzer } = require('./bridge/tone-analyzer.js');  
     const { ConfidenceAnnotator } = require('./bridge/confidence-annotator.js');  
@@ -5009,14 +5011,40 @@ async function handleRequest(request, sessionId) {
       let result;
 
       // 兼容两种签名：handler(args) 和 handler(args, sessionId)
-
+      //
+      // [mcp-tool-enhancement·第一百五十七轮] 第二次调用也要接住。
+      // 原结构里第二次调用**没有自己的 try** —— 它一 throw 就逃出
+      // case 'tools/call'，一路冒到 HTTP 层的 catch，变成 JSON-RPC 的 -32603
+      // Internal error，而不是工具层那个 {error: …} 响应。
+      //
+      // 实测 181 个工具里 **18 个**用 `throw new Error('X 是必填参数')` 做参数
+      // 校验(aspira_think / think_fast / memory_search / emotion / self_heal /
+      // provider_health / cost_tracking / decision_router / supervise / …)，
+      // 另外 163 个用 `return {error: …}`。两类形态对调用方是两回事:
+      //   · 163 个 → {content:[{text:'{"error":"input 是必填参数"}'}], isError:false}
+      //   · 18 个  → JSON-RPC 错误 {code:-32603, message:"input 是必填参数"}
+      // MCP 客户端按 result.error / isError 判断工具成败，-32603 走的是另一条路。
+      //
+      // 附带代价: 每个缺参请求**白跑两遍 handler**(第一次 throw 被吞，第二次
+      // 再 throw 逃逸)。对 async handler 那是两次无用的 Promise rejection。
+      //
+      // 修法: 第二次也包 try，转成与其它工具同形的 {error} 对象。消息仍经由
+      // 下面那段错误收敛(过滤绝对路径 / 截断超长)处理，行为一致。
       try {
 
         result = handler(args, sessionId);
 
       } catch (_) {
 
-        result = handler(args);
+        try {
+
+          result = handler(args);
+
+        } catch (e2) {
+
+          result = { error: (e2 && e2.message) ? String(e2.message) : 'handler 调用失败' };
+
+        }
 
       }
 
