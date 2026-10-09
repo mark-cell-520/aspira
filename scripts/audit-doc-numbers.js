@@ -575,7 +575,26 @@ function notRange(text, at) {
 //   notScoped 回答「它在说 aspira 的**总量**吗」
 // 第二问在自述文档里恰恰最常被问倒——因为自述文档里
 // 充斥着"这 2 个模块""那 8 个模块"的局部讨论。
-const SCOPED_BEFORE = /(?:tier|across|only|each|within|between|per|several|some)\s*[-–—:]?\s*$/i;
+//
+// [doc-honest-numbers·第一百七十七轮] 收窄: 移走 only / each / per / several /
+// some 五个词, 只留 tier / across / within / between。
+//
+// 为什么收窄: 这五个是**限量副词**, 不是局部计数标志。"across 8 modules" /
+// "tier 1 modules" 按构造就是在说一个子集, 排掉正确; 但 "the engine ships
+// only 181 MCP tools in total" 说的正是**总量**, 排掉就是吞掉一条真实声称。
+//
+// 实测(修复前, 注入验证):
+//   "The engine ships only 131 modules in total."      → 不一致 **0**(漏)
+//   "The engine ships 131 modules in total."           → 不一致 1(抓)
+// 更糟的是**部分覆盖**: 同一句 "ships only 180 MCP tools in total, and only
+// 131 modules are registered" 里, tools 被抓住(它的 pattern 命中点落在 only
+// 的 24 字符窗口之外)而 modules 没有 —— 一句里有的抓有的漏, 而报表是全绿的。
+// **一个只覆盖半句的检查, 比完全不覆盖更难发现。**
+//
+// 收窄的影响面已实测: 现有文档被旧闸门挡下的规模声称 9 处, 全部是
+// `across N modules` 形态(真正的局部计数), 新闸门放行其中 **0** 处 ——
+// 即这次收窄不产生任何新警报, 只是让"only + 总量"这一类将来进得来。
+const SCOPED_BEFORE = /(?:tier|across|within|between)\s*[-–—:]?\s*$/i;
 function notScoped(text, at) {
   const before = text.slice(Math.max(0, at - 24), at);
   if (SCOPED_BEFORE.test(before)) return 'scoped-count';
