@@ -1596,6 +1596,35 @@ if (process.argv.includes('--json')) {
     if (!missing.length && !fictional.length) console.log(`  ✓ 名单一致`);
     console.log(`  代码实测顺序: ${real.join(' → ')}`);
   }
+
+  // ── [doc-honest-numbers·第一百七十六轮] 能力域标题 vs 表格行数 ──
+  // 由来: `m.domainsTitle` 从第七轮起就被测出来(注释写着"若不测: 标题
+  // '7 domains' 与表格行数可以各自漂移而无人发现"), 但**它从未进入任何
+  // 比对** —— 实测全文只有一处赋值、零处读取。这是 cycle 11 记录的
+  // "measured, displayed, never compared" 形状, 而且这次连 displayed 都没有。
+  //
+  // 为什么 `domains` 那条 pattern 兜不住: 它匹配**任何** "N domains" 文本,
+  // 所以"标题写 9 而表格 8 行"会被报成 `README 声称 capability domains = 9
+  // 实测 8` —— 看着像覆盖了, 但报的是**同一处**。真正的漂移形状是反的:
+  // 表格加一行而标题忘了改, 此时 domains 读到的是新行数, 与别处文档的
+  // 旧值比对, 于是报错指向**另一份文档**(实测: 给 README 表格加一行,
+  // 审计报 IDENTITY.md 声称 8 实测 9), 而真正该改的 README 标题无人点名。
+  //
+  // 本节补上那个缺口: 标题数字与表格行数必须相等, 不等则指名 README。
+  if (m.domains != null && m.domainsTitle != null && String(m.domains) !== String(m.domainsTitle)) {
+    console.log('\n--- ❌ 能力域标题与表格行数不一致(README.md) ---');
+    console.log(`  标题声称 ${m.domainsTitle} domains, 实际表格 ${m.domains} 行`);
+    console.log('  这是**文档内部**的自洽性检验(不是文档 vs 代码): 域只是 README 的');
+    console.log('  分类视角, 引擎注册表里 132 个模块是平铺的, 没有 domain 一等概念。');
+    console.log('  修法: 改 `### Capability domains (N domains, ...)` 的 N 使之等于表格行数。');
+    console.log('  注意: 这种情况下上面那条 `capability domains = N` 的报错可能指向');
+    console.log('  **另一份文档**(因为 domains 读到的是新行数), 不要照着它改错文件。');
+    bad++;
+    process.exitCode = 1;
+  } else if (m.domains != null && m.domainsTitle != null) {
+    console.log(`\n--- 能力域标题 vs 表格行数(README.md) ---`);
+    console.log(`  ✓ 标题 ${m.domainsTitle} domains 与表格 ${m.domains} 行一致`);
+  }
   if (unmeasurable.length) {
     console.log('\n--- ⚠ 无法自动实测(需人工确认) ---');
     const seen = new Set();
