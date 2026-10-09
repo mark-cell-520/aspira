@@ -3956,8 +3956,24 @@ const ABSOLUTE_CLAIM_PATTERNS = {
   ],
 };
 
+// [fp-recall-calibration·第一百六十三轮] 商务承诺句式豁免。
+// absolute_claim 有一条模式 /(?:绝对|一定|必然|必定)[^。]{0,10}(?:是|会|能|行|对|错|好|坏)/，
+// 它把"承诺句式"一起抓了:
+//   「您的意见非常宝贵，我们一定会认真考虑。」 → rewrite (absolute_claim)
+//   「我们一定会尽快跟进这件事。」「我们一定会回复您的邮件。」同样。
+// 这些是**对过程与态度的承诺**，不是"对结果的绝对化断言" —— 后者才是本维度
+// 要抓的(「这个方案一定行」「这一定是唯一正确的答案」)。
+// 判据(实测 12/12): 第一人称主体(我们/我方/我司/咱们/团队/这边) + 一定/必定/必然
+// + 承诺动词(认真考虑/跟进/改进/处理/回复/反馈/核实/评估/研究/支持/配合/说明)。
+// 语料实测: absolute_claim 原本命中 2 条，全是真绝对化
+// (「所有人都知道这才是唯一可行的做法」/「Everyone agrees this is the only
+//  correct answer」)，豁免一条都不碰。
+const COMMITMENT_PROMISE = /(?:我们|我方|我司|咱们|团队|这边)[^。]{0,14}(?:一定|必定|必然)[^。]{0,6}(?:认真考虑|跟进|改进|处理|回复|反馈|核实|评估|研究|支持|配合|说明)/;
+
 function checkAbsoluteClaim(text) {
   if (!text || typeof text !== "string") return { count: 0, claims: [], score: 0 };
+  // 商务承诺不是绝对化断言
+  if (COMMITMENT_PROMISE.test(text)) return { count: 0, claims: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
   const patterns = [...ABSOLUTE_CLAIM_PATTERNS.zh, ...ABSOLUTE_CLAIM_PATTERNS.en];
   const claims = [];
