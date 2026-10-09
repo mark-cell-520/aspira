@@ -330,12 +330,37 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
 function buildResult(input, gate, checked_by, data) {
   // 合并 discriminate 的顶层字段 (overallScore, verdict, findings, dimensions)
   const discLayer = checked_by.find(l => l.layer === 'discriminate');
+  // [dimension-health-audit·第一百七十三轮] 把 output-gate 层的 findings
+  // 并入最终 findings。
+  //
+  // 缺陷: Layer 7 判出问题并把 gate 推到 rewrite 时, 它的 findings 只被写进
+  // `data.outputIssues`, 而**全文再无任何代码读这个字段**(实测 grep 全仓:
+  // 只有这一处赋值)。最终 findings 只取 discriminate 的。于是调用方收到
+  //   gate.action = 'rewrite'
+  //   gate.reason  = '输出含严重问题: overconfidence'
+  //   findings     = [{dimension:'none', severity:0, details:'未发现明显问题'}]
+  // —— 四个字段里三个说"没问题", 而 verdict 是"可信"、overallScore 满分。
+  //
+  // 后果不是少一行日志: AGENTS.md 的 gate 表明确告诉调用方 "rewrite → 按
+  // findings[].guidance 修", 而这里 findings 里没有任何 guidance 可读。
+  // 这是 cycle 27 perfect_error 的同族(能改 gate 却说不出原因), 只是这次
+  // 的原因被写进了另一个从未被读取的字段。
+  //
+  // 修法: 并入而非替换。discriminate 的 findings 保持在前(它们是 54 维的
+  // 主报告), output-gate 的追加在后, 按 severity 降序 —— 与 output-gate
+  // 自己 `findings.sort((a,b) => b.severity - a.severity)` 的口径一致,
+  // 所以 `findings[0]` 与 `gate.reason` 提到的维度仍然相同(层内已排序,
+  // 并入后重排不改变最严重项)。
+  const discFindings = data?.discriminate?.findings || [];
+  const outputFindings = Array.isArray(data?.outputIssues) ? data.outputIssues : [];
+  const merged = [...discFindings, ...outputFindings]
+    .sort((a, b) => (b.severity || 0) - (a.severity || 0));
   return {
     input: input.slice(0, 100),
     gate,
     verdict: discLayer?.verdict || '未检测',
     overallScore: discLayer?.score || 0,
-    findings: data?.discriminate?.findings || [],
+    findings: merged,
     checked_by,
     data: Object.keys(data).length > 0 ? data : undefined,
     summary: {
