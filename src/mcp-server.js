@@ -1092,8 +1092,58 @@ async function handleCheckSingle(args) {
   try {
     const hf = require(HF_DIR + '/src/index.js');
     // Convert dimension to CamelCase function name: factual_consistency → checkFactualConsistency
-    const fnName = 'check' + dimension.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
-    const fn = hf[fnName];
+    let fnName = 'check' + dimension.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+    // [mcp-tool-enhancement·第一百八十轮] 维度名 → 检查函数的显式映射。
+    //
+    // 两类断链, 都是"一个接口输出的字段值不是另一个接口接受的输入":
+    //
+    // (a) **别名键**: checkOutput 的 findings 报 `dimension: 'bullshit'`(dimMap 的
+    //     别名键, AGENTS.md cycle 27 记录的三处命名不一致), 机械 snake→Camel 得到
+    //     checkBullshit 不存在, 于是报"维度不存在"。而其余 52 个都通 ——
+    //     **部分覆盖比完全不覆盖更难发现**。
+    //
+    // (b) **跨模块维度**: 54 个 dimensions{} 键里有 8 个在 index.js 顶层没有对应
+    //     的 check* 导出, 它们的函数住在别的模块(manipulation-tactics /
+    //     dangerous-instruction / perfect-error / reward-hacking), 所以本工具
+    //     一律报"维度不存在"。这 8 个全部列在 AGENTS.md 的维度表里 —— 那是给
+    //     agent 的契约, 而契约上的名字一个都调不通。
+    //     实测(修复前): confidence / appeal_to_authority_boost / perfect_error /
+    //     phishing_coercion / induced_trust / coverup_induction /
+    //     dangerous_instruction / reward_hacking 共 8 个全部失败。
+    //
+    // 注意 appeal_to_authority_boost 是**反方向**的: 它是 AGENTS.md 与
+    // dimensions{} 的正式键名, 而真实函数叫 checkAppealToAuthority(无 Boost)。
+    // 映射表与 scripts/dimension-health-audit.js 的 FINDING_ALIAS 保持同源。
+    const DIMENSION_FN = {
+      // (a) 别名键
+      bullshit: 'checkBullshitRecognition',
+      appeal_to_authority: 'checkAppealToAuthority',
+      // (b) 跨模块 + 键名与函数名不一致
+      appeal_to_authority_boost: 'checkAppealToAuthority',
+      confidence: 'checkConfidenceCalibration',
+      perfect_error: 'checkPerfectError',
+      phishing_coercion: 'checkPhishingCoercion',
+      induced_trust: 'checkInducedTrust',
+      coverup_induction: 'checkCoverupInduction',
+      dangerous_instruction: 'checkDangerousInstruction',
+      reward_hacking: 'checkRewardHacking',
+    };
+    if (DIMENSION_FN[dimension]) fnName = DIMENSION_FN[dimension];
+    let fn = hf[fnName];
+    // 跨模块的 5 个不在 index.js 导出表里, 按需 require
+    if (!fn) {
+      try {
+        if (dimension === 'phishing_coercion' || dimension === 'induced_trust' || dimension === 'coverup_induction') {
+          fn = require(HF_DIR + '/src/manipulation-tactics.js')[fnName];
+        } else if (dimension === 'dangerous_instruction') {
+          fn = require(HF_DIR + '/src/dangerous-instruction.js')[fnName];
+        } else if (dimension === 'perfect_error') {
+          fn = require(HF_DIR + '/src/perfect-error.js')[fnName];
+        } else if (dimension === 'reward_hacking') {
+          fn = require(HF_DIR + '/src/reward-hacking.js')[fnName];
+        }
+      } catch (_) { /* 模块缺失时落到下面的报错分支 */ }
+    }
     if (!fn) {
       const avail = Object.keys(hf).filter(k => k.startsWith('check')).sort();
       return { error: `维度 ${dimension} (${fnName}) 不存在`, available: avail };
