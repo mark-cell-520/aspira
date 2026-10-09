@@ -998,17 +998,32 @@ class Blackboard {
 
   add(entry) {
 
+    // [test-coverage-gap·第一百七十轮] 入口校验。
+    // 原实现直接 push，传入 undefined/null 后 entries 里混入非对象条目，
+    // 之后 getByType / getByAgent 对 undefined 取字段直接抛 TypeError ——
+    // 一次 add(undefined) 让整个 Blackboard 的读路径**永久**抛错。
+    // 实测: add() → getAll() 得 [null]，getByType('t') 抛
+    // 'Cannot read properties of undefined (reading 'type')'。
+    // 这是本仓库反复记录的形状: 调用成功、不抛错、结构合法、内容已死，
+    // 且是**持久腐蚀**(坏条目留在 entries 里，不清掉就一直抛)。
+    if (!entry || typeof entry !== 'object') return false;
+
     this.entries.push(entry);
 
     // 超出上限时淘汰最旧的 10%
-
+    // [第一百七十轮] 淘汰下限改为 1: 原实现 trimCount = floor(maxEntries * 0.1)，
+    // maxEntries < 10 时得 0，slice(0) 是空操作 —— 小容量下上限**永不生效**。
+    // 实测 new Blackboard(3) 连加 5 条 size=5(应 ≤3)。默认 200 不受影响，
+    // 故此前从未暴露; 但 Blackboard 是导出类，调用方可自定容量。
     if (this.entries.length > this.maxEntries) {
 
-      const trimCount = Math.floor(this.maxEntries * 0.1);
+      const trimCount = Math.max(1, Math.floor(this.maxEntries * 0.1));
 
       this.entries = this.entries.slice(trimCount);
 
     }
+
+    return true;
 
   }
 

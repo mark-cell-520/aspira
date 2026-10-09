@@ -128,7 +128,15 @@ module.exports = function ({ test, assertTrue }) {
     // conceptualLearning / analogyLearning / detectOscillation 等主力路径仍未测。
     // sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以 C 类读数本身就偏乐观;
     // 换锚点是让本条继续测"判据有没有退化"，不是承认 meta-learning 已覆盖。
-    assertTrue(/global-workspace\.js/.test(bSection(out)),
-      'src/consciousness/global-workspace.js(当前 B 类之王, 1062 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
+    // [第一百七十轮] 锚点从 src/consciousness/global-workspace.js 换成
+    // src/core/think-pipeline.js: 本轮给 global-workspace.js 加了第一个测试引用
+    // (test/blackboard-add-contract.test.js)，它于是合法地离开 B 类
+    // (104 → 103 那轮的 104 又回到 103)。这不是"覆盖了它" —— 那个测试只覆盖
+    // Blackboard.add 一个方法的契约，16+6 个方法里 determineWinner / integrate /
+    // _stabilizeWinner 等主力路径仍未测。sweep 的 C 类判据是"有测试引用"
+    // 而非"测过多少"，所以 C 类读数本身就偏乐观; 换锚点是让本条继续测
+    // "判据有没有退化"，不是承认 global-workspace 已覆盖。
+    assertTrue(/think-pipeline\.js/.test(bSection(out)),
+      'src/core/think-pipeline.js(当前 B 类之王, 1029 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
   });
 };
