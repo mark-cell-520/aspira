@@ -212,7 +212,7 @@ These are the rules this codebase actually follows. Follow them when changing it
 - Pattern-matching architecture: obfuscation not covered by patterns is not caught.
 - Irony, metaphor, and cultural context are invisible.
 - **False-positive rate is measured, not claimed.** `scripts/calibrate-fp-recall.js`
-  measures it on a hand-written labelled corpus of **132 benign / 58 malicious** samples;
+  measures it on a hand-written labelled corpus of **137 benign / 62 malicious** samples;
   the current reading is **0.0% FP / 100% recall**. That is a *corpus-local* number,
   not real traffic — the corpus was written by this repo's authors and will drift from
   what real callers actually send. It replaced an earlier "around 8%" that nothing had
