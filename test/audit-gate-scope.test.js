@@ -61,7 +61,7 @@
  */
 const path = require('path');
 const fs = require('fs');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SCRIPT = path.join(ROOT, 'scripts', 'audit-doc-numbers.js');
@@ -122,10 +122,40 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
     }
   });
 
-  test('自述文档标志只对顶层文件生效', () => {
+  // [doc-honest-numbers·第一百九十轮] 这条原本断言源码里存在
+  //   `!f.includes(path.sep) && SELF_DESC_DOCS.has(f)`
+  // 即"自述文档只可能是顶层文件"。本轮把它改成了显式白名单
+  //   `SELF_DESCRIPTION_DOC = SELF_DESC_DOCS.has(f)`
+  // 于是这条断言稳定红 —— 而它红的原因是一个**更精确的契约取代了路径形状判断**:
+  // compliance/gb-agent-security-mapping.md 是引擎自述(标题即"新愿 Aspira ×
+  // 国标安全映射表"), 但它在子目录里, 旧的 `!f.includes(path.sep)` 让"写进
+  // SELF_DESC_DOCS 也永远进不来" —— 一条加进名单也不生效的死入口。
+  //
+  // 它想保护的不变量("子目录的 README.md 不是引擎自述")在新方案下**依然成立**,
+  // 因为白名单是显式的。所以这里改为锁**不变量**而非字面形态:
+  // ① 源级: 标志由白名单成员决定, 且不得退化成无条件下放行;
+  // ② 行为: skills/ 下的文档其"N维"局部计数不得变成 dimensions claim。
+  test('子目录文档不得被当成引擎自述(不变量, 非字面形态)', () => {
     const src = fs.readFileSync(SCRIPT, 'utf8');
-    assertTrue(/!f\.includes\(path\.sep\)\s*&&\s*SELF_DESC_DOCS\.has\(f\)/.test(src),
-      '必须限定顶层——子目录里的 README.md 是该技能的说明，不是本引擎自述');
+    // ① 标志必须由白名单成员决定
+    assertTrue(/SELF_DESCRIPTION_DOC\s*=\s*SELF_DESC_DOCS\.has\(f\)/.test(src),
+      '自述文档标志必须由 SELF_DESC_DOCS 白名单成员决定');
+    // 且不得退化成无条件下放行(那会让全仓文档都变成自述)
+    assertTrue(!/SELF_DESCRIPTION_DOC\s*=\s*true\s*;/.test(src),
+      '自述文档标志不得无条件为 true —— 那会让子目录的技能说明书也变成引擎自述');
+    // ② 行为: skills/ 的局部计数不得进入 dimensions claim 列表
+    const r = spawnSync('node', [SCRIPT, '--json'], {
+      cwd: ROOT, encoding: 'utf8', timeout: 600000,
+      env: Object.assign({}, process.env, { ASPIRA_AUDIT_SKIP_TESTS: '1' }),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const out = ((r.stdout || '') + (r.stderr || '')).toString();
+    // skills/ 下若有 dimensions claim, 说明子目录文档被当成了自述
+    const leaks = [...out.matchAll(/"doc":\s*"skills\/([^"]+)"[^}]*?"key":\s*"dimensions"/g)];
+    assertEqual(leaks.length, 0,
+      `skills/ 下出现了 ${leaks.length} 条 dimensions claim —— 子目录的技能说明书`
+      + '(如"56题 × 6维度"、"5维度核心能力专项测试")被当成了引擎自述, '
+      + '而那些是它们自己的测试集规模, 与 aspira 的 54 个判别维度无关');
   });
 
   test('围栏内的散文测试数声称必须被识别', () => withDocLock(() => {

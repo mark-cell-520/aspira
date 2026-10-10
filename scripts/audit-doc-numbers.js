@@ -522,6 +522,12 @@ function measure() {
 let SELF_DESCRIPTION_DOC = false;
 const SELF_DESC_DOCS = new Set([
   'README.md', 'SKILL.md', 'AGENTS.md', 'IDENTITY.md', 'CURRENT_STATE.md',
+  // [doc-honest-numbers·第一百九十轮] 这份是引擎自己的合规映射表 —— 标题就是
+  // "新愿 Aspira × 国标安全映射表"，正文六张关口表逐条指着 aspira 的模块与维度。
+  // 它不在名单里时，selfRef 对它每一处"N维判别"都返回 no-engine-self-reference:
+  // 因为 ENGINE_SELF 只看数字**之前**的文本，而"生成内容安全：45维判别"的主语在
+  // 行首很远的地方。于是一份引擎自述文档被当成"别人的规格书"。
+  'compliance/gb-agent-security-mapping.md',
 ]);
 // ── [第八轮] ENGINE_SELF 过严会**漏报**，比假阳性更危险 ──
 // 第 29 次仪器失效: 新加 benign/malicious 语料模式后，
@@ -688,7 +694,12 @@ function claims() {
     // [第九轮] 标记当前文档是否为引擎自述文档，供 selfRef 判断作用域。
     // 只对**顶层**文件生效: 子目录里若也有 README.md(如
     // skills/xxx/references/README.md)，那是该技能的说明，不是本引擎自述。
-    SELF_DESCRIPTION_DOC = !f.includes(path.sep) && SELF_DESC_DOCS.has(f);
+    // [doc-honest-numbers·第一百九十轮] 条件从 `!f.includes(path.sep) &&`
+    // 放宽为按**集合成员**判定: 名单是显式白名单，写进名单的路径就是被点名授权的
+    // 引擎自述，`!f.includes(path.sep)` 会让 compliance/ 下的条目永远进不来 ——
+    // 那是一条"加进名单也不生效"的死入口。顶层默认不收子目录文档的语义由
+    // SELF_DESC_DOCS 的成员资格保证，不由路径形状保证。
+    SELF_DESCRIPTION_DOC = SELF_DESC_DOCS.has(f);
     const s = currentClaimsOnly(readDoc(f));
     if (!s) continue;
     const pats = [
@@ -833,6 +844,46 @@ function claims() {
       // 不是规模声称，核对它毫无意义还会制造假警报。
       { re: /(\d[\d,]*)\s*个\s*(?:discrimination\s*)?维度/g, key: 'dimensions', what: 'dimensions (中文)',
         reject: (t, a) => selfRef(t, a) || notRange(t, a) || narrativeQuote(t, a) },
+      // [doc-honest-numbers·第一百九十轮] 上面第 872 行的注释写着"对中文允许
+      // 『维度』省略『个』"，而它会话 **要求** "个" —— 注释知道该做什么,
+      // 代码没做(cycle 16 同形状)。实测后果: `compliance/gb-agent-security-mapping.md`
+      // 通篇写 "45维判别"(无"个")，两个 dimensions pattern 都不命中，于是那份文档
+      // 的维度读数在 88/88 全绿的审计背后活了几个月 —— 而它说的是 45，实测 54。
+      //
+      // 但放宽不能无条件: 实测放开后 **6 处新的"不符"全部来自 skills/ 子目录的
+      // 技能说明书** —— "56题 × 6维度" / "5维度核心能力专项测试" / "测试用例:
+      // 7维度 × 3用例" / "长度/语言/风格/格式/翻译方向 5维度"。那些是**那些技能
+      // 自己的测试集规模**，与 aspira 的 54 个判别维度无关。而 SCOPED_BEFORE 只有
+      // 英文四个词(tier/across/within/between)，中文的"题/用例/方向"这类计量单位
+      // 无对应闸门 —— 同一个形状的第六次: **闸门按语言分裂**。
+      //
+      // 修法不是往 SCOPED_BEFORE 里枚举中文计量词(那是一条每遇到一种新计量单位
+      // 就漏一次的枚举过滤器, cycle 8 已警告过)，而是**按作用域分割**:
+      // 顶层自述文档的规模声称按构造就是在说 aspira(cycle 9 的结论)，
+      // 子目录文档的"N维度"若无"个"字则默认是局部计数。语义由作用域决定，
+      // 不由路径形状或词表决定。
+      // 首版写成 `(\d[\d,]*)\s*维度`，实测**一处都没抓住**: "54维判别"里"维"后面
+      // 跟的是"判"不是"度"，`维度` 二字永不连续出现。判据必须落到单字"维"上，
+      // 并用 `维(?!度)` 负向前查把"维度/个维度"两类留给上面那条旧 pattern，
+      // 否则同一处会被两条各报一次、把 claim 数虚涨一倍。
+      //
+      // 但放宽不能无条件: 实测把"个"改可选后 **6 处新的"不符"全部来自 skills/
+      // 子目录的技能说明书** —— "56题 × 6维度" / "5维度核心能力专项测试" /
+      // "测试用例: 7维度 × 3用例" / "长度/语言/风格/格式/翻译方向 5维度"。
+      // 那些是**那些技能自己的测试集规模**，与 aspira 的 54 个判别维度无关。
+      // 而 SCOPED_BEFORE 只有英文四个词(tier/across/within/between)，中文的
+      // "题/用例/方向"这类计量单位无对应闸门 —— 同一个形状的第六次:
+      // **闸门按语言分裂**。
+      //
+      // 修法不是往 SCOPED_BEFORE 里枚举中文计量词(那是一条每遇到一种新计量单位
+      // 就漏一次的枚举过滤器, cycle 8 已警告过)，而是**按作用域分割**:
+      // 顶层自述文档的规模声称按构造就是在说 aspira(cycle 9 的结论)，
+      // 子目录文档的"N维"默认是局部计数。语义由作用域决定，不由路径形状或词表决定。
+      { re: /(\d[\d,]*)\s*个?\s*维(?!度)/g, key: 'dimensions', what: 'dimensions (中文·省略个·仅自述文档)',
+        reject: (t, a) => {
+          if (!SELF_DESCRIPTION_DOC) return 'local-count-outside-self-desc';
+          return selfRef(t, a) || notRange(t, a) || narrativeQuote(t, a);
+        } },
       { re: /(\d[\d,]*)\s*个模块/g, key: 'modules', what: 'modules (中文)',
         reject: (text, at) => {
           const before = text.slice(Math.max(0, at - 8), at);

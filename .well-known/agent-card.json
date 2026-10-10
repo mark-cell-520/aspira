@@ -1,7 +1,7 @@
 {
   "name": "Aspira Agent",
   "description": "安全合规的人工智能 Agent 执行引擎，54维判别 + 出域防护 + 审计追溯 + 全局熔断",
-  "version": "1.0.72",
+  "version": "1.0.73",
   "vendor": "mark-heartflow",
   "license": "MIT",
   "repository": "https://github.com/mark-cell-520/aspira",
@@ -16,10 +16,7 @@
     "discriminationDimensions": 54,
     "tools": 181,
     "complianceStandards": [
-      "GB/T 42497-2023",
-      "GB/Z 185-2026",
-      "ISO/IEC 27001",
-      "NIST AI RMF"
+      "GB/T 42497-2023"
     ],
     "features": [
       "content-safety-filter",
