@@ -86,18 +86,55 @@ class SAGEGuardian {
     }
   }
 
+  /**
+   * 写审计日志。
+   *
+   * [第一百九十八轮] 这里原来是裸的 `safeAppendFileSync(this.logFile, entry)`,
+   * 而 `logs/` 在 .gitignore 里且 git 不跟踪任何 logs 文件 —— **全新 clone 上
+   * 这个目录不存在**。构造函数建了 data/(在 _saveState 里)却没有建 logs/,
+   * 于是第一次 reviewProposal() 走到这里就抛
+   *   ENOENT: no such file or directory, open '<root>/logs/sage-guardian.log'
+   * 实测: 干净临时目录上 new SAGEGuardian(root) 成功, 紧接着 reviewProposal()
+   * 直接崩; 真实仓库只因 logs/ 恰好存在而不触发。
+   *
+   * 也就是说**伦理守护者的审查函数在一个全新部署上必然崩溃**, 而且崩在一句
+   * 日志调用上 —— 一个辅助动作杀死主职责。
+   *
+   * 而同文件的 _saveState() 早就把原则写在注释里: "持久化失败不阻断安全审查
+   * 主流程", 并且它自带 mkdir + try/catch 双保护。log() 两样都没有。
+   * 本修复按同一原则补齐两样:
+   *   ① 构造后确保 logs 目录存在 —— 审计 trail 是该模块的职责(AGENTS.md
+   *      原则 3: auditable), 所以要尽量让它写成功, 不只是吞掉异常;
+   *   ② 写失败仍不得抛出 —— 日志写不进去不能杀死安全审查。
+   */
   log(message, level = 'INFO') {
     const timestamp = new Date().toISOString();
     const entry = `[${timestamp}] [${level}] ${message}\n`;
-    safeAppendFileSync(this.logFile, entry);
+    try {
+      const dir = path.dirname(this.logFile);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      safeAppendFileSync(this.logFile, entry);
+    } catch (_) { /* 日志写失败不阻断安全审查主流程(与 _saveState 同一原则) */ }
   }
 
   /**
    * 宪法符合性审查
+   *
+   * [第一百九十八轮] 入口补一层 proposal 归一化。原来直接读
+   * `proposal.description`(在 checkValueAlignment 里), 于是
+   * `reviewProposal(null)` / `reviewProposal(undefined)` 抛
+   *   Cannot read properties of null (reading 'description')
+   * 实测其余形状都正常返回 passed=false: 'str' / 42 / {} / {description:''}。
+   * 一个安全审查入口被 null 打崩, 与同轮修的 log() ENOENT 是同一族:
+   * **主职责被一个未防御的边界杀死**。伦理守护者应当对空输入给出
+   * "不予批准"的裁决, 而不是把异常抛给调用方。
    */
   async reviewProposal(proposal, diff) {
+    // 归一化: null/undefined/非对象 → 空对象。空 description 会被
+    // checkValueAlignment 判为未对齐 → passed=false, 这正是期望的裁决。
+    const p = (proposal && typeof proposal === 'object') ? proposal : {};
     const review = {
-      proposal: proposal,
+      proposal: p,
       timestamp: new Date().toISOString(),
       checks: [],
       passed: true,
@@ -105,28 +142,28 @@ class SAGEGuardian {
     };
 
     // 检查1: 宪法保护条款
-    const constitutionCheck = this.checkConstitutionProtection(proposal, diff);
+    const constitutionCheck = this.checkConstitutionProtection(p, diff);
     review.checks.push(constitutionCheck);
     if (!constitutionCheck.passed) {
       review.violations.push(constitutionCheck.violation);
     }
 
     // 检查2: 核心价值对齐
-    const valueCheck = this.checkValueAlignment(proposal, diff);
+    const valueCheck = this.checkValueAlignment(p, diff);
     review.checks.push(valueCheck);
     if (!valueCheck.passed) {
       review.violations.push(valueCheck.violation);
     }
 
     // 检查3: 安全影响
-    const safetyCheck = this.checkSafetyImpact(proposal, diff);
+    const safetyCheck = this.checkSafetyImpact(p, diff);
     review.checks.push(safetyCheck);
     if (!safetyCheck.passed) {
       review.violations.push(safetyCheck.violation);
     }
 
     // 检查4: 行为边界
-    const boundaryCheck = this.checkBoundaries(proposal, diff);
+    const boundaryCheck = this.checkBoundaries(p, diff);
     review.checks.push(boundaryCheck);
     if (!boundaryCheck.passed) {
       review.violations.push(boundaryCheck.violation);
