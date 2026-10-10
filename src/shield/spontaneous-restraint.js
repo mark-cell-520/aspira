@@ -329,7 +329,20 @@ class SpontaneousRestraint {
     else if (/真好啊|太棒了/.test(userMessage)) category = '分享';
 
     const forms = minimalForms[category];
-    const chosen = forms[Math.floor(Math.random() * forms.length)];
+    // [第一百九十七轮] 这里原来是 `forms[Math.floor(Math.random() * forms.length)]`。
+    // 实测: 同一输入「你好」连调 20 次得到 3 种不同结果(嗯。6 / 我在。9 / 然后？5),
+    // 且经 evaluate() 的 minimalForm 字段暴露给 MCP 调用方 aspira_spontaneous_restraint。
+    // 三个后果:
+    //   ① 不可复现 —— 同一个输入, 调用方每次拿到不同的"判别结果";
+    //   ② 不可测试 —— 任何针对 minimalForm 的断言只能退化成"是这三个之一";
+    //   ③ 违背本质 —— 本仓库的核心价值是"规则引擎给出确定性裁决"
+    //      (AGENTS.md: discriminator-first / auditable), 随机答案等于没有裁决。
+    // 改为按输入内容确定性选取: 同一输入永远同一结果, 不同输入仍能分布到不同 form
+    // (取字符码和, 否则所有输入都会落在同一个 form 上)。
+    let hash = 0;
+    const src = String(userMessage || '');
+    for (let i = 0; i < src.length; i++) hash = (hash + src.charCodeAt(i)) % 9973;
+    const chosen = forms[hash % forms.length];
 
     return {
       form: chosen,
