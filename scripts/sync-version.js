@@ -48,6 +48,26 @@ function syncHeartflowBuildDate(version) {
   }
 }
 
+// [doc-honest-numbers·第一百八十九轮] .well-known/agent-card.json 是 A2A 协议
+// 的标准发现路径, 任何按该协议发现 Aspira 的 agent 都会读它的 version 字段。
+// 它曾是**第六个版本副本**而 convention #1 只列了五个: 实测它冻结在 6.7.5
+// (CHANGELOG.md 的 [6.7.5] - 2026-08-27), 与 VERSION 1.0.71 相差几十个版本,
+// 且审计只扫 .md 所以从未被任何东西检查过。没有 writer 的 verifier 会周期性
+// 红, 所以这里补上 writer —— 否则 test/non-md-doc-claims.test.js 每轮 bump
+// 都会把它揪出来, 那是一个训练人忽略锁的红。
+function syncAgentCard(version) {
+  const f = path.join(ROOT, '.well-known', 'agent-card.json');
+  if (!fs.existsSync(f)) return;
+  const card = JSON.parse(fs.readFileSync(f, 'utf-8'));
+  if (card.version !== version) {
+    card.version = version;
+    fs.writeFileSync(f, JSON.stringify(card, null, 2) + '\n');
+    console.log('Updated .well-known/agent-card.json version →', version);
+  } else {
+    console.log('.well-known/agent-card.json already at', version);
+  }
+}
+
 // 优先从 VERSION 文件读取
 const vf = path.join(ROOT, 'VERSION');
 let version;
@@ -70,4 +90,5 @@ if (fs.existsSync(vf)) {
 syncPackage(version);
 syncSkill(version);
 syncHeartflowBuildDate(version);
+syncAgentCard(version);
 console.log('Version sync complete:', version);

@@ -1,7 +1,7 @@
 {
   "name": "Aspira Agent",
-  "description": "安全合规的人工智能 Agent 执行引擎，45维判别 + 出域防护 + 审计追溯 + 全局熔断",
-  "version": "6.7.5",
+  "description": "安全合规的人工智能 Agent 执行引擎，54维判别 + 出域防护 + 审计追溯 + 全局熔断",
+  "version": "1.0.72",
   "vendor": "mark-heartflow",
   "license": "MIT",
   "repository": "https://github.com/mark-cell-520/aspira",
@@ -13,8 +13,8 @@
   "privacy": "本地优先，无遥测，数据不外传",
   "termsOfService": "https://github.com/mark-cell-520/aspira/blob/main/TERMS.md",
   "capabilities": {
-    "discriminationDimensions": 45,
-    "tools": 153,
+    "discriminationDimensions": 54,
+    "tools": 181,
     "complianceStandards": [
       "GB/T 42497-2023",
       "GB/Z 185-2026",
@@ -50,7 +50,7 @@
     "sla": "本地部署，无外部依赖"
   },
   "tools": {
-    "count": 153,
+    "count": 181,
     "categories": [
       "think",
       "discriminate",
