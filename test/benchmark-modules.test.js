@@ -42,6 +42,43 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
     if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
   }
 
+  // ─── 顶层 require 检测器 ───────────────────────────────────────
+  // 按括号深度判定: depth===0 时的 require 才是顶层。逐行 trim 后匹配
+  // `^(const|let|var)` 是不够的 —— 函数体内同样以 const 开头。
+  // 两路派生，各管一件事(第一版把它们混成一路，结果反向证明立刻红):
+  //   noComments —— 只抹注释，保留字符串。用于识别 require 的参数字符串，
+  //                 因为把字符串也抹掉就看不见 require 的是什么了。
+  //   noStrings  —— 在 noComments 基础上再抹字符串。只用于数括号深度，
+  //                 否则字符串里的大括号会让深度永远回不到 0。
+  //
+  // 已知局限(披露而非假装没有): 正则字面量里的大括号仍会污染深度,
+  // 例如 `const RE = /[{/;`。src/benchmark 下两个模块没有这种形态;
+  // 若未来出现, 需要给 noStrings 再加一条正则字面量的抹除规则。
+  function findTopLevelRequires(src) {
+    const noComments = src
+      .replace(/\/\/[^\n]*/g, m => ' '.repeat(m.length))
+      .replace(/\/\*[\s\S]*?\*\//g, m => ' '.repeat(m.length));
+    const noStrings = noComments
+      .replace(/'(?:[^'\\\n]|\\.)*'/g, m => ' '.repeat(m.length))
+      .replace(/"(?:[^"\\\n]|\\.)*"/g, m => ' '.repeat(m.length));
+    const linesMatch = noComments.split('\n');
+    const linesDepth = noStrings.split('\n');
+    const bad = [];
+    let depth = 0;
+    for (let i = 0; i < linesMatch.length; i++) {
+      const t = linesMatch[i].trim();
+      if (depth === 0 && /^(const|let|var)\s/.test(t) && !/_lazy/.test(t)) {
+        const m = t.match(/require\(['"]([^'"]+)['"]\)/);
+        // fs/path/os 这类 node 内置不影响引擎冷启动
+        if (m && !/^(fs|path|os)$/.test(m[1])) bad.push(m[1]);
+      }
+      const dl = linesDepth[i] || '';
+      depth += (dl.match(/[\{\[\(]/g) || []).length - (dl.match(/[\}\]\)]/g) || []).length;
+      if (depth < 0) depth = 0;
+    }
+    return bad;
+  }
+
   test('两个此前缺失的模块文件必须存在', () => {
     assertTrue(fs.existsSync(RUNNER), `缺少 ${RUNNER} —— aspira_benchmark_run 会报 Cannot find module`);
     assertTrue(fs.existsSync(IMPORTER), `缺少 ${IMPORTER} —— aspira_benchmark_import_failures 会报 Cannot find module`);
@@ -132,22 +169,61 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
   });
 
   test('模块不得有顶层 require(遵守 src/benchmark/ 约定)', () => {
-    // 与 src/benchmark/latency-benchmark.js 一致: require 放函数内惰性执行
+    // 与 src/benchmark/latency-benchmark.js 一致: require 放函数内惰性执行。
+    //
+    // [第一百九十三轮] 这个用例原本是坏的: 它声明了 `let depth = 0` 却从未
+    // 使用，逐行匹配 `^(const|let|var)` 而不看括号深度，于是函数体内的
+    // `const { parseCases } = require('./failure-importer.js')` 也被判为
+    // "顶层 require"。一个把自己的合法代码报成违规的锁，会训练人忽略它。
+    // 现在提取成 findTopLevelRequires() 并带正反两向证明(见下一个 test)。
     for (const f of [RUNNER, IMPORTER]) {
       const src = fs.readFileSync(f, 'utf8');
-      const lines = src.split('\n');
-      let depth = 0;
-      for (const ln of lines) {
-        const t = ln.trim();
-        if (/^(const|let|var)\s/.test(t) && /require\(/.test(t) && !/_lazy/.test(t)) {
-          // 允许 fs/path/os 这类 node 内置(它们不影响引擎冷启动)
-          const m = t.match(/require\(['"]([^'"]+)['"]\)/);
-          if (m && !/^(fs|path|os)$/.test(m[1])) {
-            assertTrue(false, `${path.basename(f)} 顶层 require 了 ${m[1]}，应改为函数内惰性 require`);
-          }
-        }
-      }
+      const bad = findTopLevelRequires(src);
+      assertEqual(bad.length, 0,
+        `${path.basename(f)} 顶层 require 了 ${bad.join(', ')}，应改为函数内惰性 require`);
     }
+  });
+
+  test('findTopLevelRequires 判据本身可证伪(不恒真也不恒假)', () => {
+    // 反向: 合成一段含真顶层 require 的源码，必须被抓到 —— 否则上一个 test
+    // 的"返回空"可能只是因为检测器什么都看不见。
+    const fake = [
+      "const fs = require('fs');",                    // 内置, 允许
+      "const { x } = require('./failure-importer.js');", // 顶层, 必须抓到
+      "function f() {",
+      "  const y = require('../gate.js');",           // 函数内, 必须放过
+      "  return y;",
+      "}",
+      "class K { m() { const z = require('os'); return z; } }",
+    ].join('\n');
+    const bad = findTopLevelRequires(fake);
+    assertEqual(bad.length, 1, `应只抓到 1 个顶层 require，实测 ${JSON.stringify(bad)}`);
+    assertTrue(bad[0].indexOf('failure-importer') >= 0,
+      '抓到的那条应是 ./failure-importer.js，实测 ' + bad[0]);
+
+    // 正向: 纯函数内 require 必须一个都不抓
+    const clean = [
+      "function f() {",
+      "  const a = require('../gate.js');",
+      "  const b = require('./failure-importer.js');",
+      "  return [a, b];",
+      "}",
+    ].join('\n');
+    assertEqual(findTopLevelRequires(clean).length, 0, '函数内 require 不该被抓');
+
+    // 边界: 字符串里的大括号不得让深度漂移(所以顶层 require 仍被抓到)
+    const tricky = "const s = \"a{b\"; const y = require('./x.js');";
+    assertEqual(findTopLevelRequires(tricky).length, 1,
+      '字符串里的大括号不该让 depth 漂走，顶层 require 仍须被抓到');
+
+    // 已披露的局限, 不是断言: 正则字面量 /[{/ 里的大括号仍会污染深度。
+    // 此处只记录实测行为, 不声称它是对的 —— src/benchmark 两模块无此形态。
+    // 注意必须是两行: depth 在行首判定, 同行时 `{` 还来不及计入。
+    const reCase = "const RE = /[{/;\nconst z = require('./y.js');";
+    assertEqual(findTopLevelRequires(reCase).length, 0,
+      '正则字面量含大括号时深度被污染(前一行的 { 让后一行 depth 回不到 0), ' +
+      '顶层 require 漏检 —— 这是已知局限, 若本断言因检测器升级而变红, ' +
+      '请同步更新 findTopLevelRequires 的注释');
   });
 
   test('诚实盲点: 语料零条破坏性命令样本，dangerous_instruction 不覆盖 rm -rf / DROP TABLE', () => {

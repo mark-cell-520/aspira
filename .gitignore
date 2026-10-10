@@ -36,7 +36,12 @@ UPGRADE_REPORT.txt
 UPGRADE_REPORT_v2.0.37.md
 __pycache__/
 assets/
-benchmark/
+# /benchmark/ 仅限仓库根的基准产物目录。必须带前导斜杠: 无锚定的
+# `benchmark/` 匹配任意层级, 会把 src/benchmark/ 这个源码目录整条忽略 ——
+# 该目录下三个模块曾因此从未进入 git, 静默蒸发后只剩 3 个红测试和 2 个
+# 恒报 Cannot find module 的 MCP 工具, 而 git status/diff/checkout 全都看不见。
+# test/gitignore-src-anchor.test.js 钉住这条边界。
+/benchmark/
 bigbench_50.json
 data/          # 包含 data/memories/ 新愿记忆金库
 data/**/*.json
