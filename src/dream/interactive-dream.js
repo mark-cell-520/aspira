@@ -11,7 +11,10 @@
    * - dream can be strange / useless / poetic
    */
 
-  const { generateDream, getDreamEngine, LEVELS } = require('./dream-loop.js');
+  // [第一百九十五轮] 原来还解构了 LEVELS —— dream-loop 曾把它放进 exports,
+  // 但它的值是 undefined(dream.js 从未导出这个名字), 且这里从未使用过。
+  // 已从 dream-loop 的 exports 删除, 这里同步删掉。
+  const { generateDream, getDreamEngine } = require('./dream-loop.js');
   const { WakeUpVerifier } = require('../shield/wake-up-verifier.js');
   const { generateNarrative, generateWideNarrative } = require('./narrative-generator.js');
 

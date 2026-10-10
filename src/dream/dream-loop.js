@@ -22,7 +22,17 @@
  * - six-level consciousness: 觉察→自省→无我→彼岸→般若→圣人
  */
 
-const { DreamV11: DreamEngine, LEVELS, DEFAULT_SCORING } = require('./dream.js');
+// [第一百九十五轮] 这里原来解构了 LEVELS 与 DEFAULT_SCORING, 而 dream.js 导出的
+// 是 DreamV5..V11 / DREAM_FUNCTIONS / createDreamV5..V11 —— **这两个名字从来
+// 不存在**。解构一个模块不导出的名字不抛错, 只得 undefined(cycle 25 记录过同族:
+// PROBE_AUTH_VERSION)。于是 exports 里的 LEVELS 变成一个**看起来被承诺、实际
+// 从来是 undefined 的常量表**, interactive-dream.js:14 又跟着解构了一次, 同样
+// 从未使用。同轮还发现 exports 里的 `DreamEngine: require('./dream.js').DreamEngine`
+// 也是同一个形状 —— dream.js 导出的是 DreamV11, 没有 DreamEngine。
+// 模块头部的 "L1~L6 consciousness level scoring" 描述的是真实存在的
+// dagResult.level_breakdown 逻辑(见下方 L1..L6 分支), 不是那个常量表 ——
+// 所以删掉假承诺, 而不是新造一个表。
+const { DreamV11: DreamEngine } = require('./dream.js');
 
 // ============================================================================
 // 常量定义
@@ -700,7 +710,6 @@ module.exports = {
   DEFAULT_WEIGHTS,
   DREAM_STATE,
   DREAM_ERROR,
-  LEVELS,
   OSCILLATION_THRESHOLD,
   MEMORY_PRESSURE,
   RETRY_POLICY,
@@ -714,7 +723,12 @@ module.exports = {
   _validateMemoryItems,
   _detectOscillation,
   _pruneStaleDreams,
-  DreamEngine: require('./dream.js').DreamEngine,
+  // [第一百九十五轮] 原来写成 `DreamEngine: require('./dream.js').DreamEngine`,
+  // 而 dream.js 导出的是 DreamV11 —— **没有 DreamEngine 这个名字**。
+  // 于是这个导出项的值也是 undefined, 与同轮修掉的 LEVELS 同一形状:
+  // 一个看起来被承诺、实际从来是 undefined 的类。本地第 36 行已经用
+  // `DreamV11: DreamEngine` 解构并重命名过, 直接引用它即可。
+  DreamEngine,
 };
 
 if (require.main === module) {
