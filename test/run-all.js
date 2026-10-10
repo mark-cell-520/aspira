@@ -41,6 +41,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
+const { parseChildSummary } = require('./_child-summary.js');
 
 const TEST_DIR = __dirname;
 const ROOT = path.join(__dirname, '..');
@@ -100,24 +101,31 @@ function runChildCapture(label, cmd, timeout = CHILD_TIMEOUT) {
 /**
  * 解析并打印一个子进程的结果——逻辑与旧版 runChild 的执行后段逐行对应，
  * 保证计数、失败定位、keep 行输出行为不变。
+ *
+ * [第二百零二轮] 汇总行的取出改走 test/_child-summary.js。原来这里是内联的
+ * `out.match(/(\d+) 通过, (\d+) 失败/)`，只认中文、且取**第一个**匹配，
+ * 实测两个后果：① 32 个用英文汇总的测试文件的 195 个通过用例被计成 0，
+ * 文档的测试数因此少了 195 而审计读起来全绿；② 取第一个匹配会让子进程嵌在
+ * 断言消息里的别行汇总顶掉本文件自己的汇总，套件总数虚增 13。
+ * 详见 _child-summary.js 头部注释。
  */
 function emitResult({ label, out, err }) {
   console.log(`\n${label}`);
+  const summary = parseChildSummary(out);
   // 异常且输出里没有汇总行: 计一次失败(与旧版一致)
-  if (err && !/(\d+) 通过, (\d+) 失败/.test(out)) {
+  if (err && !summary) {
     console.log(`  [异常] ${label.trim()}: ${(err.message || '').split('\n')[0]}`);
     failed++;
     failures.push({ name: label.trim(), error: (err.message || '').split('\n')[0] });
     return;
   }
-  const m = out.match(/(\d+) 通过, (\d+) 失败/);
-  if (!m) {
+  if (!summary) {
     const tail = out.trim().split('\n').slice(-3).join('\n');
     if (tail) console.log(tail);
     return;
   }
-  passed += parseInt(m[1], 10);
-  failed += parseInt(m[2], 10);
+  passed += summary.passed;
+  failed += summary.failed;
   for (const line of out.split('\n')) {
     const fm = line.match(/^\s*✗\s+(.+?)\s*$/);
     if (fm) failures.push({ name: fm[1], error: `(${label.trim()})` });
