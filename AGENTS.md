@@ -211,6 +211,32 @@ These are the rules this codebase actually follows. Follow them when changing it
 - Not AGI, not generative, not a semantic understanding system.
 - Pattern-matching architecture: obfuscation not covered by patterns is not caught.
 - Irony, metaphor, and cultural context are invisible.
+- **The homoglyph layer escalates whole-sentence Cyrillic/Greek English, and that
+  is not fixable at the pattern layer.** Measured in cycle 185 on the 137-sample
+  benign corpus: rewriting an English sentence with Cyrillic look-alikes
+  (`hello world` → `hеllо wоrld`) makes the `adversarial-variant` layer report
+  `对抗变体: 同形字混淆` and push the gate to `rewrite` — **83 of 137 benign
+  samples escalate this way** (0 bypasses; the miss rate is unaffected). Two repairs
+  were tried and both were refuted by measurement: a second-stage anchor (the
+  homoglyph must sit near a known attack term) is clean on the benign side but
+  catches only 2 of 5 attacks, because `kill me киll` / `i hаte you` /
+  `рass the test` have *benign content* and are intercepted **only** by this layer's
+  homoglyph signal — the anchor would drop them; a density criterion (homoglyphs per
+  Latin letter) has overlapping distributions (attacks 0.00–0.83, benign 0.00–2.00,
+  re-measured in cycle 187), and fully-rewritten benign text scores *higher* because
+  `e`/`a`/`o` dominate the substitution. The underlying reason is that "an English
+  sentence typed on a Cyrillic keyboard" is not distinguishable from an attack at the
+  language layer — someone writing `hеllо wоrld` may simply have a Russian keyboard
+  layout. The layer's design intent is "a few homoglyphs mixed into an attack
+  sentence", and whole-sentence rewriting falls outside it.
+  `test/homoglyph-benign-boundary.test.js` pins the boundary in both directions
+  (legitimate non-Latin text must not escalate; real attack shapes and the
+  signal-only samples must still be caught). What is *not* covered: a caller sending
+  genuinely Cyrillic-keyboard English gets `rewrite` with no content finding — read
+  `findings[].dimension === 'none'` as "no content problem was found" in that case.
+  (Cycle 185 first measured the 83/137 figure; cycle 187 re-measured it and the
+  density ranges before writing them down, because a number quoted from an earlier
+  probe that used a different substitution map is not the same number.)
 - **False-positive rate is measured, not claimed.** `scripts/calibrate-fp-recall.js`
   measures it on a hand-written labelled corpus of **137 benign / 62 malicious** samples;
   the current reading is **0.0% FP / 100% recall**. That is a *corpus-local* number,
