@@ -308,6 +308,19 @@ class SustainedDriftDetector {
 
     try {
 
+      // [test-coverage-gap·第一百九十一轮] `getFormulaBridge()` 在这里被调用了十几轮,
+      // 而**整个文件只 require 了 safe-fs 和 path** —— 这个名字既未导入也未定义。
+      // 于是它每次都抛 ReferenceError, 被下面那个 `catch(e) { /* formula unavailable */ }`
+      // 静默吞掉: 不抛错、不告警、返回值结构完全合法, 而 `phaseTransition` **永远不会
+      // 被设置**。这是本仓库记录最多的形状 —— *调用成功, 不抛错, 结构合法, 内容已死*,
+      // 且它与第一百七十一轮 think-pipeline、第一百七十九轮 value-internalizer 的
+      // `_makeScoreResult` 是同族: **调用一个从未导入/定义的名字, 而守卫自己是坏的**。
+      //
+      // 修法与 src/core/engine-memory.js:751 同型 —— 函数内 require。不放模块顶部:
+      // ① 顶层 require 会改变本模块的加载时序(它被 heartflow 懒加载);
+      // ② 若 formula-bridge 自身加载失败, 顶层 require 会让**整个探测器**起不来,
+      //    而这里要的只是"公式不可用时跳过相变计算"。
+      const { getFormulaBridge } = require('../formula/formula-bridge.js');
 
       const bridge = getFormulaBridge();
 
