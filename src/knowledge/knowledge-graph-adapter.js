@@ -80,17 +80,32 @@ class KnowledgeGraphAdapter {
 
   /**
    * 查找领域间路径
+   *
+   * [第一百九十六轮] 这里原来写 `paths.map(p => p.map(t => ...))`, 即期望
+   * `findPath` 返回 `Array<Array<triple>>`。但底层 findPath 当时**永远返回 []**,
+   * 所以这行从第一次执行起就在空数组上跑 —— 形状错配从未被触发过。
+   * 修好 findPath 后它立刻炸出 `p.map is not a function`: 新的返回形状是
+   * `Array<{entity, depth, triples}>`(路径节点数组, 末节点的 triples 即沿途全部边)。
+   *
+   * **一个永远返回空的函数会掩盖它所有调用方的形状错配。** 这是本轮最值得记的
+   * 一条: 修 findPath 不止修了一个函数, 还顺带证伪了 adapter 层的一条从未运行
+   * 过的假设。
+   *
+   * 对外形状保持 `Array<Array<边>>`(外层是"多条路径"), 只是不再恒为空。
    */
   findDomainPath(fromDomain, toDomain, maxDepth = 4) {
     const from = this._domainKey(fromDomain);
     const to = this._domainKey(toDomain);
-    const paths = this.kg.findPath(from, to, maxDepth);
-    return paths.map(p => p.map(t => ({
+    const path = this.kg.findPath(from, to, maxDepth);
+    if (!Array.isArray(path) || path.length === 0) return [];
+    // 末节点的 triples 累积了沿途每一条边
+    const triples = path[path.length - 1].triples || [];
+    return [triples.map(t => ({
       linkType: t.predicate,
       confidence: t.confidence,
       subject: t.subject,
       object: t.object,
-    })));
+    }))];
   }
 
   /**

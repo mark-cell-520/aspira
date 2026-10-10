@@ -28,8 +28,34 @@ class KnowledgeGraph {
   /**
    * @param {string|null} dataDir - 默认数据目录（save/load 时使用）
    */
+  /**
+   * @param {string|null} dataDir - 默认数据目录（save/load 时使用）
+   *
+   * [第一百九十六轮] 原来这里不校验类型, 直接 `this.dataDir = dataDir`。
+   * 而调用方 `src/mcp-server.js:3477` 写的是 `new KnowledgeGraph({ silent: true })`
+   * —— 于是 dataDir 变成一个**对象**。构造不报错, 一路带到 save()/load():
+   *   path.join(this.dataDir, 'knowledge-graph.json')
+   *   → TypeError: The "path" argument must be of type string.
+   * 也就是说"不传 filePath 就存到默认目录"这条路, 对唯一的 src 调用方是死的,
+   * 而且死法是一个底层 TypeError, 不是一句能读懂的话。
+   * 这里改为显式校验: 非 string 的 dataDir 归一化为 null(不抛错 —— 构造失败会
+   * 让整个 MCP handler 挂掉, 而降级成"没有默认目录"只是少一个便利)。
+   */
+  /**
+   * @param {string|null} dataDir - 默认数据目录（save/load 时使用）
+   *
+   * [第一百九十六轮] 原来这里不校验类型, 直接 `this.dataDir = dataDir`。
+   * 而调用方 `src/mcp-server.js:3477` 写的是 `new KnowledgeGraph({ silent: true })`
+   * —— 于是 dataDir 变成一个**对象**。构造不报错, 一路带到 save()/load():
+   *   path.join(this.dataDir, 'knowledge-graph.json')
+   *   → TypeError: The "path" argument must be of type string.
+   * 也就是说"不传 filePath 就存到默认目录"这条路, 对唯一的 src 调用方是死的,
+   * 而且死法是一个底层 TypeError, 不是一句能读懂的话。
+   * 这里改为显式校验: 非 string 的 dataDir 归一化为 null(不抛错 —— 构造失败会
+   * 让整个 MCP handler 挂掉, 而降级成"没有默认目录"只是少一个便利)。
+   */
   constructor(dataDir = null) {
-    this.dataDir = dataDir;
+    this.dataDir = (typeof dataDir === 'string' && dataDir.length > 0) ? dataDir : null;
 
     // ─── 主存储 ─────────────────────────────────────────────────────────────
     // key = `${subject}|${predicate}|${object}`（小写标准化）
@@ -252,9 +278,25 @@ class KnowledgeGraph {
    * 获取图谱统计
    * @returns {object}
    */
+  /**
+   * 统计信息。
+   *
+   * [第一百九十六轮] 补上 `triples`(当前实际存储的三元组数)。此前这里只有
+   * `triplesAdded`(累计添加, 含被 LRU 淘汰的)与三个索引大小, **没有"当前
+   * 存了多少条"**。于是同一个对象上会出现三个数:
+   *   save()      → count: 250
+   *   getStats()  → triplesAdded: 250
+   *   query({})   → 100 条        ← query 默认 limit=100, 被截断
+   * 而调用方没有任何字段能判断"我看到的 100 条是不是全部", 只能靠猜。
+   * `triples` 让截断可被发现: query 结果长度 < triples 即说明还有更多。
+   *
+   * 注意 triplesAdded 与 triples 的差别是**有意的**: 前者是累计吞吐,
+   * 后者是当前存量, LRU 淘汰会让两者分离。两个都保留, 不合并。
+   */
   getStats() {
     return {
       ...this._stats,
+      triples: this._triples.size,
       uniqueSubjects: this._subjectIndex.size,
       uniquePredicates: this._predicateIndex.size,
       uniqueObjects: this._objectIndex.size,
@@ -343,11 +385,31 @@ class KnowledgeGraph {
    * @param {number} [maxDepth=4] - 最大搜索深度
    * @returns {Array<Array<object>>} 路径数组
    */
+  /**
+   * 广度优先搜索 from → to 的一条路径。
+   *
+   * [第一百九十六轮] 这里原来**永远返回 []**。命中目标时它写的是
+   *   path.push({ entity: nextEntity, ... });
+   *   return;                      // ← 只是从 forEach 回调返回
+   * 那个 `return` 退出的是箭头函数, 不是 findPath。于是 BFS 把整张图遍历完,
+   * 走到函数末尾的 `return []` —— 无论图里有没有路径, 调用方拿到的都是空数组。
+   * 而 `aspira_knowledge_graph` 的 `path` action 正是调它(mcp-server.js:3502),
+   * 对外承诺"找路径", 实际永远说"找不到": 调用成功、不抛错、结构合法、内容已死。
+   *
+   * 同时修正第二处: 原实现命中时 `triples: [t]` 只装了**那一条边**, 不是沿途的
+   * 全部三元组 —— 路径返回了也读不出"经过哪些关系"。
+   *
+   * @returns {Array<{entity:string,depth:number,triples:object[]}>} 路径节点数组;
+   *          找不到时返回 []（这是唯一应该返回 [] 的情况）
+   */
   findPath(from, to, maxDepth = 4) {
-    if (from.toLowerCase() === to.toLowerCase()) return [];
+    if (!from || !to) return [];
+    if (String(from).toLowerCase() === String(to).toLowerCase()) return [];
 
+    // 队列里每一项是一条完整路径: [{entity, depth, triples}, ...]
+    // triples 累积**沿途**的每条边, 不是单条。
     const queue = [[{ entity: from, depth: 0, triples: [] }]];
-    const visited = new Set([from.toLowerCase()]);
+    const visited = new Set([String(from).toLowerCase()]);
 
     while (queue.length > 0) {
       const path = queue.shift();
@@ -356,22 +418,23 @@ class KnowledgeGraph {
       if (last.depth >= maxDepth) continue;
 
       const related = this.query({ subject: last.entity, fuzzy: false });
-      related.forEach(t => {
+      for (const t of related) {
         const nextEntity = t.object;
-        const nextLower = nextEntity.toLowerCase();
-        if (nextLower === to.toLowerCase()) {
-          path.push({ entity: nextEntity, depth: last.depth + 1, triples: [t] });
-          return;
+        const nextLower = String(nextEntity).toLowerCase();
+        const nextTriples = last.triples.concat([t]);
+
+        if (nextLower === String(to).toLowerCase()) {
+          // 找到了 —— 立刻返回完整路径, 而不是 push 进一个随后被丢弃的局部数组
+          return path.concat([{ entity: nextEntity, depth: last.depth + 1, triples: nextTriples }]);
         }
         if (!visited.has(nextLower) && last.depth + 1 < maxDepth) {
           visited.add(nextLower);
-          queue.push([...path, { entity: nextEntity, depth: last.depth + 1, triples: [t] }]);
+          queue.push(path.concat([{ entity: nextEntity, depth: last.depth + 1, triples: nextTriples }]));
         }
-      });
+      }
     }
 
     return [];
-  }
-}
+  }}
 
 module.exports = { KnowledgeGraph };
