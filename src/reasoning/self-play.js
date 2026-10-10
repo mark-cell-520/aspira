@@ -231,7 +231,22 @@ class SelfPlay {
       return { strengthened: judgment, defenses: [], score: 1.0, addressed: [], unaddressed: [] };
     }
 
-    const defended = { ...judgment };
+    // [第二百零一轮] 原来是 `const defended = { ...judgment }` —— 一层浅拷贝。
+    // 于是 _applyDefense() 里写 `judgment.chosenPath.metadata.defenses` 时,
+    // `defended.chosenPath` 与**调用方传入的 chosenPath 是同一个引用**, 这一笔
+    // 就落在了调用方的原始对象上。实测: 调用方传进来的 judgment 被悄悄加上了
+    // `chosenPath.metadata.defenses`, 而 JSDoc 把这个参数叫做"原始判断"、
+    // 返回值叫做 strengthened —— 契约是"输入原样不动, 输出强化版"。
+    //
+    // 本模块自己的 refine() 在入口就用 `this._deepClone(judgment)` 保护入参,
+    // 说明"不改调用方对象"本来就是设计意图, defend() 是漏掉的那一处。
+    // 深层依赖(metadata.defenses 数组本身也是共享引用)意味着补一层
+    // `chosenPath: {...}` 不够, 必须整份深拷贝。
+    //
+    // 用模块自己的 _deepClone 而不是 structuredClone: refine() 早已对同一个
+    // 对象做同样的变换, 不引入新的风险类别; 且 _deepClone 对非对象原样返回,
+    // 保持 defend(42, …) 这类形状的既有抛错点不变。
+    const defended = this._deepClone(judgment);
     const defenses = [];
     const addressed = [];
     const unaddressed = [];

@@ -162,7 +162,17 @@ module.exports = function ({ test, assertTrue }) {
     // 主力路径仍未测。sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以
     // C 类读数本身就偏乐观; 换锚点是让本条继续测"判据有没有退化"，不是承认
     // value-internalizer 已覆盖。
-    assertTrue(/self-play\.js/.test(bSection(out)),
-      'src/reasoning/self-play.js(当前 B 类之王, 891 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
+    // [第二百零一轮] 锚点从 src/reasoning/self-play.js 换成
+    // src/identity/agent-philosophy.js: 本轮给 self-play.js 加了第一个测试引用
+    // (test/self-play-defend-purity.test.js)，它于是合法地离开 B 类(92 → 91)。
+    // 这不是"覆盖了它" —— 那个测试只覆盖 defend() 一条契约(不得写回调用方的
+    // 判断对象)，891 行里 challenge / refine / evaluateRobustness /
+    // generateAlternatives / _scoreDimension / 持久化等主力路径仍未测，而且本轮
+    // 实测披露了四件没修的事(refine 的 improvement 恒为 0 使两个生产守卫成死代码、
+    // 无挑战时 defend 返回 NaN、_buildAlternative 用 Math.random、入口不校验类型)。
+    // sweep 的 C 类判据是"有测试引用"而非"测过多少"，所以 C 类读数本身就偏乐观;
+    // 换锚点是让本条继续测"判据有没有退化"，不是承认 self-play 已覆盖。
+    assertTrue(/agent-philosophy\.js/.test(bSection(out)),
+      'src/identity/agent-philosophy.js(当前 B 类之王, 889 行无测试引用)必须仍在 B —— 它不见了说明 sweep 判据过宽, 把没测的模块也算成已覆盖');
   });
 };
