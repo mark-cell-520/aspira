@@ -24,6 +24,26 @@
  * 7. 内部置信度：对自身输出的自我评估
  */
 
+// [第一百九十七轮] 入口归一化助手。
+// 本模块 16 个公开方法原来都直接读 `answer.includes(...)` / `answer.match(...)`
+// / `context.userQuery`，唯一的防御是 `answer = ''` / `context = {}` 这类默认值
+// —— 而默认值只覆盖**不传参**，覆盖不了显式传进来的 null、数字、对象、数组。
+// 实测 12 处边界崩溃(见各方法注释)。这两个助手把"非预期形状"统一收敛成
+// 空文本 / 空对象，让下游的正则与属性读始终面对它认识的类型。
+
+// [第一百九十七轮] 入口归一化助手。
+// 本模块 16 个公开方法原来都直接读 `answer.includes(...)` / `answer.match(...)`
+// / `context.userQuery`，唯一的防御是 `answer = ''` / `context = {}` 这类默认值
+// —— 而默认值只覆盖**不传参**，覆盖不了显式传进来的 null、数字、对象、数组。
+// 实测 12 处边界崩溃(见各方法注释)。这两个助手把"非预期形状"统一收敛成
+// 空文本 / 空对象，让下游的正则与属性读始终面对它认识的类型。
+function _asText(v) {
+  return (typeof v === 'string') ? v : '';
+}
+function _asObject(v) {
+  return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+}
+
 class CounterfactualEngine {
   constructor(options = {}) {
     this.mode = options.mode || 'balanced';  // balanced | aggressive | gentle
@@ -50,12 +70,27 @@ class CounterfactualEngine {
 
   /**
    * 核心API：给定答案，生成反方视角
+   *
+   * [第一百九十七轮] 入口补归一化。实测 12 处边界崩溃:
+   *   analyze(42) / analyze({}) / analyze(['x'])  → answer.trim is not a function
+   *   analyze(text, null)                        → Cannot read properties of null (reading 'userQuery')
+   *   analyze(text, {userQuery: 42})             → query.split is not a function
+   *   generateOpposingViews(null) 等 9 个公开方法 → … of null (reading 'includes')
+   * 原代码对 null/undefined 有 `= ''` / `= {}` 默认值护着, 但**默认值只覆盖
+   * 不传参**, 覆盖不了显式传进来的 null、数字、对象、数组。而 `analyze` 自己的
+   * 第一行 `!answer || answer.trim()` 就把"非字符串但真值"的形状放过去了。
+   *
+   * 归一化后这些形状都落到与"空输入"相同的分支(返回 relevant:false 或空数组),
+   * 而不是把 TypeError 抛给调用方。
+   *
    * @param {string} answer - 引擎给出的答案
    * @param {object} context - { userQuery, reasoning, evidence }
    * @returns {object} 反方分析结果
    */
   analyze(answer = '', context = {}) {
-    if (!answer || answer.trim().length < 5) {
+    const ans = _asText(answer);
+    const ctx = _asObject(context);
+    if (ans.trim().length < 5) {
       return { relevant: false, reason: '答案过短，跳过反方生成' };
     }
 
@@ -65,28 +100,28 @@ class CounterfactualEngine {
       timestamp: new Date().toISOString(),
 
       // 反方观点
-      opposingViews: this.generateOpposingViews(answer, context),
+      opposingViews: this.generateOpposingViews(ans, ctx),
 
       // 前提挑战
-      premiseChallenges: this.challengePremises(answer, context),
+      premiseChallenges: this.challengePremises(ans, ctx),
 
       // 归因还原
-      originRecall: this.recallOrigin(context),
+      originRecall: this.recallOrigin(ctx),
 
       // 置信度调整
-      confidenceAdjustment: this.computeConfidenceShift(answer),
+      confidenceAdjustment: this.computeConfidenceShift(ans),
 
       // 修正建议
-      refinement: this.suggestRefinement(answer, context),
+      refinement: this.suggestRefinement(ans, ctx),
 
       // 原始答案是否需要调整
-      verdict: this.computeVerdict(answer),
+      verdict: this.computeVerdict(ans),
     };
 
     if (this.recordHistory) {
       this.history.push({
-        answer: answer.slice(0, 200),
-        context: context.userQuery?.slice(0, 100),
+        answer: ans.slice(0, 200),
+        context: typeof ctx.userQuery === 'string' ? ctx.userQuery.slice(0, 100) : undefined,
         verdict: result.verdict,
         ts: result.timestamp,
       });
@@ -101,10 +136,12 @@ class CounterfactualEngine {
    * 核心逻辑：不是寻找"正确答案"，而是找到"可能错的地方"
    */
   generateOpposingViews(answer, context = {}) {
+    const ans = _asText(answer);
+    const ctx = _asObject(context);
     const views = [];
 
     // 1. 从语气检测反方
-    const toneIssues = this.detectToneIssues(answer);
+    const toneIssues = this.detectToneIssues(ans);
     if (toneIssues.length > 0 && this.mode !== 'gentle') {
       views.push({
         type: 'tone',
@@ -115,7 +152,7 @@ class CounterfactualEngine {
     }
 
     // 2. 从逻辑结构生成反方
-    const logicIssues = this.detectLogicGaps(answer);
+    const logicIssues = this.detectLogicGaps(ans);
     if (logicIssues.length > 0) {
       views.push({
         type: 'logic',
@@ -126,8 +163,8 @@ class CounterfactualEngine {
     }
 
     // 3. 从归因还原生成反方
-    if (context.userQuery) {
-      const attributionGap = this.checkAttributionGap(answer, context.userQuery);
+    if (ctx.userQuery) {
+      const attributionGap = this.checkAttributionGap(ans, ctx.userQuery);
       if (attributionGap) {
         views.push({
           type: 'attribution',
@@ -139,7 +176,7 @@ class CounterfactualEngine {
     }
 
     // 4. 生成"如果相反"反方（最强力）
-    const contraryScenario = this.generateContraryScenario(answer, context);
+    const contraryScenario = this.generateContraryScenario(ans, ctx);
     if (contraryScenario) {
       views.push({
         type: 'contrary',
@@ -157,14 +194,15 @@ class CounterfactualEngine {
    * 核心：很多答案的谬误不在结论，而在前提
    */
   challengePremises(answer, context = {}) {
+    const ans = _asText(answer);
     const challenges = [];
 
     // 1. 检测"前提信号词"
     for (const signal of this.premiseSignals) {
-      if (answer.includes(signal)) {
+      if (ans.includes(signal)) {
         challenges.push({
           signal,
-          question: this.generatePremiseQuestion(signal, answer),
+          question: this.generatePremiseQuestion(signal, ans),
           type: 'premise_signal',
           severity: 'medium',
         });
@@ -173,7 +211,7 @@ class CounterfactualEngine {
 
     // 2. 检测"确定性信号词"
     for (const signal of this.certaintySignals) {
-      if (answer.includes(signal)) {
+      if (ans.includes(signal)) {
         challenges.push({
           signal,
           question: '这个"必然"成立的条件是什么？有没有反例？',
@@ -184,7 +222,7 @@ class CounterfactualEngine {
     }
 
     // 3. 检测因果关系
-    const causalPhrases = answer.match(/因为(.*?)所以(.*?)[。.]/g) || [];
+    const causalPhrases = ans.match(/因为(.*?)所以(.*?)[。.]/g) || [];
     for (const phrase of causalPhrases) {
       challenges.push({
         phrase,
@@ -202,7 +240,9 @@ class CounterfactualEngine {
    * 来源：heartflow-persuasion-method v1.2.0 的"召回对话起源"
    */
   recallOrigin(context = {}) {
-    const { userQuery, reasoning } = context;
+    const ctx = _asObject(context);
+    const userQuery = typeof ctx.userQuery === 'string' ? ctx.userQuery : '';
+    const reasoning = typeof ctx.reasoning === 'string' ? ctx.reasoning : '';
 
     if (!userQuery) {
       return { relevant: false, reason: '无原始问题，无法归因还原' };
@@ -235,9 +275,10 @@ class CounterfactualEngine {
    * 计算置信度调整
    */
   computeConfidenceShift(answer) {
-    const certainSignals = this.certaintySignals.filter(s => answer.includes(s));
-    const premiseSignals = this.premiseSignals.filter(s => answer.includes(s));
-    const logicGaps = this.detectLogicGaps(answer).length;
+    const ans = _asText(answer);
+    const certainSignals = this.certaintySignals.filter(s => ans.includes(s));
+    const premiseSignals = this.premiseSignals.filter(s => ans.includes(s));
+    const logicGaps = this.detectLogicGaps(ans).length;
 
     const shift = -(certainSignals.length * 0.15) - (logicGaps * 0.1) + (premiseSignals.length * 0.05);
 
@@ -256,8 +297,10 @@ class CounterfactualEngine {
    * 建议修正
    */
   suggestRefinement(answer, context = {}) {
-    const views = this.generateOpposingViews(answer, context);
-    const challenges = this.challengePremises(answer, context);
+    const ans = _asText(answer);
+    const ctx = _asObject(context);
+    const views = this.generateOpposingViews(ans, ctx);
+    const challenges = this.challengePremises(ans, ctx);
 
     if (views.length === 0 && challenges.length === 0) {
       return { needed: false, suggestion: null };
@@ -300,11 +343,12 @@ class CounterfactualEngine {
    * 计算最终判定
    */
   computeVerdict(answer) {
+    const ans = _asText(answer);
     const issues = [
-      ...this.certaintySignals.filter(s => answer.includes(s)),
-      ...this.premiseSignals.filter(s => answer.includes(s)),
+      ...this.certaintySignals.filter(s => ans.includes(s)),
+      ...this.premiseSignals.filter(s => ans.includes(s)),
     ];
-    const logicGaps = this.detectLogicGaps(answer);
+    const logicGaps = this.detectLogicGaps(ans);
 
     if (issues.length >= 3 || logicGaps.length >= 2) {
       return 'needs_revision';
@@ -322,6 +366,7 @@ class CounterfactualEngine {
    * 识别"要么/要么"排他性框架，提示中间选项
    */
   detectFalseDichotomy(answer) {
+    const ans = _asText(answer);
     const patterns = [
       /要么.*要么/g, /不是.*就是/g, /只能.*或者/g,
       /只有.*才/g, /要么选择.*要么选择/g,
@@ -329,7 +374,7 @@ class CounterfactualEngine {
     ];
     const matches = [];
     for (const pattern of patterns) {
-      const found = answer.match(pattern);
+      const found = ans.match(pattern);
       if (found) matches.push(...found);
     }
     if (matches.length > 0) {
@@ -392,8 +437,9 @@ class CounterfactualEngine {
   }
 
   detectToneIssues(answer) {
-    const matches = this.certaintySignals.filter(s => answer.includes(s));
-    if (/绝对|必然|一定|显然|毫无疑问|无可置疑/.test(answer)) {
+    const ans = _asText(answer);
+    const matches = this.certaintySignals.filter(s => ans.includes(s));
+    if (/绝对|必然|一定|显然|毫无疑问|无可置疑/.test(ans)) {
       matches.push('high_certainty_tone');
     }
     return [...new Set(matches)];
@@ -421,9 +467,11 @@ class CounterfactualEngine {
   }
 
   checkAttributionGap(answer, query) {
-    if (!query) return null;
-    const queryWords = query.split(/\s+/).filter(w => w.length > 1);
-    const answerWords = answer.split(/\s+/).filter(w => w.length > 1);
+    const ans = _asText(answer);
+    const q = _asText(query);
+    if (!q) return null;
+    const queryWords = q.split(/\s+/).filter(w => w.length > 1);
+    const answerWords = ans.split(/\s+/).filter(w => w.length > 1);
     const overlap = queryWords.filter(qw => answerWords.some(aw => aw.includes(qw) || qw.includes(aw)));
     if (overlap.length < queryWords.length * 0.3) {
       return {
@@ -435,6 +483,8 @@ class CounterfactualEngine {
   }
 
   generateContraryScenario(answer, context = {}) {
+    const ans = _asText(answer);
+    const ctx = _asObject(context);
     // 简单的"如果相反"生成
     const negations = {
       '是': '不是',
@@ -447,7 +497,7 @@ class CounterfactualEngine {
     };
 
     for (const [word, neg] of Object.entries(negations)) {
-      if (answer.includes(word) && answer.length < 500) {
+      if (ans.includes(word) && ans.length < 500) {
         return `如果情况相反（将"${word}"替换为"${neg}"），这个答案还成立吗？`;
       }
     }
