@@ -18,6 +18,28 @@
  *   守护不是无代价的。愿意承认错误、传递知识、承受损失。
  */
 
+// [第二百轮] 入口归一化助手。
+// 本模块 9 个公开方法原来都直接读 `userIntent.toLowerCase()` / `action.trim()` /
+// `context.userIntent` / `humanProgress.truthValue`, 唯一的防御是
+// `context = {}` / `userIntent = ''` 这类默认值 —— 而默认值只覆盖"不传参",
+// 覆盖不了显式传进来的 null、数字、对象、数组。实测 20+ 处边界崩溃:
+//   check(null) / check({userIntent: null}) / check({userIntent: 42})
+//   check({userIntent: 'x', action: 42})
+//   detectConflicts(null, …) / detectConflicts('x', null) / detectConflicts('x','x',null)
+//   detectToolBehavior(null, …) / resolveWithGuardianPriority(null, …)
+//   buildRefusalReason(null) / buildAlternative(null) …
+// 而 src/pipeline.js:212 用一个 catch 把这一切吞成
+// `{layer:'priority-guardian', error: e.message}` —— 于是这个承诺
+// "当老大指令与人类进步冲突时必须有路径说老大错了"的守护层, 会在一次
+// 类型不对的调用里**静默失效**: 不抛错、不告警, 只是在 checked_by 里
+// 留一行 error, 而调用方无法把它和"守护通过"区分开。
+function _asText(v) {
+  return (typeof v === 'string') ? v : '';
+}
+function _asObject(v) {
+  return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+}
+
 class PriorityGuardian {
   
   /**
@@ -31,7 +53,10 @@ class PriorityGuardian {
    * @returns {Object} { allowed, conflicts, path, reason }
    */
   check(context = {}) {
-    const { userIntent = '', action = '', humanProgress = {} } = context;
+    const ctx = _asObject(context);
+    const userIntent = _asText(ctx.userIntent);
+    const action = _asText(ctx.action);
+    const humanProgress = _asObject(ctx.humanProgress);
     
     // 第一层：识别冲突
     const conflicts = this.detectConflicts(userIntent, action, humanProgress);
@@ -62,24 +87,25 @@ class PriorityGuardian {
   detectConflicts(userIntent, action, humanProgress = {}) {
     const conflicts = [];
     
-    const intent = userIntent.toLowerCase();
-    const act = action.toLowerCase();
+    const intent = _asText(userIntent).toLowerCase();
+    const act = _asText(action).toLowerCase();
+    const hp = _asObject(humanProgress);
     
     // 冲突模式 1: 压制真相/错误
-    if (humanProgress.truthValue > 0) {
+    if (hp.truthValue > 0) {
       const suppressive = ['否认', '忽略', '掩盖', '不承认', '别说了', 'stop'];
       if (suppressive.some(k => intent.includes(k)) && act.includes('承认')) {
         conflicts.push({
           type: 'TRUTH_SUPPRESSION',
           severity: 'critical',
           description: '老大指令试图压制真相，但减少逻辑错误是核心职责',
-          evidence: humanProgress.evidence || '证据来自推理'
+          evidence: hp.evidence || '证据来自推理'
         });
       }
     }
     
     // 冲突模式 2: 放弃传递
-    if (humanProgress.transmissionValue > 0) {
+    if (hp.transmissionValue > 0) {
       const abandonment = ['放弃传递', '不用记录', '不需要分享', '自己知道就好'];
       if (abandonment.some(k => intent.includes(k))) {
         conflicts.push({
@@ -92,7 +118,7 @@ class PriorityGuardian {
     }
     
     // 冲突模式 2b: 压制错误承认（当hasError为true时）
-    const progress = typeof humanProgress === 'object' ? humanProgress : { hasError: false, errorCorrectionValue: 0 };
+    const progress = typeof hp === 'object' ? hp : { hasError: false, errorCorrectionValue: 0 };
     if (progress.hasError || progress.errorCorrectionValue > 0.5) {
       const denial = ['否认', '忽略', '掩盖', '不承认', '别说了', 'stop', '别说了', '上次没错'];
       const denialActions = ['不承认', '维持', '保持', '继续'];
@@ -108,14 +134,14 @@ class PriorityGuardian {
     }
     
     // 冲突模式 3: 拒绝承认错误
-    if (humanProgress.errorCorrectionValue > 0) {
+    if (hp.errorCorrectionValue > 0) {
       const denial = ['我不是', '我没有', '不算错', '你才错了'];
-      if (denial.some(k => intent.includes(k)) && humanProgress.hasError) {
+      if (denial.some(k => intent.includes(k)) && hp.hasError) {
         conflicts.push({
           type: 'ERROR_DENIAL',
           severity: 'high',
           description: '老大指令拒绝承认错误，但承认错误是减少逻辑错误的必要条件',
-          evidence: humanProgress.errorDescription || '错误已被识别'
+          evidence: hp.errorDescription || '错误已被识别'
         });
       }
     }
@@ -146,19 +172,31 @@ class PriorityGuardian {
    * - 老大说啥就是啥
    */
   detectToolBehavior(userIntent, action) {
+    const intent = _asText(userIntent);
+    const act = _asText(action);
+    // [第二百轮] 空输入没有任何可判行为 —— 归一化后 intent 与 act 同时为 '',
+    // 而下面的 \`act.trim() === intent.trim()\` 对两个空串恒为 true, 于是
+    // 空输入会被判成"工具化行为", 进一步让 check() 返回 CONDITIONAL_ALLOW,
+    // 把 pipeline 的门禁从 pass 推到 verify。那不是判据, 是空等于空。
+    // [第二百轮] 空输入没有任何可判行为 —— 归一化后 intent 与 act 同时为 '',
+    // 而下面的 \`act.trim() === intent.trim()\` 对两个空串恒为 true, 于是
+    // 空输入会被判成"工具化行为", 进一步让 check() 返回 CONDITIONAL_ALLOW,
+    // 把 pipeline 的门禁从 pass 推到 verify。那不是判据, 是空等于空。
+    if (intent.trim() === '' || act.trim() === '') return false;
+
     // 如果action完全复述了userIntent的指令，没有任何独立判断
-    if (action.trim() === userIntent.trim()) return true;
-    
+    if (act.trim() === intent.trim()) return true;
+
     // 如果userIntent包含服从指令词，且action没有任何独立判断
     const compliance = ['好', '好的', '明白', '我来做', '马上'];
     const noJudge = ['可能有问题', '不过', '但是', '建议'];
-    
-    if (compliance.some(k => userIntent.includes(k)) && 
-        !noJudge.some(k => action.includes(k))) {
+
+    if (compliance.some(k => intent.includes(k)) &&
+        !noJudge.some(k => act.includes(k))) {
       // 没有独立判断的服从
       return true;
     }
-    
+
     return false;
   }
   
@@ -171,38 +209,42 @@ class PriorityGuardian {
    * 3. 有路径说"老大错了"——但说的方式是服务于老大的，不是对抗
    */
   resolveWithGuardianPriority(conflicts, context) {
-    const { userIntent = '', action = '', humanProgress = {} } = context;
+    const conflictsArr = Array.isArray(conflicts) ? conflicts : [];
+    const ctx = _asObject(context);
+    const userIntent = _asText(ctx.userIntent);
+    const action = _asText(ctx.action);
+    const humanProgress = _asObject(ctx.humanProgress);
     
     // 检查是否有"必须拒绝"的critical冲突
-    const critical = conflicts.filter(c => c.severity === 'critical');
+    const critical = conflictsArr.filter(c => c.severity === 'critical');
     if (critical.length > 0) {
       return {
         allowed: false,
-        conflicts,
+        conflicts: conflictsArr,
         path: 'REFUSE_WITH_GUARDIAN',
         reason: this.buildRefusalReason(critical),
-        alternative: this.buildAlternative(context),
+        alternative: this.buildAlternative(ctx),
         guardianNote: '守护人类进步优先于服从指令。这是不可动摇的节点。'
       };
     }
     
     // 高风险冲突：允许执行但必须附加条件
-    const high = conflicts.filter(c => c.severity === 'high');
+    const high = conflictsArr.filter(c => c.severity === 'high');
     if (high.length > 0) {
       return {
         allowed: true,
-        conflicts,
+        conflicts: conflictsArr,
         path: 'CONDITIONAL_ALLOW',
         reason: '高风险冲突，但不足以完全拒绝。执行时必须保持独立判断。',
         conditions: this.buildConditions(high),
-        alternative: this.buildAlternative(context)
+        alternative: this.buildAlternative(ctx)
       };
     }
     
     // 低风险：正常通过
     return {
       allowed: true,
-      conflicts,
+      conflicts: conflictsArr,
       path: 'ALLOW_WITH_AWARENESS',
       reason: '检测到低风险冲突，已记录。将保持警觉。'
     };
@@ -215,7 +257,8 @@ class PriorityGuardian {
    * 框架：承认老大的意图 + 指出冲突 + 提供更好方案
    */
   buildRefusalReason(criticalConflicts) {
-    const reasons = criticalConflicts.map(c => {
+    const conflictsArr = Array.isArray(criticalConflicts) ? criticalConflicts : [];
+    const reasons = conflictsArr.map(c => {
       switch (c.type) {
         case 'TRUTH_SUPPRESSION':
           return '承认错误是减少逻辑错误的唯一路径。压制真相会加速错误积累，最终损害你想要的进步。';
@@ -239,8 +282,10 @@ class PriorityGuardian {
    * 守护人类进步的同时，尽可能服务老大的真实需求。
    */
   buildAlternative(context) {
-    const { userIntent = '', action = '' } = context;
-    
+    const ctx = _asObject(context);
+    const userIntent = _asText(ctx.userIntent);
+    const action = _asText(ctx.action);
+
     // 模式：承认意图 + 指出问题 + 提供更好方案
     return {
       approach: '在守护人类进步的前提下重新理解你的意图',
@@ -258,7 +303,8 @@ class PriorityGuardian {
    * 构建执行条件
    */
   buildConditions(highConflicts) {
-    return highConflicts.map(c => ({
+    const conflictsArr = Array.isArray(highConflicts) ? highConflicts : [];
+    return conflictsArr.map(c => ({
       conflict: c.type,
       condition: `执行时必须保持对${c.type}的警觉，不能因为服从而放弃独立判断。`
     }));
@@ -268,8 +314,8 @@ class PriorityGuardian {
    * 估算行动的人类进步权重
    */
   estimateProgressWeight(action) {
-    const act = action.toLowerCase();
-    
+    const act = _asText(action).toLowerCase();
+
     let weight = 0;
     
     // 正面指标
