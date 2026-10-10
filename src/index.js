@@ -317,6 +317,27 @@ const GUIDANCE_MAP = {
     clickbait: '去掉"震惊/99%的人不知道"式标题党措辞，用平实语言直接陈述事实',
     sealioning: '停止反复施压式追问证据，把精力用于就事实本身给出回应',
     tone_policing: '去掉指责对方语气与情绪的表述，直接讨论内容本身',
+    // [dimension-health-audit·第一百八十四轮] output-gate 层的四个 finding
+    // dimension 补入 GUIDANCE_MAP —— 这是 cycle 166 同型缺口的第三处。
+    //
+    // 那一次修的是"能决定 gate.action 却拿不到 guidance"的 9+13 个维度;
+    // 本轮发现另一族: **output-gate 层推的 finding 用的 dimension 名**从未进过
+    // 这张表。实测 guidanceFor('overconfidence' / 'knowledge_masquerade' /
+    // 'self_contradiction' / 'uncertainty_gap') 四个全部返回 undefined。
+    //
+    // 为什么这是缺陷而不仅是"表没覆盖全": 这四个维度的 finding **自带**
+    // guidance(output-gate 自己的字面量), 所以按 AGENTS.md 指引读
+    // findings[].guidance 的调用方拿得到; 但 convention #3 要求公开能力可发现,
+    // 而 guidanceFor() 是 index.js 的公开导出 —— 外部 agent 逐项查指引时,
+    // 这四个名字是洞。**同一个维度名, 走 findings 拿得到、走公开 API 拿不到。**
+    //
+    // 四个值逐字取 output-gate.js 里对应的 guidance 字面量(该文件 177/185/192/
+    // 198 行), 保证两处永不漂移; 若将来 output-gate 改了措辞, 这里会与
+    // findings[].guidance 不一致, 由本轮新锁的对比断言抓住。
+    overconfidence: '去掉绝对化断言，增加不确定性措辞',
+    knowledge_masquerade: '用具体证据替代空泛共识宣称',
+    self_contradiction: '前后立场一致，去掉矛盾声明',
+    uncertainty_gap: '添加"可能""通常"等不确定性措辞',
     // [dimension-health-audit·第一百五十五轮] 下列 13 个维度此前**从未进过
     // GUIDANCE_MAP**，于是 `if (GUIDANCE_MAP[f.dimension])` 对它们静默跳过,
     // finding 上不带 guidance 字段。前两轮补的是 9 个**能决定 gate.action** 的
