@@ -2819,91 +2819,60 @@ function handleCheckDrift() {
 function handleErrorStore(args) {
   const { problem, action, outcome } = args || {};
   if (!problem||!action||!outcome) return { error: 'need problem, action, outcome' };
-  // [mcp-tool-enhancement·第一百二十一轮] 把'未就绪'改成真实的'未实现'。
-  // 实测三层: ① heartflow 实例上 _hfCore **从未被赋值**(start() 前后都
-  //    undefined, 新增约 180 个键里没有它); ② 顺着 _hfCore.errorMemory 找, 
-  //    **src/core/error-memory.js 不存在**(require 直接 MODULE_NOT_FOUND)。
-  // 旧信息 'error memory not ready' 暗示'初始化即可恢复', 而真相是这个
-  // 能力从未被实现 —— 契约错配家族: 响应结构良好, 内容是死的。
-  // 这条信息是给调用方的真实说明, 不假装可恢复。
-  if (!heartflow || !heartflow._hfCore) {
-    // 惰性兜底: 万一某天 heartflow 接上了 _hfCore, 这条路仍然有效
-    try {
-      const hfm = require(HF_DIR + '/src/core/heartflow.js');
-      const inst = new hfm.Aspira({ rootPath: HF_DIR, silent: true });
-      try { inst.start(); } catch (e) { /* 模块已接线, 忽略 start() 尾段抛错 */ }
-      if (inst._hfCore) heartflow = inst;
-    } catch (e) { /* 建实例失败则维持下方真实错误 */ }
-  }
-  if (!heartflow||!heartflow._hfCore) return { error: 'error-memory 能力未实现: heartflow._hfCore 与 src/core/error-memory.js 均不存在, 不是初始化时机问题' };
-  try { return heartflow._hfCore.errorMemory.store(problem, action, outcome); } catch(e) { return { error: e.message }; }
+  // [mcp-tool-enhancement·第一百九十二轮] 第一百二十一轮在这里断定"这个能力从未
+  // 被实现", 依据是 `src/core/error-memory.js` require 不到。**那个诊断只对了一半**:
+  // 实现在 `src/error-memory.js`(src/ 根下, 不在 core/ 里), 导出 12 个方法,
+  // `logCorrection` / `querySimilar` / `logFix` / `logVerify` 全部可用 ——
+  // 实测 logCorrection('overconfidence', …) 返回 {success:true, updated:1}。
+  //
+  // 于是这 4 个对外宣传的工具在 181 个里结构上不可能工作: 调用成功、不抛错、
+  // 返回 `{error: '…能力未实现…'}`, 而实现就在隔壁目录。这是本仓库记录最多的形状
+  // —— *响应结构良好, 内容是死的* —— 而 cycle 16 的同族错误正踩着它:
+  // **注释/诊断说"不存在", 而东西就在隔壁**(那次是 self-diagnostic 的引擎表把
+  // src/emotion 写成了 src/core)。
+  //
+  // 修法: 直接 require 真实模块, 不再走 `heartflow._hfCore.errorMemory` 这条
+  // 从未被赋值的路径(cycle 121 已实测 start() 前后 _hfCore 都是 undefined)。
+  // `problem` 是自由文本而 logCorrection 的 category 必须是 7 个枚举值之一,
+  // 故用模块自带的 classifyError 推断 —— 不猜、不让调用方多传一个参数。
+  try {
+    const em = require(HF_DIR + '/src/error-memory.js');
+    const cls = em.classifyError(problem, { action, outcome });
+    return em.logCorrection(cls.code, problem, [action, outcome].join(' → '));
+  } catch (e) { return { error: e.message }; }
 }
 function handleErrorQuery(args) {
   const { problem, limit } = args || {};
   if (!problem) return { error: 'need problem' };
-  // [mcp-tool-enhancement·第一百二十一轮] 把'未就绪'改成真实的'未实现'。
-  // 实测三层: ① heartflow 实例上 _hfCore **从未被赋值**(start() 前后都
-  //    undefined, 新增约 180 个键里没有它); ② 顺着 _hfCore.errorMemory 找, 
-  //    **src/core/error-memory.js 不存在**(require 直接 MODULE_NOT_FOUND)。
-  // 旧信息 'error memory not ready' 暗示'初始化即可恢复', 而真相是这个
-  // 能力从未被实现 —— 契约错配家族: 响应结构良好, 内容是死的。
-  // 这条信息是给调用方的真实说明, 不假装可恢复。
-  if (!heartflow || !heartflow._hfCore) {
-    // 惰性兜底: 万一某天 heartflow 接上了 _hfCore, 这条路仍然有效
-    try {
-      const hfm = require(HF_DIR + '/src/core/heartflow.js');
-      const inst = new hfm.Aspira({ rootPath: HF_DIR, silent: true });
-      try { inst.start(); } catch (e) { /* 模块已接线, 忽略 start() 尾段抛错 */ }
-      if (inst._hfCore) heartflow = inst;
-    } catch (e) { /* 建实例失败则维持下方真实错误 */ }
-  }
-  if (!heartflow||!heartflow._hfCore) return { error: 'error-memory 能力未实现: heartflow._hfCore 与 src/core/error-memory.js 均不存在, 不是初始化时机问题' };
-  try { return heartflow._hfCore.errorMemory.query(problem, limit || 5); } catch(e) { return { error: e.message }; }
+  // [mcp-tool-enhancement·第一百九十二轮] 同上: 真实实现在 src/error-memory.js,
+  // 不在 src/core/。querySimilar 的入参名(context)与工具参数名(problem)不同,
+  // 语义相同 —— 都是"当前问题/上下文"。
+  try {
+    const em = require(HF_DIR + '/src/error-memory.js');
+    return em.querySimilar(problem, limit || 5);
+  } catch (e) { return { error: e.message }; }
 }
 // [v6.6.0] 闭环状态机: 错误 → 修复 → 验证
 function handleErrorFix(args) {
   const { id, note } = args || {};
   if (id === undefined) return { error: 'need id' };
-  // [mcp-tool-enhancement·第一百二十一轮] 把'未就绪'改成真实的'未实现'。
-  // 实测三层: ① heartflow 实例上 _hfCore **从未被赋值**(start() 前后都
-  //    undefined, 新增约 180 个键里没有它); ② 顺着 _hfCore.errorMemory 找, 
-  //    **src/core/error-memory.js 不存在**(require 直接 MODULE_NOT_FOUND)。
-  // 旧信息 'error memory not ready' 暗示'初始化即可恢复', 而真相是这个
-  // 能力从未被实现 —— 契约错配家族: 响应结构良好, 内容是死的。
-  // 这条信息是给调用方的真实说明, 不假装可恢复。
-  if (!heartflow || !heartflow._hfCore) {
-    // 惰性兜底: 万一某天 heartflow 接上了 _hfCore, 这条路仍然有效
-    try {
-      const hfm = require(HF_DIR + '/src/core/heartflow.js');
-      const inst = new hfm.Aspira({ rootPath: HF_DIR, silent: true });
-      try { inst.start(); } catch (e) { /* 模块已接线, 忽略 start() 尾段抛错 */ }
-      if (inst._hfCore) heartflow = inst;
-    } catch (e) { /* 建实例失败则维持下方真实错误 */ }
-  }
-  if (!heartflow||!heartflow._hfCore||!heartflow._hfCore.errorMemory) return { error: 'error-memory 能力未实现: heartflow._hfCore 与 src/core/error-memory.js 均不存在, 不是初始化时机问题' };
-  try { return heartflow._hfCore.errorMemory.fix(id, note || ''); } catch(e) { return { error: e.message }; }
+  // [mcp-tool-enhancement·第一百九十二轮] 同 handleErrorStore: 真实实现在
+  // src/error-memory.js(src/ 根下), 不在 cycle 121 找的 src/core/。
+  // logFix 的入参名(fixDetail)与工具参数名(note)不同, 语义相同。
+  try {
+    const em = require(HF_DIR + '/src/error-memory.js');
+    return em.logFix(id, note || '');
+  } catch (e) { return { error: e.message }; }
 }
 function handleErrorVerify(args) {
   const { id, note } = args || {};
   if (id === undefined) return { error: 'need id' };
-  // [mcp-tool-enhancement·第一百二十一轮] 把'未就绪'改成真实的'未实现'。
-  // 实测三层: ① heartflow 实例上 _hfCore **从未被赋值**(start() 前后都
-  //    undefined, 新增约 180 个键里没有它); ② 顺着 _hfCore.errorMemory 找, 
-  //    **src/core/error-memory.js 不存在**(require 直接 MODULE_NOT_FOUND)。
-  // 旧信息 'error memory not ready' 暗示'初始化即可恢复', 而真相是这个
-  // 能力从未被实现 —— 契约错配家族: 响应结构良好, 内容是死的。
-  // 这条信息是给调用方的真实说明, 不假装可恢复。
-  if (!heartflow || !heartflow._hfCore) {
-    // 惰性兜底: 万一某天 heartflow 接上了 _hfCore, 这条路仍然有效
-    try {
-      const hfm = require(HF_DIR + '/src/core/heartflow.js');
-      const inst = new hfm.Aspira({ rootPath: HF_DIR, silent: true });
-      try { inst.start(); } catch (e) { /* 模块已接线, 忽略 start() 尾段抛错 */ }
-      if (inst._hfCore) heartflow = inst;
-    } catch (e) { /* 建实例失败则维持下方真实错误 */ }
-  }
-  if (!heartflow||!heartflow._hfCore||!heartflow._hfCore.errorMemory) return { error: 'error-memory 能力未实现: heartflow._hfCore 与 src/core/error-memory.js 均不存在, 不是初始化时机问题' };
-  try { return heartflow._hfCore.errorMemory.verify(id, note || ''); } catch(e) { return { error: e.message }; }
+  // [mcp-tool-enhancement·第一百九十二轮] 同上: 真实实现在 src/error-memory.js。
+  // 闭环状态机第三步(fixed→verified), logVerify 与工具参数同名同义。
+  try {
+    const em = require(HF_DIR + '/src/error-memory.js');
+    return em.logVerify(id, note || '');
+  } catch (e) { return { error: e.message }; }
 }
 // [v6.3.7] 公式搜索
 function handleFormulaSearch(args) {
