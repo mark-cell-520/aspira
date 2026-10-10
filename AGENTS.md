@@ -385,6 +385,40 @@ These are the rules this codebase actually follows. Follow them when changing it
   separate them — widening `HEDGE_RE` would exempt the malicious ones as well.
 - Chinese tokenisation in the hypothesis stage is heuristic (greedy longest-match with a
   stopword list), not dictionary-based.
+- **The audit's own denominator composition contained a branch that is structurally incapable
+  of ever being non-zero — and it printed a `0` that read exactly like a measured exclusion.**
+  `doc-honest-numbers`, 188th cycle. Cycles 7/8/9/10/11/19/176 had each asked the audit a
+  different question (which keys are unmeasured, which numeric forms exist, which gates can
+  never pass a claim, which files are scanned, measured-vs-patterned, what is exempted, which
+  measurements are taken but never compared). This cycle asked the one never asked: **is the
+  denominator the audit reports about itself actually self-consistent?** The answer exposed a
+  dead branch. The composition line reports four mutually-exclusive classes — auditable,
+  percentage, version-number/date, inside code fences — and the third has **never once been
+  non-zero**. Exhaustively verified by construction: `NUMISH` requires *a number immediately
+  followed by a unit word* (个/条/行/层/维/模块/工具/路由/`tests?`/…), while a version number's
+  digit run is not adjacent to the unit word at all — in `1.0.70 modules` the regex matches
+  `70 modules`, not `1.0.70`, so `/v?\d+\.\d+/` can never be tested; dates are the same shape.
+  Hand-built `1.0.70 modules` / `v1.0.70 tools` / `2026-10-09 tests` / `>= 18.17 modules` and
+  **not one** hit fragment contained a version-or-date form. So the printed
+  "版本号/日期 0" does not mean "this class was actively excluded and measured at zero" — it
+  means *the predicate cannot fire*. **A predicate that cannot fire and a predicate that
+  fires-and-measures-zero are indistinguishable in an output that prints only the number**,
+  which is the cycle-176 `measured-but-never-compared` shape in its dead-branch form: that
+  time a number was measured and never compared; this time a number was printed that was
+  never measurable at all. The predicate is deliberately kept (it is harmless and states
+  intent), but the report now appends the reason whenever that class is zero, and a new
+  self-consistency assertion requires `rawClaims === 四项和` — a composition that is not
+  internally consistent is worse than no composition. `test/audit-denominator-self-consistency.test.js`
+  (5 cases) locks it in four directions: source-level presence of both the conditional
+  explanation and the invariant, behavioural appearance of the explanation in real output, a
+  mutation that breaks the sum and must turn the audit red by name, and a reverse proof that
+  stripping only the assertion block makes the same mutation silent again. **One residual
+  recorded, not closed:** the audit's own `run-all` spawn intermittently measures one case
+  fewer than a direct run (this cycle: 1843/13 twice against 1844/12 from both a direct run and
+  an exact spawn-form replica; `ASPIRA_AUDIT_SKIP_TESTS=1` gave 88/88 with 0 mismatches, so the
+  document claims are all correct and the divergence is entirely spawn-side). Cycle 29/142
+  located and fixed a git-`PATH` dependency of the same visible symptom and the intermittent
+  tail survived; its root cause is still not established.
 - **Reverse-enumerating the audit's own key set found two measurements that were taken every
   run and locked nothing — one of them the number convention #1 names explicitly.** Eleventh
   consecutive `doc-honest-numbers` cycle, and deliberately a *hardening* cycle rather than a

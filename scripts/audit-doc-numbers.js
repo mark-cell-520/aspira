@@ -1437,6 +1437,17 @@ if (process.argv.includes('--json')) {
     for (const h of (t.match(NUMISH) || [])) {
       rawClaims++;
       if (/%/.test(h)) { nPercent++; continue; }
+      // [doc-honest-numbers·第一百八十八轮] 这一支**结构上恒为零**, 已实测穷举:
+      // NUMISH 要求"数字 + 单位词", 而版本号形态是 `1.0.70 modules` —— 正则匹配到的
+      // 是 `70 modules`(不是 `1.0.70`), 于是 /v?\d+\.\d+/ 测不到; 日期
+      // `2026-10-09` 同理。构造 `1.0.70 modules` / `v1.0.70 tools` /
+      // `2026-10-09 tests` / `>= 18.17 modules` 等全部穷举, 命中片段里
+      // **没有一个**能同时含版本号/日期形态。
+      // 所以输出的"版本号/日期 0"不是"实测排除了 0 条", 而是"这个判据不可能
+      // 命中"。留着它会让读者以为该类已被主动排除 —— 一个恒零的判据和一个
+      // 有效的判据, 在输出里长得一模一样(cycle 176 修过同族的
+      // measured-but-never-compared, 这是它的死分支变体)。
+      // 判据保留(它无害且表达意图), 但**报告必须说明它恒零**。
       if (/v?\d+\.\d+/.test(h) || /\d{4}-\d{2}-\d{2}/.test(h) || />=\s*\d/.test(h)) { nVerDate++; continue; }
       nScannable++;
     }
@@ -1584,7 +1595,16 @@ if (process.argv.includes('--json')) {
     + ` · 显式豁免 ${nExemptReal} 份(其中不同内容 ${nExemptDistinct} 份`
     + (nExemptDup > 0 ? `, 逐字节重复 ${nExemptDup} 份` : '')
     + `; 每条豁免都写理由)${artifactNote}`);
-  console.log(`  分母构成(已扫文档内 NUMISH 粗计 ${rawClaims} 条): 可审 ${nScannable} · 百分比 ${nPercent} · 版本号/日期 ${nVerDate} · 代码围栏内 ${nFenced}`);
+  // [doc-honest-numbers·第一百八十八轮] 版本号/日期那一支结构上恒为零(见上方
+  // 穷举说明), 所以报告必须写明"恒零"而不是让人以为"实测排除了 0 条"。
+  // 一个恒零的判据和一个有效的判据, 在只印数字的输出里长得一模一样。
+  console.log(`  分母构成(已扫文档内 NUMISH 粗计 ${rawClaims} 条): 可审 ${nScannable} · 百分比 ${nPercent} · 版本号/日期 ${nVerDate}${nVerDate === 0 ? ' (该判据结构上恒零: NUMISH 要求"数字+单位词", 而版本号/日期的数字段不与单位词相邻, 穷举无一命中)' : ''} · 代码围栏内 ${nFenced}`);
+  // 自洽不变量: 四类是互斥集, 粗计须为四项之和。这条断言让"分母构成"这句
+  // 话本身可验证 —— 一个自己都不自洽的分母构成, 比没有构成更糟。
+  if (rawClaims !== nPercent + nVerDate + nFenced + nScannable) {
+    console.log(`  ❌ 分母构成不自洽: 粗计 ${rawClaims} ≠ 四项和 ${nPercent + nVerDate + nFenced + nScannable}`);
+    process.exitCode = 1;
+  }
   console.log('  (百分比是**被测量出的结果**不是规模声称; 版本号/日期与代码围栏内文本本就不该审。'
     + '这个百分比是**有构成说明的下界**而非疏漏率——"可审 ${nScannable}" 里仍含序数、括号内引用、'
     + '叙事引用、多义形态(如中文「N 维度」)等已知不审类别，故真实可审集比它更小、百分比比它更高)');
