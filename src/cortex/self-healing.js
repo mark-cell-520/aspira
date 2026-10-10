@@ -567,9 +567,30 @@ class SelfHealing extends EventEmitter {
     };
   }
 
+  /**
+   * 是否应当重试。
+   *
+   * [第一百九十四轮] 这里原来读的是 `normalizeError().transient` —— 一份**独立的
+   * 第二套判据**（`/timeout|econnreset|eagain|temporar|busy|rate limit|429|throttle/i`），
+   * 与 `classifyFailure()` 走的 `SEVERITY_MAP` 各判各的。实测两套判据的分裂:
+   *   'request timed out'      classifyFailure=transient, transient=false → shouldRetry=false
+   *   'operation timed out …'  同上(最常见的超时表述, 分词形态不在那份正则里)
+   *   'econnreset'             classifyFailure=medium,    transient=true  → shouldRetry=true
+   * 于是 AGENTS.md 承诺的 "severity-based: low retries, high escalates" 里,
+   * **retry 那一侧对最常见的超时表述整个失效**, 而 recover() 同时返回
+   * canRetry=false、severityAction='retry'、hint='…retry once'、next_step='repair'
+   * —— 一个结构合法却自相矛盾的返回值。
+   *
+   * 而 `FailureSeverity` 每一级都显式声明了 `autoRetry`, 这个字段被写好、被维护、
+   * 带着中文 description, 却在全 src/ 里从未被任何代码读取过(实测: grep autoRetry
+   * 只命中这 5 行定义)。severity 表本身就是"该级要不要自动重试"的唯一权威,
+   * 这里改为读它, 让判据只有一份。
+   */
   shouldRetry(result = {}) {
-    const normalized = this.normalizeError(result);
-    return normalized.transient && (result.attempt || 0) < this.maxRetries;
+    const attempt = Number(result.attempt || 0);
+    if (attempt >= this.maxRetries) return false;
+    const severity = this.classifyFailure(result).severity;
+    return severity.autoRetry === true;
   }
 
   repairHints(result = {}) {
