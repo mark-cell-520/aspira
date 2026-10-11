@@ -40,7 +40,7 @@
 module.exports = function ({ test, assertEqual, assertTrue }) {
   const fs = require('fs');
   const path = require('path');
-  const { execFileSync } = require('child_process');
+  const { execFileSync, execSync } = require('child_process');
   const { withDocLock } = require('./_doc-probe-lock.js');
 
   const ROOT = path.join(__dirname, '..');
@@ -123,6 +123,67 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     const after = runAudit();
     assertTrue(/不一致:\s*0/.test(after), '恢复 SKILL.md 后审计应重新全绿');
   }));
+
+  // ── 五、CURRENT_STATE 的现在时读数必须与已闭环的那一份一致 ──
+  // [doc-honest-numbers·第二百零八轮] 新建。
+  //
+  // 缺口: 审计只核 22 个 key, 而 CURRENT_STATE 的「已知限制 / 待办」节里有
+  // 一批**现在时**读数一个 key 都不归它管。本轮实测那一节:
+  //   · `heart-logic.js (2311 行)` 而 wc -l 实测 **2408**
+  //   · `desire-cognition.js (6384 行) 仍有大量逻辑待拆分` 而该文件
+  //     **不在 src/ 下**(全仓只剩 archive 里一个指向它的死测试) ——
+  //     一条挂在已消失模块上的待办, 是 cycle 193"实现过、然后静默蒸发"
+  //     的文档版
+  //   · `未测试模块已清零 (214→0)` 而 coverage-sweep 的 B 类是 **91**
+  //   · `核心路径已全绿 (119/119)` 而全套件 **2243** 通过
+  // 后三个数字与实测差 1 到 2 个数量级, 而且它们在"已知限制"里以现在时
+  // 陈述 —— 读者会拿它当当前状态。更刺的是: audit-doc-numbers.js 第 22 行
+  // 的注释**早就写下**"两份都是现在时陈述", 而当年的修法只改了版本行与
+  // modules 数, 漏了这一节。这是 cycle 7 `IDENTITY.md said 99 个模块` 的同族:
+  // **修了一个措辞, 没修另一个**。
+  //
+  // 锁法刻意不自己再 spawn 一次 coverage-sweep(那会让本用例再付一次清点
+  // 代价, 且多一个会腐烂的读数): 它比对的是 CURRENT_STATE 与 **已经被审计
+  // 闭环的 SKILL.md  Coverage sweep 行**。两份文档说同一个量, 就必须同一个数。
+  test('CURRENT_STATE 的现在时读数必须与 SKILL.md 已闭环的那份一致', () => {
+    const cs = fs.readFileSync(path.join(ROOT, 'CURRENT_STATE.md'), 'utf8');
+    const sk = fs.readFileSync(SKILL, 'utf8');
+
+    // ① 未测试模块数: 两份文档必须同一个值(SKILL.md 那个由审计闭环)
+    const skillB = (sk.match(/\*\*(\d+) alive but referenced by no test\*\*/) || [])[1];
+    assertTrue(!!skillB, '前提失效: SKILL.md 没有 alive-but-untested 读数');
+    const csB = (cs.match(/未测试模块 (\d+) 个/) || [])[1];
+    assertTrue(!!csB, 'CURRENT_STATE 应含"未测试模块 N 个"读数');
+    assertEqual(csB, skillB,
+      `CURRENT_STATE 说未测试模块 ${csB} 个, 而 SKILL.md(审计闭环的那份)说 ${skillB} —— ` +
+      '两份文档对同一个量给出两个数');
+
+    // ② 测试总数: 同理(SKILL.md 的 Test suite 行由审计的 tests key 闭环)
+    const skillT = (sk.match(/\| Test suite \| (\d+) passing/) || [])[1];
+    assertTrue(!!skillT, '前提失效: SKILL.md 没有 Test suite 读数');
+    const csT = (cs.match(/全套件 (\d+) 通过/) || [])[1];
+    assertTrue(!!csT, 'CURRENT_STATE 应含"全套件 N 通过"读数');
+    assertEqual(csT, skillT,
+      `CURRENT_STATE 说全套件 ${csT} 通过, 而 SKILL.md(审计闭环的那份)说 ${skillT}`);
+
+    // ③ 待办节点名的 src 文件必须真的存在 —— 不许再挂一个已蒸发的模块
+    // ⚠️ 先剥掉 ~~划掉~~ 的段落: 那是"已失效的历史记录"(本轮把 desire-cognition
+    // 划掉正是在说它没了), 不是待办。不剥就会把"记录一个模块消失"当成
+    // "把一个消失的模块当待办" —— 锁读了自己的文档当罪证。
+    const todo = cs.slice(cs.indexOf('## 已知限制')).replace(/~~[\s\S]*?~~/g, '');
+    assertTrue(todo.length > 40, '前提失效: 找不到「已知限制 / 待办」节');
+    // 形态: `name.js` (N 行) 或 name.js (N 行) —— 名字后面可能有闭合反引号
+    const named = [...todo.matchAll(/([\w-]+\.js)[`'\s]*[~(（]/g)].map(x => x[1]);
+    assertTrue(named.length > 0, '前提失效: 待办节里没有点名任何 .js 文件');
+    for (const f of named) {
+      const hit = execSync(`find src -name '${f}' -not -path '*/archive/*'`, {
+        cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim();
+      assertTrue(hit.length > 0,
+        `待办节点名的 ${f} 在 src/ 下不存在 —— 一条挂在已消失模块上的待办 ` +
+        '(实测: desire-cognition.js 就这样挂了若干部周期)');
+    }
+  });
 
   // ── 四、文档必须说清 380 与 132 不是一回事 ──────────────
   test('文档必须点明 coverage-sweep 的 380 与注册子系统 132 是两个口径', () => {

@@ -1,7 +1,7 @@
 # Aspira 当前状态 (CURRENT_STATE)
 
-> 版本 | v1.0.90
-> 审计状态 | status running, 132 modules, 2243 tests passed / 0 failed
+> 版本 | v1.0.91
+> 审计状态 | status running, 132 modules, 2244 tests passed / 0 failed
 > 公式库 | 608 formulas (cognitive science / psychology / neuroscience)
 > 记忆层 | AES-256-GCM 加密持久化, 本地优先, 不外传
 
@@ -46,7 +46,7 @@
 
 ## 已知限制 / 待办
 
-- `heart-logic.js` (2311 行) 仍为高耦合单 class，需 TDD 保护下按功能组逐步拆。
-- desire-cognition.js (6384 行) 仍有大量逻辑待拆分（本轮仅提取常量）。
+- `heart-logic.js` (2408 行) 仍为高耦合单 class，需 TDD 保护下按功能组逐步拆。
+- ~~desire-cognition.js (6384 行) 仍有大量逻辑待拆分~~ —— [第二百零八轮实测] 该文件已不在 src/ 下(全仓只剩 test/archive/dead-tests/ 里一个指向 src/emotion/desire-cognition.js 的死测试)，此条待办随之失效，不再挂着。
 - MCP server 进程需指向本体路径 `/root/.hermes/skills/ai/mark-heartflow-skill/`（旧进程跑 `/root/.claude/skills/heartflow/` 6.0.16，需重启同步）。
-- 测试覆盖：核心路径已全绿 (119/119)，未测试模块已清零 (214→0) 但 TDD 总量仍非 100%。
+- 测试覆盖：全套件 2244 通过 / 0 失败；未测试模块 91 个(coverage-sweep 的 B 类)而非 0，TDD 总量仍非 100%。
