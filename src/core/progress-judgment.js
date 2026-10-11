@@ -103,7 +103,20 @@ class ProgressJudgment {
       passed: verifiability,
       detail: verifiability ? '有证据支撑' : '缺少可验证证据'
     };
-    if (!verifiability && claim) {
+    // [test-coverage-gap·第二百一十八轮] 原判据是 `if (!verifiability && claim)` ——
+    // "没有证据"只在**同时有主张**时才判失败。于是 action / claim / evidence
+    // 三者全空时, 可验证性这一条**静默通过**; 配上下面两个同样空判通过的检查,
+    // `judge({})` 会返回 isProgress=true / confidence=0.925 —— 一个空问题被答成
+    // "是进步, 92.5% 确信", 而本模块自己的第一条核心标准写的就是
+    // "进步的主张必须能被检验"。无从检验的东西不能算通过检验。
+    // 生产路径上这一档更尖锐: pipeline.js:218 的调用形状是
+    //   judge({ action: input, claim: '', userIntent: input })
+    // claim 恒为空、evidence 恒为 undefined, 所以原判据在唯一的调用方那里
+    // **一次都不会响** —— 模块五条核心标准里的第一条, 结构上不可达。
+    // 本轮的修正只补"三者全空"这一档(`!action`), 不动"有行动无证据"那一档:
+    // 后者一改就会把 201 条语料全部翻成非进步、把门禁整体推到 verify,
+    // 那是另一个量级的改动, 不属于这一个最小变更。
+    if (!verifiability && (claim || !action)) {
       passed = false;
       failures.push('可验证性');
     }

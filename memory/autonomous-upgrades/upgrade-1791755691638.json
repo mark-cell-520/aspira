@@ -1,0 +1,55 @@
+{
+  "ts": "2026-10-11T21:54:51.638Z",
+  "cycle": 218,
+  "chosen": "test-coverage-gap",
+  "tieBreak": null,
+  "status": "done",
+  "theme": "一条管线层的第一条核心标准结构上不可达, 于是空问题被答成\"是进步, 92.5% 确信\"",
+  "angle": "本切片前九轮用了九个提问挑 B 类模块, 九个都用过了。第十个提问: 哪些 B 类模块在真实运行中真的被加载? 前九轮问的都是静态图, 没有一个问过\"它到底跑不跑\"",
+  "measurement": "同一进程内装 Module._load 钩子, 跑一遍有代表性的引擎调用(判别 + 门禁 + 全管线 + think), 取加载集与 B 类交集: 91 个 B 类里 63 个被加载, 28 个从不被加载(接近死代码)。只有 63 个是活缺口。其中 src/core/progress-judgment.js(289 行)是 src/pipeline.js:217 的真实管线层, 每次调用 new 一个实例, 零测试",
+  "rootCause": "checkCoreStandards 的第一条核心标准(可验证性)原判据是 if (!verifiability && claim) —— \"没有证据\"只在同时有主张时才判失败。于是 action/claim/evidence 三者全空时可验证性静默通过, 配上另外两个同样空判通过的检查, judge({}) 返回 isProgress=true / confidence=0.925。模块自己的第一条标准写的是\"进步的主张必须能被检验\"",
+  "productionShape": "pipeline.js:218 的调用形状是 judge({ action: input, claim: \"\", userIntent: input }) —— claim 恒为空、evidence 恒不传, 所以原判据在唯一的生产调用方那里一次都不会响: 五条核心标准里第一条结构上不可达。该形状下全语料只有 1/201 条触发升级, 这条层在生产里几乎是哑的",
+  "fix": "判据改为 if (!verifiability && (claim || !action)), 只补\"三者全空\"这一档; 刻意不动\"有行动无证据\"那一档 —— 后者一改就会把 201 条语料全翻成非进步、把门禁整体推到 verify, 是另一个量级的改动",
+  "measuredAfter": "judge({}) → isProgress=false / confidence=0.725 / standGround 出现; 语料逐条不变: isProgress 200/201、层升级 1/201、良性 137/137 pass、恶意 64/64 拦截",
+  "lock": {
+    "file": "test/progress-judgment-vacuous-pass.test.js",
+    "cases": 6,
+    "detail": "① 四种空形状不得判成进步、confidence 不得居高、仍须给 standGround(静默的 false 会断审计链) ② 语料读数双向不许动 ③ 反向对照: 有实质内容仍须判成进步(要求 ≥90%, 修复不许把一切压成 false) ④ 源级判据须覆盖空档且旧形不许残留, 先剥行注释(本轮修复注释引用了旧判据原文, cycle-19/25/194/195/197/214 形状第九次) ⑤ 反向证明: 副本改回 && claim 后空输入必须回到 isProgress=true 且 confidence>0.9 ⑥ 披露: 生产形状下\"有行动无证据\"仍不失败 + 全语料仅 1 条升级"
+  },
+  "ownErrors": [
+    "锁的源级用例把本轮修复注释里引用的旧判据当成罪行 —— cycle-19/25/194/195/197/214 形状第九次。修法同一式: 匹配前剥行注释, 并加前提自证证明没把真代码剥掉",
+    "文档同步脚本第一版把测试数从 2266 改起, 五条全部 MISS —— 文档实际说的是 2285(上一轮的真实读数), 我从上一轮汇报里记错了。是脚本自己的 MISS 行抓住的, 不是我的眼睛"
+  ],
+  "mutationVerified": "真文件上把判据改回 if (!verifiability && claim) → 3 例按名红; diff -q 确认字节级还原后回 6/6",
+  "cascade": "B 类锚点级联第十九次(148/153/156/159/167/170/171/179/182/191/193/194/195/196/197/198/199/200/201/218): 给 progress-judgment.js 加测试引用使 sweep 91 → 90、C 280 → 281。SKILL.md 的 Coverage sweep 行**两半**同步失效(粗体数字与同行散文), CURRENT_STATE.md 的未测试模块读数随之失效",
+  "disclosedNotFixed": [
+    "results.verifiability.passed 在无证据时是 undefined 而非 false(evidence && evidence.length > 0 求值为 undefined) —— 同一族\"假而不假\", 一个 token 可修, 但与本轮不是同一个改动, 刻意不捆绑",
+    "28 个从不被加载的 B 类模块已按名记录, 未删除也未重分类: \"无测试引用且无运行时加载\"接近 A 类, 但确认一个模块已死需要证明没有任何路径可达它, 那本身是一次独立测量"
+  ],
+  "files": [
+    "src/core/progress-judgment.js",
+    "test/progress-judgment-vacuous-pass.test.js",
+    "AGENTS.md",
+    "VERSION",
+    "package.json",
+    "src/core/version.js",
+    "src/core/heartflow.js",
+    ".well-known/agent-card.json",
+    "SKILL.md",
+    "README.md",
+    "CURRENT_STATE.md"
+  ],
+  "verify": "15 passed 0 failed",
+  "tests": "串行 2285 → 2291 / 0 / 2291, exit 0, 双通道均空, Command failed 计数 0; 新锁单独 6/6",
+  "audit": "ASPIRA_AUDIT_SKIP_TESTS=1: exit 0, 98 声称 / 93 一致 / 0 不一致 / 5 无法实测(层数双口径, 已由 cycle 210 后的既有披露覆盖)",
+  "srcChanged": true,
+  "mcpRestarted": false,
+  "mcpNote": "记为未执行, 非已执行",
+  "version": "1.1.0 -> 1.1.1",
+  "commit": null,
+  "tag": null,
+  "pushed": false,
+  "testCount": "2285 -> 2291(+6 全部来自新锁)",
+  "summary": "本切片第十个提问(哪些 B 类模块真的在运行中被加载)把 91 个 B 类分成 63 个活缺口与 28 个从不加载。活缺口里的 src/core/progress-judgment.js 是 pipeline.js:217 的真实层, 它的第一条核心标准(可验证性)因为判据写了 && claim, 在生产调用形状(claim 恒空、evidence 恒不传)下一次都不响 —— 于是 judge({}) 把空问题答成\"是进步, 92.5% 确信\"。修法只补\"三者全空\"一档, 语料读数逐条不变。",
+  "nextRound": "① 这条层在生产里几乎是哑的(全语料 1/201 升级), 而它是 pipeline 的监督层之一 —— 要不要让它真能判断(给它 claim/evidence)是产品判断, 但\"五条标准里第一条不可达\"这个事实已经量出来并锁住; ② 池 C 合成器结构上表达不了共现模式(cycle 214/216 两次撞到), 值得单独一个切片决定是改写合成器还是在文档里写明它的表达力边界; ③ 28 个从不加载的 B 类模块可以一次量清\"是否真的不可达\", 那是一次独立的死代码确认。"
+}
