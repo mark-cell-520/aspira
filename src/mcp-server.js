@@ -2437,7 +2437,23 @@ async function handleBenchmarkRun(args, sessionId) {
 
     const { BenchmarkRunner } = require(path.join(HF_DIR, 'src', 'benchmark', 'benchmark-runner.js'));
 
-    const hf = sessionId ? getOrCreateInstance(sessionId) : heartflow;
+    // [mcp-tool-enhancement·第二百零四轮] 删掉一个从未存在的承诺。
+    // 这里原来按 sessionId 分派去取一个引擎实例(getOrCreate 那一个),
+    // 而那个函数在**全仓从未定义、从未导入** —— 两处调用、零处定义。
+    // 中央 dispatch 恒传 crypto.randomUUID() 生成的 sessionId(5284 行),
+    // 于是该分支 100% 抛 ReferenceError; 它又被 dispatch 那个"兼容单参
+    // handler"的 fallback 接住, 用无 sessionId 再跑一遍才成功。净后果:
+    // 每次调用白抛一次异常、前置的 path-guard 与 require 双跑, 而 dispatch
+    // 的 catch 是 `catch (_) {}` 静默的 —— server 输出里零痕迹, 单元测试也
+    // 看不见(直接调 handler 不传 sessionId 就走 heartflow 分支, 恰好绕开触发
+    // 条件; cycle 193 修 src/benchmark/ 时的实测正是那样测的, 所以漏掉了它)。
+    //
+    // 不实现它: "按 sessionId 取引擎实例"需要决定实例生命周期(进程单例 /
+    // 按 session / 落盘), 属产品判断; 且同文件其他 handler 一律直接用模块级
+    // heartflow。删掉比保留一个从未存在的分支诚实(cycle 195 同原则)。
+    // 名字只在注释里出现一次, 且测试/锁一律先剥行注释再匹配 —— 本仓库为这个
+    // 形状付过七次学费(cycle 19/25/194/195/197/201/203)。
+    const hf = heartflow;
 
     if (!hf) return { error: '引擎未启动', timestamp: Date.now() };
 
@@ -2543,7 +2559,23 @@ async function handleBenchmarkImportFailures(args, sessionId) {
 
     const { FailureCaseImporter } = require(path.join(HF_DIR, 'src', 'benchmark', 'failure-importer.js'));
 
-    const hf = sessionId ? getOrCreateInstance(sessionId) : heartflow;
+    // [mcp-tool-enhancement·第二百零四轮] 删掉一个从未存在的承诺。
+    // 这里原来按 sessionId 分派去取一个引擎实例(getOrCreate 那一个),
+    // 而那个函数在**全仓从未定义、从未导入** —— 两处调用、零处定义。
+    // 中央 dispatch 恒传 crypto.randomUUID() 生成的 sessionId(5284 行),
+    // 于是该分支 100% 抛 ReferenceError; 它又被 dispatch 那个"兼容单参
+    // handler"的 fallback 接住, 用无 sessionId 再跑一遍才成功。净后果:
+    // 每次调用白抛一次异常、前置的 path-guard 与 require 双跑, 而 dispatch
+    // 的 catch 是 `catch (_) {}` 静默的 —— server 输出里零痕迹, 单元测试也
+    // 看不见(直接调 handler 不传 sessionId 就走 heartflow 分支, 恰好绕开触发
+    // 条件; cycle 193 修 src/benchmark/ 时的实测正是那样测的, 所以漏掉了它)。
+    //
+    // 不实现它: "按 sessionId 取引擎实例"需要决定实例生命周期(进程单例 /
+    // 按 session / 落盘), 属产品判断; 且同文件其他 handler 一律直接用模块级
+    // heartflow。删掉比保留一个从未存在的分支诚实(cycle 195 同原则)。
+    // 名字只在注释里出现一次, 且测试/锁一律先剥行注释再匹配 —— 本仓库为这个
+    // 形状付过七次学费(cycle 19/25/194/195/197/201/203)。
+    const hf = heartflow;
 
     if (!hf) return { error: '引擎未启动', timestamp: Date.now() };
 
