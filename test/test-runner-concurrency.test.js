@@ -60,13 +60,22 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
 
   test('子进程隔离必须保留(承重墙，见文件头注释第 3 条)', () => {
     // run-all.js 头部明确记录: 曾因把引擎加载文件并入 runner 进程导致 OOM。
-    // 所以每个测试文件仍必须由独立的 `node ...` 子进程执行。
-    assertTrue(/node \$\{JSON\.stringify\(path\.join\(TEST_DIR/.test(SRC) ||
-               /`node \$\{JSON\.stringify/.test(SRC),
-      '每个测试仍须以独立 node 子进程执行');
+    // 所以每个测试文件仍必须由独立子进程执行。
+    //
+    // [第二百零七轮] 判据随实现同步: 子进程的解释器从**裸 node 字面量**改为
+    // **解析出的 NODE_BIN**(见 run-all.js 顶部与 test/_node-bin.js), 因为实测
+    // 裸字面量使整个运行器的可用性取决于调用方 PATH —— PATH 里没有 node 时
+    // 397 个子进程全部 Command failed, 全量读出 0 通过 / 397 失败。
+    // **承重墙本身没动**: 每个测试文件仍是独立子进程, 只是解释器换成绝对路径。
+    // 这里同步的是字面形态, 不是不变量; 反向自证在下面, 钉住"进程内执行"仍必须红。
+    assertTrue(/cmd: `\$\{JSON\.stringify\(NODE_BIN\)\}/.test(SRC),
+      '每个测试仍须以独立子进程执行, 且该子进程的解释器必须来自 NODE_BIN');
     // 三种执行方式都必须还在
     assertTrue(/_mount\.js/.test(SRC), 'mount 注入方式必须保留');
     assertTrue(/_jest-globals\.js/.test(SRC), 'jest 风格 -r 预加载必须保留');
+    // 自证: 谓词必须分不清"独立子进程"与"进程内执行" —— 否则承重墙锁恒真
+    assertTrue(/cmd: `\$\{JSON\.stringify\(NODE_BIN\)\}/.test('jobs.push({ inline: () => require(f) })') === false,
+      '自证失效: 上面的谓词对"进程内执行"也成立, 承重墙锁已恒真');
   });
 
   test('汇总行格式必须保持不变(audit-doc-numbers.js 依赖它)', () => {

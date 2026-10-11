@@ -42,6 +42,12 @@ const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
 const { parseChildSummary } = require('./_child-summary.js');
+// [test-coverage-gap·第二百零七轮] 子进程的 node 必须显式解析, 不得用裸字面量。
+// 实测(第二百零六轮): 调用方 PATH 只有 /usr/bin:/bin 而 node 在 /usr/local/bin 时,
+// 397 个子进程全部 Command failed, 全量读出 0 通过 / 397 失败。这是 cycle 142
+// 已修的 git PATH 依赖的同族新形态, 且从"1/6 间歇"恶化成"100% 失败"。
+// 解析逻辑与三条锁都在 test/_node-bin.js / node-binary-path-independence.test.js。
+const { NODE_BIN } = require('./_node-bin.js');
 
 const TEST_DIR = __dirname;
 const ROOT = path.join(__dirname, '..');
@@ -187,12 +193,12 @@ async function runJobs(jobs) {
 }
 
 function subTestJob(name, rel, timeout) {
-  return { label: name, cmd: `node ${JSON.stringify(path.join(TEST_DIR, rel))}`, timeout, kind: 'plain' };
+  return { label: name, cmd: `${JSON.stringify(NODE_BIN)} ${JSON.stringify(path.join(TEST_DIR, rel))}`, timeout, kind: 'plain' };
 }
 function mountTestJob(name, rel, timeout) {
   return {
     label: name,
-    cmd: `node ${JSON.stringify(path.join(TEST_DIR, '_mount.js'))} ${JSON.stringify(path.join(TEST_DIR, rel))}`,
+    cmd: `${JSON.stringify(NODE_BIN)} ${JSON.stringify(path.join(TEST_DIR, '_mount.js'))} ${JSON.stringify(path.join(TEST_DIR, rel))}`,
     timeout,
     kind: 'mount'
   };
@@ -200,7 +206,7 @@ function mountTestJob(name, rel, timeout) {
 function jestStyleJob(name, rel, timeout) {
   return {
     label: name,
-    cmd: `node -r ${JSON.stringify(path.join(TEST_DIR, '_jest-globals.js'))} ${JSON.stringify(path.join(TEST_DIR, rel))}`,
+    cmd: `${JSON.stringify(NODE_BIN)} -r ${JSON.stringify(path.join(TEST_DIR, '_jest-globals.js'))} ${JSON.stringify(path.join(TEST_DIR, rel))}`,
     timeout,
     kind: 'jest'
   };

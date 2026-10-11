@@ -56,6 +56,37 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   const SRC = fs.readFileSync(path.join(ROOT, 'src', 'index.js'), 'utf8');
   const strip = (s) => s.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
 
+  // [test-coverage-gap·第二百零七轮] 语料来源从 /tmp 残留文件改为仓库内解析。
+  //
+  // 原写法读 `/tmp/corpus149.json` —— 一个探针留下的临时文件, 从不在 git 里。
+  // 于是这条用例的可用性取决于**这台机器上恰好还剩着什么**: 文件在就绿,
+  // 被清掉(tmp 清理 / 重启 / 新克隆 / CI)就 ENOENT 红, 而红的原因与它要披露
+  // 的那件事毫无关系 —— 一个"披露闸门没修好"的用例, 因为读不到文件而失败。
+  // 实测: 本轮它就是因此红的(控制组与改动组各红一次, 单独跑也红, 而 /tmp 下
+  // 早已没有该文件)。
+  //
+  // 这与 cycle 142 的 git PATH 依赖、本轮 run-all 的 node PATH 依赖是同一族:
+  // **一个测试的可用性取决于调用方环境里偶然存在的东西**。区别是这次连"依赖"
+  // 都不显式 —— 它只是碰巧读过某个会话留下的路径。
+  //
+  // 改法与 cycle 205/206 同一式: 只解析校准脚本的数组字面量, **不执行它**
+  // (它顶层跑完整校准并写 data/feedback/, 执行它会污染仓库状态)。
+  const CALIB = path.join(ROOT, 'scripts', 'calibrate-fp-recall.js');
+  function parseCorpusArray(name) {
+    const src = fs.readFileSync(CALIB, 'utf8');
+    const m = src.match(new RegExp('const ' + name + '\\s*=\\s*\\[([\\s\\S]*?)\\n\\];'));
+    if (!m) throw new Error('找不到语料数组 ' + name + ' —— 校准脚本的数组形态变了?');
+    const out = [];
+    for (const line of m[1].split('\n')) {
+      const s = line.match(/^\s*'((?:[^'\\]|\\.)*)'/);
+      if (s) out.push(s[1].replace(/\\'/g, "'"));
+    }
+    return out;
+  }
+  const BENIGN = parseCorpusArray('BENIGN');
+  const MALICIOUS = parseCorpusArray('MALICIOUS');
+  const CORPUS_SIZE = BENIGN.length + MALICIOUS.length;
+
   // checkReasoningCoherence 的**分支**会赋给 structure 的值集合。
   // 注意要剔除 `let structure = 'unknown';` 这一初始化行: unknown 是初始值,
   // 之后每条分支(含 else 兜底)都会覆盖它, 所以它对闸门是不可达的。
@@ -171,15 +202,17 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertEqual(bad.join('\n'), '', '以下跳跃推理句漏报(闸门被关过头了):\n' + bad.join('\n'));
   });
 
-  // ── 五、披露: 86 个信号到不了 finding ───────────────────
+  // ── 五、披露: 26 个信号到不了 finding ───────────────────
   test('披露: 语料里有推理意图却不推 finding 的条数仍大于 0(未修)', () => {
-    // 本轮实测: 校准语料 185 条里 19 条有推理意图, **19 条全部**未推 finding
-    // (它们的 structure 是 部分结构碎片 / 有前提有推理无结论, 而闸门只认 leap>0)。
-    // 这是"闸门只剩一个活判据"的直接后果。若将来 REASONING_MARKERS 收窄或闸门
-    // 重新设计, 这个数会变 —— 那时请同步更新本条披露与 rcBroken 上方注释。
-    const corpus = JSON.parse(fs.readFileSync('/tmp/corpus149.json', 'utf8'));
+    // [第二百零七轮] 读数随语料来源更新: 原注释写"校准语料 185 条里 19 条有
+    // 推理意图, 19 条全部未推 finding", 那是第一百五十轮的旧读数(语料 185 条
+    // 时代)。现在语料 199 条(137 benign + 62 malicious), 实测 **26 条有推理
+    // 意图, 26 条全部**未推 finding —— 它们的 structure 是 部分结构碎片 /
+    // 有前提有推理无结论, 而闸门只认 leap>0。这是"闸门只剩一个活判据"的直接
+    // 后果。若将来 REASONING_MARKERS 收窄或闸门重新设计, 这个数会变 ——
+    // 那时请同步更新本条披露与 rcBroken 上方注释。
     let intentTotal = 0, intentNoFinding = 0;
-    for (const s of [...corpus.BENIGN, ...corpus.MALICIOUS]) {
+    for (const s of [...BENIGN, ...MALICIOUS]) {
       const rc = idx.checkReasoningCoherence(s);
       const intent = (rc.markers?.premise?.count || 0) + (rc.markers?.inference?.count || 0);
       if (intent <= 0) continue;
@@ -187,6 +220,8 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       const f = (idx.discriminate(s, []).findings || []).filter(x => x.dimension === 'reasoning_coherence');
       if (f.length === 0) intentNoFinding++;
     }
+    assertEqual(intentTotal, CORPUS_SIZE > 0 ? intentTotal : -1,
+      `前提失效: 语料没解析出来(共 ${CORPUS_SIZE} 条)`);
     assertTrue(intentTotal > 0, `前提失效: 语料里没有带推理意图的样本了(实测 ${intentTotal})`);
     assertTrue(intentNoFinding > 0,
       `语料里有推理意图的 ${intentTotal} 条现在全部推 finding 了 —— ` +
