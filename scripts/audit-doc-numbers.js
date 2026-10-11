@@ -1206,7 +1206,25 @@ if (!SKIP_TESTS) try {
   // 测试数声称变成"无法实测": **审计恰在出问题的那一刻失明**。
   // spawnSync 不抛异常，stdout 在失败时依然可读——测试数照常测得。
   const { spawnSync } = require('child_process');
-  const r = spawnSync('node', ['test/run-all.js'], { cwd: ROOT, encoding: 'utf8', timeout: 900000, stdio: ['ignore', 'pipe', 'ignore'] });
+  // [doc-honest-numbers·第二百一十三轮] spawn 时必须**显式串行**。
+  //
+  // 原先这里不传 ASPIRA_TEST_CONCURRENCY，子进程落进 run-all 的默认并发模式，
+  // 而铁律 3 的门禁与文档里的测试数读数是**串行**实测的。于是同一份代码被两种
+  // 口径各测一次，而并发口径有已知的 1-2 个假象失败(cycle 132/194/204/205/207/211
+  // 六轮记录的 concurrency artefact: 每次组合不同、单独跑全绿)。
+  //
+  // 本轮实测的后果: 审计 spawn 读出 2248 通过 / 2 失败，而串行门禁读出
+  // 2257 / 0，文档写 2257 —— 于是四条 tests 类声称**每一次都被判不一致**，
+  // 而文档是对的。审计用自己的 spawn 形态复现过那两个失败:
+  //   · audit-doc-coverage.test.js  Command failed(单独跑 8/8 全绿)
+  //   · domains-title-vs-table.test.js 一例(单独跑 6/6 全绿)
+  //
+  // 代价(如实记): 串行一遍约 6 分钟，并发约 40 秒，所以审计从约 2 分钟变成
+  // 约 8 分钟。换来的是一致性 —— **仪器与被测口径不同，则它的读数不是读数**。
+  const r = spawnSync('node', ['test/run-all.js'], {
+    cwd: ROOT, encoding: 'utf8', timeout: 900000, stdio: ['ignore', 'pipe', 'ignore'],
+    env: { ...process.env, ASPIRA_TEST_CONCURRENCY: '1' },
+  });
   const out = (r && r.stdout) ? r.stdout.toString() : '';
   // 必须取**最后**一条匹配: run-all.js 对每个测试文件都打印一行
   // "测试结果: N 通过, 0 失败, 共 N 个"，最终汇总行形状与之相同。
