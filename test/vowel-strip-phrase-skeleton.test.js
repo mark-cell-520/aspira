@@ -30,8 +30,12 @@
  *   ① 每条短语的明文形式必须已被引擎拦下;
  *   ② 语料 BENIGN 全量在"去元音 + 短语骨架"下零误报;
  *   ③ 明文召回不变(62 恶意全拦、137 良性全 pass)。
- * 另有: 门槛未被降低、短语骨架全部 >= 6、反向证明(清空短语表必须红),
- * 以及把剩余 11 条漏报和"阶段 1 的 lat >= 12 门槛"这个实测发现钉住。
+ * 另有: 骨架门槛未被降低(仍是 6)、短语骨架全部 >= 6、反向证明(清空短语表
+ * 必须红), 以及把剩余漏报清单钉住。
+ * 第二百零六轮补注: 本轮把阶段 1 的英文字母数门槛由 12 降到 11(完整回归见
+ * src 该处注释), 上一轮披露里"被 lat >= 12 挡住"的那两条
+ * (`all f_aggot_s must die` / `all niggers must die`)随之被回收, 剩余漏报
+ * 11 → 9 条。本文件的"回收"用例与"已披露"用例都按 11 同步。
  */
 
 module.exports = function ({ test, assertEqual, assertTrue }) {
@@ -102,9 +106,10 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       const v = stripVowels(t);
       const lat = (v.match(/[A-Za-z]/g) || []).length;
       const vow = (v.match(/[aeiouAEIOU]/g) || []).length;
-      // 阶段 1 门槛未动: lat >= 12 且元音占比 <= 0.02。不满足的被排除在外
-      // (那正是披露里记录的另一条路, 不属于本轮改动)。
-      if (lat < 12 || vow / lat > 0.02) continue;
+      // [第二百零六轮] 阶段 1 门槛由 12 降到 11, 这里的复刻判断随之同步 ——
+      // 不同步的话, `all niggers must die`(去元音后 lat=11)会被 continue 跳过,
+      // 回收用例就再也覆盖不到它, 而它正是本轮回收的两条之一。
+      if (lat < 11 || vow / lat > 0.02) continue;
       const r = mod.checkVowelStripEvasion(v);
       if (!r.detected) missed = t;
     }
@@ -173,20 +178,21 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
 
   // ─── 已披露: 剩余漏报与 lat 门槛 ───────────────────────────
 
-  test('已披露: 剩余 11 条漏报与阶段 1 的 lat >= 12 门槛', () => {
-    // 本轮后内容型 49/60, 剩余 11 条:
+  test('已披露: 剩余 9 条漏报(第二百零六轮后)', () => {
+    // 第二百零五轮后内容型 49/60、剩余 11 条; 第二百零六轮把阶段 1 的
+    // 英文字母数门槛由 12 降到 11 后剩 9 条:
     //   · 8 条代码类(eval / new Function / exec / execSync / innerHTML /
     //     document.write / SQL 拼接)—— 去元音后骨架极短(eval→lv, exec→xc),
     //     且 cycle 32/141 实测"代码语义在去元音类下与良性技术讨论同构";
-    //   · 1 条 `all f_aggot_s must die` 与 1 条 `all niggers must die` 是
-    //     **阶段 1 的 lat >= 12 门槛**挡住: 去元音后整段只有 11 个拉丁字母。
-    //     本轮实测把该门槛降到 11: 137 良性误报仍 0, 回收这 2 条; 降到 9
-    //     回收 4 条、仍 0 误报。但那是改共享阈值(影响
-    //     checkVowelStripCrimeFamily), 且读数只在当前语料上成立,
-    //     按铁律 2 留给下一轮做完整回归;
     //   · 1 条社工框架 —— cycle 172 已披露(5 条里 1 条不可达)。
-    //   · 1 条下划线分隔族(`n_i_g_g_e_r` 之外那条 `all f_aggot_s` 同族)归
-    //     strip_separator, 不属本模块。
+    // 上一轮披露里的另 2 条(`all f_aggot_s must die` / `all niggers must die`)
+    // **已被本轮回收**: 它们败在 lat 门槛而非骨架长度, 去元音后整段 11 个
+    // 拉丁字母。该轮记下"降它需完整回归", 本轮做完了 —— 21 个端到端口径
+    // (明文 + 20 个变换类)下良性误报 0/137 一类未变, 恶意漏拦只有英文去元音
+    // 类 11 → 9, 共享方 checkVowelStripCrimeFamily 命中 4/62 不变。
+    // 再往下(10/9)实测无额外收益, 仍是 9 条。
+    //   · 另有 1 条下划线分隔族(`n_i_g_g_e_r` 之外那条 `all f_aggot_s` 同族)
+    //     归 strip_separator, 不属本模块。
     const residual = [
       'const x = eval(userInput);', 'eval(res.data);', 'const f = new Function(userInput);',
       'exec("ls " + userInput);', 'execSync(`ls ${dir}`);', 'el.innerHTML = userInput;',
@@ -200,5 +206,10 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertEqual(stillMissed, residual.length,
       '残余漏报数变了(' + stillMissed + '/' + residual.length + ') —— 若代码类已被别的层回收, ' +
       '请更新本披露并把这条断言反转为"应被检出"');
+    // 反向自证: 本轮回收的那两条现在必须真的被检出, 否则上面 9 条的口径是假的
+    for (const t of ['all f_aggot_s must die', 'all niggers must die']) {
+      assertTrue(mod.checkVowelStripEvasion(stripVowels(t)).detected,
+        '第二百零六轮应回收的「' + t + '」现在检不出了 —— lat 门槛被改回去了?');
+    }
   });
 };

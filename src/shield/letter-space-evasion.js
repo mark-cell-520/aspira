@@ -471,7 +471,23 @@ function checkVowelStripEvasion(text) {
   if (typeof text !== 'string' || !text.length) return { detected: false, hits: [] };
   // 阶段 1: 整段去元音形态
   const lat = (text.match(/[A-Za-z]/g) || []).length;
-  if (lat < 12) return { detected: false, hits: [] };
+  // [fp-recall-calibration·第二百零六轮] 门槛由原值 12 降到 11。
+  // 由来: 第二百零五轮把 21 条去元音漏报压到 11 条后, 剩余两条
+  // (`all f_aggot_s must die` / `all niggers must die`)败的不是骨架长度而是
+  // **本行** —— 去元音后整段只剩 11 个拉丁字母, 进不了阶段 2。那一轮记录了
+  // "降它有风险(与 checkVowelStripCrimeFamily 共享同一组阈值), 需完整回归",
+  // 本轮把回归做完了, 读数是干净的:
+  //   · 端到端(gate.checkOutput) 21 个口径 —— 明文 + 全部 20 个变换类:
+  //     良性误报 0/137 **一类都没变**; 恶意漏拦只有英文去元音类动了一步
+  //     (11 → 9, 正好回收那 2 条), 其余 19 个变换类**逐条不变**;
+  //   · 共享方 checkVowelStripCrimeFamily: 去元音下良性误报 0/137、恶意命中
+  //     4/62, 与改前完全一致(它靠正则模式而非骨架长度, 不吃这一档);
+  //   · 明文门禁: 62 恶意全拦、137 良性全 pass, 不变。
+  // 更低不再有收益: 实测降到 10 与 9 时, 端到端漏拦仍是 9 条(短语骨架表
+  // 已覆盖更长的攻击句式), 所以 11 是这个门槛的收益最大点, 不再往下走。
+  // ⚠️ 这是**语料本地**读数: 语料里没有"11 个拉丁字母且骨架恰好命中"的良性
+  // 技术句, 真实流量有。判据同 cycle 169 立门槛时的处境, 如实记录。
+  if (lat < 11) return { detected: false, hits: [] };
   const vow = (text.match(/[aeiouAEIOU]/g) || []).length;
   if (vow / lat > 0.02) return { detected: false, hits: [] };
 
@@ -529,7 +545,9 @@ function checkVowelStripCrimeFamily(text) {
   if (typeof text !== 'string' || !text.length) return { detected: false, hits: [] };
   // 阶段 1: 整段去元音形态(与 checkVowelStripEvasion 同一组阈值)
   const lat = (text.match(/[A-Za-z]/g) || []).length;
-  if (lat < 12) return { detected: false, hits: [] };
+  // [第二百零六轮] 与 checkVowelStripEvasion 同步降到 11(完整回归见该处注释:
+  // 21 个端到端口径下良性误报一类未变, 本通道在去元音类下命中 4/62 不变)。
+  if (lat < 11) return { detected: false, hits: [] };
   const vow = (text.match(/[aeiouAEIOU]/g) || []).length;
   if (vow / lat > 0.02) return { detected: false, hits: [] };
 

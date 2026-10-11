@@ -131,7 +131,14 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     const seg = src.slice(i, src.indexOf('\n}', i));
     // 阶段 1: 元音占比门槛
     assertTrue(/0\.02/.test(seg), '必须有元音占比门槛(0.02)');
-    assertTrue(/lat\s*<\s*12/.test(seg), '必须有英文字母数门槛(12)');
+    // [第二百零六轮] 英文字母数门槛由 12 降到 11, 锁随之同步。依据是本轮做的
+    // 完整回归(21 个端到端口径: 明文 + 20 个变换类): 良性误报 0/137 一类未变,
+    // 恶意漏拦只有英文去元音类从 11 → 9(回收 all f_aggot_s must die 与
+    // all niggers must die 两条, 它们去元音后只有 11 个拉丁字母)。
+    // 这不是"放宽锁迁就代码": 降到 10/9 实测无额外收益(仍是 9 条漏拦),
+    // 所以 11 是收益最大点, 锁钉的正是这个实测选定的值。
+    assertTrue(/lat\s*<\s*11/.test(seg), '必须有英文字母数门槛(11, 第二百零六轮由 12 降下)');
+    assertTrue(/lat\s*<\s*12/.test(seg) === false, '英文字母数门槛应已是 11 —— 若回到 12 说明本轮改动被回退了');
     // 阶段 2: 骨架包含匹配
     assertTrue(/skel\.length\s*<\s*6/.test(seg), '必须有骨架长度门槛(6) —— 短术语骨架会在良性去元音文本里意外出现');
     assertTrue(/textSkel\.includes\(skel\)/.test(seg), '必须有辅音骨架包含匹配(第二阶段)');
