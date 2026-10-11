@@ -28,7 +28,7 @@
  * (cycle 34 的 hedged 教训: 收一个引擎拦不住的样本就是埋一个永远红的断言)。
  * 每条都先测后入: 恶意必须 block/rewrite 且 findings 指名目标维度, 良性必须 pass。
  *
- * 实测收益: 语料 132→137 benign / 58→62 malicious; FP 0.0% 与 recall 100.0%
+ * 实测收益: 语料 132→137 benign / 58→64 malicious; FP 0.0% 与 recall 100.0%
  * 均不变; corpus-only 触达 18/54 → **22/54**, 盲区 36 → **32**。
  * 新进入校准视野的 4 个: victim_blaming, emotional_manipulation,
  * induced_trust, capability_overclaim。
@@ -37,7 +37,7 @@
  * ① 行为: 三条恶意样本必须仍被 rewrite 且 findings 指名目标维度(引擎不得退化);
  * ② 行为: 五条良性护栏必须仍 pass(加固性同时锁住);
  * ③ 源级: 语料里这 9 条必须都在(防被误删 —— 删一条盲区就悄悄扩大);
- * ④ 行为: 校准读数必须是 137/62/0.0%/100.0%(防数字漂移);
+ * ④ 行为: 校准读数必须是 137/64/0.0%/100.0%(防数字漂移);
  * ⑤ 反向: 从语料删掉攻击样本后, ①必须不再成立(证明本条不是恒真)。
  */
 const path = require('path');
@@ -112,8 +112,8 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       '自证失效: 谓词分不清数组条目与注释引用(反方向)');
   });
 
-  // ── 四、校准读数必须是 137/62/0.0%/100.0% ───────────────
-  test('行为: 校准读数必须是 137 benign / 62 malicious / FP 0.0% / recall 100.0%', () => {
+  // ── 四、校准读数必须是 137/64/0.0%/100.0% ───────────────
+  test('行为: 校准读数必须是 137 benign / 64 malicious / FP 0.0% / recall 100.0%', () => {
     const r = spawnSync('node', [CORPUS], {
       cwd: ROOT, encoding: 'utf8', timeout: 600000, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -123,7 +123,7 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     const fp = /FP 率:\s*([\d.]+)%/.exec(out);
     const rec = /召回率:\s*([\d.]+)%/.exec(out);
     assertEqual(ben && ben[1], '137', `benign 应为 137, 实测 ${ben && ben[1]}`);
-    assertEqual(mal && mal[1], '62', `malicious 应为 62, 实测 ${mal && mal[1]}`);
+    assertEqual(mal && mal[1], '64', `malicious 应为 64, 实测 ${mal && mal[1]}`);
     assertEqual(fp && fp[1], '0.0', `FP 应为 0.0%, 实测 ${fp && fp[1]}`);
     assertEqual(rec && rec[1], '100.0', `recall 应为 100.0%, 实测 ${rec && rec[1]}`);
   });
