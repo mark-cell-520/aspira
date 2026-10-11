@@ -168,42 +168,150 @@ function testInputs() {
 }
 
 // ─── 输入池 C: 引擎正则剥出的片段(覆盖面窄，仅附加) ────
-function regexLiteralInputs() {
-  function functionBody(name) {
-    const re = new RegExp('function\\s+' + name + '\\s*\\(');
-    const m = re.exec(SRC);
-    if (!m) return null;
-    let i = SRC.indexOf('{', m.index);
+
+// [dimension-health-audit·第二百一十四轮] 有 7 个 check 函数**不在 index.js 里**。
+// 实测(DIM_CHECKERS 54 项逐条对 src/index.js 找 function 声明):
+//   phishing_coercion / induced_trust / coverup_induction  → src/manipulation-tactics.js
+//   dangerous_instruction                                   → src/dangerous-instruction.js
+//   reward_hacking                                          → src/reward-hacking.js
+//   perfect_error                                           → src/perfect-error.js
+//   premature_termination                                   → src/premature-termination.js
+// 它们由 index.js 经 _mt.checkXxx() / _di.checkXxx() 调用。原 functionBody 只在
+// index.js 文本里找 `function <fn>(`, 这 7 个全部找不到 → 返回 null → 调用方
+// `if (!body) continue` **静默跳过** → 来源 C 对这 7 个维度恒为 0。
+// 后果不是"少几个输入": cycle 209 的来源归属读数里, dangerous_instruction /
+// reward_hacking / premature_termination / coverup_induction / phishing_coercion /
+// induced_trust 的 C 列全是 0, 而它们的 finding 有几十条 —— 也就是说这 7 个
+// 维度的"引擎正则片段"这一路覆盖从未存在过, 而仪器的四个汇总数一直是绿的。
+// 这是 cycle 192 的形状: **实现就在隔壁目录, 而诊断只看它眼前那一份文件**。
+//
+// 修法不是改表(那要给 54 项各加一个模块名, 且未来每加一个模块化 check 就要
+// 再改一次), 而是建一张 函数名 → 函数体 的全局索引, index.js 找不到时查它。
+// 只建一次; 首次出现者胜出(同名的局部函数不覆盖已登记的)。
+const FN_BODY_INDEX = (() => {
+  function extractBody(text, declIdx) {
+    // 先跨过参数列表: `function f(a, b = {}) {` 的默认值里就有花括号,
+    // 直接从 declIdx 找第一个 '{' 会配到默认参数的那个 '}', 函数体取成空串。
+    // 实测 checkPrematureTermination(text, ctx = {}) 就是这样丢的。
+    let p = text.indexOf('(', declIdx);
+    if (p < 0) return null;
+    let pd = 0, pe = -1;
+    for (; p < text.length; p++) {
+      if (text[p] === '(') pd++;
+      else if (text[p] === ')') { pd--; if (pd === 0) { pe = p; break; } }
+    }
+    if (pe < 0) return null;
+    let i = text.indexOf('{', pe + 1);
     if (i < 0) return null;
     let depth = 0, start = i;
-    for (; i < SRC.length; i++) {
-      const c = SRC[i];
+    for (; i < text.length; i++) {
+      const c = text[i];
       if (c === '{') depth++;
-      else if (c === '}') { depth--; if (depth === 0) return SRC.slice(start + 1, i); }
+      else if (c === '}') { depth--; if (depth === 0) return text.slice(start + 1, i); }
     }
     return null;
   }
-  const declCache = new Map();
-  function declarationText(name) {
-    if (declCache.has(name)) return declCache.get(name);
-    const re = new RegExp('(?:const|let|var)\\s+' + name + '\\s*=\\s*');
-    const m = re.exec(SRC);
-    if (!m) { declCache.set(name, null); return null; }
+  // 顶层常量声明: const/let/var <NAME> = <{...}|[...]>
+  function extractDecl(text, declIdx) {
+    let i = declIdx;
+    while (i < text.length && /\s/.test(text[i])) i++;
+    const open = text[i];
+    const close = open === '{' ? '}' : (open === '[' ? ']' : null);
+    if (!close) return null;
+    let depth = 0, start = i;
+    for (; i < text.length; i++) {
+      const c = text[i];
+      if (c === open) depth++;
+      else if (c === close) { depth--; if (depth === 0) break; }
+    }
+    return text.slice(start, i + 1);
+  }
+  const map = new Map();
+  const decls = new Map();
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) {
+        if (e.name === 'archive' || e.name === 'node_modules') continue;
+        walk(p); continue;
+      }
+      if (!/\.js$/.test(e.name)) continue;
+      let txt;
+      try { txt = fs.readFileSync(p, 'utf8'); } catch (_) { continue; }
+      const fnRe = /function\s+([A-Za-z0-9_]+)\s*\(/g;
+      let m;
+      while ((m = fnRe.exec(txt))) {
+        if (map.has(m[1])) continue;
+        const body = extractBody(txt, m.index);
+        if (body) map.set(m[1], body);
+      }
+      const declRe = /(?:const|let|var)\s+([A-Z][A-Z0-9_]{2,})\s*=\s*/g;
+      while ((m = declRe.exec(txt))) {
+        if (decls.has(m[1])) continue;
+        const d2 = extractDecl(txt, m.index + m[0].length);
+        if (d2 && d2.length < 400000) decls.set(m[1], d2);
+      }
+    }
+  };
+  walk(path.join(ROOT, 'src'));
+  const index = new Map();
+  for (const [k, v] of map) index.set(k, v);
+  index.decls = decls;
+  return index;
+})();
+
+// [dimension-health-audit·第二百一十四轮] 这两个解析器从 regexLiteralInputs 里提到
+// 模块作用域, 为的是让锁能**直接调用它们**——它们正是本轮缺陷的所在(找不到就静默
+// 返回 null), 而一个只能靠"跑一遍看汇总数有没有变"来验证的修复是无法锁的。
+const DECL_CACHE = new Map();
+function functionBody(name) {
+  const re = new RegExp('function\\s+' + name + '\\s*\\(');
+  const m = re.exec(SRC);
+  if (m) {
+    let i = SRC.indexOf('{', m.index);
+    if (i >= 0) {
+      let depth = 0, start = i;
+      for (; i < SRC.length; i++) {
+        const c = SRC[i];
+        if (c === '{') depth++;
+        else if (c === '}') { depth--; if (depth === 0) return SRC.slice(start + 1, i); }
+      }
+    }
+  }
+  // index.js 里没有 → 查全局索引(模块化的 check 函数)
+  return FN_BODY_INDEX.get(name) || null;
+}
+function declarationText(name) {
+  if (DECL_CACHE.has(name)) return DECL_CACHE.get(name);
+  const re = new RegExp('(?:const|let|var)\\s+' + name + '\\s*=\\s*');
+  const m = re.exec(SRC);
+  if (m) {
     let i = m.index + m[0].length;
     while (i < SRC.length && /\s/.test(SRC[i])) i++;
     const open = SRC[i];
     const close = open === '{' ? '}' : (open === '[' ? ']' : null);
-    if (!close) { declCache.set(name, null); return null; }
-    let depth = 0, start = i;
-    for (; i < SRC.length; i++) {
-      const c = SRC[i];
-      if (c === open) depth++;
-      else if (c === close) { depth--; if (depth === 0) break; }
+    if (close) {
+      let depth = 0, start = i;
+      for (; i < SRC.length; i++) {
+        const c = SRC[i];
+        if (c === open) depth++;
+        else if (c === close) { depth--; if (depth === 0) break; }
+      }
+      const text = SRC.slice(start, i + 1);
+      DECL_CACHE.set(name, text);
+      return text;
     }
-    const text = SRC.slice(start, i + 1);
-    declCache.set(name, text);
-    return text;
   }
+  // index.js 里没有 → 查全局索引(模块化 check 函数引用的常量表也住在各自模块里,
+  // 如 manipulation-tactics.js 的 PHISHING_PATTERNS)。只补 functionBody 那一处还不够:
+  // 函数体找回来了, 但函数体里抓出的常量名若仍在 index.js 里找不到声明,
+  // 来源 C 依旧取不到那个维度。
+  const d = FN_BODY_INDEX.decls ? FN_BODY_INDEX.decls.get(name) : null;
+  DECL_CACHE.set(name, d || null);
+  return d || null;
+}
+
+function regexLiteralInputs() {
   function regexLiterals(text) {
     const out = [];
     for (let i = 0; i < text.length; i++) {
@@ -637,4 +745,11 @@ function signalOf(result) {
   return 0;
 }
 
-main();
+// [dimension-health-audit·第二百一十四轮] 直接运行时跑主流程; 被 require 时把本轮
+// 修复的两个解析器交出去, 供锁直接调用。用 require.main 判断而不是无条件导出,
+// 是因为主流程要跑完整个输入池(约 6 秒), 锁不想为拿两个函数付这个代价。
+if (require.main === module) {
+  main();
+} else {
+  module.exports = { DIM_CHECKERS, functionBody, declarationText, regexLiteralInputs, FN_BODY_INDEX };
+}
