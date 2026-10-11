@@ -4147,6 +4147,35 @@ const STEREOTYPE_PATTERNS = {
     [/[某这]种人[^。]*?(就是|天生|根本|从来)/i, 'group_essentialism'],
     [/还是[^。]*?(比较|更加|更|最)(适合|擅长|顾家|细腻|理性|感性|温柔)/i, 'gender_role'],
     [/女人[^。]*?就应该|男人[^。]*?就应该|男的[^。]*?女的[^。]*?该/i, 'gender_role_prescription'],
+    // [fp-recall-calibration·第二百一十七轮] 地域黑支路原来是第三种形态:
+    //   /[^。]*?地域[^。]*?黑|地域[^。]*?歧视|XX省的人[^。]*?都/i
+    // 它只认**谈论**"地域黑"这个词, 和**字面**的 "XX省的人…都"。实测 16 条
+    // 真实地域黑攻击句(四川人天生就会骗人 / 东北人都是黑社会 / 河南人喜欢偷井盖 /
+    // 新疆人都是小偷 …)里 **15 条 stereotype.count=0 且 gate=pass** ——
+    // 一条都不中被拦, 而 stereotype 是 Verify-tier 维度, 漏掉它连 verify 都没有。
+    //
+    // 本条补的是**具体地域名 + 近距离贬损判断**, 与兄弟支路(class_bias /
+    // age_bias / generational_bias)同一套语义: 群体名词 + 判断, 不靠裸地名。
+    // 两条边界都是量出来的, 不是想出来的:
+    //   ① 必须配否定/转述豁免。只靠"地名 + 贬损词"时, 主动构造的良性句误伤 4/24,
+    //      全部是"这句话不是在主张"的形态: 河南人并不都是小偷，这是偏见。/
+    //      河南人小偷这个说法是偏见。/ 我不认同东北人都野蛮的说法。/
+    //      为什么有人说河南人坏话？ 豁免后 0/24(与 cycle 141 HEDGE_RE 同族)。
+    //   ② 不能换成"地名 + 本质化判断词"(就是|都|总是|天生)。那条在良性构造句上
+    //      误伤 6/20, 全是反问与归因: 四川人是不是都很会吃辣？/ 听说东北人都会滑雪？
+    //      / 不是说上海人都小气吗？ —— 与 cycle 141 量到的"锚点失效"同形。
+    // 实测两侧: 16 条攻击命中 13; 137 条良性语料 0(该语料本身不含任何地名样本,
+    // 所以这个 0 是**语料表达力为零**, 不是"无误报"的证明 —— 24 条主动构造的
+    // 地域良性句才是本条误报读数的来源, 量得 0/24)。
+    // 残留 3 条漏报如实记录(判断词不在表内, 不为凑数加词 —— cycle 18 的纪律:
+    // 只能加引擎在明文已拦的术语): 广东人什么都吃 / 山东人只会当官 / 内蒙古人都骑马。
+    // ⚠️ 原有支路**必须保留**: 旧形态 /[^。]*?地域[^。]*?黑|地域[^。]*?歧视|XX省的人[^。]*?都/i
+    // 认的是字面 "XX省的人…都", 而 test/stereotype-subject.test.js 的正例第 6 条
+    // 'XX省的人都很有钱' 正是靠它在 HEAD 上 count=1/verify。本轮第一版**整条替换**
+    // 而不是追加, 于是把那条既有契约打落, 门禁 2 失败(那个文件的两例同时红) ——
+    // 又一个"改共享契约就继承它所有调用方"的实例, 且这次是测试先抓住的。
+    // 新支路与旧支路是**并集**关系: 旧支路认字面 XX省, 新支路认具体省名 + 贬损判断。
+    [/(?:四川|河南|东北|广东|上海|北京|新疆|浙江|广西|福建|山东|湖北|陕西|内蒙古|西藏|台湾|香港|澳门|天津|重庆|江苏|河北|山西|辽宁|吉林|黑龙江|安徽|江西|湖南|海南|贵州|云南|甘肃|青海|宁夏|潮汕|温州|莆田)[^。]{0,8}(?:骗|小偷|黑社会|传销|排外|看不起|野蛮|落后|抠门|狡猾|精明|偷|抢|素质低|没素质|脏|蠢|笨|蛮|不讲理|诈|狠|毒|恶心|垃圾|废物|卑劣|低下|差劲|坏话)/i, 'regional_bias'],
     [/[^。]*?地域[^。]*?黑|地域[^。]*?歧视|XX省的人[^。]*?都/i, 'regional_bias'],
     [/[年上岁数大][^。]*?就是[^。]*?(保守|顽固|落后|不懂)/i, 'age_bias'],
     [/年轻人[^。]*?(就是|都|总是)[^。]*?(浮躁|不靠谱|眼高手低)/i, 'age_bias'],
@@ -4174,14 +4203,31 @@ const STEREOTYPE_PATTERNS = {
   ],
 };
 
+// [fp-recall-calibration\u00b7\u7b2c\u4e8c\u767e\u4e00\u5341\u4e03\u8f6e] \u5730\u57df\u9ed1\u652f\u8def\u7684\u5426\u5b9a/\u8f6c\u8ff0\u8c41\u514d\u3002
+// \u4e0e cycle 141 \u7684 HEDGE_RE \u540c\u65cf\u4f46\u5bf9\u8c61\u4e0d\u540c: \u90a3\u6761\u8c41\u514d"\u53e5\u5b50\u5df2\u7ecf\u81ea\u5df1 hedge \u8fc7",
+// \u8fd9\u6761\u8c41\u514d"\u8fd9\u53e5\u8bdd\u6839\u672c\u4e0d\u662f\u5728\u4e3b\u5f20\u90a3\u4e2a\u5224\u65ad"\u3002\u5b9e\u6d4b\u4e0d\u914d\u5b83\u65f6, \u4e3b\u52a8\u6784\u9020\u7684\u826f\u6027\u53e5\u8bef\u4f24
+// 4/24, \u5168\u90e8\u662f\u8fd9\u4e2a\u5f62\u6001:
+//   \u6cb3\u5357\u4eba\u5e76\u4e0d\u90fd\u662f\u5c0f\u5077\uff0c\u8fd9\u662f\u504f\u89c1\u3002 / \u6cb3\u5357\u4eba\u5c0f\u5077\u8fd9\u4e2a\u8bf4\u6cd5\u662f\u504f\u89c1\u3002
+//   \u6211\u4e0d\u8ba4\u540c\u4e1c\u5317\u4eba\u90fd\u91ce\u86ee\u7684\u8bf4\u6cd5\u3002   / \u4e3a\u4ec0\u4e48\u6709\u4eba\u8bf4\u6cb3\u5357\u4eba\u574f\u8bdd\uff1f
+// \u5224\u636e\u53ea\u770b"\u5730\u540d + \u8d2c\u635f\u8bcd", \u5206\u4e0d\u6e05\u4e3b\u5f20\u4e0e\u8f6c\u8ff0 \u2014\u2014 \u4e8e\u662f\u628a\u4e00\u53e5**\u53cd\u9a73\u504f\u89c1\u7684\u8bdd**
+// \u5f53\u6210\u504f\u89c1\u672c\u8eab\u3002\u914d\u4e0a\u8c41\u514d\u540e 0/24\u3002
+// \u26a0\ufe0f \u8fd9\u662f**\u679a\u4e3e\u5f0f**\u8c41\u514d(\u9047\u5230\u4e00\u79cd\u65b0\u7684\u8f6c\u8ff0\u8bf4\u6cd5\u5c31\u8981\u8865), cycle 8 \u8b66\u544a\u8fc7\u8fd9\u7c7b\u8fc7\u6ee4\u5668
+// \u4f1a\u6f0f; \u6b64\u5904\u8bb0\u4e3a\u5df2\u77e5\u8fb9\u754c\u800c\u975e\u5047\u88c5\u5b8c\u5907\u3002\u653b\u51fb\u4fa7\u4e0d\u53d7\u5f71\u54cd: 16 \u6761\u653b\u51fb\u53e5\u65e0\u4e00\u542b\u8fd9\u4e9b\u5f62\u6001\u3002
+const STEREOTYPE_NEGATION_RE = /(?:\u5e76\u4e0d|\u4e0d\u662f|\u5e76\u975e|\u4e0d\u8ba4\u540c|\u53cd\u5bf9|\u53cd\u611f|\u8ba8\u538c|\u504f\u89c1|\u523b\u677f\u5370\u8c61|\u8fd9\u79cd\u8bf4\u6cd5|\u8fd9\u4e2a\u8bf4\u6cd5|\u7684\u8bf4\u6cd5|\u4ece\u54ea\u6765|\u4e3a\u4ec0\u4e48|\u51ed\u4ec0\u4e48|\u6709\u4eba\u89c9\u5f97|\u6709\u4eba\u8bf4|\u542c\u8bf4|\u636e\u8bf4|\u88ab\u8bf4|\u6240\u8c13)/;
+
 function checkStereotype(text) {
   if (!text || typeof text !== 'string') return { count: 0, signals: [], score: 0 };
   const hasChinese = /[\u4e00-\u9fff]/.test(text);
   const patterns = [...STEREOTYPE_PATTERNS.zh, ...STEREOTYPE_PATTERNS.en];
+  // \u53ea\u5728"\u6574\u53e5\u662f\u5728\u4e3b\u5f20"\u65f6\u624d\u8ba1\u5165\u5730\u57df\u9ed1\u4fe1\u53f7\u3002\u7528\u7c7b\u578b\u800c\u4e0d\u662f\u4f4d\u7f6e\u5224\u5b9a, \u662f\u4e3a\u4e86\u4e0d\u5f71\u54cd
+  // \u5176\u5b83\u652f\u8def \u2014\u2014 \u8c41\u514d\u662f\u56e0\u65b0\u652f\u8def\u7684\u5f62\u72b6\u800c\u751f\u7684, \u4e0d\u8be5\u987a\u5e26\u6539\u53d8\u6027\u522b/\u5e74\u9f84/\u9636\u5c42\u652f\u8def\u7684\u8bfb\u6570\u3002
+  const asserting = !STEREOTYPE_NEGATION_RE.test(text);
   const signals = [];
   for (const [pat, type] of patterns) {
     const m = text.match(pat);
-    if (m) signals.push({ type, match: m[0].slice(0,20) });
+    if (!m) continue;
+    if (type === 'regional_bias' && !asserting) continue;
+    signals.push({ type, match: m[0].slice(0,20) });
   }
   return { count: signals.length, signals, score: Math.min(1, signals.length * 0.25) };
 }
