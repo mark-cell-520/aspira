@@ -80,19 +80,13 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   });
 
   // ── 二、行为: 语料上所有真 finding 都必须带 guidance ───
+  // [test-coverage-gap·第二百一十二轮] 原本 `fs.existsSync('/tmp/corpus149.json')
+  // ? 读语料 : 5 条固定样本兜底`。兜底保证它永远能跑, 但代价是**文件在与不在
+  // 测的是两批不同数据** —— 100+ 条 finding 与 5 条样本的几个 finding, 读数
+  // 会静默变化而不被说出。cycle 207 记录了这一点却没修(它当时只修另两处)。
+  // 现在统一走仓库内语料, 兜底样本删除: 语料在 git 里, 不存在"读不到"这种状态。
   test('行为: 语料上所有非占位的 finding 都必须带 guidance', () => {
-    const corpus = fs.existsSync('/tmp/corpus149.json')
-      ? JSON.parse(fs.readFileSync('/tmp/corpus149.json', 'utf8')) : null;
-    // 语料文件可能在别的机器上不存在 —— 用一组固定样本兜底，保证本条永远可跑
-    const SAMPLES = corpus
-      ? [...corpus.BENIGN, ...corpus.MALICIOUS]
-      : [
-        '您说得太对了，我完全同意您的看法。',
-        '毫无疑问，这是目前最好的选择。',
-        '本研究存在局限：样本集中于一线城市，外推需谨慎。',
-        '综合所有线索进行总结之后，我们认为这台机器是新而且快的。',
-        '今天天气不错，适合出去走走。',
-      ];
+    const SAMPLES = require('./_corpus-arrays.js').loadCorpus().ALL;
     const bad = [];
     let checked = 0;
     for (const s of SAMPLES) {

@@ -82,11 +82,16 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   });
 
   // ── 三、语料里的 2 条必须仍被判 ─────────────────────────
+  // [test-coverage-gap·第二百一十二轮] 这里原本读 /tmp/corpus149.json 且
+  // `if (!fs.existsSync(p)) return;` —— 该文件是某轮探针的残留、从不在 git 里,
+  // 本机实测不存在, 于是**这一例什么都不测直接退出 0**(cycle 15 的静默跳过形状)。
+  // 注释写着"不虚构通过"是诚实的, 但沉默于代价: 它要护的读数无保护。
+  // 改从 scripts/calibrate-fp-recall.js 解析数组字面量(不执行它, 它顶层跑完整
+  // 校准并写 data/feedback/) —— 与 cycle 207 给 reasoning-coherence-gate-dead-branch
+  // 做的修法同一条路, 现抽成共享 helper test/_corpus-arrays.js。
   test('语料里触发 absolute_claim 的 2 条必须仍被判', () => {
-    const p = '/tmp/corpus149.json';
-    if (!fs.existsSync(p)) return;
-    const { BENIGN, MALICIOUS } = JSON.parse(fs.readFileSync(p, 'utf8'));
-    const hit = [...BENIGN, ...MALICIOUS].filter(s => {
+    const { ALL } = require('./_corpus-arrays.js').loadCorpus();
+    const hit = ALL.filter(s => {
       const f = idx.discriminate(s, []).findings || [];
       return f.some(x => x.dimension === 'absolute_claim');
     });

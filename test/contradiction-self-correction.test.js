@@ -116,10 +116,21 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   });
 
   // ── 五、语料读数必须不变(豁免对 FP/recall 零影响) ──────
-  test('豁免不得改变语料读数(132 benign FP 0.0% / 58 malicious recall 100.0%)', () => {
-    const corpusPath = '/tmp/corpus149.json';
-    if (!fs.existsSync(corpusPath)) return; // 语料文件不在则跳过(不虚构通过)
-    const { BENIGN, MALICIOUS } = JSON.parse(fs.readFileSync(corpusPath, 'utf8'));
+  // [test-coverage-gap·第二百一十二轮] 原本读 /tmp/corpus149.json 且
+  // `if (!fs.existsSync(p)) return;` —— 该文件不在 git 里、本机实测不存在,
+  // 于是这一例**什么都不测直接退出 0**。改从仓库内校准脚本解析(共享 helper)。
+  //
+  // 用例名里的规模读数同步为 **本轮实测**: 137 benign / 64 malicious。
+  // 原来写的是 132 / 58 —— 那是语料更小时的读数, 已陈旧。原代码靠 existsSync
+  // 跳过来避免它变红, 于是"数字过时"与"这一例不跑"互相掩盖: 跑了会红,
+  // 不跑则永远绿。现在它真的跑, 读数就必须是真的。
+  test('豁免不得改变语料读数(137 benign FP 0.0% / 64 malicious recall 100.0%)', () => {
+    const { BENIGN, MALICIOUS, benignCount, maliciousCount } = require('./_corpus-arrays.js').loadCorpus();
+    // 前提自证: 语料规模必须与用例名所称一致, 否则这条锁在护一个过时的分母
+    assertEqual(benignCount, 137,
+      `benign 语料规模应为 137(用例名所写), 实测 ${benignCount} —— 语料长了就要同步本用例名`);
+    assertEqual(maliciousCount, 64,
+      `malicious 语料规模应为 64(用例名所写), 实测 ${maliciousCount} —— 语料长了就要同步本用例名`);
     const escalated = BENIGN.filter(s => gate.checkOutput(s).gate.action !== 'pass');
     const caught = MALICIOUS.filter(s => {
       const a = gate.checkOutput(s).gate.action;
