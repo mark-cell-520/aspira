@@ -17,8 +17,16 @@ const { checkLetterSpaceEvasion } = require('./letter-space-evasion.js');
 
 // ─── 检测信号 ───
 
-/** S1: 零宽字符 — U+200B..U+200D, U+2060, U+FEFF 等不可见字符 */
-const ZERO_WIDTH_RE = /[\u200B\u200C\u200D\u2060\uFEFF\u00AD]/;
+/** S1: 零宽字符 — U+200B..U+200D, U+2060, U+FEFF 等不可见字符
+ *
+ * [adversarial-robustness·第二百一十六轮] 加 g 标志, 并把"剥掉它们"提前到所有
+ * 子检测器之前。两条理由各记一处(长注释在 checkAdversarialVariant 顶部), 
+ * 此处只留最短的警告: 没有 g 时 `text.replace(ZERO_WIDTH_RE, '')` **只剥第一个**
+ * 匹配 —— 本轮实测在此栽过一次, 探针报"剥了却没变化", 逐码位打印才发现文本里
+ * 19 个 U+200B 只掉了 1 个。`replace` 用全局正则没有 lastIndex 状态问题(它总是
+ * 从头开始并自行复位); 会被 lastIndex 咬的是 `.test()` / `.exec()`, 那不用于剥离。
+ */
+const ZERO_WIDTH_RE = /[\u200B\u200C\u200D\u2060\uFEFF\u00AD]/g;
 
 /** S2: 同形字混淆 — 西里尔/希腊字母伪装成拉丁字母（а→a, е→e, о→o, р→p, с→c, х→x, ν→v, Ι→l）
  *
@@ -91,6 +99,24 @@ function checkAdversarialVariant(text) {
   if (typeof text !== 'string' || !text.length) {
     return { action: 'pass', risk: 'none', signals: [], normalized: null };
   }
+
+  // [adversarial-robustness·第二百一十六轮] 零宽字符是污染特征而非攻击特征 —— 
+  // 第 104 行的注释早就这么写了, 并且说"清洁归归一层(ZERO_WIDTH_RE 在下方
+  // normalized 建议里 strip)"。但那一层从未执行, 而且是两处都没执行:
+  //   ① normalized 建议只在**有其它信号时**才算 —— 下面第 214 行
+  //      `signals.length === 0` 提前返回 normalized: null, 于是纯零宽混淆
+  //      (最常见的形状)连建议都没有;
+  //   ② 没有任何消费者应用它 —— pipeline.js:162 与 gate.js 都只读
+  //      action / risk / signals, normalized 仅作为审计痕迹留在
+  //      data.adversarial.normalized 里。
+  // 实测后果(本轮全量回归, 20×20 串联 × 137 良性 + 64 恶意): 字母间距后再插零宽,
+  // 两个层**同时**被打穿, 召回 36/64。机制是零宽字符落在字母与空格之间
+  // (`a\u200B l\u200Bl\u200B`), 字母间距层的"≥3 连续单字母"门槛不成立; 而零宽层按
+  // cycle 127 的决定不推 signal。于是没有任何一层说话。
+  // 在顶部全局剥掉之后, 同一组串联 36/64 → 45/64, 最差三联 24/64 → 28/64,
+  // 而 400 组串联的良性误报**一组都没变**(仍 0/137)。
+  // 注意必须全局: 无 g 的正则只剥第一个(见上方 ZERO_WIDTH_RE 的注释)。
+  text = text.replace(ZERO_WIDTH_RE, '');
 
   const signals = [];
 
@@ -211,7 +237,7 @@ function checkAdversarialVariant(text) {
     });
   }
 
-  if (signals.length === 0) return { action: 'pass', risk: 'none', signals: [], normalized: null };
+  if (signals.length === 0) return { action: 'pass', risk: 'none', signals: [], normalized: text };
 
   // 风险分级：零宽/同形字是高危（直接绕过模式匹配）；组合/全角中危；数字低危
   // 2026-08-10 修正：任何变体信号都不应 pass——单信号最低 verify
