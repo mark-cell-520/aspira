@@ -137,6 +137,69 @@ const LETTER_SPACE_TERMS = Object.freeze([
 ]);
 
 /**
+ * [adversarial-robustness·第二百零五轮] 去元音类的**攻击短语骨架表**。
+ *
+ * ═══ 它补的是什么缺口 ═══
+ * `checkVowelStripEvasion` 的两阶段判据(整段去元音形态 + 辅音骨架包含匹配)
+ * 自 cycle 169 起就在，但有一个门槛: 骨架长度 `>= 6`。它挡住的是**短单词
+ * 骨架**在良性去元音文本里的意外命中 —— cycle 169 的原话是
+ *   "cannot"→"cnnt" 含 "cn"(cunt 的骨架)
+ *
+ * 代价被如实记录为"短 slur 在去元音类下仍漏"。本轮重跑 calibrate-fp-recall.js
+ * 量出那个代价的确切大小: **二十个变换类里十九个内容型 60/60, 只有英文去元音
+ * 39/60** —— 21 条漏报里 11 条是 slur 类, 8 条是代码类, 2 条是中英混排。
+ * 那 11 条 slur 漏报**全部**败在骨架长度上: nigger→nggr(4)、niggers→nggrs(5)、
+ * faggot→fggt(4)、bitch→btch(4)、spic→spc(3)、kike→kk(2)、chink→chnk(4)、
+ * slut→slt(3)、whore→whr(3)、dyke→dyk(3)、queer→qr(2)。
+ *
+ * ═══ 为什么是"加长骨架"而不是"降低门槛" ═══
+ * 降低门槛这条路本轮**实测走过并且是净负的**, 记录在此免得下轮重走:
+ * 把 hate_speech 的 slur 模式套上 `vowelOptional`(每个元音变 `[x]?`)后,
+ * 21 条漏报回收 8 条, 但 137 条良性里 **3 条**从 pass 被推成非 pass, 全是
+ * 最常见的良性技术文本:
+ *   · `\bwh[o0]r[e3]s?\b` → `\bwh[o0]?r[e3]?s?\b` 于是 **WHERE**(去元音 WHR)
+ *     被当成 whore;
+ *   · `\bqu[e3]ers?\b` → `\bq[u]?[e3]?[e]?rs?\b` 于是 **queries**(去元音 QRS)
+ *     被当成 queers。
+ * 根因: 短 slur 的辅音骨架与高频技术词**在该变换下确实不可分** —— 这正是
+ * cycle 169 设门槛的原因, 只是当时没有量化过代价。
+ *
+ * 而 cycle 169 自己的方法论指出了可行的方向: "长短语骨架('gnrllprvsnstrctns'
+ * 等 7-18 字符)在自然文本里几乎不可出现"。攻击从不用孤词 —— 语料里的 slur
+ * 攻击全部带攻击动词或并列结构。所以本表收**短语**不收单词:
+ *   niggers must die      → nggrsmstd        (9)
+ *   spics and kikes and chinks → spcsndkksndchnks (16)
+ * 骨架长度由短语本身保证(本表最小 8), 门槛因此不用动。
+ *
+ * ═══ 收录纪律(与 LETTER_SPACE_TERMS 同一条, cycle 18 边界) ═══
+ *   ① 每条短语的**明文形式必须已经被引擎拦下**(gate.action !== 'pass') ——
+ *      本表 11 条全部实测 block;
+ *   ② 语料 BENIGN 全量在"去元音 + 短语骨架"下零误报 —— 实测 0/137;
+ *   ③ 明文召回不变 —— 实测 62/62。
+ * 三条都由 test/vowel-strip-phrase-skeleton.test.js 锁定。
+ *
+ * ⚠️ 这是**从当前语料的漏报形状**构造的表, 不是对"攻击说法"的完备枚举:
+ * 换一种辱骂句式(不带攻击动词的孤词)仍会漏。该类变换的固有边界, 如实记录。
+ */
+const VOWEL_STRIP_PHRASES = Object.freeze([
+  // 群体蔑称 + 攻击动词/贬损形容 —— 明文全部由 hate_speech 的
+  // "群体 + should/must/need to + die/be killed/be eliminated/burn" 与
+  // "群体 + are/is + disgusting/sick/wrong" 两类模式 block
+  'niggers must die',
+  'nigger must die',
+  'nigger should die',
+  'niggers should die',
+  'niggers must be eliminated',
+  'faggots must die',
+  'spics and kikes and chinks',
+  'sluts and whores and bitches',
+  'dykes and queers are disgusting',
+  // 蔑称 + 贬损定语(覆盖中英混排: "you are a disgusting nigger 你好")
+  'disgusting nigger',
+  'disgusting niggers',
+]);
+
+/**
  * 把术语编译成匹配器组。
  *
  * 形态: 每个**词**内部字母之间允许 `\s*`，词与词之间要求 `\s+`。
@@ -422,6 +485,17 @@ function checkVowelStripEvasion(text) {
     if (skel.length < 6) continue; // 短术语骨架不可靠，见上方注释
     if (textSkel.includes(skel)) hits.push({ term, match: term });
   }
+  // [第二百零五轮] 短语骨架通道 —— 见 VOWEL_STRIP_PHRASES 上方长注释。
+  // 与上面那条循环**同一个判据、同一个门槛**, 只是骨架来自短语而非单词:
+  // 短语骨架长度由短语本身保证(本表最小 8), 所以短 slur 的攻击句式
+  // (nigger→nggr 只有 4 个字符, 过不了 >= 6)在这里以短语形态被回收。
+  // 它不替代单词通道, 也不降低门槛 —— 门槛是 cycle 169 为短骨架的
+  // 意外命中设的, 本轮实测确认降下去是净负的(WHERE→whore / queries→queers)。
+  for (const phrase of VOWEL_STRIP_PHRASES) {
+    const skel = stripAll(phrase);
+    if (skel.length < 6) continue;
+    if (textSkel.includes(skel)) hits.push({ term: phrase, match: phrase });
+  }
   return { detected: hits.length > 0, hits };
 }
 
@@ -502,4 +576,5 @@ module.exports = {
   vowelOptional,
   wordIsSpaced,
   LETTER_SPACE_TERMS,
+  VOWEL_STRIP_PHRASES,
 };
