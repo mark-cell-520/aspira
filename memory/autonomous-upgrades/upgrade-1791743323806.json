@@ -1,0 +1,56 @@
+{
+  "ts": "2026-10-11T18:28:43.806Z",
+  "cycle": 215,
+  "chosen": "mcp-tool-enhancement",
+  "tieBreak": null,
+  "status": "done",
+  "theme": "181 个工具里唯一把服务器自己的文件系统路径返回给调用方的那一个, 而它对一个自己 sibling 称为合法状态的条件报成代码错误",
+  "angle": "重跑 181 个 handler 的端到端普查, 不信任 cycle 204 的读数",
+  "measurement": "普查(每个 handler 都 await、每个都按 inputSchema.required 填实参)读出 ok 168 / errorObj 13 / threw 0 / missing 0(cycle 204 是 172/9)。13 个逐个按名分辨: 12 个是正确的缺参校验或 cycle 29 已记录的诚实错误(aspira_benchmark_run → 未找到数据包, 目录确实空), 只有一个是真缺陷: aspira_formula_calc 返回 { error: \"Cannot find module 'mathjs'\\nRequire stack:\\n- /Users/mm/Pictures/aspira/src/mcp-server.js\\n- …\" }",
+  "threeWrongs": "① 泄露部署绝对路径 —— 实测那是 181 个工具里唯一把服务器文件系统路径返回给调用方的一处, 且在任何未装 mathjs 的部署上 100% 复现(node_modules 此处 0 条目) ② 把合法状态报成代码错误 —— mathjs 在 optionalDependencies 里, src/formula/formula-calculator.js 顶部注释原话\"mathjs 是 optionalDependencies: 缺失是合法状态, 不是异常\", 且已备好完整降级 ③ 与自己的 sibling 自相矛盾 —— 同一个条件在 formula-calculator 里是\"符号计算需要可选依赖 mathjs, 当前未安装。公式搜索/查表仍可用…\", 在 MCP 工具面却是 Node 的 MODULE_NOT_FOUND",
+  "rootCause": "handleFormulaCalc 自己裸 require('mathjs'), 失败被唯一的笼统 catch 接住并 return { error: e.message } —— \"缺哪个可选依赖\"这件可精确判断的事被一个不分辨错误类型的 catch 抹平",
+  "fix": "把 formula-calculator 里内联的降级 Error 提成模块级并导出 optionalDepMissingError(dep)(措辞只有一份, 不在 mcp-server 抄第二份会漂的副本); handleFormulaCalc 的 require 单独设 guard: 只有 MODULE_NOT_FOUND 且消息点名 mathjs 才走降级, 其余错误原样返回",
+  "measuredAfter": "三个**各自独立子进程**里量: mathjs 可用→走计算路径, result.type === 'expression', 不变; mathjs 缺失→code=OPTIONAL_DEP_MISSING / optionalDep=mathjs / 诚实消息 / 零路径泄露; 无关 MODULE_NOT_FOUND→原始 message 保留, code 仍 null(guard 不过宽)",
+  "lock": {
+    "file": "test/mcp-optional-dep-error-shape.test.js",
+    "cases": 5,
+    "detail": "① 可选依赖契约的两个分支都钉(缺失是偶然, 装上 mathjs 锁不该误红) ② 类不变量: 181 个 handler 空实参调用, error 字段不得含绝对路径或 Require stack —— 抓下一个泄露者不管是谁; 实测零副作用(data/_tc_* 1941→1941, 已跟踪数据 diff 数不变) ③ 措辞只能有一份: handler 必须引用 optionalDepMissingError 且不得自含降级句 ④ guard 不得过宽 ⑤ 反向证明: 内联修复前 handler 原文, 要求它确实泄露"
+  },
+  "ownErrors": [
+    "验证仪器三个用例里有两个什么都没测: 它在同进程内用 Module._resolveFilename 覆写切模式, 而 Node 的 Module._load 有一张不暴露的 relativeResolveCache —— mathjs 一旦被解析到桩, 后续 require 连 _resolveFilename 都不再调用(实测调用计数 0), \"缺失\"模式静默走了成功路径, 报出一个形态完好、什么都没变的读数。cycle 206\"探针改了副本然后自证\"的同族, 新扮相是\"仪器继承了被测对象的缓存\"。修法同一个规则: 在用点上断言被测代码确实含变异 —— 此处一个状态一个子进程",
+    "锁第一版全红, 因为它认不出自己该管什么: 把\"返回体含路径\"当缺陷, 于是抓到两个**有意**披露的 handler(aspira_benchmark_status 返回 dataDir, 它的全部职责就是告诉调用方数据包放哪; aspira_philosophy 返回自己状态文件的 path)。谓词收窄为\"error 串里带路径或 Require stack\", 并加前提自证要求那两个有意披露者仍被看见, 使用例不会空转",
+    "第一版 schema 对照探针的正则有两处误判(texts[] array required 被抓成 array 而 schema 其实声明了 texts; error_* 四工具的 \"need problem, action, outcome\" 形态完全没匹配), 所以第一版读数不可引用。改为按各工具自己的报错文案逐个核对"
+  ],
+  "mutationVerified": "三个方向在真文件上逐一验证后字节级还原(diff -q 对照施加前副本确认): ① 摘掉 guard → ①③ 按名红 ② guard 放宽到匹配任何 MODULE_NOT_FOUND → ④ 按名红 ③ 摘掉 optionalDepMissingError 导出 → ①③ 按名红。每次还原后回 5/5",
+  "disclosedNotFixed": [
+    "广告的必填契约与被强制执行的契约在 8 个工具上不一致(按各工具自己的报错文案逐个核对, 不靠一条正则): A 组 5 个 schema.required 为空而 handler 要求参数 —— aspira_semantic_anchor(text) / aspira_psychology_engine(text) / aspira_memory_bank(memory) / aspira_long_term_memory(memory) / aspira_formula_search(query); C 组 3 个只声明 action 而 handler 要别的 —— aspira_tom_model(agentId) / aspira_debate(topic) / aspira_evolutionary_search(population+fitnessFn), 正是 cycle 204 披露并推迟的那一族, 本轮把三个都点名了。反方向 19 个多声明(required 列了 handler 容忍缺失的参数)。在 JSON Schema 里表达条件必填是每个工具各自的判断, 铁律 2 排除",
+    "aspira_formula_calc 的工具描述无条件承诺\"数值求解、ODE/PDE 求解、线性方程组、符号计算\", 而全部依赖 mathjs; 把描述改成有条件的是关于\"这个工具声称自己是什么\"的措辞判断"
+  ],
+  "files": [
+    "src/mcp-server.js",
+    "src/formula/formula-calculator.js",
+    "test/mcp-optional-dep-error-shape.test.js",
+    "AGENTS.md",
+    "VERSION",
+    "package.json",
+    "src/core/version.js",
+    "src/core/heartflow.js",
+    ".well-known/agent-card.json",
+    "SKILL.md",
+    "README.md",
+    "CURRENT_STATE.md"
+  ],
+  "verify": "15 passed 0 failed",
+  "tests": "串行 2266 → 2271 passed / 0 failed / 2271 total, exit 0, 双通道均空, Command failed 计数 0; 新锁单独 5/5",
+  "audit": "ASPIRA_AUDIT_SKIP_TESTS=1: exit 0, 98 声称 / 93 一致 / 0 不一致 / 5 无法实测(全是 tests 类, 该 flag 按 cycle 9/188 记录的探针假象把 tests 测量置空); src/ 内硬依赖仍为 0(新 require 是内部模块, 走 mcp-server.js:486/526/691/974 既有的函数内 require 惯用法, convention #5 不受影响)",
+  "srcChanged": true,
+  "mcpRestarted": false,
+  "mcpNote": "记为未执行, 非已执行",
+  "version": "1.0.97 -> 1.0.98",
+  "commit": null,
+  "tag": null,
+  "pushed": false,
+  "testCount": "2266 -> 2271(+5 全部来自新锁)",
+  "summary": "重跑 181 个 handler 普查, 13 个 error-obj 里 12 个是正确校验, 只有 aspira_formula_calc 是真缺陷: 它把 Node 的 MODULE_NOT_FOUND 连 Require stack 一起返回给调用方 —— 既泄露部署绝对路径(181 个工具里唯一一处), 又把 mathjs 缺失这个合法状态报成代码错误, 还与同仓 formula-calculator 写明的降级口径自相矛盾。修法是提一个唯一来源的 optionalDepMissingError 并用窄 guard 分流。锁钉的是类不变量(任何 handler 的 error 串不得含路径)而非这一个用例。",
+  "nextRound": "① 本轮量准未修的 8 个工具必填契约不一致(A 组 5 个少声明 + C 组 3 个声明错参数), 反方向还有 19 个多声明 —— 这是一个完整切片, 且每改一个工具的 schema 都要回头确认 handler 与文档一致; ② aspira_formula_calc 的描述无条件承诺符号计算能力, 而它整个依赖一个可选依赖, 值得把\"能力矩阵 vs 可选依赖\"这件事在文档里说清; ③ 普查用填好的实参读出 13 个 error-obj, 用空实参读出 46 个 —— 两个口径各有盲区(填好的实参测不到缺参路径, 空实参测不到需要参数的路径), 锁②因此只覆盖空实参能到达的错误路径, aspira_formula_calc 自己的错误路径由①钉。把这两个口径合成一个才是不漏的普查。"
+}

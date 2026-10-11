@@ -52,6 +52,23 @@ function getMath() {
 
 
 
+// [mcp-tool-enhancement·第二百一十五轮] "可选依赖没装"这一条事实的统一出口。
+// 上面 getMath() 的注释已经写明: mathjs 是 optionalDependencies, 缺失是**合法
+// 状态**, 不是异常。所以任何路径都不该把它报成 MODULE_NOT_FOUND —— 那既是
+// 把合法状态误报成故障, 也会让调用方收到 Node 的 Require stack(泄露部署路径)。
+// 提到模块作用域并导出, 为的是让 aspira_formula_calc 复用同一条措辞,
+// 而不是在 mcp-server.js 里再抄一份(抄的那份会漂)。
+function optionalDepMissingError(dep) {
+  const err = new Error(
+    '符号计算需要可选依赖 ' + dep + '，当前未安装。'
+    + '公式搜索/查表仍可用；如需求值与解方程，请 npm i ' + dep
+    + '（它是 optionalDependencies，缺失时本引擎其余功能不受影响）。'
+  );
+  err.code = 'OPTIONAL_DEP_MISSING';
+  err.optionalDep = dep;
+  return err;
+}
+
 class FormulaCalculator {
 
   constructor(options = {}) {
@@ -72,22 +89,17 @@ class FormulaCalculator {
     return this._mathInstance;
   }
 
-  // [诚实性修复·第四轮] mathjs 缺失时的统一出口。
-  // getMath() 现在缺失即返回 null(不再抛 MODULE_NOT_FOUND)，于是每个
-  // `this._mathOrThrow().evaluate(...)` 都会变成 "Cannot read properties of null" ——
-  // 一个把"可选依赖没装"误报成"代码有 bug"的错误信息。
-  // 所有符号计算路径改为先过这一道，拿到明确的降级说明。
+  // [mcp-tool-enhancement·第二百一十五轮] 把"可选依赖缺失"这一条事实交出去。
+  // 此前它只以内联 Error 的形式活在 _mathOrThrow() 里，于是
+  // src/mcp-server.js 的 aspira_formula_calc 只能自己裸 require('mathjs')，
+  // 再把 Node 的 MODULE_NOT_FOUND **连 Require stack 一起**返回给调用方 ——
+  // 那既泄露部署的绝对路径，又把一个**合法状态**(optionalDependencies 未装)
+  // 报成代码错误，且与本文件同一条注释里写明的降级口径互相矛盾。
+  // 提到模块作用域并导出，让这条事实只有一份措辞。
   _mathOrThrow() {
     const m = this._math;
     if (m) return m;
-    const err = new Error(
-      '符号计算需要可选依赖 mathjs，当前未安装。'
-      + '公式搜索/查表仍可用；如需求值与解方程，请 npm i mathjs'
-      + '（它是 optionalDependencies，缺失时本引擎其余功能不受影响）。'
-    );
-    err.code = 'OPTIONAL_DEP_MISSING';
-    err.optionalDep = 'mathjs';
-    throw err;
+    throw optionalDepMissingError('mathjs');
   }
 
   [Symbol.for('nodejs.util.inspect.custom')]() { return '[FormulaCalculator]'; }
@@ -890,4 +902,4 @@ class FormulaCalculator {
 
 
 
-module.exports = { FormulaCalculator };
+module.exports = { FormulaCalculator, optionalDepMissingError };

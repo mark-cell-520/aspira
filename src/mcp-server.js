@@ -3108,9 +3108,27 @@ function handleFormulaBridge(args) {
 function handleFormulaCalc(args) {
   const { formula, variables = {} } = args || {};
   if (!formula) return { error: 'formula 是必填参数' };
+  // [mcp-tool-enhancement·第二百一十五轮] mathjs 是 optionalDependencies,
+  // 缺失是**合法状态**(见 src/formula/formula-calculator.js 顶部 getMath() 的
+  // 注释)。此前这里裸 require 失败后被下面那个笼统的 catch 接住, 于是
+  // aspira_formula_calc 每次调用都向调用方返回 Node 的 MODULE_NOT_FOUND
+  // **连 Require stack 一起** —— 实测那是全部 181 个工具里唯一泄露部署绝对
+  // 路径的一处, 且它把合法状态报成了代码错误, 与同文件 formula-calculator
+  // 写明的降级口径自相矛盾。现在把"缺哪个可选依赖"这一件事单独判,
+  // 复用 formula-calculator 的措辞(不在这里抄第二份)。
+  let math;
   try {
-    const math = require('mathjs').create(require('mathjs').all, { matrix: 'Array', number: 'number' });
+    math = require('mathjs').create(require('mathjs').all, { matrix: 'Array', number: 'number' });
     math.import({ 'import': function() { throw new Error('mathjs import disabled'); } }, { override: true });
+  } catch (e) {
+    if (e && e.code === 'MODULE_NOT_FOUND' && /\bmathjs\b/.test(String(e.message))) {
+      const { optionalDepMissingError } = require('./formula/formula-calculator.js');
+      const oe = optionalDepMissingError('mathjs');
+      return { error: oe.message, code: oe.code, optionalDep: oe.optionalDep, formula };
+    }
+    return { error: e.message, formula };
+  }
+  try {
     const scope = { ...variables };
     let result;
     if (formula.includes('=')) {
