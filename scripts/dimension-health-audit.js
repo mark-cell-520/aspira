@@ -281,13 +281,30 @@ function main() {
   const poolB = testInputs();
   const poolC = regexLiteralInputs();
   // 去重(按内容)，C 放最后因为覆盖面窄
-  const seen = new Set();
+  // [dimension-health-audit·第二百零九轮] 去重时**保留来源**。
+  // 原实现把三个池拼成一份字符串数组, 于是"这条 finding 是谁贡献的"在去重那一步
+  // 就永久丢失了 —— 仪器从此只能说"53 个维度推过 finding", 说不出其中哪些的
+  // finding **完全**来自测试作者自己写的字符串。本轮实测(三池分开各跑一遍):
+  // 53 个里有 7 个的 finding 100% 出自池 B, 池 A 与池 C 都是 0; 最刺眼的是
+  // contradiction(VERIFY_DIMS 成员, 能把 gate 推到 verify)—— 38 条 finding
+  // 全部出自测试字面量。也就是说"这个维度活着"这个结论, 对那 7 个而言是
+  // **测试自己证明自己**, 而仪器的汇总段读起来与其它 46 个完全一样。
+  // 修法不是再跑三遍(那会把 6 秒变成 18 秒): 同一次遍历里按来源分桶即可,
+  // 增量成本接近零。来源用集合而非单值, 因为同一条输入可能同时出现在两个池里
+  // (去重后只留一条文本, 但两个池都"见过"它)。
+  const POOL_NAMES = ['A', 'B', 'C'];
+  const seen = new Map();
   const pool = [];
-  for (const s of [...poolA, ...poolB, ...poolC]) {
-    const k = s.trim();
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    pool.push(s);
+  for (const [tag, arr] of [['A', poolA], ['B', poolB], ['C', poolC]]) {
+    for (const s of arr) {
+      const k = s.trim();
+      if (!k) continue;
+      const hit = seen.get(k);
+      if (hit !== undefined) { hit.add(tag); continue; }
+      const srcs = new Set([tag]);
+      seen.set(k, srcs);
+      pool.push({ text: s, srcs });
+    }
   }
 
   console.log('\n=== 维度健康审计 ===\n');
@@ -311,19 +328,24 @@ function main() {
   // 原实现: 只登记 probeKeys(探针句激起的约 8 维), 于是逐维度表从来只打那 8 行,
   // 剩下 46 维在报表里根本不出现。修法: 先把整池输入跑一遍, 用并集做基线。
   const allKeys = new Set(probeKeys);
-  for (const text of pool) {
+  for (const { text } of pool) {
     let dd;
     try { dd = idx.discriminate(text, []); } catch (e) { continue; }
     for (const k of Object.keys(dd.dimensions || {})) allKeys.add(k);
   }
   const tally = {};
-  for (const dim of allKeys) tally[dim] = { signal: 0, finding: 0, maxSig: 0 };
+  for (const dim of allKeys) {
+    // bySrc: 该维度的 finding 各出自哪个输入池(A 语料 / B 测试字面量 / C 正则片段)
+    const bySrc = {};
+    for (const t of POOL_NAMES) bySrc[t] = 0;
+    tally[dim] = { signal: 0, finding: 0, maxSig: 0, bySrc };
+  }
 
   const dimUnion = [...allKeys];
   const uncovered = dimUnion.filter(k => !DIM_CHECKERS.some(([d]) => d === k));
 
   let errors = 0;
-  for (const text of pool) {
+  for (const { text, srcs } of pool) {
     let d;
     try { d = idx.discriminate(text, []); } catch (e) { errors++; continue; }
     const dims = d.dimensions || {};
@@ -334,7 +356,11 @@ function main() {
     }
     for (const f of (d.findings || [])) {
       const key = canon(f.dimension);
-      if (tally[key]) tally[key].finding++;
+      if (!tally[key]) continue;
+      tally[key].finding++;
+      // 一条输入可能同见于多个池, 每个见过它的池都记一份 ——
+      // 所以 A+B+C 的和**可以大于** finding 总数, 这不是重复计数, 是来源重叠。
+      for (const t of srcs) tally[key].bySrc[t]++;
     }
   }
   if (errors) console.log(`  (${errors} 条输入抛错，已跳过)`);
@@ -357,7 +383,7 @@ function main() {
   //   DIM_CHECKERS 的哪一维**在全池里一次都没出现过键名**。
   // 那一类才是真正需要针对性探针单独验证的盲区。
   const seenKeys = new Set(Object.keys(tally));
-  for (const text of pool) {
+  for (const { text } of pool) {
     let dd;
     try { dd = idx.discriminate(text, []); } catch (e) { continue; }
     for (const k of Object.keys(dd.dimensions || {})) seenKeys.add(k);
@@ -495,6 +521,39 @@ function main() {
     console.log('\n  ℹ 仪器未覆盖的引擎维度（缺 check 函数映射，仍统计了俪号/finding）:');
     for (const k of uncovered) console.log(`     ${k}`);
   }
+
+  // ── [dimension-health-audit·第二百零九轮] finding 来源归属 ──
+  // 上面的汇总说"53 个维度推过 finding", 但那 53 个的 finding 是**谁**贡献的,
+  // 去重那一步已经把来源丢了。本轮实测(三池分开各跑一遍, 见 pool 构造处注释):
+  //   · 53 个里有 7 个的 finding 100% 出自池 B(测试字面量), A 与 C 都是 0
+  //   · 其中 contradiction 是 VERIFY_DIMS 成员, 能把 gate 推到 verify, 38 条
+  //     finding 全部出自测试作者自己写的字符串
+  //   · 另有 26 个非仅打分维度在语料(池 A)上零 finding
+  // 所以"这个维度活着"对那 7 个而言是**测试自己证明自己**: 输入是测试写的,
+  // 断言也是测试写的, 仪器只是确认两者仍然一致。这不等于维度失效(它在大池里
+  // 确实推 finding), 但它的行为**没有被任何独立于测试的输入表达过** ——
+  // 与 cycle 203 披露的语料盲区是同一族, 只是那一轮只数到"语料触达 22/54",
+  // 没数到"其中有几个连正则片段都碰不到, 只有测试字面量在撑"。
+  //
+  // 本节不设阈值、不判红: 它是一份**归属清单**, 让读者知道每个维度的 finding
+  // 有多大比例是独立证据。设阈值需要一个"多少比例才算独立"的判断, 那是产品
+  // 判断, 不是本仪器的职责。
+  {
+    const withSrc = dimUnion.filter(d => tally[d].finding > 0);
+    const testOnly = withSrc.filter(d => tally[d].bySrc.A === 0 && tally[d].bySrc.C === 0 && tally[d].bySrc.B > 0);
+    const corpusZero = withSrc.filter(d => tally[d].bySrc.A === 0 && !SCORE_ONLY.has(d) && !FINDING_ALIAS[d]);
+    console.log('\n  ── finding 来源归属(A 语料 / B 测试字面量 / C 正则片段) ──');
+    for (const dim of withSrc) {
+      const t = tally[dim];
+      const tag = SCORE_ONLY.has(dim) ? ' [仅打分]' : '';
+      const flag = (t.bySrc.A === 0 && t.bySrc.C === 0 && t.bySrc.B > 0) ? '  ← 仅测试字面量支撑' : '';
+      console.log(`  ${dim.padEnd(24)} A=${String(t.bySrc.A).padStart(4)} B=${String(t.bySrc.B).padStart(4)} C=${String(t.bySrc.C).padStart(3)}  finding=${String(t.finding).padStart(4)}${tag}${flag}`);
+    }
+    console.log(`  推过 finding 的维度 ${withSrc.length} 个; 其中仅测试字面量支撑(B 有 / A、C 均 0)的 ${testOnly.length} 个`);
+    if (testOnly.length) console.log('     ' + testOnly.join(', '));
+    console.log(`  语料上零 finding 的非仅打分维度 ${corpusZero.length} 个(校准读数对它们的误报/漏报行为零表达力)`);
+  }
+
   console.log('\n  ── 汇总 ──');
   // [第三十三轮] 这一行原先把 scoredOnly 整体打印成
   // "曾触发但不推 finding → evidence"，读起来像一条缺陷。但 evidence 是
