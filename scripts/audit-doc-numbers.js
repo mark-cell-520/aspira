@@ -766,7 +766,17 @@ function claims() {
       // 而审计全绿，因为那个形态不在任何 pattern 里。
       // 这与第一百五十三轮 SKILL.md 的 "Capability map (N domains)" 是同一形状:
       // **同一个数字在第二份文档里用了不同措辞，就成了审计的盲区。**
-      { re: /(\d+)\s*大域/g, key: 'domains', what: 'capability domains (中文)' },
+      // [doc-honest-numbers·第二百一十九轮] 这条是五条中文规模模式里**唯一
+      // 没有 reject 的**。后果实测: AGENTS.md 每轮增长一条诚实披露, 而本轮
+      // 条目为了引用 cycle 164 的旧缺陷写了「分 7 大域」—— 于是审计把它当成
+      // "引擎声称 7 个能力域"对实测 8 报不一致, 一条历史引用制造出一条
+      // 当前声称。**一条描述过去缺陷的句子, 被仪器读成一条规模声称**:
+      // cycle 203 的维度披露同族, 那次错在文档措辞, 这次错在模式缺一道闸。
+      // 补上与其余四条中文模式一致的 reject。IDENTITY.md 的当前声称
+      // ("…真实调用，分 8 大域：")不受影响: 该行在数字之前既无引号也无
+      // 过去时标记, narrativeQuote 两条判据都不命中(实测仍受审)。
+      { re: /(\d+)\s*大域/g, key: 'domains', what: 'capability domains (中文)',
+        reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
       // ── [第八轮·穷举法] 语料规模是 FP 率与召回率的分母 ──
       // 机械化穷举(而非人工提问)发现的盲区: pats 的 key 集 vs 文档
       // 实际出现的"数字+单位词"形态，`benign` / `malicious` 双双落空。
@@ -976,6 +986,27 @@ function claims() {
         re: /(\d[\d,]*)\s+failing/g,
         key: 'testsFailed',
         what: 'failing tests (失败数)',
+        reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a),
+      },
+      // ── [doc-honest-numbers·第二百一十九轮] 同一句话里的另一半 ──
+      // 上面那条散文模式自己的注释引用的完整形态是
+      //   "N tests passed / 0 failed"  (CURRENT_STATE.md 抬头)
+      // 而它的正则 `(\d[\d,]*)\s+tests?\s+passed` **读到 passed 就停** ——
+      // 于是同一句话里通过数受审、失败数不受审。而 CURRENT_STATE.md 正是
+      // 读者来"看当前状态"的那一份, 它的失败数是三处文档里唯一没人核对的:
+      // README / SKILL 写 "0 failing"(上一条模式读到), 这里写 "0 failed"。
+      // **同一个数字在第二份文档里换了措辞, 就成了审计的盲区** ——
+      // cycle 164 的 IDENTITY.md「分 7 大域」同形, 这次落在失败数上。
+      //
+      // 为什么不能顺手放宽成裸 "N failed": 实测在 AGENTS.md 的周期史里
+      // 引入几十条假声称("run-all 1395 → 1399 with 0 failures" 等),
+      // 那是 cycle 141/205 量过的净负。故**按整句收窄**: 全仓已扫文档
+      // 实测只命中 1 处(就是 CURRENT_STATE.md 抬头), 且与上一条模式的
+      // 作用域不重叠。第一捕获组刻意放在失败数上(claims() 只取 mm[1])。
+      {
+        re: /(?:\d[\d,]*\s+tests?\s+passed\s*\/\s*)(\d[\d,]*)\s+failed/g,
+        key: 'testsFailed',
+        what: 'failing tests (失败数, CURRENT_STATE 抬头)',
         reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a),
       },
 

@@ -1,0 +1,52 @@
+{
+  "ts": "2026-10-11T23:12:21.262Z",
+  "cycle": 219,
+  "chosen": "doc-honest-numbers",
+  "tieBreak": null,
+  "status": "done",
+  "theme": "同一句话里通过数受审、失败数不受审 —— 因为模式读到 passed 就停; 而唯一没人核对的那一处正是读者来看当前状态的那一份",
+  "angle": "cycle 8 的机械穷举在当前文档集上重跑(\"已枚举过\"本身是过期读数): 把每条可审形态按类别归账, 问未覆盖的那 673 条到底由什么构成。最大一簇是 README 更新日志的历史行(正确不审), 但 44 条无法归类, 其中一条是 CURRENT_STATE.md 的 \"0 failed\"",
+  "rootCause": "CURRENT_STATE.md 抬头 \"status running, 132 modules, 2291 tests passed / 0 failed\": 132 modules 受审、2291 tests passed 受审(那条散文模式自己的注释引用的完整形态就是 \"N tests passed / 0 failed\"), 而 0 failed 从未受审 —— testsFailed 模式是 /(\\d[\\d,]*)\\s+failing/g, 只读 failing; README/SKILL 写 \"0 failing\"(受审), CURRENT_STATE.md 写 \"0 failed\"(不受审)。同一个数字在第二份文档换了措辞就成了审计盲区(cycle 164 的 IDENTITY.md「分 7 大域」同形), 这次落在失败数上",
+  "naiveFixMeasured": "放宽成裸 \"N failed\" 实测净负: AGENTS.md 周期史里引入几十条假声称(\"run-all 1395 → 1399 with 0 failures\" 等), cycle 141/205 形状。故按整句收窄, 全仓已扫文档实测只命中 1 处",
+  "fix": "两条模式改动。(a) 新增 /(?:\\d[\\d,]*\\s+tests?\\s+passed\\s*\\/\\s*)(\\d[\\d,]*)\\s+failed/g → key testsFailed, 第一捕获组刻意放失败数(claims() 只取 mm[1]); (b) 给唯一没有 reject 的中文规模模式 N 大域 补上 reject: selfRef || narrativeQuote",
+  "measuredAfter": "审计 98→99 声称 / 93 一致 / 0 不一致 / exit 0; 新声称进入无法实测清单(CURRENT_STATE 抬头失败数 = 0), 完整运行下与 m.testsFailed 比对; IDENTITY.md 的大域声称仍受审(活体注入 7 大域 → 报不一致 exit 1)",
+  "secondDefect": "第一轮门禁 19 例全红, 全在审计族, 同一根因: 我本轮写的 AGENTS.md 条目引用 cycle 164 旧缺陷时写了「分 7 大域」, 而 N 大域 是五条中文规模模式里唯一没有 reject 的, 一条描述过去缺陷的句子被读成当前规模声称(实测 7 对 8)。一条 mismatch, 十九个伤亡。补 reject 后级联清零",
+  "ownErrors": [
+    "门禁中途我用 node -e require 了审计脚本想\"看看模块\" —— require 它会**运行**它, measure() spawn 整个套件, 而我杀掉那个后台任务时正杀在探针注入与还原之间, 把 \"The engine ships only 131 modules in total.\" 留在 README.md。铁律 0 的场景, 自己造的。按锚点清除(不用 git checkout)",
+    "改 AGENTS.md 条目里的过期读数时用无作用域的 String.replace, 只替换第一个匹配, 结果把 cycle 208 条目的 \"5/5\" 改成 \"6/6\" 而本轮条目没改到。按唯一定位串分别修正",
+    "补第二缺陷叙述时用内联 node -e, 反引号被 zsh 吃掉, 段落破损。改为写 .cjs 文件再执行",
+    "新锁 ⑥ 的窗口锚点写成 /\\s*大域/g, 而源码里是 (\\d+)\\s*大域/g, indexOf 返回 -1 导致断言恒假。改为搜 \\s*大域/g 并加前提自证"
+  ],
+  "lock": {
+    "file": "test/audit-current-state-failure-count.test.js",
+    "cases": 6,
+    "detail": "① 审计必须认出 CURRENT_STATE 抬头失败数且值必须是 0 不是 2291(证明捕获组取对) ② 源级锚在整句形态且不得退化成裸 N failed(先剥行注释) ③ 加了模式后审计仍须 0 不一致 ④ 反向证明删掉模式后声称必须消失 + 反向对照 README 的失败数声称仍在 ⑤ 披露失败数的声称站点都还在 ⑥ 源级: N 大域 必须带 reject"
+  },
+  "mutationVerified": "两个方向各一次: 模式改成永不再匹配 → 3 例按名红; 去掉大域的 reject → 2 例按名红(含 ③ 的 0 不一致, 因为 AGENTS.md 的 mismatch 复现)。均字节级还原后回 6/6",
+  "files": [
+    "scripts/audit-doc-numbers.js",
+    "test/audit-current-state-failure-count.test.js",
+    "AGENTS.md",
+    "VERSION",
+    "package.json",
+    "src/core/version.js",
+    "src/core/heartflow.js",
+    ".well-known/agent-card.json",
+    "SKILL.md",
+    "README.md",
+    "CURRENT_STATE.md"
+  ],
+  "verify": "15 passed 0 failed",
+  "tests": "串行 2291 → 2297 / 0 / 2297, exit 0, 双通道均空, Command failed 计数 0; 新锁单独 6/6(13 秒, 门禁子进程上限 240 秒)",
+  "audit": "ASPIRA_AUDIT_SKIP_TESTS=1: exit 0, 99 声称 / 93 一致 / 0 不一致 / 6 无法实测(tests 类)",
+  "srcChanged": false,
+  "mcpRestarted": false,
+  "mcpNote": "记为未执行, 非已执行",
+  "version": "1.1.1 -> 1.1.2",
+  "commit": null,
+  "tag": null,
+  "pushed": false,
+  "testCount": "2291 -> 2297(+6 全部来自新锁)",
+  "summary": "重跑 cycle 8 的机械穷举并把未覆盖形态逐类归账, 在 44 条无法归类的形态里追到 CURRENT_STATE.md 抬头的 \"0 failed\": 同一句话里 132 modules 与 2291 tests passed 都受审, 失败数却从未受审 —— testsFailed 模式只读 \"failing\", 而这份读者来看当前状态的文件写的是 \"failed\"。按整句收窄新增一条模式(放宽成裸 N failed 实测净负)。随后第一轮门禁 19 例全红, 根因是本轮 AGENTS.md 条目引用 cycle 164 旧缺陷的「分 7 大域」被唯一没有 reject 的中文规模模式读成当前声称 —— 补上 reject 后级联清零, 且活体注入证明 IDENTITY.md 的正当声称仍受审。",
+  "nextRound": "① 本轮归账显示未覆盖的 673 条可审形态里, 除 README 更新日志历史行外还有序数/括号内引用/行内代码等已知类别 —— 值得给\"未覆盖形态\"做一个常驻的类别构成报表(与覆盖面自报并列), 让 12.7% 这个数的对面也有构成说明; ② N 大域 缺 reject 是第十九轮加中文模式时就留下的, 同类\"五条里四条有一道闸\"的不一致可能还有其他处, 值得机械核对每条模式的 reject 归属; ③ 审计有六处自检(零依赖/Node 兼容/instant install/豁免理由/层名单)打 ❌ 却不设退出码 —— 实测它们各自都有专门测试覆盖(独立测量或 grep stdout), 所以是冗余而非活洞, 但\"只通过 stdout 说话的门\"这个形状仍在。"
+}
