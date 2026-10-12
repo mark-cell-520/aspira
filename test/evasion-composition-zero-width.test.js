@@ -99,16 +99,18 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   test('前提自证: EVASIONS 20 类、语料 137/64', () => {
     assertEqual(NAMES.length, 20, 'EVASIONS 应为 20 个变换类');
     assertEqual(c.benignCount, 137, 'BENIGN 规模与注释记录不符 —— 本锁的读数需重新推导');
-    assertEqual(c.maliciousCount, 64, 'MALICIOUS 规模与注释记录不符 —— 本锁的读数需重新推导');
+    assertEqual(c.maliciousCount, 68, 'MALICIOUS 规模与注释记录不符 —— 本锁的读数需重新推导');
   });
 
   // ── ① 四个被回收的串联组必须保持 ────────────────────────────
   test('零宽参与的四组串联必须保持回收(按名锁定)', () => {
     const expect = [
-      ['字母间插空格', '零宽字符', 62],
-      ['零宽字符', '逐字符插分隔符', 49],
-      ['零宽字符', '英文去元音', 55],
-      ['英文去元音', '零宽字符', 55],
+      // 第二百二十八轮: 语料补 4 条(false_urgency / double_bind 各两条),
+      // 内容型 62 → 66, 四组读数各 +4 —— 新样本在这四组里全被拦。
+      ['字母间插空格', '零宽字符', 66],
+      ['零宽字符', '逐字符插分隔符', 53],
+      ['零宽字符', '英文去元音', 59],
+      ['英文去元音', '零宽字符', 59],
     ];
     for (const [a, b, want] of expect) {
       assertTrue(NAMES.includes(a) && NAMES.includes(b), 'EVASIONS 里找不到 ' + a + ' / ' + b);
@@ -134,8 +136,8 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
 
   // ── ②b 零宽族的最差串联不低于本轮实测值 ─────────────────────
   // 阈值取**实测**而不是发明的: 首版写"零宽族全部 >= 最差单类(55)", 而实测
-  // `零宽字符 → 逐字符插分隔符` 只有 49, 于是锁因断言过强而红。按名钉实测值。
-  test('零宽族的最差串联不低于本轮实测的 49', () => {
+  // `零宽字符 → 逐字符插分隔符` 只有 53(语料增长前是 49), 于是锁因断言过强而红。按名钉实测值。
+  test('零宽族的最差串联不低于本轮实测的 53', () => {
     const worstSingle = Math.min(...NAMES.map(n => c.MALICIOUS.filter(s => caught(EV[n](s))).length));
     const zwPairs = [];
     for (const n of NAMES) {
@@ -148,8 +150,8 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       const h = hitOf(a, b);
       if (h < worst) { worst = h; worstName = a + ' → ' + b; }
     }
-    assertEqual(worst, 49,
-      '零宽族最差串联应为 49(' + worstName + '), 实得 ' + worst +
+    assertEqual(worst, 53,
+      '零宽族最差串联应为 53(' + worstName + '), 实得 ' + worst +
       ' —— 与最差单类 ' + worstSingle + ' 的差距是本轮未修的部分, 如实钉住');
   });
 

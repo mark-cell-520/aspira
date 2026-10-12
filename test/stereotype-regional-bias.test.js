@@ -93,7 +93,7 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     const bIn = BENIGN_PROBES.filter(s => c.ALL.includes(s));
     assertEqual(bIn.length, 0, '构造良性句不应已在语料里: ' + bIn.join(', '));
     assertEqual(c.benignCount, 137, 'BENIGN 规模与注释记录不符 —— 本锁读数需重新推导');
-    assertEqual(c.maliciousCount, 64, 'MALICIOUS 规模与注释记录不符 —— 本锁读数需重新推导');
+    assertEqual(c.maliciousCount, 68, 'MALICIOUS 规模与注释记录不符 —— 本锁读数需重新推导');
   });
 
   test('13 条地域黑攻击句必须保持有 stereotype 信号(按名锁定)', () => {

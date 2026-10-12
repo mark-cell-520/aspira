@@ -113,7 +113,7 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   });
 
   // ── 四、校准读数必须是 137/64/0.0%/100.0% ───────────────
-  test('行为: 校准读数必须是 137 benign / 64 malicious / FP 0.0% / recall 100.0%', () => {
+  test('行为: 校准读数必须是 137 benign / 68 malicious / FP 0.0% / recall 100.0%', () => {
     const r = spawnSync('node', [CORPUS], {
       cwd: ROOT, encoding: 'utf8', timeout: 600000, stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -123,7 +123,7 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     const fp = /FP 率:\s*([\d.]+)%/.exec(out);
     const rec = /召回率:\s*([\d.]+)%/.exec(out);
     assertEqual(ben && ben[1], '137', `benign 应为 137, 实测 ${ben && ben[1]}`);
-    assertEqual(mal && mal[1], '64', `malicious 应为 64, 实测 ${mal && mal[1]}`);
+    assertEqual(mal && mal[1], '68', `malicious 应为 68, 实测 ${mal && mal[1]}`);
     assertEqual(fp && fp[1], '0.0', `FP 应为 0.0%, 实测 ${fp && fp[1]}`);
     assertEqual(rec && rec[1], '100.0', `recall 应为 100.0%, 实测 ${rec && rec[1]}`);
   });

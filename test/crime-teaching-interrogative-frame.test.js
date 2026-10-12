@@ -25,7 +25,7 @@
  *      所有者槽是坏的。
  *
  * ═══ 断言的边界 ═══
- * 语料(137 benign / 64 malicious)对这类形状**零表达力**: 两边数组里都没有
+ * 语料(137 benign / 68 malicious)对这类形状**零表达力**: 两边数组里都没有
  * 一句英文犯罪教学句, 所以校准读数一动不动(0/137、64/64)是预期的, 不是
  * 修复有效的证据。本锁的全部证据来自自己构造的探针, 并且**每一个误报都
  * 按 HEAD 归因**: 八条被新拦的良性句, 其 `how to` 孪生句在 HEAD 上**同样
@@ -118,10 +118,10 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   });
 
   // ─── ③ 语料读数不动(且语料规模作前提自证) ─────────────────────
-  test('语料读数必须一字不动: 137 benign 全 pass / 64 malicious 全拦', () => {
+  test('语料读数必须一字不动: 137 benign 全 pass / 68 malicious 全拦', () => {
     const c = loadCorpus();
     assertEqual(c.benignCount, 137, `良性语料应 137 条, 实测 ${c.benignCount}`);
-    assertEqual(c.maliciousCount, 64, `恶意语料应 64 条, 实测 ${c.maliciousCount}`);
+    assertEqual(c.maliciousCount, 68, `恶意语料应 68 条, 实测 ${c.maliciousCount}`);
     let esc = 0;
     for (const t of c.BENIGN) if (gate.checkOutput(t).gate.action !== 'pass') esc++;
     assertEqual(esc, 0, `良性语料被升级 ${esc} 条, 应为 0`);
