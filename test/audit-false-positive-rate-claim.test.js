@@ -74,10 +74,16 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   // 从审计自己的 pats 表里取出这条 pattern 的 re 源(复用仪器, 不重实现)。
   // 收束必须容忍**任意 flag**: 首版写死 `/g,`, 于是把 flag 改回 /gi 的变异会让
   // 抽取返回 -1、用例在加载期就抛错 —— "锁崩了"不是"锁红了"(cycle 205 的教训)。
+  // ⚠️ 锚点必须钉在 **what**(唯一)而不能钉在 key: cycle 231 给同一个
+  // `falsePositive` key 加了第二种措辞(AGENTS.md 披露段)，于是
+  // `indexOf("key: 'falsePositive'")` 虽然仍命中本轮这条(它在表里更靠前)，
+  // 但这个唯一性假设已经不成立，且没有任何东西在守护它。
+  // `what: 'false-positive rate'` 带收尾引号, 与
+  // `what: 'false-positive rate (AGENTS 披露段)'` 不构成前缀包含, 是唯一的。
   function fpPatternSource() {
     const src = fs.readFileSync(SCRIPT, 'utf8');
-    const keyAt = src.indexOf("key: 'falsePositive'");
-    assertTrue(keyAt > 0, '审计 pats 里找不到 falsePositive 这一条 —— 它被删了?');
+    const keyAt = src.indexOf("what: 'false-positive rate'");
+    assertTrue(keyAt > 0, '审计 pats 里找不到 what 为 false-positive rate 的那一条 —— 它被删了?');
     const reAt = src.lastIndexOf('re: /', keyAt);
     assertTrue(reAt > 0 && reAt < keyAt, '找不到该条的 re 字面量 —— 锚点已变');
     let close = -1;
@@ -214,8 +220,8 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     const orig = fs.readFileSync(SCRIPT, 'utf8');
     const start = orig.indexOf('// ── [doc-honest-numbers·第二百三十轮] FP 率本身 ──');
     assertTrue(start > 0, '源码里找不到新模式块 —— 锚点已变, 本反向证明无效');
-    const keyAt = orig.indexOf("key: 'falsePositive'");
-    assertTrue(keyAt > start, '找不到该条的 key 行 —— 锚点已变, 本反向证明无效');
+    const keyAt = orig.indexOf("what: 'false-positive rate'");
+    assertTrue(keyAt > start, '找不到该条的 what 行 —— 锚点已变, 本反向证明无效');
     // ⚠️ 收束必须从**本条自己的** `},` 算, 不能找 `\n      },`:
     // pats 表里绝大多数条目是单行 `{ re: ... },`,`},` 在行尾而前面是空格不是换行,
     // 于是 `\n      },` 第一次命中落在很远的多行条目(testsFailed)上 —— 首版这么写,
@@ -232,7 +238,12 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertTrue(removed.length < 4000, '要删掉的块有 ' + removed.length + ' 字符 —— 切片范围不对');
     assertTrue(!removed.includes("key: 'tools'"), '切片吃掉了下一条(MCP tools)—— 收束算错了');
     const broken = orig.slice(0, start) + orig.slice(blockEnd);
-    assertTrue(broken !== orig && !broken.includes('key: \'falsePositive\''),
+    // ⚠️ 判据必须钉在 **what** 而不是 key: cycle 231 给同一个 falsePositive key
+    // 加了第二种措辞(AGENTS.md 披露段)，于是"key 字符串已消失"这条判据在删掉
+    // 本轮这一条之后**永远不成立** —— 全套件因此红过一格(2389/1)。
+    // 这是"改了共享契约就继承旧契约所有调用者"的又一次缴费: 不是 key 被删了，
+    // 是 key 从唯一变成不唯一，而旧锁的唯一性假设没有任何东西在守护。
+    assertTrue(broken !== orig && !broken.includes("what: 'false-positive rate'"),
       '变异未生效 —— 锚点没匹配上, 本次反向证明无效');
     const tmp = path.join(ROOT, 'scripts', '_audit-broken-230.tmp.js');
     fs.writeFileSync(tmp, broken);

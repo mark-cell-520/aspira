@@ -336,6 +336,30 @@ function measure() {
         m.falsePositiveN = benign.length;
       }
     } catch (_) { m.falsePositive = null; }
+
+    // ── [doc-honest-numbers·第二百三十一轮] recall 是同一个句子的另一半 ──
+    // cycle 230 教会审计读 "False-positive rate … N%"(README/SKILL 的已知限制)，
+    // 而 AGENTS.md 的披露段把**两个**读数写在同一句里:
+    //   "the current reading is **0.0% FP / 100% recall**"
+    // FP 那一半有测量(上一轮加的)，recall 这一半连测量都没有 —— 而它是同一个
+    // 句子、同一批文档、同一族形状(cycle 219 的"同一句话只审了一半"、
+    // cycle 224 的"换个词序就成盲区"，这是第三例)。
+    // 口径与 calibrate-fp-recall.js 的 caught 完全一致: block 或 rewrite 记拦住，
+    // verify 不记(脚本自己的判据，见 cycle 211)。
+    try {
+      const malicious = arrItems('MALICIOUS');
+      if (malicious && malicious.length) {
+        const gate = require(path.join(ROOT, 'src', 'gate.js'));
+        let caught = 0;
+        for (const s of malicious) {
+          const r = gate.checkOutput(s);
+          const a = r && r.gate && r.gate.action;
+          if (a === 'block' || a === 'rewrite') caught++;
+        }
+        m.recall = (caught / malicious.length * 100).toFixed(1);
+        m.recallN = malicious.length;
+      }
+    } catch (_) { m.recall = null; }
   } catch (_) { m.corpusBenign = null; m.corpusMalicious = null; }
 
 
@@ -837,6 +861,35 @@ function claims() {
       // 文档侧因此刻意不写 measured at/on。
       { re: /[Ff]alse[- ][Pp]ositive rate[^.\n]{0,40}?(\d+(?:\.\d+)?)\s*%/g,
         key: 'falsePositive', what: 'false-positive rate',
+        reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
+      // ── [doc-honest-numbers·第二百三十一轮] 同一句话的后一半 ──
+      // 上一轮那条只接得住 "False-positive rate … N%" 这一种措辞(README/SKILL 的
+      // 已知限制)。AGENTS.md 的披露段把两个读数写在**同一句**里:
+      //   "the current reading is **0.0% FP / 100% recall**"
+      // 而 FP 这个量上一轮已经能测了 —— 于是出现一个新形状: **测量存在、措辞不匹配**。
+      // 这是 cycle 219("同一句话只审了一半")与 cycle 224("同一个数字换个词序就成
+      // 盲区")的第三例，这次是同一句子里的另一个数。
+      //
+      // 为什么必须锚在 `current reading is` 上而不能用裸 `N% FP`:
+      // 实测全仓裸形态 **12 处命中**, 其中 8 处在 AGENTS.md 的周期史里
+      // ("the 0.9% FP and the 100% recall", "The 100% recall above is *plaintext*
+      // recall", cycle 203 引用同一对数字的披露句……)，逐条都是历史读数或对读数的
+      // 引用，把它们当当前声称就会一次制造 8 条假不符(cycle 141/205 的形状)。
+      // 而 `current reading is` 在全仓**只出现一次**(实测 grep)，锚上去恰好命中
+      // 那一句、且不碰任何历史叙述。**一条锚定在标签上而不是形态上的模式。**
+      // 数字后紧跟 FP/recall 两个词之一, 所以两个模式各捕各的那一半。
+      { re: /current reading is[^.\n]{0,24}?(\d+(?:\.\d+)?)%\s*FP/g,
+        key: 'falsePositive', what: 'false-positive rate (AGENTS 披露段)',
+        reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
+      // recall 这一半此前**连测量都没有**。本轮的 m.recall 与
+      // calibrate-fp-recall.js 的 caught 同口径(block 或 rewrite 记拦住, verify 不记)。
+      // ⚠️ 间隔类必须用 `[^\n]` 而**不能**用 `[^.\n]`: "is" 到 recall 的数字之间
+      // 隔着 FP 那半句的 "0.0"，里面就有一个点。首版写了 `[^.\n]`，于是这条模式
+      // 结构上永远匹配不到，被死 pattern 自检当场抓住 —— 与上一轮"靠 i flag 等于
+      // 没有"同族: **一个跨不过自己句子里的标点的模式，等于没有。**
+      // 跨度放到 44: "is" 到 recall 的数字之间隔着 " **0.0% FP / " 十三个字符。
+      { re: /current reading is[^\n]{0,44}?(\d+(?:\.\d+)?)%\s*recall/g,
+        key: 'recall', what: 'recall rate (AGENTS 披露段)',
         reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
       { re: /(\d+)\s+MCP tools/g, key: 'tools', what: 'MCP tools' },
       // 千分位逗号必须一起吃下: "1,510 dispatch routes" 否则只捕到 510，
@@ -1441,6 +1494,9 @@ actual.corpusMalicious = m.corpusMalicious;
 // 不写这一行，README/SKILL 的 "around 8%" 会继续躺在"无法实测"里，
 // 而它是一句**现在时**的已知限制。
 actual.falsePositive = m.falsePositive;
+// [第二百三十一轮] recall。不写这一行，AGENTS.md 披露段的后半个读数会躺在
+// "无法实测"里 —— 而它和 FP 那半句是同一句话。
+actual.recall = m.recall;
 
 // [第四十四轮] 覆盖清点三项。上面 actual = {...} 里的
 // aliveUntested: m.aliveUntested 不是这里的工作方式 —— actual 的键
