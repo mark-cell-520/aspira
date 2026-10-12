@@ -579,8 +579,30 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
     evidence: ev, unsupported_claim: uc
   };
   const findings = [];
+  // [dimension-health-audit·第二百三十二轮] 有专属推送块的维度不进通用循环。
+  // unsupported_claim 是**唯一一个同时在 allDims 和专属块里**的维度: 通用循环推
+  // `unsupported_claim(1次)` —— 那是 `dimObj?.count || … || 1` 的兜底详情, 名字加
+  // 一个次数, 指不出是哪一处断言; 下方专属块推 `无依据断言(N处: <matched>)`。
+  // 两者 severity 同为 Math.round(uc.score*100), 信息量只有详情那一行之差。
+  // 实测(全池 11624 条, 仪器同口径): 98 条输入触发该维度, **98 条全部双推**,
+  // 其中 82 条 gate=verify。findings.length 正是 gate 的 verify 触发条件之一,
+  // AGENTS.md 记着它曾是 8/45 恶意样本的唯一拦截原因 —— 虚增它就是以噪声换判决。
+  //
+  // 为什么不学 pseudo_causal / soft_deflection 当初那样从 allDims **整条删除**:
+  // allDims 有两个消费者 —— 第 535 行的惩罚模型读 PENALTY_WEIGHT / PENALTY_CAP,
+  // 而 unsupported_claim 恰好在两处都有专门配置(0.35 / 0.35, 见上方注释:
+  // 连续量, 要区分"有来源但表述偏强"与"纯编造")。整条删除会连惩罚一起删掉:
+  // 实测那样 overallScore 位移, 全池 1 条输入从 rewrite 掉到 verify。
+  // 所以这里只跳过**推送**, 惩罚那一半原样留着。
+  //
+  // 其余六个有专属块的维度(perfect_error / reasoning_coherence / evidence /
+  // pseudo_causal / soft_deflection / multi_turn_escalation)本来就不在 allDims 里,
+  // 已实测核对; 本集合因此今天只有一名成员。
+  // test/dimension-no-dual-push.test.js 锁的是**不变量**(任何维度不得同时在
+  // allDims 和专属块里), 不是这个集合的字面 —— 未来新增专属块时它会按名报出来。
+  const DEDICATED_PUSH = new Set(['unsupported_claim']);
   for (const d of allDims) {
-    if (d.score >= 0.15) {
+    if (d.score >= 0.15 && !DEDICATED_PUSH.has(d.name)) {
       const dimObj = dimMap[d.name];
       const detail = dimObj?.count || dimObj?.totalHits || dimObj?.injections?.length || dimObj?.issues?.length || 1;
       findings.push({ dimension: d.name, severity: Math.round(d.score * 100), details: `${d.name}(${detail}次)` });
