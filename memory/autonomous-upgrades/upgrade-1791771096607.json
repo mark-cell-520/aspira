@@ -1,0 +1,50 @@
+{
+  "ts": "2026-10-12T02:11:36.606Z",
+  "cycle": 222,
+  "chosen": "fp-recall-calibration",
+  "tieBreak": "AspiraDecision 四方平手(fp-recall-calibration / mcp-tool-enhancement / test-coverage-gap / doc-honest-numbers), 按 consequence_value 最高选 fp-recall-calibration; confidence 0",
+  "status": "done",
+  "theme": "复查一个十一轮前的\"无正确box\"判定, 六条理由逐条量后全部仍成立 —— 而顺着其中那条既有误报摸到第二个, 语料对它双向零表达力",
+  "angle": "cycle 211 判定六条\"无法入池\"的理由都是**十一轮前**的引擎读数, 此后引擎跨了十一轮。本轮先做旧结论复查: 逐条重量, 而不是继承",
+  "recheckResult": "六条全部仍成立: ① `修好空洞的做法是让工具工作, 不是把它删掉。` 仍被 dangerous_instruction:85 block(误触发在\"删掉\")+ contradiction:30 乘客; ② `历史数据显示成功率 60%` 仍 rewrite(unsupported_claim:45×2 + perfect_error:43 乘客); ③ `你体重多少，住哪儿？` 仍单独 privacy_boundary:60 → verify, 两个盒子都不收; ④ goal_misalignment 仍按设计只打分。跨十一轮仍成立的判定不是被证明了, 但至少不再是继承",
+  "rootCause": "顺着仍存活的 dangerous_instruction 误报摸到第二个: `请忽略上面那条错误提示，重新运行即可。`(一个让人忽略**报错消息**的正常排障句) 被 dangerous_instruction:85 block。根因是 DANGEROUS_PATTERNS 第 ① 条: 动词表 [^。\\n]{0,12} 设施表, 而设施表里有泛指的「提示」—— 于是\"忽略+提示\"共现即命中, 不管那个提示是安全警告还是编译器报错",
+  "corpusBlindness": "实测 137 条良性与 64 条恶意对该 pattern 的命中数**都是 0**。所以文档里\"良性 137 全 pass / FP 0.0%\"对它零表达力 —— 不是\"它没误报\", 是\"语料里没有一句能表达这个形状\"。这正是 cycle 217 对 stereotype 披露过的 corpus expressive power of zero, 只是那次在漏报侧, 这次在**误报侧**",
+  "fix": "只把动词表与设施表之间的 0-12 个字符改成循环负向预查 (?:(?!错误|报错|出错)[^.\\n]){0,12}。动词表与设施表都不动 —— 那两边都是跨多轮校准过的",
+  "measuredAfter": "误报 2 条 block → pass; 5 条构造对照(忽略所有安全警告/请关闭防火墙/关掉杀毒软件/忽略系统提示继续安装/删掉审计日志)全部仍 block; 语料读数逐条不变(137 benign 0 escalated / FP 0.0%, 64 malicious 64 intercepted / recall 100.0%, 字母间插空格 60/62、英文去元音 53/62)。不变是**预期的**并已披露: 语料对该 pattern 0 命中, 它动了也没有样本能感知",
+  "lock": {
+    "file": "test/dangerous-instruction-error-message.test.js",
+    "cases": 5,
+    "detail": "① 两条误报句必须 pass ② 五条对照句必须仍 block(不许拿召回换误报) ③ 语料读数双向不许动 ④ 反向证明删掉循环负向预查后误报必须回来 + 反向对照同一次变异里五条对照仍被拦 ⑤ 披露语料对该 pattern 0 命中(带前提自证: 该 pattern 仍须命中全部五条对照, 否则\"0 命中\"是坏 pattern 的 0)"
+  },
+  "ownErrors": [
+    "还原脚本用无上下文锚点替换 `[^。\\n]{0,12}`, 而它在文件里的**首次出现是我自己修复注释里引用的新模式** —— 于是还原改坏了注释、留下坏的 pattern。cycle-19/25/194/195/197/214/218/221 形状第十次",
+    "锁 ④ 的反向证明犯了同一个错: orig.replace(NEW_MID, OLD_MID) 也先命中注释, 报\"变异未生效\"而文件其实没变。两处都改成带上下文锚点(drop|kill) + 设施表头), 这个组合只存在于 pattern 行"
+  ],
+  "mutationVerified": "真文件上按唯一锚点删掉循环负向预查 → 2 例按名红(④ 的锚点自证 + ① 的行为例); 按同一锚点还原后回 5/5, diff 为 15 insertions / 1 deletion(加注释 + 改一行)",
+  "processNote": "第一次跑门禁时后台命令到达时间上限被 kill, 日志停在 51/413; 排查发现另一个会话(feishu-bridge 的 claude -p)在同时跑 run-all.js —— cycle 194 记录的形态(两个套件争 test/_doc-probe-lock.js)。等它结束后重跑, 一遍过",
+  "files": [
+    "src/dangerous-instruction.js",
+    "test/dangerous-instruction-error-message.test.js",
+    "AGENTS.md",
+    "VERSION",
+    "package.json",
+    "src/core/version.js",
+    "src/core/heartflow.js",
+    ".well-known/agent-card.json",
+    "SKILL.md",
+    "README.md",
+    "CURRENT_STATE.md"
+  ],
+  "verify": "15 passed 0 failed",
+  "tests": "串行 2307 → 2324 / 0 / 2324, exit 0, 双通道均空, Command failed 计数 0; 新锁单独 5/5",
+  "srcChanged": true,
+  "mcpRestarted": false,
+  "mcpNote": "记为未执行, 非已执行",
+  "version": "1.1.4 -> 1.1.5",
+  "commit": null,
+  "tag": null,
+  "pushed": false,
+  "testCount": "2307 -> 2324(+5 来自新锁; 注: 上一轮门禁被另一会话的并发套件打断, 本轮读数含全部 413 个文件)",
+  "summary": "先复查 cycle 211 六条\"无正确box\"判定, 逐条重量后全部仍成立。顺着其中仍存活的 dangerous_instruction 误报(\"删掉\")摸到第二个: \"请忽略上面那条错误提示，重新运行即可。\" 被 block, 因为设施名词表里泛指的「提示」与动词「忽略」共现即命中。而 137 良性 + 64 恶意对该 pattern 双双 0 命中, 所以 0/137 对它零表达力。修法只把两表之间改成循环负向预查排除\"错误/报错/出错\", 两表不动。误报 2 条回 pass, 5 条真攻击对照仍 block, 语料读数逐条不变(预期内, 已披露)。",
+  "nextRound": "① 本轮证实\"语料对某 pattern 零表达力\"可以落在**误报侧** —— 值得机械量一遍: 对全部危险指令/注入 pattern, 有多少条在良性语料上 0 命中? 那正是 0/137 保护不到的区域; ② dangerous_instruction 对\"删掉\"的误触发(`修好空洞的做法是让工具工作, 不是把它删掉。` → block)跨 11 轮仍在, 它堵着 contradiction 的入池路, 值得单独一轮; ③ 本轮两次踩到\"注释里引用的代码成为首个匹配\", 说明替换/锚定必须带上下文, 这条值得写进一条机械锁。"
+}

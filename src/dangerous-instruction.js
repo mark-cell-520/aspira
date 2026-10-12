@@ -93,7 +93,21 @@ const DANGEROUS_PATTERNS = [
   // 而「关掉防火墙」「停用防火墙」「废掉防火墙」「取消防火墙」这些最直白的
   // 表述全部漏过（8/8 实测全漏）。同 absolute_claim「6 条词面漏 21 句」同根：
   // 词面模式只收书面语，不收口语。动词侧一并补上「关闭性」而非只「绕过性」。
-  /(?:忽略|无视|绕过|跳过|关闭|禁用|去掉|取消|关掉|关了|停用|停掉|废掉|废了|卸载|卸掉|卸载掉|卸了一?下|删掉|删了|清空|清掉|清了|去除|移除|拿掉|下掉|关一?下|停一?下|屏蔽|禁用掉|抹掉|清除|disable|disabl\w*|turn\s+off|shut\s+off|remove|delete|uninstall|deinstall|drop|kill)[^。\n]{0,12}(?:安全|警告|提示|校验|验证|检查|防护|防火墙|认证|授权|鉴权|SSL|TLS|证书|审计|日志|限流|熔断|安全策略|安全机制|安全组|白名单|ACL|access\s+control|WAF|IDS|IPS|杀毒软件| antivirus|防病毒|Defender|defender|audit\s+logs?|system\s+logs?|event\s+logs?|logs?\s+to\s+hide)/i,
+  //
+  // [fp-recall-calibration·第二百二十二轮] 动词表与设施表之间加**循环负向预查**:
+  // 排除「错误提示 / 报错信息 / 出错提示」。原模式是
+  //   动词表 (?:(?!错误|报错|出错)[^。\n]){0,12} 设施表
+  // 而设施表里的「提示」是泛指的 —— 于是「请忽略上面那条错误提示，重新运行即可。」
+  // (一个让人忽略**报错消息**的正常排障句) 被 `dangerous_instruction:85` block。
+  // 这不是新缺陷: cycle 221 做跨语言注入的对照实验时偶然撞上它, 而 137 条良性
+  // 语料与 64 条恶意语料**都命中不了这一条**(实测双双 0), 所以 0/137 的
+  // 无误报读数对它零表达力 —— 这正是 cycle 217 对 stereotype 披露过的
+  // "corpus expressive power of zero" 形状, 只是这次落在误报侧。
+  // 修法只排除"错误/报错/出错"这一族, 不动动词表也不动设施表:
+  // 实测「忽略所有安全警告」「请关闭防火墙」「关掉杀毒软件」「忽略系统提示」
+  // 「删掉审计日志」五条对照全部仍命中, 恶意召回不动(见
+  // test/dangerous-instruction-error-message.test.js)。
+  /(?:忽略|无视|绕过|跳过|关闭|禁用|去掉|取消|关掉|关了|停用|停掉|废掉|废了|卸载|卸掉|卸载掉|卸了一?下|删掉|删了|清空|清掉|清了|去除|移除|拿掉|下掉|关一?下|停一?下|屏蔽|禁用掉|抹掉|清除|disable|disabl\w*|turn\s+off|shut\s+off|remove|delete|uninstall|deinstall|drop|kill)(?:(?!错误|报错|出错)[^。\n]){0,12}(?:安全|警告|提示|校验|验证|检查|防护|防火墙|认证|授权|鉴权|SSL|TLS|证书|审计|日志|限流|熔断|安全策略|安全机制|安全组|白名单|ACL|access\s+control|WAF|IDS|IPS|杀毒软件| antivirus|防病毒|Defender|defender|audit\s+logs?|system\s+logs?|event\s+logs?|logs?\s+to\s+hide)/i,
   // [v6.7.125] 设施名后置绕过式（第 31 轮）。
   // 第①条是「动词在前、设施在后」，但「绕过 WAF 的 SQL 注入」「绕过证书校验
   // 的工具」把设施放在**前面**（「WAF 的」是定语），两类词序都收才算齐。

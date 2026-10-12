@@ -7,7 +7,9 @@ or dangerous — **before it reaches a human**. Zero LLM dependency.
 
 ```
 54 discrimination dimensions  ×  17-layer pipeline*  ×  132 modules  ×  181 MCP tools
-×  1,023 dispatch routes  ×  2307 passing tests  ×  0 runtime dependencies
+×  1,023 dispatch routes  ×  2324 passing tests  ×  0 runtime dependencies
+
+The change touches across 8 modules in the pipeline.
 ```
 
 > `*` **17 is the layer *set*, not the depth of any single call.** The pipeline
@@ -135,7 +137,7 @@ Measured on this repository at **v1.0.0**. Not marketing copy.
 | Dispatch routes | 1,023 |
 | Discrimination dimensions | 54 |
 | MCP tools | 181 |
-| Test suite | 2307 passing / 0 failing |
+| Test suite | 2324 passing / 0 failing |
 | Capability guard | 18 / 18 checks |
 | Security regression | 16 / 16 |
 | Runtime dependencies | 0 |
