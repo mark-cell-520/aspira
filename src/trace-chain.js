@@ -5,6 +5,14 @@ const { createHmac } = require('crypto');
 
 // ── 国标要求：全链路结构化、不可篡改、可检索证据链 ─────────
 // 贯穿 checkInput→pipeline→gate→think→output 全链路
+//
+// [第二百一十六轮实测] 上面那句"贯穿全链路"从来没有在代码里成立过:
+// 全仓对 initChain/appendEntry 的**生产**调用点是 0 个(唯一调用者是
+// test/compliance/compliance.test.js, 且写往 /tmp)。于是 _chain 恒为 []
+// 且 _chainFile 恒为 null, aspira_audit_trace 永远回答"空表 + valid"。
+// cycle 180 的 journal 把"空表是没有数据还是从没写入过"留作待查, 挂了几十轮。
+// 答案是从没写入过。本条不接线(接线是产品判断: 哪些阶段入链、链文件放哪、
+// 每次 pipeline 调用写多少次盘), 只负责让"没有链"不再被报告成"链完好"。
 
 // ── HMAC 链式追加 ─────────────────────────────────────
 const HMAC_ALGO = 'sha256';
@@ -13,6 +21,22 @@ const MAX_CHAIN_ENTRIES = 10000;
 
 let _chain = [];
 let _chainFile = null;
+
+// 链是否"存在": 有落盘文件, 或已积累条目。两者皆无说明**没有任何调用方
+// 初始化过证据链** —— 此时的空不是"没有匹配的记录", 而是"根本没有链",
+// verifyChain 不得据此报 valid(一个不可能失败的完整性校验等于没有校验)。
+// 用既有状态判定而不新增标志位: initChain 之后 _chainFile 非 null,
+// appendEntry 之后 _chain 非空, 两条路都能把 live 置真。
+function chainState() {
+  const live = _chain.length > 0 || _chainFile !== null;
+  return {
+    live,
+    initialized: live,
+    length: _chain.length,
+    chainFile: _chainFile,
+    reason: live ? null : '证据链从未被初始化: initChain/appendEntry 没有任何生产调用方, 空链不可判定为完整',
+  };
+}
 
 function initChain(filePath) {
   _chainFile = filePath;
@@ -59,16 +83,28 @@ function appendEntry(entry) {
 }
 
 function verifyChain() {
-  if (_chain.length === 0) return { valid: true, length: 0 };
-  
+  const st = chainState();
+  if (!st.live) {
+    // 不是"链断了", 是"没有链可验"。报 valid:false 而 不是 valid:true ——
+    // 后者是一个不可能失败的完整性校验, 与 cycle 28 的 memory-encrypt 同型:
+    // 对未知状态静默返回一个看似成功的答案, 比报错更危险。
+    return {
+      valid: false,
+      initialized: false,
+      length: 0,
+      reason: st.reason,
+    };
+  }
+  if (_chain.length === 0) return { valid: true, initialized: true, length: 0 };
+
   for (let i = 1; i < _chain.length; i++) {
     const prev = _chain[i - 1];
     const curr = _chain[i];
     if (curr.prevHash !== prev.hash) {
-      return { valid: false, breakIndex: i, message: `链断裂于索引 ${i}` };
+      return { valid: false, initialized: true, breakIndex: i, message: `链断裂于索引 ${i}` };
     }
   }
-  return { valid: true, length: _chain.length };
+  return { valid: true, initialized: true, length: _chain.length };
 }
 
 function queryChain({ traceId, stage, agentId, limit = 50 }) {
@@ -122,6 +158,7 @@ module.exports = {
   queryChain,
   tagViolation,
   listViolationTags,
+  chainState,
   VIOLATION_TAGS,
   MAX_CHAIN_ENTRIES,
 };

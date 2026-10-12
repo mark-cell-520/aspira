@@ -4732,11 +4732,17 @@ const HANDLERS = {
   },
   aspira_audit_trace: (args) => {
     try {
-      const { initChain, queryChain, verifyChain, listViolationTags } = require('./trace-chain.js');
+      // [第二百一十六轮] 原先解构了 initChain 却从未调用(cycle 195 的 LEVELS 形状:
+      // 一个名字被导入、被列出、值为 undefined 或从不执行), 已移除。
+      // query 不再裸返回数组: 空数组读起来像"没有匹配的记录", 而真相是
+      // "根本没有链" —— 两者必须可区分, 否则调用方无法判断该去补数据还是该修引擎。
+      const { queryChain, verifyChain, listViolationTags, chainState } = require('./trace-chain.js');
       const action = args?.action || 'query';
       if (action === 'verify') return verifyChain();
       if (action === 'tags') return { tags: listViolationTags() };
-      return queryChain(args || {});
+      const entries = queryChain(args || {});
+      const st = chainState();
+      return { entries, chain: st };
     } catch (e) {
       return { error: e.message };
     }
