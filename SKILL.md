@@ -1,7 +1,7 @@
 ---
 name: aspira-engine
 title: "新愿 Aspira — AGI Layer 1: The Discriminator"
-version: "1.1.6"
+version: "1.1.7"
 description: |-
   新愿（Aspira）is the first layer of AGI — the discriminator. A pure rule engine that
   judges whether a statement or an action is right, wrong, safe, or dangerous before
@@ -150,7 +150,7 @@ from marketing copy.
 
 | Metric | Value | How it was measured |
 |--------|-------|---------------------|
-| Engine version | 1.1.6 | `VERSION`, `package.json`, runtime `hf.VERSION` (module-level) / `hf.version` (instance), and `src/core/version.js` agree |
+| Engine version | 1.1.7 | `VERSION`, `package.json`, runtime `hf.VERSION` (module-level) / `hf.version` (instance), and `src/core/version.js` agree |
 | Modules registered | 132 | `Object.keys(hf._modules).length` after `start()` |
 | Coverage sweep | coverage-sweep.js across 383 modules: **89 alive but referenced by no test**, 12 suspected dead | `node scripts/coverage-sweep.js`. This is the `src/` file count (383), **not** the 132 registered subsystems above — 89 of those files have no test reference and are therefore outside every FP/recall reading the corpus produces |
 | Module init errors | 0 | `hf._initErrors.length` |

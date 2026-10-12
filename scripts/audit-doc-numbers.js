@@ -917,6 +917,19 @@ function claims() {
       // 实测 package.json 曾声明 4 个 dependencies, 与三份文档直接矛盾。
       { re: /(\d+)\s+runtime\s+dependenc/g, key: 'deps', what: 'runtime dependencies',
         reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
+      // [第二百二十四轮] 同一份声称的**表格形态**仍是盲区。
+      // 上一轮的 pattern 只认"数字在前": "0 runtime dependencies" —— 它审到了
+      // README 头条那行。但 SKILL.md/README 的指标表写的是
+      //   | Runtime dependencies | 0 |
+      //   | Runtime dependencies | 0 required by the core |
+      // 数字在标签**之后**，两个 pattern 都匹配不到，于是这两行从 cycle 4 起
+      // 从未受过审 —— 而 m.depsActuallyRequired 每轮都实测(不在 try 内的
+      // 外部 require 数)。这是 cycle 219(CURRENT_STATE 失败数)与 cycle 164
+      // (IDENTITY.md 中文形态)的同族第三次: 同一个数字换个词序/加个后缀，
+      // 就成了仪器的盲区，而报告照旧全绿。
+      // 锚定在 `Runtime dependencies` 标签上，只吃表格行，不碰散文。
+      { re: /Runtime\s+dependencies\s*\|\s*(\d+)/gi, key: 'deps', what: 'runtime dependencies (表格形态)',
+        reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
       // ── [审计盲区修复·第三轮] 模式本身的同义词盲区 ──
       // 上一轮把扫描范围从根目录扩到全仓(14 → 298 份)，但**模式只有 25 条、
       // 且全是固定搭配**。用注入法实测盲区: 往 README.md 追加 5 种写法各含
