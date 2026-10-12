@@ -7,7 +7,7 @@ or dangerous — **before it reaches a human**. Zero LLM dependency.
 
 ```
 54 discrimination dimensions  ×  17-layer pipeline*  ×  132 modules  ×  181 MCP tools
-×  1,023 dispatch routes  ×  2375 passing tests  ×  0 runtime dependencies
+×  1,023 dispatch routes  ×  2383 passing tests  ×  0 runtime dependencies
 
 The change touches across 8 modules in the pipeline.
 ```
@@ -137,7 +137,7 @@ Measured on this repository at **v1.0.0**. Not marketing copy.
 | Dispatch routes | 1,023 |
 | Discrimination dimensions | 54 |
 | MCP tools | 181 |
-| Test suite | 2375 passing / 0 failing |
+| Test suite | 2383 passing / 0 failing |
 | Capability guard | 18 / 18 checks |
 | Security regression | 16 / 16 |
 | Runtime dependencies | 0 |
@@ -237,7 +237,9 @@ Known limits:
 1. Pattern-matching ceiling — new tricks require new patterns.
 2. Bilingual maintenance cost across all dimensions.
 3. No semantic understanding — irony, metaphor, and cultural context are invisible.
-4. False-positive rate around 8% at baseline.
+4. False-positive rate: 0.0% on a hand-written 137-sample benign corpus — a corpus-local
+   lower bound, not a production SLO. Real caller feedback has yet to accumulate;
+   AGENTS.md records the method and what it cannot see.
 5. Single maintainer.
 6. Chinese tokenisation is heuristic (greedy longest-match with a stopword list, not a
    full dictionary), so unusual phrasings can segment imperfectly.

@@ -297,18 +297,45 @@ function measure() {
   // 与另一条教训同构: 量一个东西之前先看它有什么副作用。
   try {
     const calib = fs.readFileSync(path.join(ROOT, 'scripts', 'calibrate-fp-recall.js'), 'utf8');
-    const countArr = (name) => {
+    // 数组条目(带引号的字面量)，不只数条数 —— FP 率要拿条目本身去跑门禁。
+    // 仍然**不 require** 那个脚本: 它顶层会跑完整校准并写 data/feedback。
+    const arrItems = (name) => {
       const start = calib.indexOf('const ' + name + ' = [');
       if (start < 0) return null;
       const end = calib.indexOf('\n];', start);
       if (end < 0) return null;
       const body = calib.slice(start, end);
-      // 条目: 独立成行的字符串字面量
       const items = body.match(/^\s*(?:'[^']*'|"[^"]*"|`[^`]*`)\s*,?\s*$/gm) || [];
-      return items.length;
+      return items.map(s => s.trim().replace(/,$/, '').slice(1, -1).replace(/\\'/g, "'").replace(/\\"/g, '"'));
     };
-    m.corpusBenign = countArr('BENIGN');
-    m.corpusMalicious = countArr('MALICIOUS');
+    m.corpusBenign = (arrItems('BENIGN') || []).length;
+    m.corpusMalicious = (arrItems('MALICIOUS') || []).length;
+
+    // ── [doc-honest-numbers·第二百三十轮] FP 率本身必须被实测 ──
+    // 此前只量了语料**规模**(周期 8)，而 FP 率这个百分比本身没有任何 key。
+    // 后果不是理论上的: README 与 SKILL.md 两份引擎自述文档至今把
+    // "False-positive rate around 8% at baseline" 当作**现在时**的已知限制，
+    // 而 AGENTS.md 早记下这个 8% 是"从未被测量过"的旧读数、已被实测 0.0% 取代。
+    // 两份文档是调用方最先读到的东西，审计却对这句话零表达力 ——
+    // 因为 ENGINE_SELF 的词表里**明明有** false-positive(它认得这句话在说 aspira)，
+    // 而 52 条 pattern 里没有一条的 re 能匹配 "…rate … N%" 这个形态。
+    // **仪器认得主语，却没有一条模式接得住宾语。**
+    // 实测: BENIGN 逐条过 gate.checkOutput，非 pass 记一次升级。
+    // 一位小数输出成字符串 —— rows 的比对是 norm(a) === norm(claimed) 的字符串
+    // 相等，Number(0) 会被 String() 成 "0" 而文档写 "0.0"，会造出一条假不符。
+    try {
+      const benign = arrItems('BENIGN');
+      if (benign && benign.length) {
+        const gate = require(path.join(ROOT, 'src', 'gate.js'));
+        let escalated = 0;
+        for (const s of benign) {
+          const r = gate.checkOutput(s);
+          if (r && r.gate && r.gate.action !== 'pass') escalated++;
+        }
+        m.falsePositive = (escalated / benign.length * 100).toFixed(1);
+        m.falsePositiveN = benign.length;
+      }
+    } catch (_) { m.falsePositive = null; }
   } catch (_) { m.corpusBenign = null; m.corpusMalicious = null; }
 
 
@@ -788,6 +815,28 @@ function claims() {
       { re: /(\d+)\s+benign/g, key: 'corpusBenign', what: 'benign corpus size',
         reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
       { re: /(\d+)\s+malicious/g, key: 'corpusMalicious', what: 'malicious corpus size',
+        reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
+      // ── [doc-honest-numbers·第二百三十轮] FP 率本身 ──
+      // 上面两行锁的是 FP 率的**分母**。这个百分比自己从来没有任何模式接:
+      // ENGINE_SELF 的词表里有 false-positive(认得主语)，52 条 re 里没有一条
+      // 匹配 "…rate … N%"(接不住宾语)。实测后果: README.md 与 SKILL.md 两份
+      // 引擎自述文档把 "False-positive rate around 8% at baseline" 当现在时的
+      // 已知限制，而 AGENTS.md 记着这个 8% 从未被测量、已被实测 0.0% 取代。
+      // [^.\n] 不让匹配跨句 —— AGENTS.md 里 "False-positive rate is measured,
+      // not claimed." 后面整段都在讲历史读数，跨句会把它们全部卷进来。
+      // 数字后必须紧跟 %：不接 "8% at baseline" 之外的裸数字形态。
+      // 大小写必须写进字符类而**不能靠 i flag**: claims() 重建正则时用的是
+      // `new RegExp(p.re.source, 'g')` —— 它把 /gi 的 i 丢掉。首版写了 /gi，
+      // 文档里是 "False-positive rate"(大写 F)，于是 0 匹配，被死 pattern 自检
+      // 当场抓住。**一条靠 flag 的模式在这张表里等于没有。**
+      // ⚠️ 措辞陷阱(本轮实测): narrativeQuote 的"数字之后"窗口是
+      // `text.slice(mm.index, lineEnd)` —— 从**匹配起点**开始，不是从数字开始。
+      // 所以匹配文本里自带一个叙事词，这条声称会被自己的前缀吞掉:
+      // 首版文档写 "False-positive rate measured at 0.0%"，其中 "measured at"
+      // 正是 NARRATIVE 的一员，于是 README 那条声称整条消失(审计仍全绿)。
+      // 文档侧因此刻意不写 measured at/on。
+      { re: /[Ff]alse[- ][Pp]ositive rate[^.\n]{0,40}?(\d+(?:\.\d+)?)\s*%/g,
+        key: 'falsePositive', what: 'false-positive rate',
         reject: (t, a) => selfRef(t, a) || narrativeQuote(t, a) },
       { re: /(\d+)\s+MCP tools/g, key: 'tools', what: 'MCP tools' },
       // 千分位逗号必须一起吃下: "1,510 dispatch routes" 否则只捕到 510，
@@ -1387,6 +1436,11 @@ actual.formulas = m.formulas;
 // 数组字面量条数(不 require，因为该脚本顶层会跑整个校准并写文件)。
 actual.corpusBenign = m.corpusBenign;
 actual.corpusMalicious = m.corpusMalicious;
+// [第二百三十轮] FP 率本身。语料规模(周期 8 锁的是分母)对上句，
+// 而这个百分比是分子除以分母的结果 —— 分母对了比率照样能是错的。
+// 不写这一行，README/SKILL 的 "around 8%" 会继续躺在"无法实测"里，
+// 而它是一句**现在时**的已知限制。
+actual.falsePositive = m.falsePositive;
 
 // [第四十四轮] 覆盖清点三项。上面 actual = {...} 里的
 // aliveUntested: m.aliveUntested 不是这里的工作方式 —— actual 的键
