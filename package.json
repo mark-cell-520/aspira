@@ -1,6 +1,6 @@
 {
   "name": "@mark-cell-520/aspira",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Aspira (新愿) — AGI Layer 1: the Discriminator. Rule-based engine that checks what AI says before it reaches humans. 54 discrimination dimensions, 17-layer pipeline (11 layers per input call / 12 draft / 13 output), 132 modules (logic/decision/cognition/emotion/memory/ethics/collaboration), 181 MCP tools. Zero required LLM dependency. The gate that says NO when something is wrong.",
   "main": "src/gate.js",
   "bin": {

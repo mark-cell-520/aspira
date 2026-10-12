@@ -58,17 +58,49 @@ class MemoryAdapter {
     const obj = {};
     for (const mem of arr) {
       const key = mem.metadata?.key || mem.id;
-      obj[key] = {
-        value: mem.content,
-        tags: mem.metadata?.tags || [],
-        createdAt: mem.createdAt || mem.timestamp,
-        updatedAt: mem.updatedAt || mem.timestamp,
-        accessCount: mem.accessCount || 0,
-        importance: mem.importance,
-        summary: mem.summary,
-      };
+      obj[key] = this._project(mem, null);
     }
     return obj;
+  }
+
+  /**
+   * [第二百二十九轮] 把一条内部记录投影成**文件头承诺的那一个形状**。
+   *
+   * 头注释写的数据模型是 `{ key: { value, tags, createdAt, updatedAt, accessCount } }`,
+   * 而 _arrayToObject 忠实实现了它 —— 但五个按 key 取数的访问器
+   * (getCore / recall / getWorking / listLearned / get)各自手搓了一个**子集**:
+   *
+   *   getCore     缺 accessCount, 缺 key
+   *   recall      缺 key, 缺 updatedAt(更新时间被改名叫 lastAccessed)
+   *   listLearned 缺 updatedAt(同上)
+   *   get         缺 updatedAt
+   *   getWorking  缺 key/tags/updatedAt, 且 accessCount 被拼成 **_accessCount**
+   *
+   * 后果不是"少一个字段": 同一条记忆从六个口出来是六个形状, 调用方读
+   * `record.updatedAt` 在 get() 上拿到 undefined, 读 `record.accessCount` 在
+   * getWorking 上拿到 undefined 于是 `accessCount + 1` 静默变成 NaN。
+   * **一个兼容层把兼容对象的字段名改掉, 比少给一个字段更难发现。**
+   *
+   * 修法是收成一个出口而不是给五处各补字段(cycle 208: 修实例不修类,
+   * 类还在)。本方法只做投影, 不做判断; 每个访问器仍可叠加自己需要的额外字段
+   * (layer / ttl / lastAccessed), 但承诺的那七个字段由这里统一给出。
+   *
+   * **只加不删**: lastAccessed 与 _accessCount 全部保留 ——
+   * src/dream/dream-consolidation.js:52 与 :258 正在读 entry.lastAccessed,
+   * 删掉它会静默退回 createdAt, 把"多久没被访问"算错。
+   */
+  _project(mem, layer) {
+    return {
+      key: mem.metadata?.key || mem.id,
+      value: mem.content,
+      tags: mem.metadata?.tags || [],
+      createdAt: mem.createdAt || mem.timestamp,
+      updatedAt: mem.updatedAt || mem.timestamp,
+      accessCount: mem.accessCount || 0,
+      importance: mem.importance,
+      summary: mem.summary,
+      layer: layer || mem.layer,
+    };
   }
 
   /**
@@ -138,22 +170,11 @@ class MemoryAdapter {
   getCore(key) {
     const mem = this._findByKey('core', key);
     if (!mem) return null;
-    return {
-      value: mem.content,
-      tags: mem.metadata?.tags || [],
-      createdAt: mem.createdAt,
-      updatedAt: mem.updatedAt,
-    };
+    return this._project(mem, 'core');
   }
 
   listCore() {
-    return this._mm.layers.core.map(mem => ({
-      key: mem.metadata?.key || mem.id,
-      value: mem.content,
-      tags: mem.metadata?.tags || [],
-      createdAt: mem.createdAt,
-      updatedAt: mem.updatedAt,
-    }));
+    return this._mm.layers.core.map(mem => this._project(mem, 'core'));
   }
 
   countCore() {
@@ -179,11 +200,8 @@ class MemoryAdapter {
     mem.updatedAt = Date.now();
     this._mm._autoSave();
     return {
-      value: mem.content,
-      tags: mem.metadata?.tags || [],
-      accessCount: mem.accessCount,
-      lastAccessed: mem.updatedAt,
-      createdAt: mem.createdAt,
+      ...this._project(mem, 'learned'),
+      lastAccessed: mem.updatedAt,   // 旧字段名, 保留: dream-consolidation.js:52/:258 在读
     };
   }
 
@@ -198,12 +216,8 @@ class MemoryAdapter {
 
   listLearned(query = null) {
     let entries = this._mm.layers.learned.map(mem => ({
-      key: mem.metadata?.key || mem.id,
-      value: mem.content,
-      tags: mem.metadata?.tags || [],
-      accessCount: mem.accessCount || 0,
-      lastAccessed: mem.updatedAt || mem.timestamp,
-      createdAt: mem.createdAt,
+      ...this._project(mem, 'learned'),
+      lastAccessed: mem.updatedAt || mem.timestamp,   // 旧字段名, 保留(消费者见上)
     }));
     if (query) {
       const q = query.toLowerCase();
@@ -275,7 +289,11 @@ class MemoryAdapter {
       return null;
     }
     mem.accessCount = (mem.accessCount || 0) + 1;
-    return { value: mem.content, ttl, createdAt: mem.createdAt, _accessCount: mem.accessCount };
+    return {
+      ...this._project(mem, 'ephemeral'),
+      ttl,
+      _accessCount: mem.accessCount,   // 旧字段名, 保留(下划线写法是历史遗留)
+    };
   }
 
   forgetWorking(key) {
@@ -547,14 +565,7 @@ class MemoryAdapter {
     for (const layer of ['learned', 'core', 'ephemeral']) {
       const mem = this._findByKey(layer, key);
       if (mem) {
-        return {
-          key: mem.metadata?.key || mem.id,
-          value: mem.content,
-          tags: mem.metadata?.tags || [],
-          accessCount: mem.accessCount || 0,
-          layer,
-          createdAt: mem.createdAt,
-        };
+        return this._project(mem, layer);
       }
     }
     return null;
