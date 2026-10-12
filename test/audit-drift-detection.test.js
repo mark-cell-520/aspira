@@ -90,7 +90,7 @@ const DIRTY_HOOK = [
   "    const p = process.cwd() + '/SKILL.md';",
   "    const orig = fs.readFileSync(p, 'utf8');",
   "    fs.writeFileSync(p, orig.replace(/(\\|\\s*Engine version\\s*\\|\\s*v?)(\\d+\\.\\d+\\.\\d+)/, '$19.9.9'));",
-  "    return { stdout: '测试结果: " + MEASURED_TESTS() + " 通过, 0 失败, 共 " + MEASURED_TESTS() + " 个\\n', status: 0 };",
+  "    return { stdout: " + FAKE_SUMMARY(MEASURED_TESTS()) + ", status: 0 };",
   "  }",
   "  return real.apply(cp, arguments);",
   "};",
@@ -109,7 +109,7 @@ const RESTORE_HOOK = [
   "    const dirty = orig.replace(/(\\|\\s*Engine version\\s*\\|\\s*v?)(\\d+\\.\\d+\\.\\d+)/, '$19.9.9');",
   "    fs.writeFileSync(p, dirty);",
   "    fs.writeFileSync(p, orig);",
-  "    return { stdout: '测试结果: " + MEASURED_TESTS() + " 通过, 0 失败, 共 " + MEASURED_TESTS() + " 个\\n', status: 0 };",
+  "    return { stdout: " + FAKE_SUMMARY(MEASURED_TESTS()) + ", status: 0 };",
   "  }",
   "  return real.apply(cp, arguments);",
   "};",
@@ -134,7 +134,7 @@ const HEAL_HOOK = [
   "    const p = process.cwd() + '/SKILL.md';",
   "    const orig = fs.readFileSync(p, 'utf8');",
   "    fs.writeFileSync(p, orig.replace(/(\\|\\s*Engine version\\s*\\|\\s*v?)(\\d+\\.\\d+\\.\\d+)/, function (m, p1) { return p1 + " + JSON.stringify(PROBE_AUTH_VERSION) + "; }));",
-  "    return { stdout: '测试结果: " + MEASURED_TESTS() + " 通过, 0 失败, 共 " + MEASURED_TESTS() + " 个\\n', status: 0 };",
+  "    return { stdout: " + FAKE_SUMMARY(MEASURED_TESTS()) + ", status: 0 };",
   "  }",
   "  return real.apply(cp, arguments);",
   "};",
@@ -146,7 +146,7 @@ const WRONG_SUMMARY_HOOK = [
   "const real = cp.spawnSync;",
   "cp.spawnSync = function (cmd, args, opts) {",
   "  if (args && args[0] && String(args[0]).indexOf('run-all.js') >= 0) {",
-  "    return { stdout: '测试结果: 999 通过, 0 失败, 共 999 个\\n', status: 0 };",
+  "    return { stdout: " + FAKE_SUMMARY('999') + ", status: 0 };",
   "  }",
   "  return real.apply(cp, arguments);",
   "};",
@@ -162,6 +162,19 @@ function MEASURED_TESTS() {
   const s = fs.readFileSync(SKILL, 'utf8');
   const m = s.match(/\|\s*Test suite\s*\|\s*(\d+)\s*passing\s*\/\s*\d+\s*failing/);
   return m ? m[1] : '1365';
+}
+
+// [doc-honest-numbers·第二百三十五轮] 假汇总必须**忠实于 run-all 真正打印的形状**。
+// 汇总行前面有一行 50 个 '=' 的分隔条(run-all.js:310 `'='.repeat(50)`), 而本轮起
+// 审计只认带这条分隔条的汇总行(锚不到 ⇒ 这一轮没测到 ⇒ 置 null)。旧假汇总只有
+// 汇总行本身, 于是"文档声称真错时必须报不一致"那条用例反过来红:
+// 审计把假汇总判成"没有测到", 声称落进"无法实测"而不是"不符"。
+// **改变共享契约就继承了旧契约的所有调用方** —— 周期22 为退出码付过学费、
+// 周期24 为漂移分类、周期27 为 VERIFY_DIMS、周期217 为模式表一行、
+// 周期231 为 key 唯一性, 这是第六次, 而这次的调用方是测试里的一段假 stdout。
+// 分隔条用 '='.repeat(50) 生成而不是抄一串字面量, 与 run-all 同源。
+function FAKE_SUMMARY(n) {
+  return "'" + '='.repeat(50) + "\\n\\n测试结果: " + n + " 通过, 0 失败, 共 " + n + " 个\\n'";
 }
 
 module.exports = function ({ test, assertTrue }) {

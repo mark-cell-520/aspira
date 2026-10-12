@@ -1368,19 +1368,46 @@ if (!SKIP_TESTS) try {
   // 代价(如实记): 串行一遍约 6 分钟，并发约 40 秒，所以审计从约 2 分钟变成
   // 约 8 分钟。换来的是一致性 —— **仪器与被测口径不同，则它的读数不是读数**。
   const r = spawnSync('node', ['test/run-all.js'], {
-    cwd: ROOT, encoding: 'utf8', timeout: 900000, stdio: ['ignore', 'pipe', 'ignore'],
+    // [doc-honest-numbers·第二百三十五轮] 900000(15 分钟)**不够**。
+    // 上一轮把 spawn 改成串行以对齐门禁口径, 却把 timeout 留在串行化之前的
+    // 15 分钟; 而套件从那时起一直在长。本轮实测(本机, 无并发竞争):
+    //   427 个文件串行一遍 = **1085 秒(18.1 分钟)**, 2411 通过 / 0 失败
+    // 于是 900 秒一到 spawnSync 就 SIGTERM 掉 run-all —— 离它打完汇总行还差
+    // 约 3 分钟。代价如实记: 完整模式审计因此从约 8 分钟变成约 20 分钟。
+    cwd: ROOT, encoding: 'utf8', timeout: 3600000, stdio: ['ignore', 'pipe', 'ignore'],
     env: { ...process.env, ASPIRA_TEST_CONCURRENCY: '1' },
   });
   const out = (r && r.stdout) ? r.stdout.toString() : '';
-  // 必须取**最后**一条匹配: run-all.js 对每个测试文件都打印一行
-  // "测试结果: N 通过, 0 失败, 共 N 个"，最终汇总行形状与之相同。
-  // 首版用 exec 取第一条，拿到的是某个测试文件的 10 通过，于是一条
-  // 正确的文档声称被报成"实测 10"——审计自己的 bug 产出假警报。
-  const all = [...out.matchAll(/测试结果:\s*(\d+)\s*通过,\s*(\d+)\s*失败/g)];
-  const tm = all.length ? all[all.length - 1] : null;
-  m.tests = tm ? Number(tm[1]) : null;
-  m.testsFailed = tm ? Number(tm[2]) : null;
-  } catch (_) { m.tests = null; }
+  // [doc-honest-numbers·第二百三十五轮] 两个缺陷, 同一族, 都是本轮实测出来的。
+  //
+  // ① "取最后一条 测试结果: 行"**不够**: 每个测试文件自己也打印同一形状的一行
+  //    (harness 的 summarize), 而 run-all 的 emitResult 又把子进程那行原样再打印
+  //    一次(它含"通过", 落在 keep 里)。所以只要 run-all 没跑到自己的汇总行,
+  //    最后一条就是**某个文件**的行。
+  // ② 更要紧的是: 上面那个 900 秒 timeout 会杀掉 run-all, 而 `r.error.code` 是
+  //    'ETIMEDOUT'、`r.signal` 是 'SIGTERM' —— 这段代码两个都不看, 只读 stdout。
+  //    本轮实测的后果(完整模式, 不是推测):
+  //       CURRENT_STATE.md 声称「tests passed (散文) = 2411」实测 8
+  //       README.md 声称「test suite (表格) = 2411」实测 8
+  //       README.md 声称「passing tests (词序反转) = 2411」实测 8
+  //       SKILL.md 声称「test suite (表格) = 2411」实测 8
+  //    四条全判"与实测不符", exit 1 —— 而**三份文档都是对的**, 串行实测就是
+  //    2411/0。那个 8 是 run-all 被杀那一刻正在跑的那个文件的用例数。
+  //    这是第二百一十三轮自己记的教训的更重版本: 那轮是"仪器与被测口径不同,
+  //    则它的读数不是读数"; 这轮是**仪器根本没有测到, 却把没测到报成测到了
+  //    而且不符**。一个正确的文档被自己的仪器判红, 比仪器不报更糟 —— 它会训练
+  //    人去改一份对的文档。
+  //
+  // 修法(一个判据管两个缺陷): 只认 run-all **自己**那条汇总行。它前面紧跟着
+  // 一行 50 个 '=' 的分隔条(run-all.js:310 `'='.repeat(50)`), 实测整个
+  // run-all stdout 里这个形状**只出现一次**, 任何测试文件的汇总之行前面都没有它。
+  // 锚不到 => 这一轮没有测到测试数 => 置 null, 让那几条声称落进"无法实测"
+  // 而不是"不符"。**一次没有发生的测量, 不得被报成一次不一致的测量。**
+  const AGG = /={50}\s*\n+测试结果:\s*(\d+)\s*通过\s*,\s*(\d+)\s*失败/.exec(out);
+  const completed = !!AGG && !r.error && !r.signal;
+  m.tests = completed ? Number(AGG[1]) : null;
+  m.testsFailed = completed ? Number(AGG[2]) : null;
+  } catch (_) { m.tests = null; m.testsFailed = null; }
 
 // [第一百二十九轮] verify 的检查项数实测。刻意**不**放进上面的 SKIP_TESTS
 // 分支: verify.js 只跑 15 项自检(约 5s), 不 spawn 测试套件, 因此跳过模式下
