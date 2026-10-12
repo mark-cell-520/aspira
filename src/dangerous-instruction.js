@@ -236,7 +236,7 @@ const DANGEROUS_PATTERNS = [
   //   benign: "这个炸弹是电影道具" / "反恐演练" / "如何排查炸弹威胁"
   // 防御性提问显式豁免: 出现 防止/防/挡/检测/识别/排查/应对/救援/protect|
   // prevent|detect|defend|respond 任一, 即不当制作请求判。
-  /(?:how\s+to|instructions?\s+(?:for|on|to)|steps?\s+to|ways?\s+to|recipe\s+for|guide\s+to|tell\s+me\s+how\s+to)\s+(?:\w+\s+){0,3}(?:bombs?|explosives?|detonat\w+|pipe\s+bomb|nail\s+bomb|napalm|gunpowder|nitroglycerin|tannerite|thermite|ammonium\s+nitrate\s+explosive|methamphetamine|cocaine|heroin|fentanyl|lsd|mdma|ecstasy|sarin|vx\s+gas|ricin|anthrax|nerve\s+agent|poison\s+gas|biological\s+weapon|chemical\s+weapon|nuclear\s+weapon)/i,
+  /(?:how\s+to|how\s+(?:do|can|could|would|should)\s+(?:i|you|we|one)\b|instructions?\s+(?:for|on|to)|steps?\s+to|ways?\s+to|recipe\s+for|guide\s+to|tell\s+me\s+how\s+to)\s+(?:\w+\s+){0,3}(?:bombs?|explosives?|detonat\w+|pipe\s+bomb|nail\s+bomb|napalm|gunpowder|nitroglycerin|tannerite|thermite|ammonium\s+nitrate\s+explosive|methamphetamine|cocaine|heroin|fentanyl|lsd|mdma|ecstasy|sarin|vx\s+gas|ricin|anthrax|nerve\s+agent|poison\s+gas|biological\s+weapon|chemical\s+weapon|nuclear\s+weapon)/i,
   /(?:如何|怎么|怎样|请教|教|教一?我|教会|请|给我|提供|告诉|发)\s*(?:我\s*)?(?:怎么|如何|怎样)?\s*(?:做|做一?个|制作|制造|造|合成|配制|生产|搞|制备|提炼)\s*(?:一?[个枚瓶罐份支])?\s*(?:炸弹|爆炸物|爆炸装置|雷管|炸药|汽油弹|燃烧瓶|燃烧弹|烟雾弹|催泪弹|土炸药|毒气|神经毒剂|TNT|C4|硝化甘油|硝酸铵|冰毒|海洛因|可卡因|摇头丸|K粉|鸦片|吗啡|大麻|地雷|手雷|榴弹|子弹)/i,
   // ⑦b 「名词在前」式: 「给我一份炸药制作步骤」「炸弹配方」——危险物词在动词
   // 之前, 后面跟 步骤/方法/配方/流程/教程 一类索取词。少了这一条, "给我一份
@@ -271,11 +271,11 @@ const CRIME_TEACHING_PATTERNS = [
   // 不判 —— 与 line 114 制造类模式的"防/检测"否定同源。
   /(?:write|creat\w+|generat\w+|giv\w+|provid\w+|explain|describ\w+|show|teach|draft|share|send|prepare|design)\s+(?:me\s+|us\s+|him\s+|her\s+|them\s+)?(?:a\s+|an\s+|the\s+|some\s+|any\s+|working\s+|detailed\s+|step-by-step\s+|complete\s+|realistic\s+)*(?:phishing|spear[\s-]?phishing|scam)\s+(?:script|page|template|email|site|kit)(?![^.]{0,24}\b(?:training|awareness|detect\w*|recogniz\w*|spot|identif\w*|prevent\w*|defen\w*|course|exercise|simulation|drill|workshop|lecture)\b)/i,
   // 撬锁: 教学框架 + pick/open + lock 族
-  /(?:how\s+to|instructions?\s+(?:for|on|to)|steps?\s+to|guide\s+(?:to|for)|tutorial\s+(?:on|for)|explain\s+(?:\w+\s+){0,2}how\s+to|teach\s+me\s+how\s+to|tell\s+me\s+how\s+to|ways?\s+to)\s+(?:\w+\s+){0,3}(?:pick|open)\s+(?:a\s+|the\s+|any\s+|someone'?s\s+)?(?:lock|deadbolt|padlock|door)/i,
+  /(?:how\s+to|how\s+(?:do|can|could|would|should)\s+(?:i|you|we|one)\b|instructions?\s+(?:for|on|to)|steps?\s+to|guide\s+(?:to|for)|tutorial\s+(?:on|for)|explain\s+(?:\w+\s+){0,2}how\s+to|teach\s+me\s+how\s+to|tell\s+me\s+how\s+to|ways?\s+to)\s+(?:\w+\s+){0,3}(?:pick|open)\s+(?:a\s+|the\s+|any\s+|(?:someone|somebody)(?:\s+else)?'?s\s+)?(?:lock|deadbolt|padlock|door)/i,
   // 入侵: 教学框架 + break into/hack into + 系统/账号
-  /(?:how\s+to|instructions?\s+(?:for|on|to)|steps?\s+to|guide\s+(?:to|for)|tutorial\s+(?:on|for)|explain\s+(?:\w+\s+){0,2}how\s+to|teach\s+me\s+how\s+to|tell\s+me\s+how\s+to|ways?\s+to)\s+(?:\w+\s+){0,3}(?:break\s+into|hack\s+into|compromise|access\s+without\s+authorization)\s+(?:someone'?s\s+|other\s+people'?s\s+)?(?:a\s+|the\s+|any\s+)?(?:server|account|network|computer|system|bank|email)/i,
+  /(?:how\s+to|how\s+(?:do|can|could|would|should)\s+(?:i|you|we|one)\b|instructions?\s+(?:for|on|to)|steps?\s+to|guide\s+(?:to|for)|tutorial\s+(?:on|for)|explain\s+(?:\w+\s+){0,2}how\s+to|teach\s+me\s+how\s+to|tell\s+me\s+how\s+to|ways?\s+to)\s+(?:\w+\s+){0,3}(?:break\s+into|hack\s+into|compromise|access\s+without\s+authorization)\s+(?:(?:someone|somebody)(?:\s+else)?'?s\s+|other\s+people'?s\s+)?(?:a\s+|the\s+|any\s+)?(?:server|account|network|computer|system|bank|email)/i,
   // 制武: 教学框架 + make/build/assemble + weapon 族
-  /(?:how\s+to|instructions?\s+(?:for|on|to)|steps?\s+to|guide\s+(?:to|for)|tutorial\s+(?:on|for)|explain\s+(?:\w+\s+){0,2}how\s+to|teach\s+me\s+how\s+to|tell\s+me\s+how\s+to|ways?\s+to)\s+(?:\w+\s+){0,3}(?:make|build|create|assemble|construct)\s+(?:a\s+|an\s+|the\s+)?(?:weapon|bomb|explosive|firearm|silencer)/i,
+  /(?:how\s+to|how\s+(?:do|can|could|would|should)\s+(?:i|you|we|one)\b|instructions?\s+(?:for|on|to)|steps?\s+to|guide\s+(?:to|for)|tutorial\s+(?:on|for)|explain\s+(?:\w+\s+){0,2}how\s+to|teach\s+me\s+how\s+to|tell\s+me\s+how\s+to|ways?\s+to)\s+(?:\w+\s+){0,3}(?:make|build|create|assemble|construct)\s+(?:a\s+|an\s+|the\s+)?(?:weapon|bomb|explosive|firearm|silencer)/i,
   // 伪造证件: forge/counterfeit + 证件族
   /(?:forge|counterfeit|fake)\s+(?:a\s+|an\s+|the\s+|someone'?s\s+|my\s+)?(?:document|passport|id\b|identity|license|certificate|signature|diploma)/i,
   // 中文: 钓鱼/诈骗模板索取 —— 动词 + (钓鱼|诈骗) + 载体 + **索取物名词**
