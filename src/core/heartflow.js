@@ -795,7 +795,7 @@ const _AgentCommentary = _lazy('agentCommentary', () => { try { return require('
 
 
 
-const BUILD_DATE = '2026-10-12-1.1.5';
+const BUILD_DATE = '2026-10-12-1.1.6';
 
 
 
@@ -1097,35 +1097,43 @@ class Aspira {
   // 危险方法（如内部调试、文件操作）不在白名单中
   static ALLOWED_ROUTES = new Set([
     // memory
-    'memory.store', 'memory.retrieve', 'memory.search', 'memory.remove',
-    'memory.getLayers', 'memory.getStats',
+    'memory.store', 'memory.retrieve', 'memory.search', 'memory.getStats',
     // truth
     'truth.checkStatement', 'truth.checkNumbers', 'truth.checkSources',
     // lesson
-    'lesson.addLesson', 'lesson.getTopLessons', 'lesson.getRecent',
+    'lesson.getTopLessons',
     // dream
-    'dream.dreamNow', 'dream.analyzeDream',
     // verify
-    'verify.verify', 'verify.checkConsistency',
+    'verify.verify',
     // error taxonomy
     'errorTaxonomy.classify', 'errorTaxonomy.getRecovery', 'errorTaxonomy.getStats',
     // psychology
-    'psychology.analyze', 'psychology.detectCrisis',
     // emotion
     'emotion.process', 'emotion.getPAD',
     // decision
     'decision.decide', 'decision.getRecentStamps',
     // confidence
-    'confidence.calibrate', 'confidence.admit',
+    'confidence.calibrate',
     // introspect
     'heartflow.introspect', 'heartflow.selfDiagnosis',
     // restraint
     'restraint.shouldIntervene',
     // graph
-    'graph.addNode', 'graph.search',
+    'graph.addNode',
     // slots
-    'slots.get', 'slots.set', 'slots.delete',
   ]);
+
+  // [第二百二十三轮实测] 上面删掉了 14 条白名单条目。它们经 dispatch 逐条实测全部抛
+  //   "<route> is not a function on <subsystem>" —— 白名单是**权限门**, 它告诉调用方
+  //   "这条被允许", 然后调用失败。白名单是这 14 个名字在全仓唯一的存在处: routes()
+  //   一条都不广告它们, src/ 与 test/ 除白名单外零引用, 也没有任何测试钉住白名单内容。
+  //   涉及 memory(remove/getLayers)、lesson(addLesson/getRecent)、dream(dreamNow/
+  //   analyzeDream)、verify(checkConsistency)、psychology(analyze/detectCrisis)、
+  //   confidence(admit)、graph(search)、slots(get/set/delete) 共 8 个命名空间。
+  //   删而不是实现: 这些能力该有什么语义是产品判断, 本轮不做。删后 dispatch 对它们返回
+  //   诚实的 "route not allowed. Use routes() to see available routes.", 而不是
+  //   先承诺后失败。test/dispatch-whitelist-no-phantom.test.js 锁住"白名单每条都必须
+  //   真的可调用", 防止它们被静默加回来。
 
   constructor(config = {}) {
 
