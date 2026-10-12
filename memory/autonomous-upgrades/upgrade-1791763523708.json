@@ -1,0 +1,50 @@
+{
+  "ts": "2026-10-12T00:05:23.707Z",
+  "cycle": 220,
+  "chosen": "dimension-health-audit",
+  "tieBreak": null,
+  "status": "done",
+  "theme": "汇报名单说\"从未触发: 0\", 却从不说最薄的维度有多薄 —— 而这个数仪器从第一版起就在数",
+  "angle": "本切片前四轮问了四个问题(cycle 27 能改门禁却推不出 finding 的 perfect_error / cycle 203 校准读数能覆盖多少维度 22/54 / cycle 209 谁在维持它的活性-池归因 7 个仅测试字面量 / cycle 214 仪器能否看见它声称要量的东西-7 个 checker 住在隔壁模块)。本轮第五个: \"活着\"这两个字带量纲吗?",
+  "rootCause": "汇报名单是四行布尔(曾触发且推 finding / 按设计不推 / 从不推 / 从未触发), 而 tally 里从第一版起就在数的 signal(触发该维度的**输入条数**)从来没被汇总段读过。一个只被 2 条输入触发的维度与一个被 11300 条触发的维度, 在\"从未触发: 0\"这条绿线上读起来完全一样。这是 cycle 188 形状(不可能非零的分支与测量为零的分支无法区分)的变体: 那次是布尔的两端, 这次是同一个布尔值内部的量级差",
+  "measured": "去重后池 11300 条: 最多 11300 条(evidence, score-only, 每条输入都有分 —— 已与逐维度表核对, 真读数非 bug)、最少 2 条(counterfactual / coverup_induction)、中位 32 条 —— 同一条绿线内部相差四个数量级",
+  "sideFinding": "两个最薄的里, counterfactual 的支撑模块 CounterfactualEngine(493 行/16 公有方法)被 heartflow.js:2070 构造后从未调用, 而 checkCounterfactual(index.js:3780) 用自己的 COUNTERFACTUAL_PATTERNS 正则表、完全不消费该模块 —— 493 行的引擎与同名维度并行存在且互不接触, 维度那一侧薄到 11300 条输入里只触发 2 条。把引擎接进 checker 需决定输出如何映射到维度分数, 是产品判断(铁律 2), 只记录不修",
+  "fix": "仪器汇总段加一个\"触发条数分布\"段: 报池条数/最多/最少/中位, 并把 ≤ 池 0.2% 的维度逐个拎出来(带 A/B/C 来源与是否仅打分)。明写\"薄不等于失效\"—— 上一段已有输入池盲区说明, 薄清单被当缺陷清单读就是 cycle 11 \"仪器把自己的局限报成引擎缺陷\"的形状。src/index.js 一行未动, MCP 不重启",
+  "lock": {
+    "file": "test/dimension-signal-magnitude.test.js",
+    "cases": 5,
+    "detail": "① 源级: 分布段必须存在且从 tally 读 signal(不发明数字), 带剥注释前提自证 ② 行为: 印的最少值必须等于逐维度表的真实最小值(自洽性不变式), 且中位数必须是表里真有的值 ③ 行为: 必须点名至少一个薄维度, 每个被点名者的条数须与表一致、不超段内门槛、不低于真实最小值 ④ 反向证明: 从副本删掉分布段, ②③ 必须落空 + 反向对照四条布尔汇总线仍在(证明副本没坏) ⑤ 披露: 段内必须自带\"薄不等于失效\", 且本锁不锁名单"
+  },
+  "ownErrors": [
+    "锁 ③ 第一版要求每个被点名者等于全表最小值 —— 错了, 薄维度是一批(≤ 池 0.2%)而非只有最小那几个, goal_misalignment 5 条正当属于最小值为 2 的那一批。改为核对段内自己报的门槛, 另加一条\"不得低于真实最小值\"",
+    "插入 AGENTS.md 的锚点正则漏了反引号(条目文本是 `doc-honest-numbers`, 219th cycle), 第一次插入被前提自证挡下 —— 自证起了作用"
+  ],
+  "mutationVerified": "真文件上把 thin[0].n 印成 thin[0].n + 7 → ② 按名红(\"分布段报最少 9 条, 而逐维度表的真实最小值是 2\"); diff -q 确认字节级还原后回 5/5",
+  "carriedOver": "修好了上一轮自己造成的 AGENTS.md 结构损坏: cycle 219 的条目被插进了 cycle 218 条目中间, 因为 218 是多行块(含代码围栏)而插入锚点取的是\"最后一条以 - ** 开头的行\"= 218 的首行。已按锚点重排(218 首段/围栏/正文, 然后 219), 并做了结构自证。本轮插入改用带前提自证的锚点: 必须是 cycle 219 条目、且其下一行不能是代码围栏",
+  "files": [
+    "scripts/dimension-health-audit.js",
+    "test/dimension-signal-magnitude.test.js",
+    "AGENTS.md",
+    "VERSION",
+    "package.json",
+    "src/core/version.js",
+    "src/core/heartflow.js",
+    ".well-known/agent-card.json",
+    "SKILL.md",
+    "README.md",
+    "CURRENT_STATE.md"
+  ],
+  "verify": "15 passed 0 failed",
+  "tests": "串行 2297 → 2302 / 0 / 2302, exit 0, 双通道均空, Command failed 计数 0; 新锁单独 5/5(26 秒, 门禁子进程上限 240 秒)",
+  "instrument": "四条汇总线不变(53 / 1 / 0 ✓ / 0); \"仅测试字面量支撑\"从 cycle 209 的 7 个降到 6 个 —— cycle 211 补的两条语料样本给了 coverup_induction 一个池 A 来源, 它因此不再是纯测试支撑",
+  "srcChanged": false,
+  "mcpRestarted": false,
+  "mcpNote": "记为未执行, 非已执行",
+  "version": "1.1.2 -> 1.1.3",
+  "commit": null,
+  "tag": null,
+  "pushed": false,
+  "testCount": "2297 -> 2302(+5 全部来自新锁)",
+  "summary": "本切片第五个提问:\"活着\"带量纲吗? 仪器汇报名单是四行布尔, 而 tally 里从第一版起就在数的 signal(触发该维度的输入条数)从未被汇总段读过 —— 一个只被 2 条输入触发的维度与一个被 11300 条触发的维度在同一条绿线上读起来一样。实测量级差四个数量级。给仪器加了\"触发条数分布\"段(池/最多/最少/中位 + ≤0.2% 的维度逐个点名带 A/B/C 来源), 明写薄不等于失效。顺带发现: 最薄的 counterfactual 维度与支撑它的 493 行 CounterfactualEngine 并行存在且互不接触(checkCounterfactual 用自有正则表, 不消费该模块), 接线是产品判断故只记录。",
+  "nextRound": "① counterfactual 维度与 CounterfactualEngine 的接线是产品判断, 但\"493 行模块对同名维度零贡献\"这个事实已经量出来并写进文档, 值得单独一轮决定映射规则; ② 触发条数分布现在有了, 可以进一步问\"哪个维度的触发条数在一次语料增长后反而下降\"(退化检测), 现在的分布只有快照没有历史; ③ 本锁跑了 3 次仪器共 26 秒, 若以后仪器变慢要留意门禁子进程上限。"
+}

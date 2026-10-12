@@ -676,6 +676,35 @@ function main() {
   console.log(`  曾触发但从不推 finding: ${needsLook.length}${needsLook.length ? ' → ' + needsLook.join(', ') : ' ✓'}`);
   console.log(`  从未触发:            ${never.length}${never.length ? ' → ' + never.join(', ') : ''}`);
 
+  // ── [dimension-health-audit·第二百二十轮] 触发条数分布 ──
+  // 上面那四行全是**布尔**: 一个维度"触发过/没触发过"。于是 tally 里早就
+  // 在数的 signal(触发该维度的**输入条数**)从来没被汇总段读过 ——
+  // 一个只被 2 条输入触发的维度与一个被几千条输入触发的维度,
+  // 在"从未触发: 0"这条绿线上读起来完全一样。
+  // 这是 cycle 188 的形状(不可能非零的分支与测量为零的分支无法区分)的
+  // 变体: 那次是布尔的两端, 这次是**同一个布尔值内部的量级差**。
+  // 本轮实测(去重后池约 1.4 万条): 最薄的是 counterfactual 与
+  // coverup_induction, 各 2 条; 最厚的有几千条 —— 相差三个数量级。
+  // 报它不是为了把薄维度当缺陷(薄可能因为语料盲区, 见上一段),
+  // 是为了让"活着"这两个字带上量纲。
+  const thin = dimUnion
+    .map(d => ({ d, n: tally[d] ? tally[d].signal : 0 }))
+    .sort((a, b) => a.n - b.n);
+  const nPool = pool.length;
+  console.log('\n  ── 触发条数分布(signal = 触发该维度的输入条数) ──');
+  console.log(`     池 ${nPool} 条 · 最多 ${thin.length ? thin[thin.length - 1].n : 0} 条 · 最少 ${thin.length ? thin[0].n : 0} 条 · 中位 ${thin.length ? thin[Math.floor(thin.length / 2)].n : 0} 条`);
+  const thinCut = Math.max(2, Math.ceil(nPool * 0.002));
+  const thinnest = thin.filter(x => x.n <= thinCut).slice(0, 12);
+  if (thinnest.length) {
+    console.log(`     ≤ ${thinCut} 条(池的 0.2%)的维度 ${thinnest.length} 个:`);
+    for (const x of thinnest) {
+      const s = tally[x.d] ? tally[x.d].bySrc : {};
+      console.log(`       ${String(x.n).padStart(4)} 条  ${x.d}  (A=${s.A || 0} B=${s.B || 0} C=${s.C || 0}${SCORE_ONLY.has(x.d) ? ' · 仅打分' : ''})`);
+    }
+    console.log('     注: 薄不等于失效 —— 上面已说明输入池对若干维度合成不出输入。');
+    console.log('         报它是为了让"从未触发: 0"这条绿线带上量纲。');
+  }
+
   const realNever = never.filter(d => !SCORE_ONLY.has(d));
   if (realNever.length) {
     console.log('\n  ⚠ 从未触发的维度(该池子碰不到它):');
