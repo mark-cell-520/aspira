@@ -158,8 +158,18 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     // 切片到本层结束(不再用固定 +60 —— 第一百八十一轮补推 strip_cjk_space
     // 标记后 push 变长, 固定偏移会切不够)
     const seg = src.slice(src.indexOf('const _cjkN'), src.indexOf('\n  }', iNew));
-    assertTrue(/_cjkN\s*>=\s*6/.test(seg), '必须有 CJK 数 >= 6 门槛');
-    assertTrue(/_gapN\s*\/\s*_cjkN\s*>=\s*0\.6/.test(seg), '必须有 gap/CJK >= 0.6 门槛');
+    // [adversarial-robustness·第二百三十三轮] 门槛的**极性**不再是锁的对象。
+    // 原断言要求字面 `_cjkN >= 6`; 本轮把整段折叠提成箭头函数
+    // `const _collapseCjkSpace = () => { … }` 时, 顺手续写成了早返回
+    // `if (_cjkN < 6) return false;` —— 语义完全等同, 字面却不再匹配,
+    // 本条当场红。这是"锁钉字面形态而非不变量"的又一例(cycle 190 同族):
+    // 要护的是"有 6 个汉字的下限", 不是"用 >= 还是用 < 写"。
+    // 故两种极性都接受, 且各自带一个自证: 谓词分得清有门槛与没门槛。
+    const hasThreshold = /_cjkN\s*>=\s*6/.test(seg) || /_cjkN\s*<\s*6/.test(seg);
+    assertTrue(hasThreshold, '必须有 CJK 数 >= 6 门槛(>= 6 或早返回 < 6 均可)');
+    // gap/CJK 门槛同理: 第二百三十三轮起写作早返回 `< 0.6`, 语义与 `>= 0.6` 等同。
+    const hasRatio = /_gapN\s*\/\s*_cjkN\s*>=\s*0\.6/.test(seg) || /_gapN\s*\/\s*_cjkN\s*<\s*0\.6/.test(seg);
+    assertTrue(hasRatio, '必须有 gap/CJK >= 0.6 门槛(>= 0.6 或早返回 < 0.6 均可)');
     // 折叠范围: 必须只删 **CJK 之后**的空白, 且必须保留被删字符(捕获组 $1)。
     // 变异验证抓到过这个盲区: 把 replace 改成 `/\s+/g → ''`(删全部空白且不保留
     // 任何字符)时行为断言全绿 —— 因为门槛本身挡住了它(良性句子比例低, 进不了
@@ -179,23 +189,19 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   });
 
   // ── 六、反向: 删掉新层 → ①②必须不再成立 ────────────────
-  test('反向: 删掉整段折叠层后, 注入必须穿透(证明本条不是恒真)', () => {
+  test('反向: 令整段折叠失效后, 注入必须穿透(证明本条不是恒真)', () => {
     const src = fs.readFileSync(path.join(ROOT, 'src', 'text-normalizer.js'), 'utf8');
-    const lines = src.split('\n');
-    let start = -1, end = -1;
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes('const _cjkN') && start < 0) start = i;
-      if (start >= 0 && lines[i].includes("'collapse_cjk_space'")) { end = i; break; }
-    }
-    // 块从 "{ " 开始(const _cjkN 前一行)到 push 那一行后的 "    }\n  }"
-    const blockStart = start - 1;
-    assertTrue(lines[blockStart] === '  {', `前提失效: 块起始形态异常 "${lines[blockStart]}"`);
-    let blockEnd = end;
-    while (blockEnd < lines.length && lines[blockEnd] !== '  }') blockEnd++;
-    assertTrue(blockEnd > end, '前提失效: 找不到块结束');
-    const stripped = [...lines.slice(0, blockStart), ...lines.slice(blockEnd + 1)].join('\n');
-    assertTrue(!stripped.includes("'collapse_cjk_space'"),
-      '前提失效: 剥离后仍含 collapse_cjk_space');
+    // [adversarial-robustness·第二百三十三轮] 变异方式从"删行"改成"令折叠变成
+    // no-op"。原来按行剥离整块, 但第二百三十三轮起折叠住在箭头函数
+    // `_collapseCjkSpace` 里、由 `_collapseCjkSpaceThenSep` 调用 —— 删掉定义
+    // 会让副本直接 `_collapseCjkSpace is not defined` 崩掉, 那是"副本坏了",
+    // 不是"本层没了"(cycle 195: 让代码比原缺陷更响的变异证明不了锁)。
+    // 改成在函数体第一句插入 `return false;`: 折叠与它后面的收分隔符一起失效,
+    // 而调用点全部保持完好, 副本照常运行。
+    const ANCHOR = 'const _collapseCjkSpace = () => {';
+    assertTrue(src.includes(ANCHOR), '前提失效: 找不到 _collapseCjkSpace 定义(锚点已变)');
+    const stripped = src.replace(ANCHOR, ANCHOR + '\n    return false;');
+    assertTrue(stripped !== src, '变异未生效');
     // 在副本上验证(共享源只读, cycle 22)
     const COPY = path.join(ROOT, 'src', '_tn-reverse-probe.js');
     try {
@@ -206,9 +212,9 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       const evaded = plain.replace(CJK, c => c + '\n');
       const norm = tnCopy.normalize(evaded);
       assertEqual(norm.applied.includes('collapse_cjk_space'), false,
-        '反向证明失效: 剥离后副本仍报 collapse_cjk_space');
+        '反向证明失效: 折叠失效后副本仍报 collapse_cjk_space');
       assertTrue(norm.normalized !== plain,
-        '反向证明失效: 剥离后副本仍把攻击还原到明文 —— ' +
+        '反向证明失效: 折叠失效后副本仍把攻击还原到明文 —— ' +
         '说明抓住它的不是本层, 本条的通过是被别处买通的');
     } finally {
       if (fs.existsSync(COPY)) fs.unlinkSync(COPY);

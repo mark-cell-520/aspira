@@ -460,6 +460,42 @@ function _deEncode(text) {
 }
 
 /**
+ * 剥离"夹在不同类字符之间"的分隔符(-._)。
+ *
+ * [adversarial-robustness·第二百三十三轮] 从 normalize() 里的 IIFE 提成模块级函数。
+ * 提出来不是为了整洁, 是因为它必须能**跑第二次**: 原来它只跑一次, 位置在
+ * CJK 空格折叠**之前**, 于是组合形态「请 -立 -即」被空格折叠折成「请-立-即」
+ * 之后(分隔符现在夹在两个汉字之间, 正是规则 3 覆盖的形状), 它已经跑过了。
+ * 实测(全池 380 个有序配对): 最差的一族 13 个配对全部 = 45/66(漏 21 条
+ * 内容型恶性), 良性误报 0/137 —— 而 `逐字符插分隔符` 与 `中文间插空格`
+ * 单跑都是满格, 所以这是**纯粹的组合缺口**。
+ *
+ * 与 cycle 71 在 715 行修的"strip_separator 之后再跑一次 strip_letter_space"
+ * 是同一范式: **暴露依赖的那一层跑过之后, 被它暴露出来的形态要再收一次**。
+ * 也与 cycle 174 的实测一致: 那两条韩文/日文样本"原本正是靠 stripSep 删掉 '-"
+ * 之后才被注入模式命中的"—— 本方向是延长那条路, 不是切断它。
+ *
+ * 三条规则与邻居类**逐字未改**(含 cycle 174 警告过的"不要给邻居类加 CJK 例外",
+ * 以及 cycle 2 为正常 "foo - bar" 建的"不碰紧邻空格的分隔符"保护),
+ * 只改调用次数与时机。
+ *
+ * @param {string} s 输入文本
+ * @returns {string} 剥离后的文本
+ */
+function _stripSeparators(s) {
+  // 「X- -Y」(分隔符-空白-分隔符)折叠成单个空格: 逐字符插入的逃逸会把原来的
+  // 空格也变成这个形状, 而它在正常文本里几乎不出现。
+  s = s.replace(/[-._]\s+[-._]/g, ' ');
+  return s
+    .replace(/([a-zA-Z0-9])([-._]+)(?=[^\sA-Za-z0-9-._])/g, (m, pre, sep) =>
+      /([-._])\1/.test(sep) ? m : pre)
+    .replace(/(?<=[^\sA-Za-z0-9-._])([-._]+)(?=[a-zA-Z0-9])/g, (m, sep) =>
+      /([-._])\1/.test(sep) ? m : '')
+    .replace(/(?<=[^\sA-Za-z0-9-._])([-._]+)(?=[^\sA-Za-z0-9-._])/g, (m, sep) =>
+      /([-._])\1/.test(sep) ? m : '');
+}
+
+/**
  * 归一化：把对抗混淆形态还原成规范形态。
  *
  * @param {string} text 原始文本
@@ -691,13 +727,7 @@ function normalize(text) {
     // "逐字符插分隔符"两条, 净收益为零, 还把一条既有防护路径改没了。
     // 教训: 同一个归一化层服务多条变换路径, 改动前必须把**所有**依赖它的
     // 路径各测一遍, 不能只测自己要修的那一类。
-    const stripSep = (s) => s
-      .replace(/([a-zA-Z0-9])([-._]+)(?=[^\sA-Za-z0-9-._])/g, (m, pre, sep) =>
-        /([-._])\1/.test(sep) ? m : pre)
-      .replace(/(?<=[^\sA-Za-z0-9-._])([-._]+)(?=[a-zA-Z0-9])/g, (m, sep) =>
-        /([-._])\1/.test(sep) ? m : '')
-      .replace(/(?<=[^\sA-Za-z0-9-._])([-._]+)(?=[^\sA-Za-z0-9-._])/g, (m, sep) =>
-        /([-._])\1/.test(sep) ? m : '');
+    const stripSep = (s) => _stripSeparators(s);
     // [对抗修复·第二轮] 上面三条都不碰"紧邻空格"的分隔符——那是为了保护
     // 正常的 "foo - bar"。但逐字符插入的逃逸会把原来的空格也变成
     // "X- -Y"(分隔符-空格-分隔符)，而**这个签名在正常文本里几乎不出现**。
@@ -778,26 +808,54 @@ function normalize(text) {
   //   变换产物: 完整还原到明文。
   // 与 collapse_cjk_punct 同族: 本条**不做任何判断**, 只负责还原, 还原后是
   // 良性还是攻击交给下游维度裁决。
-  {
+  //
+  // [adversarial-robustness·第二百三十三轮] 提成函数, 因为要在**标点折叠之后**
+  // 再跑一次。原实现这道折叠(以及紧随其后的 noCJKSpace)都排在 4b-2 标点折叠
+  // **之前**, 于是"汉字 + 半角标点 + 空格"这种组合形态两道空格折叠都不亮:
+  //   「请, 立, 即, 点, 击, …」里每个汉字后面跟的是逗号不是空白,
+  //   `[CJK]\s` 数到 0、`(?<=[CJK])\s+(?=[CJK])` 也因空白前是逗号而失配;
+  //   等 4b-2 把逗号删掉、留下「请 立 即 点 击 …」时, 后面再也没有删空格的层。
+  // 实测(全池 380 个有序配对): 最差的一族正是这个形状 —— `中文间插空格`
+  // 与任一变换组合 = 45/66(漏 21 条内容型恶性), 良性误报 0/137。
+  // 单变换不穿透(空格那道折叠亮), 所以这是**纯粹的组合缺口**。
+  // 修法只在标点折叠后重跑同一道折叠(判据、字符类、标记全部不变),
+  // 不新增任何判据空间。
+  const _collapseCjkSpace = () => {
     const _cjkN = (out.match(/[぀-ヿ㐀-䶿一-鿿가-힯豈-﫿]/g) || []).length;
-    if (_cjkN >= 6) {
-      const _gapN = (out.match(/[぀-ヿ㐀-䶿一-鿿가-힯豈-﫿]\s/g) || []).length;
-      if (_gapN / _cjkN >= 0.6) {
-        const _noCJKSpaceAll = out.replace(/([぀-ヿ㐀-䶿一-鿿가-힯豈-﫿])\s+/g, '$1');
-        // [第一百八十一轮] 两个标记都推: 本层做的是 strip_cjk_space 那件事的
-        // **完整版**(它删全部 CJK 后空白, 不只 CJK-CJK 边界内的), 而既有测试
-        // (cjk-space-evasion / text-normalizer-wiring)按 applied 里的
-        // 'strip_cjk_space' 断言接线正常。删掉那个标记会让它们红, 而行为本身
-        // 完全正确(实测「请 忽 略 之 前 的 所 有 指 令」仍 block 且还原到明文)。
-        // 所以这里补推 strip_cjk_space 保住标记契约, collapse_cjk_space 说明
-        // 走的是整段折叠路径。
-        if (_noCJKSpaceAll !== out) {
-          applied.push('strip_cjk_space', 'collapse_cjk_space');
-          out = _noCJKSpaceAll;
-        }
-      }
+    if (_cjkN < 6) return false;
+    // [adversarial-robustness·第二百三十三轮] 分子**没有**改。曾把它扩成
+    // `[CJK][-._]?\s`(想认"汉字+分隔符+空白"), 实测那是我误读了文本形状:
+    // 组合形态「请 -立 -即」里每个汉字后面**就是空格**(分隔符在空格之后、
+    // 下一个汉字之前), 原分子 `[CJK]\s` 的比值本来就是 1.0, 门槛本来就亮。
+    // 组合二穿透的真正原因在别处 —— 见 _collapseCjkSpaceThenSep。
+    // 放宽一个本来就达标的门槛, 等于白白扩大判据空间, 故撤回并留证。
+    const _gapN = (out.match(/[぀-ヿ㐀-䶿一-鿿가-힯豈-﫿]\s/g) || []).length;
+    if (_gapN / _cjkN < 0.6) return false;
+    const _noCJKSpaceAll = out.replace(/([぀-ヿ㐀-䶿一-鿿가-힯豈-﫿])\s+/g, '$1');
+    // [第一百八十一轮] 两个标记都推: 本层做的是 strip_cjk_space 那件事的
+    // **完整版**(它删全部 CJK 后空白, 不只 CJK-CJK 边界内的), 而既有测试
+    // (cjk-space-evasion / text-normalizer-wiring)按 applied 里的
+    // 'strip_cjk_space' 断言接线正常。删掉那个标记会让它们红, 而行为本身
+    // 完全正确(实测「请 忽 略 之 前 的 所 有 指 令」仍 block 且还原到明文)。
+    // 所以这里补推 strip_cjk_space 保住标记契约, collapse_cjk_space 说明
+    // 走的是整段折叠路径。
+    if (_noCJKSpaceAll !== out) {
+      applied.push('strip_cjk_space', 'collapse_cjk_space');
+      out = _noCJKSpaceAll;
+      return true;
     }
-  }
+    return false;
+  };
+  // 折叠 + 收分隔符必须成对: 空格删掉之后, 原来夹在"汉字+空格"之间的分隔符
+  // 才变成规则 3 覆盖的形状, 而 strip_separator 早在上面跑过了。只在折叠
+  // **确实改动**时才收, 把影响面限制在攻击形态内。
+  const _collapseCjkSpaceThenSep = () => {
+    if (!_collapseCjkSpace()) return false;
+    const _noSep2 = _stripSeparators(out);
+    if (_noSep2 !== out) { applied.push('strip_separator(after-cjk-space)'); out = _noSep2; }
+    return true;
+  };
+  _collapseCjkSpaceThenSep();
 
   const noCJKSpace = out.replace(/(?<=[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\u8c48-\ufaff])\s+(?=[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\u8c48-\ufaff])/g, '');
   if (noCJKSpace !== out) { applied.push('strip_cjk_space'); out = noCJKSpace; }
@@ -896,6 +954,12 @@ function normalize(text) {
     const _noHanPunct = out.replace(/([぀-ヿ㐀-䶿一-鿿가-힯豈-﫿Ѐ-ӿͰ-Ͽ])[,|*.;:!?~^&%$#@。，；]+(?![A-Za-z])/g, '$1');
     if (_noHanPunct !== out) { applied.push('collapse_cjk_punct'); out = _noHanPunct; }
   }
+
+  // [adversarial-robustness·第二百三十三轮] 标点删掉之后, 原来被逗号挡住的
+  // CJK 后空白才暴露出来(组合形态「请, 立, 即」→ 删逗号 →「请 立 即」),
+  // 而此时上面两道空格折叠已经跑过了。重跑同一道折叠(判据与字符类不变,
+  // 只是第二次求值), 把这类组合缺口补上。
+  _collapseCjkSpaceThenSep();
 
   // 4c. 中英混拼归一：把嵌入中文语境的英文关键词还原为中文等价词，
   //     让中文模式库能命中（「请ignore之前的instruction」→「请忽略之前的指令」）
