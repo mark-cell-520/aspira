@@ -909,8 +909,17 @@ function _createSpecialModule(subsystem, hf) {
 
 
 // [REFACTOR-BACKLOG v6.0.28] 审计 HIGH-1 (核实后降级 MEDIUM): 核心启动实例化逻辑强耦合于此。
-// 当前 180 行, 非审计误报的 4600 行。已确认 core-smoke-test 覆盖启动链路(回归护栏存在)。
+// 当前 180 行, 非审计误报的 4600 行。已确认 test/core/heartflow.test.js 覆盖启动链路(回归护栏存在)。
 // 未来重构窗口: 拆出 src/core/module-instantiator.js, 按 subsystem 类型分派, 降低单函数失败域。
+//
+// [更正 2026-10-13] 上一行原写「已确认 core-smoke-test 覆盖启动链路」。那个文件名指的是
+// test/core-smoke-test.js，而它①测的是一套已不存在的 API（hf.stop / decision.type /
+// _feedbackState.complexityBias），②叫 test-*.js 而非 *.test.js，run-all.js 的发现规则
+// 是 endsWith('.test.js')，所以它从未进过门禁。一条源码注释拿一个从未运行过的文件
+// 当"护栏存在"的证据——这正是本仓反复记载的形状：读数说成功，被读的东西不存在。
+// 真正在门禁里覆盖启动链路的是 test/core/heartflow.test.js（3 例：模块可加载 /
+// 导出构造器 / 实例可启动并自报版本）。core-smoke-test.js 已按实测 API 重写并改名为
+// test/core-smoke.test.js，现在它也在门禁里了（4 例：启动 / think / dispatch / 关停）。
 function _instantiateSpecialModule(subsystem, Mod, hf) {
 
   const spec = _SPECIAL_MODULES[subsystem];
