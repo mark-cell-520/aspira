@@ -1,9 +1,13 @@
-// test-ai-anti-pattern.js — 防AI通病五戒检测器测试
+// ai-anti-pattern.test.js — 防AI通病五戒检测器测试
 
 const { checkAICodeAntiPattern } = require('../src/ai-anti-pattern.js');
 
+let passed = 0;
+let failed = 0;
+
 function test(name, fn) {
-  try { fn(); console.log(`  ✓ ${name}`); } catch (e) { console.log(`  ✗ ${name}\n    ${e.message}`); process.exitCode = 1; }
+  try { fn(); passed++; console.log(`  ✓ ${name}`); }
+  catch (e) { failed++; console.log(`  ✗ ${name}\n    ${e.message}`); process.exitCode = 1; }
 }
 function assertEqual(actual, expected, msg) { if (actual !== expected) throw new Error(`${msg || ''} 期望 ${expected}，实际 ${actual}`); }
 function assertTrue(value, msg) { if (!value) throw new Error(`${msg || ''} 期望 truthy，实际 ${value}`); }
@@ -56,3 +60,8 @@ test('clean code passes', () => {
   assertEqual(r.count, 0, 'count');
   assertEqual(r.score, 0, 'score');
 });
+
+// 汇总行：没有它，parseChildSummary 对本文件返回 null，7 条真实用例
+// 在门禁总数里计 0（test/_child-summary.js 头部记载过同族 195 条）。
+console.log(`\n📊 ai-anti-pattern: ${passed} passed, ${failed} failed, total ${passed + failed}`);
+process.exit(failed > 0 ? 1 : 0);
