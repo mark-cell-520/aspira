@@ -5203,8 +5203,25 @@ class Aspira {
     if (result && this.decisionRouter && typeof this.decisionRouter.evaluate === 'function') {
       const evalResult = this.decisionRouter.evaluate(result, 'think');
       result._decision = evalResult && evalResult.decision ? evalResult.decision : null;
-      result._decisionConfidence = evalResult && typeof evalResult.confidence === 'number' ? evalResult.confidence : null;
-      result._decisionRationale = evalResult && typeof evalResult.rationale === 'function' ? (evalResult.rationale({}) || '').slice(0, 120) : null;
+      // ═══ 这两行原来读的是 evalResult 顶层，而置信度和理由在 decision 里 ═══
+      // 原写法：
+      //   typeof evalResult.confidence === 'number'   ← evaluate() 从不返回顶层 confidence
+      //   typeof evalResult.rationale === 'function'  ← evaluate() 从不返回顶层 rationale 函数
+      // 实测 evaluate() 的返回键只有 decision / matched / rules / field / domain /
+      // sparseFiltered；confidence 与 rationale 都在 decision 上，且 rationale 是
+      // **已经渲染好的字符串**（规则表里那个 rationale: (r) => ... 是规则级的，
+      // 渲染结果就存在 decision.rationale）。
+      // 于是这两个字段恒为 null，而下游四处消费方全部落到兜底值：
+      //   · heartflow.js:5222/5236  decisionFeedback.recordOutcome 的 confidence: 0.5
+      //   · heartflow.js:5322       const confidence = result._decisionConfidence || 0
+      //   · post-training.js:49-50  confidence: 0, rationale: ''
+      // 即"决策做了、置信度永远记成 0.5 或 0、理由永远记成空串"。
+      // 上一行刚把 evaluate() 从 ReferenceError 里救回来（见 decision-router.js 的
+      // activeRules 注释），不修这两行，救回来的也只是半个决策。
+      result._decisionConfidence = (evalResult && evalResult.decision && typeof evalResult.decision.confidence === 'number')
+        ? evalResult.decision.confidence : null;
+      result._decisionRationale = (evalResult && evalResult.decision && typeof evalResult.decision.rationale === 'string')
+        ? evalResult.decision.rationale.slice(0, 120) : null;
 
       if (this._autoDecisionsEnabled && result._decision && this.decisionExecutor && typeof this.decisionExecutor.apply === 'function') {
         const auto = this._autoDecideExecution(result, input);

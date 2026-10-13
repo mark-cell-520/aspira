@@ -2024,6 +2024,31 @@ class DecisionRouter {
       this._activeRulesForEval = this._rules;
     }
 
+    // ═══ 这个声明为什么必须补上 ═══
+    // 下面的 CED 分支与它的 else 分支引用了裸标识符 `activeRules`，而**这个作用域里
+    // 从来没有声明过它** —— 于是每次 evaluate() 都在这里抛
+    //     ReferenceError: activeRules is not defined
+    // 实测（修复前）：new DecisionRouter().evaluate(...) 与 .wrapDispatchResult(...)
+    // 两条公开入口 100% 抛出，_domainClassifier / _ced / _cedEnabled 全为真时同样抛。
+    //
+    // 它不是"某个分支才炸"，而是 evaluate() 的必经之路。而调用方
+    // src/core/heartflow.js:5204 长这样：
+    //     try { ... this.decisionRouter.evaluate(result, 'think') ... }
+    //     catch (_) { /* 不阻断主链路 */ }
+    // TypeError/ReferenceError 被整个吞掉，于是 result._decision /
+    // _decisionConfidence / _decisionRationale 三个字段**从未被赋值**（实测 think()
+    // 之后它们读出来是 undefined，不是 null —— 连"判成无决策"都没发生，
+    // 是那一行从来没跑完）。
+    //
+    // 后果：引擎文档里的"决策层 decision-router (19 类规则)"这一层，
+    // 从写下那天起就没有产出过任何一个自主决策，而没有任何读数为此变过。
+    // 与本仓反复记载的形状同族：调用成功、不抛异常、返回值结构合法、内容为空。
+    //
+    // 取值口径：上面两分支（域分类器在/不在）都已经把选中的规则集写进
+    // this._activeRulesForEval，所以这里读它即可，与既有语义逐字对应；
+    // 兜底 this._rules 是防御，不是猜。
+    const activeRules = this._activeRulesForEval || this._rules;
+
     // ─── v6.7.72: CED conditional expert dispatch based on input complexity ──
     if (this._ced && this._cedEnabled && domainCtx && domainCtx.primary) {
       const complexity = this._ced.assessComplexity(input || '', domainCtx);
