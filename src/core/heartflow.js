@@ -1601,10 +1601,19 @@ class Aspira {
     this.memoryBank = new (_MemoryBank().MemoryBank)({ memory: this.memory });
 
     // [DeepSeek V4.1] Engram conditional memory init
+    // [修复] 原来是 `catch (_) { this._engram = null; }` —— 唯独这个子系统把错误
+    // 信息整个丢掉。ea288d0 修的是 require 路径少一级 ../，而那类缺陷能藏整整一个
+    // 版本号周期，正因为这里不记录：catch 吞异常、不 push _initErrors，于是
+    // initErrors 恒为 0、仪表盘看不出有个子系统是死的。现在与兄弟模块
+    // (memoryIndex / agentCard / memoryKernel / truth / behavior / persistence 等)
+    // 用同一个惯用法：留着 null 不阻断启动，但把原因写进 _initErrors。
     try {
       const En = require('../memory/engram-memory.js');
       this._engram = new En.EngramMemory({ maxEntries: 200, ttlMs: 30 * 60 * 1000, indexPath: path.join(this.rootPath || process.cwd(), 'data', 'engram-index.json') });
-    } catch (_) { this._engram = null; }
+    } catch (e) {
+      this._engram = null;
+      _boundedPush(this._initErrors, { module: 'engram', error: e.message }, MAX_HISTORY_SIZE);
+    }
 
 
 
