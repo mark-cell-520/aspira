@@ -75,6 +75,8 @@ test('confidence.calibrate路由', () => {
 
 console.log(`\n=== 结果: ${passed}/${passed+failed} 通过 ===`);
 
+// 规范汇总行：没有它 parseChildSummary 返回 null，这 11 条用例在门禁总数里计 0
+console.log(`测试结果: ${passed} 通过, ${failed} 失败, 共 ${passed + failed} 个`);
 if (failed > 0) {
   console.log('部分测试失败');
   process.exit(1);

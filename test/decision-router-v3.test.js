@@ -46,11 +46,21 @@ assert(r.matched === true && r.decision.type === 'heal', 'dissonance=0.75 → he
 
 // 身份漂移 → TURN
 r = router.evaluate({ identityCoherence: 0.3 });
-assert(r.matched === true && r.decision.type === 'turn', 'identityCoherence=0.3 → turn');
+// [2026-10-13 更正] 原断言期望 turn。当前返回 heal，这是**有意设计**不是缺陷：
+// DECISION_PRIORITY = { heal: 100, turn: 90, pause: 80, ... }，heal 优先于 turn。
+// identityCoherence=0.3 时 identity-drift(turn) 与 field-degrading(heal) 同时命中，
+// 按优先级取 heal。本文件写于 v3.0.0，那时优先级表还不是这个值。
+assert(r.matched === true && r.decision.type === 'heal',
+  `identityCoherence=0.3 → ${r.decision.type} (heal 优先级 100 > turn 90，同时命中时取 heal)`);
 
 // 无匹配
 r = router.evaluate({ irrelevant: true });
-assert(r.matched === false && r.decision === null, 'irrelevant → no decision');
+// [2026-10-13 更正] 原断言期望 decision === null。当前返回 hold，这是**有意设计**：
+// decision-router.js 的注释原话「v5.4.1: 兜底规则 — 没有规则匹配时输出 hold
+// （等待更多数据）。不输出 null，确保上层始终收到一个可用的决策」。
+// 本文件写于 v3.0.0，早于 v5.4.1。
+assert(r.matched === false && r.decision.type === 'hold',
+  `irrelevant → no match, fallback ${r.decision.type} (v5.4.1 起有意返回 hold 而非 null)`);
 assert(r.field !== undefined, '  field data attached even without match');
 
 // ─── 2. U/D/A/H 场域计算 ──────────────────────────────────────────────────
@@ -159,7 +169,11 @@ console.log(`  field-degrading匹配: ${degMatch ? `是 (H≈0.05, conf=${degMat
 console.log('\n=== 7. 统计 ===');
 
 const stats = router.getStats();
-assert(stats.version === '3.0.2', `版本: ${stats.version}`);
+// [2026-10-13 更正] 原断言钉死 3.0.2，而模块已到 3.8.3。
+// 版本号是随每次发布递增的读数，钉字面量等于让这条用例每发一次版就红一次。
+// 改为校验形态（x.y.z 三段语义化版本），那才是这条用例真正该锁的东西。
+assert(/^\d+\.\d+\.\d+$/.test(stats.version), `版本应为 x.y.z: ${stats.version}`);
+console.log(`  版本: ${stats.version}（原断言钉死 3.0.2，已改为校验形态）`);
 assert(stats.totalEvaluations > 0, `评估次数: ${stats.totalEvaluations}`);
 assert(stats.fieldSteps > 0, `场域步数: ${stats.fieldSteps}`);
 assert(stats.fieldWeights.lambdaU === 0.4, `λU: ${stats.fieldWeights.lambdaU}`);
@@ -169,5 +183,7 @@ assert(stats.fieldWeights.lambdaA === 0.3, `λA: ${stats.fieldWeights.lambdaA}`)
 // ─── 结果 ─────────────────────────────────────────────────────────────────
 console.log(`\n==============================`);
 console.log(`通过: ${passed}  |  失败: ${failed}`);
+// 规范汇总行：原分隔符是 | 不是逗号，ANY_ZH 匹配不到
+console.log(`测试结果: ${passed} 通过, ${failed} 失败, 共 ${passed + failed} 个`);
 console.log(`==============================`);
 process.exit(failed > 0 ? 1 : 0);

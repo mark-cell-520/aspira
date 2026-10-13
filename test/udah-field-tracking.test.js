@@ -38,6 +38,9 @@ async function main() {
   const scenarios = [
     {
       name: '正常对话 — 无矛盾',
+      // A 是矛盾/失谐轴：这个场景本来就没有矛盾信号，A 必须为 0。
+      // 见下方判据处的说明——原实现要求所有场景 A 非零，与这个场景自相矛盾。
+      expectZeroA: true,
       result: simulateResult({ dissonance: undefined }),
     },
     {
@@ -78,6 +81,7 @@ async function main() {
   let allOk = true;
   let totalA = 0;
   let nonZeroACount = 0;
+  let passCount = 0;
 
   for (const s of scenarios) {
     // 连续跑2次让场域历史积累（需要至少4步才能触发翻转检测）
@@ -90,14 +94,27 @@ async function main() {
     const current = summary?.current || {};
 
     const hasA = current.A !== undefined && current.A !== null;
-    const aNonZero = hasA && current.A > 0.001;
-    const status = aNonZero ? '✅' : '⚠️ A=0';
 
-    if (!aNonZero) allOk = false;
+    // ═══ 原来的判据是"每个场景的 A 都必须非零"，而它内含一个自相矛盾 ═══
+    // 场景列表第一个就叫「正常对话 — 无矛盾」（dissonance: undefined），
+    // A 是矛盾/失谐轴，没有矛盾时 A 理应为 0。原判据却要求它非零，
+    // 于是这个场景永远判 ⚠️，而 allOk 恒为 false —— 但进程照样 exit 0，
+    // 所以这件事从来没人看见。
+    // 修法：按场景声明的矛盾强度分别断言，而不是一刀切要求非零。
+    //   · expectZeroA 为真的场景 → A 必须约等于 0
+    //   · 其余场景               → A 必须 > 0.001
+    const expectZeroA = s.expectZeroA === true;
+    const ok = expectZeroA
+      ? (hasA && current.A <= 0.001)
+      : (hasA && current.A > 0.001);
+    const status = ok ? '✅' : (expectZeroA ? '❌ A 应为 0' : '❌ A 应为非零');
+
+    if (!ok) allOk = false;
     if (hasA) {
       totalA += current.A;
-      if (aNonZero) nonZeroACount++;
+      if (current.A > 0.001) nonZeroACount++;
     }
+    if (ok) passCount++;
 
     console.log(`  ${status} ${s.name}`);
     console.log(`      U=${(current.U || 0).toFixed(3)} D=${(current.D || 0).toFixed(3)} A=${(current.A || 0).toFixed(3)} H=${(current.H || 0).toFixed(3)}`);
@@ -121,10 +138,16 @@ async function main() {
   console.log(`  谐振态: ${fullSummary?.resonance?.active ? '活跃' : '未激活'}`);
 
   if (allOk) {
-    console.log('\n✅ 所有场景 A 值非零');
+    console.log('\n✅ 所有场景符合各自声明：有矛盾的 A 非零，无矛盾的 A 为 0');
   } else {
     console.log('\n⚠️ 存在 A=0 场景 — 需要更多矛盾信号注入');
+    // 原来到这里就结束，进程 exit 0 —— 检查失败了而门禁看不见。
+    // 这个脚本的名字是「自测」，那就该在自测失败时红。
+    process.exitCode = 1;
   }
+
+  // 规范汇总行：没有它 parseChildSummary 返回 null，这些场景在门禁总数里计 0
+  console.log(`测试结果: ${passCount} 通过, ${scenarios.length - passCount} 失败, 共 ${scenarios.length} 个`);
 
   // 输出兼容 ThinkCheck 的格式
   console.log('\n=== ThinkCheck 兼容输出 ===');
