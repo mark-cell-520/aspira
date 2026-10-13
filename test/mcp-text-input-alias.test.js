@@ -54,8 +54,19 @@ module.exports = function ({ test, assertTrue, assertEqual }) {
   }
 
   test('MCP server 必须在线(8099)，否则本文件跳过后续断言', () => {
-    // 单元测试不启动 server; 不在线时其余断言自行跳过，避免把环境问题当成引擎缺陷
-    assertTrue(true, 'server 状态由后续用例自行判断');
+    // 原实现是 assertTrue(true, 'server 状态由后续用例自行判断') —— 恒真占位，
+    // 用例名承诺"否则本文件跳过后续断言"，实际什么也没测。
+    // 本用例真正该锁的是**那个跳过是有条件的**：若有人删掉后续用例里的
+    // TOKEN_FILE 门，离线环境就会把"没有 server"报成引擎缺陷——
+    // 那正是原注释要避免的事。所以这里锁住门的存在与数量。
+    const src = fs.readFileSync(__filename, 'utf8');
+    const gates = (src.match(/fs\.existsSync\(TOKEN_FILE\)/g) || []).length;
+    assertTrue(gates >= 2,
+      `TOKEN_FILE 门必须至少出现 2 处(本用例的声明 + 至少一个后续用例的跳过)，实测 ${gates} 处 —— `
+      + '只有一处意味着后续用例不再跳过，离线环境会把环境问题报成引擎缺陷');
+    if (!fs.existsSync(TOKEN_FILE)) {
+      console.log('  ⏭️ 无 token：本文件其余在线断言按设计跳过（单元测试不启动 server）');
+    }
   });
 
   // [并发容错] run-all.js 并发跑多个测试文件，直连 8099 的 HTTP 调用在负载下

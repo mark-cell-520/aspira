@@ -179,8 +179,14 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       for (const [name, mutate] of variants) {
         let mutated = src;
         try { const r = mutate(src); mutated = Array.isArray(r) ? r.join(String.fromCharCode(10)) : r; } catch (_) { /* 行范围未匹配则跳过 */ }
-        if (mutated === src) { console.log(`      (跳过 ${name}: 替换串未匹配)`); continue; }
-        assertTrue(mutated !== src, `前提失效: ${name} 的替换串未匹配(锚点已变)`);
+        // 原实现是 `if (mutated === src) { console.log(跳过); continue; }` 后面才跟
+        // `assertTrue(mutated !== src, '前提失效')` —— continue 在前，断言永不可达：
+        // mutated === src 时被跳过，mutated !== src 时断言恒过。
+        // 于是一个失配的变异锚点只会打一行"跳过"，反向证明静默少跑一轮，
+        // 而它看起来跟正常跑完一样。删掉 continue，让锚点失配直接红。
+        assertTrue(mutated !== src,
+          `前提失效: ${name} 的替换串未匹配(锚点已变) —— 本次反向证明未真正施加变异，`
+          + '按本仓库惯例这必须让测试红，而不是打一行"跳过"混过去');
         fs.writeFileSync(COPY, mutated);
         delete require.cache[require.resolve(COPY)];
         const mod = require(COPY);

@@ -16,7 +16,10 @@ const mcp = require(mcpPath);
 
 // Test 1: aspira_think handler exists
 test('aspira_think tool definition exists', () => {
-  assert.ok(mcp.HANDLERS || true);
+  // 原实现 assert.ok(mcp.HANDLERS || true) —— `|| true` 恒真，
+  // 这条"aspira_think tool definition exists"从来没检查过任何东西。
+  assert.ok(mcp.HANDLERS, 'mcp-server 必须导出 HANDLERS');
+  assert.ok(mcp.HANDLERS.aspira_think, 'HANDLERS 必须有 aspira_think 这个处理器');
 });
 
 // Test 2: aspira_status exists as handler key
