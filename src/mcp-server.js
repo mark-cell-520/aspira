@@ -4873,7 +4873,9 @@ const HANDLERS = {
       // debateEngine.createSession(...)，实测恒定抛
       // "debateEngine.createSession is not a function"，工具完全不可用。
       // 改为先实例化(惰性缓存，避免每次调用重建导致会话丢失)。
-      const { debateEngine, ROLES } = require('./index.js');
+      // ROLES 原与本行一起解构，但 src/index.js 从不导出它（全文件 grep 零命中），
+      // 且本函数后续也未使用 —— 一个恒为 undefined 的死绑定，删掉。
+      const { debateEngine } = require('./index.js');
       const DE = debateEngine && debateEngine.DebateEngine;
       if (typeof DE !== 'function') return { error: 'debateEngine.DebateEngine 不可用' };
       if (!globalThis.__aspiraDebate) globalThis.__aspiraDebate = new DE();

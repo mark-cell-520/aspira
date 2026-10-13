@@ -7,7 +7,11 @@
 const debugLog = require('../utils/debug-log');
 const path = require('path');
 const { _getConfig, _runSelfImprovementHealthCheck, getSelfImprovementHealth } = require('./engine-state');
-const { _instantiateSpecialModule } = require('./module-registry');
+// 原名 instantiateSpecialModule（无下划线前缀）。此处原写成
+// _instantiateSpecialModule，module-registry.js 没有这个导出，绑定值为 undefined；
+// 同目录的 engine-dispatcher.js:9 用的是正确名字。该绑定此前未被使用所以不抛错，
+// 但任何后来者一用就是 TypeError —— 改对名字，让陷阱不再是陷阱。
+const { instantiateSpecialModule: _instantiateSpecialModule } = require('./module-registry');
 
 // Lazy loaders from heartflow.js
 const _VERSION = () => require('./version.js');
