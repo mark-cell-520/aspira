@@ -1602,7 +1602,7 @@ class Aspira {
 
     // [DeepSeek V4.1] Engram conditional memory init
     try {
-      const En = require('./memory/engram-memory.js');
+      const En = require('../memory/engram-memory.js');
       this._engram = new En.EngramMemory({ maxEntries: 200, ttlMs: 30 * 60 * 1000, indexPath: path.join(this.rootPath || process.cwd(), 'data', 'engram-index.json') });
     } catch (_) { this._engram = null; }
 
