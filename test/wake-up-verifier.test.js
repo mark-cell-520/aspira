@@ -106,14 +106,33 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
     assertEqual(n, 0, 'clearHistory 后历史应为空');
   });
 
-  test('rootPath 隔离必须生效(不得写仓库 data/)', () => {
-    // 这条锁的是隔离本身: 若模块忽略 rootPath 而写死路径，测试会互相污染
+  test('rootPath 隔离必须生效(不得写仓库 src/data/)', () => {
+    // 这条锁的是隔离本身: 若模块忽略 rootPath 而写死路径，测试会互相污染。
+    //
+    // ═══ 原实现的三层失效 ═══
+    //   ① assertTrue(!fs.existsSync(repoFile) || true, ...)  —— `|| true` 恒真
+    //   ② assertTrue(true, 'rootPath 隔离已由 mkdtemp 保证')  —— 字面 true
+    //   ③ ① 查的是 data/wake-up-history.json，而模块实际写死的是
+    //      src/data/dream-history.json —— 连文件名都没找对
+    // 叠加结果: 模块从不读 options.rootPath（DREAM_HISTORY_FILE 是模块级常量，
+    // 指向受 git 跟踪的 src/data/dream-history.json），每跑一次测试就改脏一个
+    // 版本控制里的源码数据文件，而这条名为「隔离必须生效」的用例一直是绿的。
+    // 现已修模块（路径按实例从 options.rootPath 推导），此处把两条断言恢复成真的。
+    const repoFile = path.join(__dirname, '..', 'src', 'data', 'dream-history.json');
+    const beforeRepo = fs.existsSync(repoFile) ? fs.readFileSync(repoFile, 'utf8') : null;
+
     const wv = mk();
     wv.evaluateDream({ dream: '隔离性检查', fragments: ['y'], quality: 0.5 });
-    const repoFile = path.join(__dirname, '..', 'data', 'wake-up-history.json');
-    assertTrue(!fs.existsSync(repoFile) || true, '仓库 data 不得被本测试写入(以 rootPath 为准)');
-    // 真正的断言: 临时目录下应有产物或模块至少未抛异常
-    assertTrue(true, 'rootPath 隔离已由 mkdtemp 保证');
+
+    // ① 产物必须真的落在临时根下 —— 这是隔离生效的直接证据
+    const isolated = path.join(ROOT, 'data', 'dream-history.json');
+    assertTrue(fs.existsSync(isolated),
+      `evaluateDream 后应在 ${isolated} 看到落盘历史；没有它说明 rootPath 仍被忽略`);
+
+    // ② 仓库里那个受版本控制的真实目标文件不得被改动（按内容比对，不依赖 git 状态）
+    const afterRepo = fs.existsSync(repoFile) ? fs.readFileSync(repoFile, 'utf8') : null;
+    assertEqual(afterRepo, beforeRepo,
+      `本测试不得改脏受版本控制的 ${repoFile} —— 它的内容变了，说明历史文件路径没有跟随 rootPath`);
   });
 
   test('MCP 侧 aspira_wakeup_verify 必须声明 dream 参数(不得再是零参数)', () => {

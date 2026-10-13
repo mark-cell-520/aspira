@@ -34,9 +34,7 @@ try { DecisionVerifier = require('../core/decision-verifier.js').DecisionVerifie
 
 
 
-const DREAM_HISTORY_DIR = path.join(__dirname, '..', 'data');
-
-const DREAM_HISTORY_FILE = path.join(DREAM_HISTORY_DIR, 'dream-history.json');
+const DEFAULT_DREAM_HISTORY_DIR = path.join(__dirname, '..', 'data');
 
 const MAX_HISTORY = 20;
 
@@ -60,6 +58,22 @@ class WakeUpVerifier {
 
     };
 
+    // ═══ rootPath 原先被完全忽略 ═══
+    // 本类接受 options.rootPath（调用方与测试都这么传），但 DREAM_HISTORY_FILE
+    // 是**模块级常量**，写死指向 src/data/dream-history.json —— 一个受 git 跟踪的
+    // 源码数据文件。于是：
+    //   · 每个 new WakeUpVerifier() 都读写同一个仓库文件，实例间互相污染；
+    //   · 测试传 rootPath=临时目录毫无作用，跑一次测试就改脏一次被跟踪的文件
+    //     （git status 里那条 ` M src/data/dream-history.json` 正是这么来的）；
+    //   · test/wake-up-verifier.test.js 里名为「rootPath 隔离必须生效」的用例，
+    //     其两条断言被钝化成 `!existsSync(f) || true` 与 `assertTrue(true)` 才能绿。
+    // 即：隔离承诺写在测试名里，实现里没有，而两条断言负责让这件事看不出来。
+    // 修法：历史文件路径改为按实例从 options.rootPath 推导。
+    this.dreamHistoryDir = options.rootPath
+      ? path.join(options.rootPath, 'data')
+      : DEFAULT_DREAM_HISTORY_DIR;
+    this.dreamHistoryFile = path.join(this.dreamHistoryDir, 'dream-history.json');
+
     this.history = this._loadHistory();
 
     this.evaluationCount = 0;
@@ -74,9 +88,9 @@ class WakeUpVerifier {
 
   _ensureDataDir() {
 
-    if (!fs.existsSync(DREAM_HISTORY_DIR)) {
+    if (!fs.existsSync(this.dreamHistoryDir)) {
 
-      fs.mkdirSync(DREAM_HISTORY_DIR, { recursive: true });
+      fs.mkdirSync(this.dreamHistoryDir, { recursive: true });
 
     }
 
@@ -90,9 +104,9 @@ class WakeUpVerifier {
 
       this._ensureDataDir();
 
-      if (fs.existsSync(DREAM_HISTORY_FILE)) {
+      if (fs.existsSync(this.dreamHistoryFile)) {
 
-        const raw = fs.readFileSync(DREAM_HISTORY_FILE, 'utf8');
+        const raw = fs.readFileSync(this.dreamHistoryFile, 'utf8');
 
         const parsed = JSON.parse(raw);
 
@@ -118,7 +132,7 @@ class WakeUpVerifier {
 
       this._ensureDataDir();
 
-      fs.writeFileSync(DREAM_HISTORY_FILE, JSON.stringify(this.history, null, 2));
+      fs.writeFileSync(this.dreamHistoryFile, JSON.stringify(this.history, null, 2));
 
     } catch (_) { /* [v5.9.18] intentional: graceful degradation */ }
 
