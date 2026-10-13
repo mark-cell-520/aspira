@@ -63,6 +63,27 @@ class FormulaSearch {
     } else {
       console.log(`[FormulaSearch] 完成，${files} 个文件，${all.length} 条公式`);
     }
+
+    // ═══ 公式库为空必须响，不能只打印一行"完成，0 条" ═══
+    // 原实现到这里就结束：目录不存在时先 WARN 一行"目录扫描失败，回退单文件"，
+    // 回退目标也不存在，最后打印 `完成，0 个文件，0 条公式` —— 与正常启动的
+    // `完成，85 个文件，1286 条公式` 只在数字上有别，混在十几条"加载成功"里
+    // 一眼看不出问题。而 formula-module.js 照报"Formula Engine 注册成功"，
+    // 于是**任何公式查询都返回空，而日志读起来像成功了**。
+    // 这不是假设：.npmignore 刻意不发布 formulas/（注释称"按需经 upgrade.js
+    // 下载"，而 upgrade.js 全仓不存在），所以安装包里的引擎正是这个状态。
+    // 修法：0 条时用 error 级明确说出缺什么、后果是什么，并置 this.empty 供调用方判定。
+    this.empty = all.length === 0;
+    if (this.empty) {
+      console.error(
+        '[FormulaSearch] 公式库为空 —— 这是故障状态，不是正常启动。\n'
+        + `  扫描目录: ${this.formulasDir}\n`
+        + `  单文件回退: ${this.formulasFile}\n`
+        + '  两者都未取到任何公式。引擎将继续运行，但所有公式查询都会返回空结果；\n'
+        + '  依赖公式的判别维度会静默降级。请补上 formulas/ 目录（或经 options 传入\n'
+        + '  formulasDir / formulasFile）后重启。'
+      );
+    }
     return this.formulas;
   }
 
