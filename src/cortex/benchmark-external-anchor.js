@@ -59,4 +59,51 @@ function healthCheck() {
   return { ok: true, hasAnchor: _anchor !== null && _anchor !== undefined, persisted: fs.existsSync(_file) };
 }
 
-module.exports = { getAnchor, setAnchor, clearAnchor, healthCheck, _setFile: (f) => { _file = f; _loaded = false; _anchor = null; } };
+/**
+ * 供 self-benchmark.assess() 消费的同步取锚入口。
+ *
+ * ═══ 这个函数为什么必须补上 ═══
+ * self-benchmark.js:11 从第一版起就 `const { anchorSync } = require(...)`，
+ * 而本模块从来只导出 getAnchor/setAnchor/clearAnchor/healthCheck ——
+ * `anchorSync` 是 undefined。调用点 self-benchmark.js:74 又是
+ *     try { external = anchorSync(this.hf); } catch (_) { external = null; }
+ * 于是 TypeError 被 catch 吞掉，`external` 恒为 null。
+ *
+ * 后果不是崩溃，而是**整条外部锚定分支结构性不可达**：
+ *   · `verified` 永远 false，`externalAnchor` 永远 null；
+ *   · `0.4*内部 + 0.6*外部` 这条加权永远走不到，只能走内部分打 0.7 折的分支；
+ *   · 启动日志照报「外部锚定防自欺已启用」。
+ * 即"报告成功、实际没干"—— 方法存在、调用成功、不抛错、没有效果。
+ * 这正是本文件头记录的 stub 缺陷（setAnchor 不存储）的同族，只是那一族
+ * 修好了存储层，没修消费层。
+ *
+ * ═══ 契约 ═══
+ * 返回 assess() 期望的形状。**没有外部锚时不得伪造分数** ——
+ * 防自欺护栏的全部意义就在于"无外部验证时明确标记未验证"，
+ * 若此处编一个分数出来，等于让护栏给自己开通行证。
+ * 锚由外部经 setAnchor() 写入；本函数只读、不计算、不推断。
+ *
+ * @param {object} _hf - 引擎实例（预留；当前取锚不依赖引擎状态）
+ * @returns {{available: boolean, score: number|null, logicAccuracy: number|null, humanSatisfaction: number|null}}
+ */
+function anchorSync(_hf) {
+  _loadOnce();
+  const a = _anchor;
+  if (!a || typeof a !== 'object') {
+    return { available: false, score: null, logicAccuracy: null, humanSatisfaction: null };
+  }
+  // score 是 0..1 的复合分；缺失或非有限数一律按"无可用锚"处理
+  const score = (typeof a.score === 'number' && isFinite(a.score)) ? a.score : null;
+  const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : null;
+  return {
+    available: score !== null,
+    score,
+    logicAccuracy: num(a.logicAccuracy),
+    humanSatisfaction: num(a.humanSatisfaction),
+  };
+}
+
+module.exports = {
+  getAnchor, setAnchor, clearAnchor, healthCheck, anchorSync,
+  _setFile: (f) => { _file = f; _loaded = false; _anchor = null; },
+};
