@@ -58,5 +58,5 @@ module.exports = { validate, parse };`;
 
 // 汇总行：没有它，parseChildSummary 对本文件返回 null，6 条真实用例
 // 在门禁总数里计 0（test/_child-summary.js 头部记载过同族 195 条）。
-console.log(`\n📊 architecture-consistency: ${passed} passed, ${failed} failed, total ${passed + failed}`);
+console.log(`\n📊 architecture-consistency — 测试结果: ${passed} 通过, ${failed} 失败, 共 ${passed + failed} 个`);
 process.exit(failed > 0 ? 1 : 0);

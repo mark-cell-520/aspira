@@ -101,5 +101,5 @@ assert('missing evidence fields triggers', () => {
   if (!hasEvidence) throw new Error('expected missing_evidence_fields');
 });
 
-console.log(`\n📊 decision-trace: ${passed} passed, ${failed} failed, total ${passed + failed}`);
+console.log(`\n📊 decision-trace — 测试结果: ${passed} 通过, ${failed} 失败, 共 ${passed + failed} 个`);
 process.exit(failed > 0 ? 1 : 0);

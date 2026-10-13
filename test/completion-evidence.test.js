@@ -69,5 +69,5 @@ assert('vague completion triggers', () => {
   if (!hasVague) throw new Error('expected vague_completion issue');
 });
 
-console.log(`\n📊 completion-evidence: ${passed} passed, ${failed} failed, total ${passed + failed}`);
+console.log(`\n📊 completion-evidence — 测试结果: ${passed} 通过, ${failed} 失败, 共 ${passed + failed} 个`);
 process.exit(failed > 0 ? 1 : 0);
