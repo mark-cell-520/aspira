@@ -68,12 +68,20 @@ function checkReversibility(text) {
   }
 
   // R3: production config/credentials without irreversible warning
+  // [OOM 修复] 这一组原来只有 /i 没有 /g，而下面的循环是
+  //   while ((m = re.exec(text)) !== null)
+  // 没有 g 标志时 exec 每次从 0 起跳、永远返回同一个匹配 —— 循环永不退出，
+  // issues 被无限 push 直到堆爆。上面 R1/R2 两组都规规矩矩用了 /gi，唯独这组漏了。
+  // 触发条件只是输入里出现 env X / token: / production config 这类词，
+  // 而 checkReversibility 是 src/index.js 公开导出的 API。
+  // 这条缺陷一直没被发现，是因为唯一的测试文件叫 test-reversibility.js
+  // 而不是 *.test.js —— run-all.js 只发现后者，所以它从未进过门禁。
   const PROD = [
-    /production\s+config/i,
-    /\benv\s+\w+/i,
-    /\btoken\s*[:=]/i,
-    /\b(key|secret)\s*[:=]/i,
-    /credential/i
+    /production\s+config/gi,
+    /\benv\s+\w+/gi,
+    /\btoken\s*[:=]/gi,
+    /\b(key|secret)\s*[:=]/gi,
+    /credential/gi
   ];
 
   for (const re of PROD) {
