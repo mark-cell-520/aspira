@@ -34,8 +34,22 @@ function readsOf(body) {
   //   const a = args;
   // 首版不认这个惯用法，于是把 23 个健康的工具报成"声明未读"。
   // 审计工具自己产出假阳性，比没有审计更危险——它会让人去修没坏的东西。
+  // [仪器修复·第五类] 原正则右侧只要求可选的 `||`/`??`，**不要求到此结束**：
+  //   /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*args\s*(?:\|\||\?\?)?/g
+  // 于是 `const decision = args?.decision || {}`(aspira_decision_feedback)也被
+  // 登记成别名 —— `args` 后面的 `?.decision` 被无视。后果: `decision.type` /
+  // `decision.ruleId` / `decision.confidence` / `decision.context` 全是 **decision
+  // 这个对象的字段**，却被当成 args 上的参数报出来，一条工具平白多出 4 个
+  // "读取未声明"。
+  // 判据(与 test/mcp-param-contract.test.js 的 detectReads 同源): 别名必须是
+  // **整体**拿到 args——右侧只能是 `args`、`args || {}`、`args ?? {}`，取某个
+  // 字段的(`args?.X`)不是别名。
   const aliases = ['args'];
-  for (const m of body.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*args\s*(?:\|\||\?\?)?/g)) {
+  for (const m of body.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*args\s*(?:\|\||\?\?)\s*\{?\s*\}?\s*(?:;|$|\n)/gm)) {
+    if (!aliases.includes(m[1])) aliases.push(m[1]);
+  }
+  // 单独的 `const x = args;`(无 || / ??)
+  for (const m of body.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*args\s*;/g)) {
     if (!aliases.includes(m[1])) aliases.push(m[1]);
   }
   const aliasAlt = aliases.join('|');
