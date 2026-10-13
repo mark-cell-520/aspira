@@ -1,13 +1,13 @@
 /**
- * classics-base.js â åè/éè/ä½èè¯­æåºï¼daizhigev20ï¼è·¯å¾è§£æ
+ * classics-base.js — 儒藏/道藏/佛藏语料库（daizhigev20）路径解析
  *
- * [FIX 2026-09-19] åæ¥ classics-rules.js / classics-feedback.js é½ç¨
+ * [FIX 2026-09-19] 原来 classics-rules.js / classics-feedback.js 都用
  *   path.join(__dirname, '..', '..', '..', '..', 'daizhigev20')
- * ç¡¬æ¨åçº§ç®å½ãå½æè½è¢«å®è£å°å«çç¨æ·ç skills ç®å½ä¸ï¼ä¾å¦å¼æè·å¨
- * claude-bot ä¸ï¼èè¯­æåºè£å¨ root ç ~/.hermes/skills/daizhigev20ï¼ï¼
- * è§£æç»æå°±æåä¸ä¸ªä¸å­å¨çè·¯å¾ï¼å¤å¸æ£ç´¢æ´æ¡é¾è·¯éé»å¤±æã
+ * 硬推四级目录。当技能被安装到别的用户的 skills 目录下（例如引擎跑在
+ * claude-bot 下，而语料库装在 root 的 ~/.hermes/skills/daizhigev20），
+ * 解析结果就指向一个不存在的路径，古典检索整条链路静默失效。
  *
- * ç°å¨æä¼åçº§æ¾ç¬¬ä¸ä¸ªçå®å­å¨çç®å½ï¼å¹¶åè®¸ç¨ç¯å¢åéæ¾å¼æå®ã
+ * 现在按优先级找第一个真实存在的目录，并允许用环境变量显式指定。
  */
 
 const fs = require('fs');
@@ -25,20 +25,20 @@ function _exists(p) {
 function _candidates() {
   const list = [];
 
-  // 1. æ¾å¼ç¯å¢åéä¼å
+  // 1. 显式环境变量优先
   if (process.env.DAIZHIGEV20_PATH) list.push(process.env.DAIZHIGEV20_PATH);
   if (process.env.CLASSICS_BASE) list.push(process.env.CLASSICS_BASE);
 
-  // 2. ä¸æ¬æè½åçº§ï¼åæ¥çè¡ä¸ºï¼ä¿çå¼å®¹ï¼
+  // 2. 与本技能同级（原来的行为，保留兼容）
   list.push(path.join(__dirname, '..', '..', '..', '..', 'daizhigev20'));
 
-  // 3. å¸¸è§ç hermes skills å®è£ä½ç½®
+  // 3. 常见的 hermes skills 安装位置
   const homes = [os.homedir(), '/root', '/home/claude-bot'];
   for (const home of homes) {
     list.push(path.join(home, '.hermes', 'skills', 'daizhigev20'));
   }
 
-  // 4. å¨å±ä½ç½®
+  // 4. 全局位置
   list.push('/usr/local/share/hermes/skills/daizhigev20');
   list.push('/opt/hermes/skills/daizhigev20');
 
