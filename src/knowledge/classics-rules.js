@@ -979,7 +979,10 @@ function matchDomain(input) {
 function searchClassics(keyword, scope) {
   // NOTE: search_guji.sh is not bundled; this is dead code pending future integration.
   // When enabled, replace execSync string interpolation with parameterized array to prevent shell injection.
-  if (!fs.existsSync(SCRIPT)) {
+  // [DEP0187] 语料库未安装时 classics-base.js 解出的 SCRIPT 是 null，
+  // fs.existsSync(null) 会触发 DeprecationWarning（每次判别都刷一条）。
+  // null 本就意味着"脚本不存在"，提前短路，顺带消掉警告。
+  if (!SCRIPT || !fs.existsSync(SCRIPT)) {
     return { hits: [], error: 'searchClassics disabled: search_guji.sh not found' };
   }
   try {
