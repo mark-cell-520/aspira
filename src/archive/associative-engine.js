@@ -233,11 +233,13 @@ class ProcessingMetrics {
 class AssociativeEngine {
   constructor(projectRoot) {
     this.projectRoot = projectRoot;
-    const { LexicalAssociator } = require('./lexical-associator');
-    const { ChunkDetector } = require('./chunk-detector');
-    const { NarrativeRetriever } = require('./narrative-retriever');
-    const { SemanticConverger } = require('./semantic-converger');
-    const { WordByWordGenerator } = require('./word-by-word-generator');
+    // 五个子模块在 associative-engine/ 子目录下，少写一层目录会 MODULE_NOT_FOUND。
+    // 该文件只被 test/archive/associative-engine-tests/ 引用，断链在跑归档测试时才暴露。
+    const { LexicalAssociator } = require('./associative-engine/lexical-associator');
+    const { ChunkDetector } = require('./associative-engine/chunk-detector');
+    const { NarrativeRetriever } = require('./associative-engine/narrative-retriever');
+    const { SemanticConverger } = require('./associative-engine/semantic-converger');
+    const { WordByWordGenerator } = require('./associative-engine/word-by-word-generator');
 
     this.lexicalAssociator = new LexicalAssociator(projectRoot);
     this.chunkDetector = new ChunkDetector(projectRoot);
