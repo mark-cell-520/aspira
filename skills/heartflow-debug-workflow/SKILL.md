@@ -770,7 +770,7 @@ if (hasTransition.test(input)) score += 0.3;
 - `_checkTypeCoercion` = **挂起** ❌
 - `_checkDeadCode` = 55ms ✅（单文件独立测试）
 
-**影响文件**：项目含 164 个 JS/TS 文件，总行数 ~81K。其中 `scripts/heartflow-memory-inject.js`（3440行）、`scripts/heartflow-memory-tool.js`（~2500行）、`references/audit-zombie.js`（~2000行）等生成文件会大量消耗内存。
+**影响文件**：项目含 164 个 JS/TS 文件，总行数 ~81K。其中 `../../scripts/heartflow-memory-inject.js`（3440行）、`../../scripts/heartflow-memory-tool.js`（~2500行）、`references/audit-zombie.js`（~2000行，该文件已不在仓库中，此处仅作历史记录）等生成文件会大量消耗内存。
 
 **正确做法——轻量级替代方案**：
 不要直接调用 `runAudit({mode:'full'})`。改用分段检查：
@@ -1084,7 +1084,13 @@ if (!mod && this._lazy && this._lazy[subsystem]) {
 | MCP 自动端口检测 | `mcp/mcp-server-http.js` | 从 8099-8105 自动找可用端口，支持 MCP_PORT 和 --port 参数 |
 | README MCP 章节 | `README.md` | 快速启动 + 故障排除 + auth 说明 |
 | LLM 集成示例 | `examples/llm-integration.js` | 展示如何将新愿认知分析传给 LLM |
-| 版本号统一 | `VERSION` + `package.json` + `README.md` | 统一为 v4.1.2 |
+| 版本号统一 | `VERSION` + `package.json` + `README.md` | 统一为 v4.1.2（口径已更正：README.md 不是同步目标，见下注） |
+
+> 口径更正：上表是 2026-06-25 的记录，其中的版本同步目标清单已过期。当前权威口径
+> 见 `../../scripts/sync-version.js`：VERSION（唯一真相源）→ `src/core/version.js` 兜底常量
+> → `package.json` → `SKILL.md` → `.well-known/agent-card.json`。README.md 与
+> CHANGELOG.md 不是同步目标（README 动态读取，CHANGELOG 是历史记录）。
+> 表中"统一为 v4.1.2"是当时的版本号，不代表当前版本。
 
 **待办**：npm 发布（需用户确认 npm 账号）
 
@@ -1574,7 +1580,7 @@ console.log('missing:', ['translator','agentLayer','personaCore'].filter(n=>!r.i
 
 **不吸收的**：product_information、MCP_app_suggestions、artifact_usage_criteria、image_search、places_search、weather_fetch、所有工具 JSON schema。
 
-详情见 `heartflow-system-prompt-absorption` skill 的 `references/fable5-absorption-analysis.md`。
+详情见 `heartflow-system-prompt-absorption` skill 的 `../heartflow-system-prompt-absorption/references/fable5-absorption-analysis.md`。
 
 ## ⚡ 关键 Pitfall：AgentPsychology 返回 "Unknown subsystem: agentPsychology"
 
@@ -2221,7 +2227,7 @@ const h=new Aspira({rootPath:'.'}); h.start(); process.exit(0);
 
 ## ⚡ 关键 Pitfall：审计报告中的合成日志文件必须删除，不只是标注（2026-06-24 新增）
 
-**症状**：NVIDIA SkillSpector 审计报告发现 `scripts/generate-thinkcheck-log.js` 和 `references/thinkcheck-optimization-plan.md` 包含"评分操纵"和"合成日志生成"行为。
+**症状**：NVIDIA SkillSpector 审计报告发现 `scripts/generate-thinkcheck-log.js` 和 `references/thinkcheck-optimization-plan.md` 包含"评分操纵"和"合成日志生成"行为。（两个文件现已删除，此处为历史记录。）
 
 **根因**：`generate-thinkcheck-log.js` 生成包含 `HEARTFLOW COT TRACES` 和 `HEARTFLOW ENGINE LOG` 头部的合成日志，但内容来自模板和随机数，不是真实引擎运行数据。`thinkcheck-optimization-plan.md` 明确描述了如何"提升 ThinkCheck A 值"，属于评价博弈（evaluation gaming）。
 

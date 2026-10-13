@@ -96,7 +96,7 @@ author: Aspira
 ## 相关技能
 
 - `heartflow-session-context`：会话上下文管理，解决"继续"类元指令的上下文丢失问题
-- `heartflow-session-context` → `references/routing-upgrade-python-port.md`：Python 移植版路由增强层（whatIsThis + TopicScope + @task_classify + 4层路由），兼容 fu-mu-gong-ke
+- `heartflow-session-context` → `../heartflow-session-context/references/routing-upgrade-python-port.md`：Python 移植版路由增强层（whatIsThis + TopicScope + @task_classify + 4层路由），兼容 fu-mu-gong-ke
 - `heartflow-truthfulness`：防止汇报中的记忆错乱
 
 ---

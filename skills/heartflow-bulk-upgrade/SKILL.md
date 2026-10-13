@@ -75,11 +75,12 @@ node --check src/core/ai-self-positioning.js
 node --check src/dream/engine.js
 
 # 2. 统一版本号
-# VERSION → package.json → SKILL.md → README.md → CHANGELOG.md
+# 权威口径见 scripts/sync-version.js：VERSION（唯一真相源）→ src/core/version.js
+# → package.json → SKILL.md → .well-known/agent-card.json
+# README.md 与 CHANGELOG.md 不在同步目标里（README 动态读取，CHANGELOG 是历史）
 cat VERSION
 grep "version:" SKILL.md | head -1
 grep '"version":' package.json
-grep 'version-' README.md | head -1
 
 # 3. 重启MCP
 launchctl stop com.heartflow.mcp
@@ -115,13 +116,16 @@ launchctl start com.heartflow.mcp
 
 ### 版本统一检查清单
 
+以 `../../scripts/sync-version.js` 为准（唯一真相源是 VERSION 文件）。README.md 与
+CHANGELOG.md 不在同步目标里 —— README 动态读取，CHANGELOG 是历史记录。
+
 | 文件 | 位置 | 验证命令 |
 |------|------|---------|
 | VERSION | 根目录 | `cat VERSION` |
+| src/core/version.js | 兜底常量 | `grep "VERSION = " src/core/version.js` |
 | package.json | `version` 字段 | `grep '"version"' package.json` |
 | SKILL.md | frontmatter `version:` | `grep 'version:' SKILL.md \| head -1` |
-| README.md | badge URL | `grep 'version-' README.md \| head -1` |
-| CHANGELOG.md | 顶部版本标题 | `head -3 CHANGELOG.md` |
+| .well-known/agent-card.json | A2A 发现卡 `version` | `grep '"version"' .well-known/agent-card.json` |
 
 ### clawhub发布陷阱
 
@@ -389,7 +393,7 @@ node -e "const HF=require('...'); const hf=new HF.Aspira({rootPath:'.'}); hf.sta
 
 **第3步**：
 - 语法检查：6文件全部通过
-- 版本统一：VERSION=2.14.0, SKILL.md=2.14.0, README.md=2.14.0, package.json=2.14.0
+- 版本统一：VERSION=2.14.0, SKILL.md=2.14.0, README.md=2.14.0, package.json=2.14.0（历史执行日志，当时的版本号；口径以上方检查清单为准，README.md 不是同步目标）
 - MCP重启+测试：12个工具全部可用
 - GitHub推送：`3477565` ✅
 - clawhub发布：`heartflow-ai-self-positioning@2.14.0` ✅

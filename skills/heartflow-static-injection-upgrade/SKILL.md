@@ -156,7 +156,7 @@ class closing `}` 之后可能有 `if (require.main === module) { ... }` 等顶�
 
 ## 文件管理
 
-- 脚本：`scripts/batch-upgrade-v4.js`（独立运行）
+- 脚本：`scripts/batch-upgrade-v4.js`（独立运行）—— 注意：该脚本未随附于本技能，需自行按本文件前述步骤编写，或用清单文件记录已升级的文件
 - 成功记录：运行后输出成功/失败文件列表
 - 失败分析：用 `node --check <file>` 检查失败文件的语法错误位置
 

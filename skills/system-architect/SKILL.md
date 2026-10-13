@@ -29,8 +29,9 @@ description: Acts as a Senior System Architect to design robust, scalable, and m
 - [Scaffolding](references/scaffolding.md) – standard directory layouts for Python and JS/TS.
 
 ## Assets (templates)
-- [README](assets/templates/README.md) – project overview, Node and Python quick-start.
-- [ARCHITECTURE](assets/templates/ARCHITECTURE.md) – components, data flow, deployment, decisions.
-- [.editorconfig](assets/templates/.editorconfig) – shared indent and line length.
-- [.pylintrc](assets/templates/.pylintrc) – Python lint (PEP 8–aligned).
-- [.eslintrc.json](assets/templates/.eslintrc.json) – JS/TS lint (TypeScript strict, Prettier).
+
+⚠️ 本技能未随附 `assets/templates/` 目录，下面五项均不在仓库中，不要按路径去取：
+README 模板 / ARCHITECTURE 模板 / `.editorconfig` / `.pylintrc` / `.eslintrc.json`。
+替代做法：按 references/scaffolding.md 的目录布局手写这五份文件；`.editorconfig` 只需
+indent_style、indent_size、end_of_line、charset 四行，`.pylintrc` 与 `.eslintrc.json`
+从各自工具的官方 strict 预置起步。

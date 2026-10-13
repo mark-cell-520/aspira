@@ -485,7 +485,13 @@ for line in result.stdout.split('\n'):
 }
 ```
 
-### 8阶段管道
+### 8阶段管道（v5.2.2 当时实测的管道形态，非当前架构）
+
+> 口径说明：本节是 2026-06-25 v5.2.2 的实测记录，当时 thoughtChain 记到 8 个阶段。
+> 当前管道是双过程的：DEFAULT_PIPELINE 12 阶段、FAST_PIPELINE 7 阶段
+> （见 heartflow-architecture-tracing 的阶段表，或 src/workflow/pipeline-config.js）。
+> 下面的 8 是历史读数，不要当作当前阶段数使用。
+
 1. heartLogic (2ms) — whatIsThis + detectPain
 2. intent (2ms) — 意图分类 + 语气分析
 3. memory (1ms) — 记忆检索

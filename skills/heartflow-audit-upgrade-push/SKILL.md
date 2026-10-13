@@ -1085,9 +1085,8 @@ grep -h "version" package.json VERSION VERSION.txt README.md SKILL.md | sort | u
 
 ### 参考
 
-`references/audit-findings-2026-05-31.md`
-`references/audit-findings-2026-06-10.md`
-`references/audit-findings-2026-06-11.md`
+`references/audit-findings-2026-06-29.md` — SkillSpector 审计发现（2026-06-29，本目录下唯一仍在的审计发现记录）
+（2026-05-31 / 2026-06-10 / 2026-06-11 三份 audit-findings 已不在仓库中，此处不再列为可用资源）
 
 ---
 
@@ -1127,7 +1126,7 @@ console.log(report.summary);
 
 `runAudit({mode:'full'})` 调用 `engine.auditCodebase(ROOT)` 会一次性将所有文件读入内存做 AST 解析，即使 8GB 堆也会 OOM。
 
-**替代方案**：不要直接调用。使用 `scripts/lightweight-audit.js`（纯文件统计+正则，<10秒，无需 CodeEngine）或逐文件分段检查。
+**替代方案**：不要直接调用。使用 `delegate_task` 分派子代理逐子系统扫描，或逐文件分段检查（本文档 2026-09-17 核实：`scripts/lightweight-audit.js` 已删除，不再作为替代方案）。
 
 ### 并发批量修复模式（SkillSpector 审计）
 
@@ -1168,11 +1167,11 @@ delegate_task tasks=[...3 more]
 
 每2小时的 cron 升级任务应遵循：
 
-1. **选模块** — `node scripts/autonomous-upgrade.js` 由决策引擎自主裁决切片（旧法“CodeEngine 自审找最小模块”依赖的 `code-engine.js`/`self-audit.js` 已删除，见 `references/cron-config-reference.md` 2026-10-06 修复）；按其 stdout 的 `chosen` 执行本切片
+1. **选模块** — `node scripts/autonomous-upgrade.js` 由决策引擎自主裁决切片（旧法“CodeEngine 自审找最小模块”依赖的 `code-engine.js`/`self-audit.js` 已删除，见 `../heartflow-module-upgrader/references/cron-config-reference.md` 2026-10-06 修复）；按其 stdout 的 `chosen` 执行本切片
 2. **分析缺失** — 读完整源码判断缺少什么（状态枚举/错误分类/重试策略等）
 3. **升级** — 增加至少50行实际逻辑，保留所有已有功能
 4. **验证** — `node --check` + 功能内联测试
-5. **同步版本号** — VERSION + SKILL.md frontmatter + SKILL.md title + package.json 四处同步
+5. **同步版本号** — 由 `../../scripts/sync-version.js` 从 VERSION 文件统一写：VERSION（源）→ `src/core/version.js` 兜底常量 → `package.json` → `SKILL.md` → `.well-known/agent-card.json`。README.md 与 CHANGELOG.md 不是同步目标（README 动态读取，CHANGELOG 是历史记录）
 6. **git commit** — 不自动 push，等有意义的里程碑再 bump
 
 ### 参考
@@ -1180,7 +1179,8 @@ delegate_task tasks=[...3 more]
 > ⚠️ 2026-09-17 核实：本文件中提到的 `src/core/self-audit.js`、`src/core/code-engine.js`、
 > `scripts/lightweight-audit.js`、`scripts/manual-audit.sh` **均已不存在**。
 > 审计请改用 `delegate_task` 分派子代理逐子系统扫描，或直接手动检查。
-
-`references/cron-safe-audit-recipes.md` — 5种经实战验证的 cron-safe 审计配方
-`scripts/lightweight-audit.js` — 完整6维度轻量审计脚本
-`scripts/manual-audit.sh` — cron-safe 手动审计脚本
+>
+> 因此下述三项**不是可用资源**，列出只为说明它们曾经存在、现已删除：
+> - `scripts/lightweight-audit.js` — 已删除（曾为完整 6 维度轻量审计脚本）
+> - `scripts/manual-audit.sh` — 已删除（曾为 cron-safe 手动审计脚本）
+> - `references/cron-safe-audit-recipes.md` — 从未落盘（原计划的 5 种 cron-safe 审计配方）

@@ -1,5 +1,5 @@
 ---
-name: code-error-fixer
+name: code-fix
 description: |
   Systematic code error diagnosis and fix skill. Handles compilation errors, runtime exceptions,
   type errors, logic bugs, crash analysis, dependency conflicts, and unexpected behavior.

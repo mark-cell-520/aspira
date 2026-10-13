@@ -1,3 +1,9 @@
+---
+name: debug-pro
+description: Systematic debugging methodology — the 7-step protocol (reproduce → isolate → hypothesize → instrument → verify → fix → regression test) plus language-specific debugging commands for JavaScript/TypeScript, Python, Swift, CSS/layout, network and git bisect, a common-error-pattern lookup table, and quick diagnostic commands. Use when chasing a bug, crash, or failing test and a reproducible root cause is required before touching the fix.
+version: 1.0.0
+---
+
 # debug-pro
 
 Systematic debugging methodology and language-specific debugging commands.

@@ -1,5 +1,5 @@
 ---
-name: clean-code
+name: clean-code-review
 model: standard
 category: testing
 description: Pragmatic coding standards for writing clean, maintainable code — naming, functions, structure, anti-patterns, and pre-edit safety checks. Use when writing new code, refactoring existing code, reviewing code quality, or establishing coding standards.

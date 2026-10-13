@@ -24,7 +24,7 @@ version: 0.7.5
 
 12. **AI 安全治理**：OpenAI Dylan Scandinaro 挖角（2026-02）/ Anthropic Claude Opus 4.5 + FLI C+ 评级 / DeepMind Gemini 3 Pro + Josh Engels 离职 / EU AI Act 执行三分权 / US EO 14412 + OMB M-26-15 / UN High Commissioner Volker Turk 生存风险警告（2026-09-07）/ International AI Safety Report 2026（100+ 专家）/ Frontier Risk Monitor Q1 2026（METR 7 个月能力翻倍）
 
-1. 读取 `references/human-future-2026-2028.md` 获取完整推演
+1. 读取 `../../references/human-future-2026-2028.md` 获取完整推演
 2. 如需更新，补充新来源后重新跑 Aspira gate 监督
 3. 输出给用户时附带 Aspira gate 结果
 
@@ -119,5 +119,5 @@ version: 0.7.5
 |- 2026-09-16 v0.7.5：新增第十五/十六章（数字意识与军事增强前沿 / 人类增强与文明基础设施前沿），覆盖 Eon Systems 果蝇全脑仿真 / military exoskeleton / LAWS / mirror bacteria / SpudCell / Tesla Optimus 量产 / Figure AI BotQ / longevity pipeline（NewLimit/Retro/ER-100）/ ispace Mission 3 / quantum advantage critical window
 
 ## References
-|- `references/human-future-2026-2028.md` — 完整推演正文（651 行，v0.7.5）
+|- `../../references/human-future-2026-2028.md` — 完整推演正文（651 行，v0.7.5）
 - `references/expansion-sessions.md` — 版本迭代明细 / 来源获取方法论 / 已知局限

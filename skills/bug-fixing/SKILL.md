@@ -1,5 +1,5 @@
 ---
-name: bug-fixing-openclaw
+name: bug-fixing
 description: |
   Zero-regression bug fix workflow: triage → reproduce → root cause →
   impact analysis → fix → verify → knowledge deposit → self-reflect.

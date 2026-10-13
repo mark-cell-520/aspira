@@ -11,11 +11,21 @@ tags: [heartflow, architecture, tracing, debugging, think-chain, decision-router
 
 ## 核心问题：新愿的结果从哪里来？
 
-新愿 think() 的输出不是来自 LLM 或外部 API——它来自一个 **7阶段声明式 Pipeline**（v5.0.0 新增）。
+新愿 think() 的输出不是来自 LLM 或外部 API——它来自一个**声明式 Pipeline**（v5.0.0 新增），
+由 `src/workflow/pipeline.js` 驱动、阶段表写在 `src/workflow/pipeline-config.js`。
+
+**阶段数有两个，因为管道是双过程的**（v1.2.0 起，Dual-Process Mode）：
+
+- DEFAULT_PIPELINE — **12 阶段**，System 2 慢思考，完整管道
+- FAST_PIPELINE — **7 阶段**，System 1 快思考，跳过深层认知
+
+本技能早先只写了"7 阶段"，那实际是 FAST_PIPELINE 一张表被当成了整条管道，
+DEFAULT 独有的 5 个阶段（emotionDynamics / cognitiveLoad / deepCognition /
+logicReasoning / cognitiveEnrichment）全部缺失。下文两张表都给全。
 
 v4.x 及之前是 13 步硬编码分析流水线 + ThoughtChain 思维链。v5.0.0 用 Pipeline 引擎替代了硬编码 think() 体，自动在阶段间传递数据。
 
-### v5.0.0 管道架构
+### 管道架构
 
 ```
 用户输入
@@ -23,12 +33,10 @@ v4.x 及之前是 13 步硬编码分析流水线 + ThoughtChain 思维链。v5.0
 think() — heartflow.js
   ↓ 优先走 Pipeline（回退到 ThoughtChain）
   ↓
-Pipeline — pipeline.js（7阶段声明式管道）
-  ├─ Stage 1 (并行): heartLogic ─┬─ intent ─┬─ memory
-  ├─ Stage 2 (依赖1): psychology (需要 heartLogic + intent)
-  ├─ Stage 3 (依赖2): judgment (需要 psychology + intent + memory)
-  ├─ Stage 4 (依赖3): decision (需要 judgment + psychology)
-  └─ Stage 5 (依赖4): output (需要 judgment + decision + memory)
+复杂度检测 — 输入长度 / 决策关键词 / 情感语言 / 从句数
+  ↓
+  ├─ fast（System 1）: 7 阶段，跳过深层认知，<50ms
+  └─ full（System 2）: 12 阶段，含 deepCognition + logicReasoning，<500ms
   ↓
 { output, type, confidence, thoughtChain }
 ```
@@ -128,19 +136,38 @@ Pipeline 的 Stage 5（output）汇总所有阶段结果，调用 report-generat
 
 ## 架构分层
 
-### Pipeline 的7阶段
+### Pipeline 的阶段表（以 src/workflow/pipeline-config.js 为准）
+
+FAST_PIPELINE（System 1，7 阶段）：
 
 | 阶段 | 名称 | 依赖 | 调用模块 |
 |------|------|------|---------|
-| 1 | heartLogic | 无 | whatIsThis, detectPain, intentClassifier, toneAnalyzer |
+| 1 | heartLogic | 无 | whatIsThis, detectPain |
 | 2 | intent | 无 | intentClassifier, toneAnalyzer |
 | 3 | memory | 无 | memory.searchByKeywords |
 | 4 | psychology | heartLogic, intent | psychology.analyzePsychology, agentPsychology, agentPhilosophy |
-| 5 | judgment | psychology, intent, memory | judgmentEngine.judge |
+| 5 | judgment | psychology, memory | judgmentEngine.judge |
 | 6 | decision | judgment, psychology | decisionRouter.evaluate, decisionExecutor.apply |
 | 7 | output | judgment, decision, memory | reportGenerator.generate |
 
-**依赖解析**：Pipeline 引擎自动根据 deps 数组做拓扑排序。无依赖的阶段（1/2/3）并行执行。有依赖的阶段等待依赖完成后串行执行。
+DEFAULT_PIPELINE（System 2，12 阶段）—— FAST 的 7 个加上下面 5 个深层认知阶段：
+
+| 阶段 | 名称 | 依赖 | 说明 |
+|------|------|------|------|
+| 5 | emotionDynamics | psychology, heartLogic | 情绪动态 |
+| 6 | cognitiveLoad | memory | 认知负荷 |
+| 7 | deepCognition | psychology | 深度认知 |
+| 8 | logicReasoning | deepCognition, heartLogic | 逻辑推理 |
+| 9 | cognitiveEnrichment | deepCognition, logicReasoning | 认知 enrich |
+| 10 | judgment | psychology, deepCognition, intent, memory, cognitiveEnrichment | 判断 |
+| 11 | decision | judgment, psychology | 决策 |
+| 12 | output | judgment, decision, deepCognition, memory, cognitiveEnrichment | 输出 |
+
+即：FAST 的 judgment/decision/output 在 DEFAULT 里依赖更宽（多出 deepCognition、
+cognitiveEnrichment），且 psychology 之后多一整段深层认知。
+
+**依赖解析**：Pipeline 引擎自动根据 `depends` 数组做拓扑排序。无依赖的阶段
+（heartLogic / intent / memory）并行执行，有依赖的阶段等待依赖完成后串行执行。
 
 ### 旧版 think() 的13步分析流水线（v4.x，已被 Pipeline 替代）
 
@@ -244,5 +271,5 @@ Pipeline 的 Stage 6（decision）调用 decisionRouter.evaluate()，但 decisio
 
 - `references/user-call-chain-2026-06-25.md` — 用户调用链完整分析
 - `references/think-chain-source-trace.md` — 从输入到"不知道"的完整路径追溯
-- `references/v5.0.0-pipeline-architecture.md` — Pipeline 引擎设计文档
+- `src/workflow/pipeline.js` + `src/workflow/pipeline-config.js` — Pipeline 引擎设计与阶段表（DEFAULT_PIPELINE 12 阶段 / FAST_PIPELINE 7 阶段，双过程模式；原规划的 `references/v5.0.0-pipeline-architecture.md` 未落盘）
 - `references/heartflow-benchmark-methodology-2026-06-29.md` — 新愿评测方法论（MCP路径/返回结构/逻辑推理检测/16题稳定测试集）

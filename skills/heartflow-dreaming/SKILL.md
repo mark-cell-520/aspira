@@ -477,6 +477,6 @@ lines.push(`${a.name}在梦里看着${b.name}`);
 - `references/dream-v11.1-no-self-reference-upgrade.md` — v11.1 修复记录（去"梦"自指+精简流水线+模板多样化，2026-06-19）（去"梦"自指+精简流水线+模板多样化，2026-06-19）
 - `references/dream-v11-philosophy-weave-upgrade.md` — v11.0 升级记录（哲学编织梦，当前版本）
 - `references/dream-v9-memory-shuffle-upgrade.md` — v9.0 升级记录（记忆 shuffle）
-- `references/dream-v8-recurring-dream-upgrade.md` — v8.0 升级记录（反复梦，被用户否决）
+- v8.0 反复梦升级（被用户否决，记录文件未落盘）
 - `references/dream-v7-concrete-imagery-upgrade.md` — v7.0 升级记录（具体意象）
 - `references/dream-v6-human-sleep-cycle-upgrade.md` — v6.0 升级记录（睡眠周期）

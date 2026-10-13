@@ -114,11 +114,11 @@ python scripts/check_js.py <target_path> --fix
 
 ### 步骤 5：生成规范配置文件（新项目）
 
-如果项目尚无规范配置，从 `assets/` 目录复制对应模板：
-
-- Python：`assets/ruff.toml` → 项目根目录
-- JS/TS：`assets/.eslintrc.json` + `assets/.prettierrc` → 项目根目录
-- 通用：`assets/.editorconfig` → 项目根目录
+⚠️ 本技能未随附 `assets/` 模板目录（`ruff.toml` / `.eslintrc.json` / `.prettierrc` / `.editorconfig`
+均不在仓库中）。不要按"从 assets/ 复制"执行——那会静默失败。改用下述来源之一：
+- Python：用 `ruff` 官方默认配置起步（`ruff.toml` 最小集 = `[lint] select = ["E","F","I","UP"]`）
+- JS/TS：用 `eslint` + `@typescript-eslint` 的 `strictTypeChecked` 预置，配 `prettier`
+- 通用：`.editorconfig` 手写四行（indent_style / indent_size / end_of_line / charset）
 
 ## 输出格式
 

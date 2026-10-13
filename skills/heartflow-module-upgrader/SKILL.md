@@ -539,7 +539,7 @@ const tests = [
 ];
 ```
 
-参考文件：`references/emotion-signal-substring-pitfall.md`（在 heartflow-debug-workflow 下）
+参考文件：`../heartflow-debug-workflow/references/emotion-signal-substring-pitfall.md`（在 heartflow-debug-workflow 下）
 
 ### 23. 错误分类器顺序损坏恢复（v1.18.0 新增）
 
