@@ -976,7 +976,18 @@ function bootCheck(silent = false) {
 
   if (!silent) {
 
-    const icon = allPass ? '✓' : '⚠';
+    // [本轮修复] 这一整段此前是**空转的**：四个回调体里只有 const 声明、没有任何
+    // 输出语句，versionCheck / health.breakdown / suggestions 三个分支体是空的。
+    // 于是 silent 参数形同虚设 —— bootCheck() 与 bootCheck(true) 的输出完全一样：
+    // 什么都不打印(实测: 包裹 stdout/stderr 后 bootCheck(false) 输出 0 字节)。
+    // 报告对象本身是好的，但"跑完自检给人看"这条契约断了：CLI/守护进程调它时
+    // 操作者看不到任何东西，只能自己去翻返回体。下面把每一条都接回真实输出。
+
+    const headIcon = allPass ? '✓' : '⚠';
+
+    console.log(`\n${headIcon} Aspira Boot Check — ${report.summary.status} (health ${health.score}/100, ${health.grade})`);
+
+    console.log(`\n  核心文件 (${filePassed}/${CORE_CHECKS.length})`);
 
     fileResults.forEach(r => {
 
@@ -984,7 +995,11 @@ function bootCheck(silent = false) {
 
       const req = r.required ? ' [REQUIRED]' : '';
 
+      console.log(`    ${icon} ${r.label}${req}${r.status === 'PASS' ? '' : ` — ${r.detail || r.status}`}`);
+
     });
+
+    console.log(`\n  模块加载 (${modulePassed}/${MODULE_CHECKS.length}, ${totalLoadMs.toFixed(1)}ms, ${cachedCount} cached / ${freshCount} fresh)`);
 
     moduleResults.forEach(r => {
 
@@ -996,25 +1011,41 @@ function bootCheck(silent = false) {
 
       const cacheStr = r.fromCache ? ' [cached]' : ' [fresh]';
 
+      console.log(`    ${icon} ${r.label}${versionStr}${cacheStr} — ${timeStr}${r.status === 'PASS' ? '' : ` — ${r.detail || r.status}`}`);
+
     });
 
     if (versionCheck.consistent) {
 
+      console.log(`\n  版本一致: ${versionCheck.expectedVersion}`);
+
     } else {
+
+      console.log(`\n  ✗ 版本不一致 (期望 ${versionCheck.expectedVersion}): ${versionCheck.conflicts.join(', ')}`);
 
     }
 
+    console.log('\n  健康评分明细');
+
     for (const [dim, info] of Object.entries(health.breakdown)) {
+
+      console.log(`    ${dim}: ${info.earned}/${info.max} — ${info.detail}`);
 
     }
 
     if (suggestions.length > 0) {
 
+      console.log(`\n  修复建议 (${suggestions.length} 条, 显示前 5 条)`);
+
       suggestions.slice(0, 5).forEach(s => {
+
+        console.log(`    [${s.severity || 'INFO'}] ${s.message || s.suggestion || JSON.stringify(s)}`);
 
       });
 
     }
+
+    console.log('');
 
   }
 
