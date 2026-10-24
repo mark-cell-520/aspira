@@ -233,6 +233,23 @@ const AI_TELL_PATTERNS = [
   { name: 'lingering-attention', patterns: LINGERING_ATTENTION,   baseScore: 0.14 },
   { name: 'emotional-flatline',  patterns: EMOTIONAL_FLATLINE,    baseScore: 0.15 },
   { name: 'novelty-inflation',   patterns: NOVELTY_INFLATION,     baseScore: 0.18 },
+  // [缺陷修复] performed-insight 与 fillers 两组声明了但从未接进
+  // AI_TELL_PATTERNS —— 本文件里其余 28 组全部有表项, 唯独这两组没有,
+  // 于是它们的正则一次都没执行过。PERFORMED_INSIGHT 的 13 条
+  // ("sit with that" / "you already know the answer" / "Turns out" /
+  // "that is the whole point" / "the only X that matters") 与 FILLERS 的
+  // 4 条 ("in terms of" / "the reality is that" /
+  // "it is important to note that") 是纯死代码, 这两类信号对 detect() 的
+  // 贡献恒为零。形状与 gate-outbound.js 那批幽灵规则同形: 模块照常返回
+  // { score, findings, count }, 结构合法、不抛异常, 而这两类 AI 写作特征
+  // 对门禁零贡献 —— 且没有任何断言覆盖它们, 所以看不出来。
+  // 修法: 补表项, 让它们进入与其余组一致的匹配循环。
+  // 取值: fillers 的 "in terms of" 在正常英文技术/商务写作里极常见, 单条
+  // 不足以定论, 故取与 transitions 同级的 0.10(低于 0.2 的惩罚门槛, 只在
+  // 与其他信号共发时才推分); performed-insight 是强 AI 痕迹, 取与
+  // novelty-inflation 同级的 0.18。
+  { name: 'performed-insight',   patterns: PERFORMED_INSIGHT,    baseScore: 0.18 },
+  { name: 'fillers',             patterns: FILLERS,               baseScore: 0.10 },
   { name: 'formulaic-openers',   patterns: FORMULAIC_OPENERS,     baseScore: 0.14 },
   { name: 'speculative-openers', patterns: SPECULATIVE_OPENERS,   baseScore: 0.15 },
   { name: 'false-concession',    patterns: FALSE_CONCESSION,       baseScore: 0.14 },
