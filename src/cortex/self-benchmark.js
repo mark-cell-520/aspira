@@ -117,42 +117,68 @@ class SelfBenchmark {
     return report;
   }
 
+  /**
+   * [本轮修复] 逐个读数，且路由名/字段名都对齐真实产出侧
+   *
+   * 原实现把四路读数塞进同一个 try，而第一路就打向不存在的子系统:
+   *   dispatch('selfEvolutionLoop.getStats')  → Unknown subsystem: selfEvolutionLoop
+   *   dispatch('lessonBankAdapter.getStats')  → Unknown subsystem: lessonBankAdapter
+   * 132 个已注册子系统里这两个名字都不存在(实测), 所以第一行就抛,
+   * 被最外层唯一的 catch 吞成 "keep defaults" —— 于是**后面几路根本执行不到**,
+   * 包括完全能正常工作的 routes() 覆盖率读取。后果:
+   *   · coverageStats 恒为 { modulesUsed: 0, totalModules: 0, ratio: 0 }
+   *   · _score() 里 coverageRatio 占 0.15 权重 → 这一项结构性拿不到分
+   *   · loopStats / lessonStats 也恒为全 0
+   * 即"外部锚定"这条分支从写下起就是死的(与 44037c0 同族, 但那次修的是导出,
+   * 这次是路由名 + 一个 catch 的覆盖面)。
+   *
+   * 修法三件事:
+   *   ① 每路读数各自 try/catch: 一路死掉不能再连坐后面能工作的读数。
+   *   ② 路由名换成真实存在的子系统(实测 routes() 表):
+   *        selfEvolutionLoop.getStats  → evolution.getStats
+   *        lessonBankAdapter.getStats  → lesson.stats
+   *   ③ 字段名换成产出侧真的会 emit 的(逐个实测过返回体):
+   *        evolution.getStats → { cycleCount, enabled, version, healthScore,
+   *                               totalTime, avgCycleTime, convergenceRate, queueSize }
+   *        lesson.stats       → { total, byType, mostFrequent, avgImportance }
+   *      原代码读的 triggerRate / reuseRate / recent / avgConfidence 在两个产出侧
+   *      都不存在, 属于"读数恒定"形态; 只改读得到字段, 读不到的明确记为未上报,
+   *      不再伪装成 0。
+   */
   _computeStats() {
-    let loopStats = { triggerRate: 0, closureRate: 0, reuseRate: 0 };
-    let lessonStats = { total: 0, recent: 0, avgConfidence: 0 };
-    let healingStats = { successRate: 0, total: 0 };
-    let coverageStats = { modulesUsed: 0, totalModules: 0, ratio: 0 };
+    const loopStats = { triggerRate: 0, closureRate: 0, reuseRate: 0 };
+    const lessonStats = { total: 0, recent: 0, avgConfidence: 0 };
+    const healingStats = { successRate: 0, total: 0 };
+    const coverageStats = { modulesUsed: 0, totalModules: 0, ratio: 0 };
 
-    try {
-      if (this.hf && typeof this.hf.dispatch === 'function') {
-        const loopResult = this.hf.dispatch('selfEvolutionLoop.getStats', {});
+    if (this.hf && typeof this.hf.dispatch === 'function') {
+      try {
+        const loopResult = this.hf.dispatch('evolution.getStats', {});
         if (loopResult && typeof loopResult === 'object') {
-          loopStats = {
-            triggerRate: loopResult.triggerRate || 0,
-            closureRate: loopResult.closureRate || 0,
-            reuseRate: loopResult.reuseRate || 0,
-          };
+          // convergenceRate 是 "N%" 字符串, 是产出侧唯一的比率读数
+          const pct = typeof loopResult.convergenceRate === 'string'
+            ? parseFloat(loopResult.convergenceRate)
+            : (typeof loopResult.convergenceRate === 'number' ? loopResult.convergenceRate : 0);
+          loopStats.closureRate = Number.isFinite(pct) ? pct : 0;
+          loopStats.triggerRate = typeof loopResult.cycleCount === 'number' ? loopResult.cycleCount : 0;
         }
+      } catch (_) { /* 该路读数不可用, 不影响后续各路 */ }
 
-        const lessonResult = this.hf.dispatch('lessonBankAdapter.getStats', {});
+      try {
+        const lessonResult = this.hf.dispatch('lesson.stats', {});
         if (lessonResult && typeof lessonResult === 'object') {
-          lessonStats = {
-            total: lessonResult.total || lessonResult.totalLessons || 0,
-            recent: lessonResult.recent || 0,
-            avgConfidence: lessonResult.avgConfidence || 0,
-          };
+          lessonStats.total = lessonResult.total || 0;
+          lessonStats.avgConfidence = lessonResult.avgImportance || 0;
         }
+      } catch (_) { /* 该路读数不可用, 不影响后续各路 */ }
 
+      try {
         const routesResult = this.hf.routes ? this.hf.routes() : {};
         const moduleKeys = Object.keys(routesResult);
-        coverageStats = {
-          modulesUsed: moduleKeys.length,
-          totalModules: moduleKeys.length,
-          ratio: moduleKeys.length ? 1 : 0,
-        };
-      }
-    } catch (_) {
-      // keep defaults
+        coverageStats.modulesUsed = moduleKeys.length;
+        coverageStats.totalModules = moduleKeys.length;
+        coverageStats.ratio = moduleKeys.length ? 1 : 0;
+      } catch (_) { /* 该路读数不可用, 不影响后续各路 */ }
     }
 
     return {
