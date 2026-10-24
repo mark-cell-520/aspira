@@ -6,7 +6,7 @@
 
 const path = require('path');
 const debugLog = require('../utils/debug-log');
-const { instantiateSpecialModule, SPECIAL_MODULES } = require('./module-registry');
+const { instantiateSpecialModule, SPECIAL_MODULES, METHOD_BLACKLIST } = require('./module-registry');
 
 const _perf = {
   _enabled: false,
@@ -136,14 +136,43 @@ function dispatch(hf, route, ...args) {
 
 /**
  * Generate allowed routes from modules registry
+ *
+ * [本轮修复] 本函数原先只枚举 `Object.getPrototypeOf(mod)` 一层原型上的
+ * own property names，于是 35 个"方法直接挂在对象字面量上"的模块（原型是
+ * Object.prototype）的 167 个公开方法一条都进不了白名单。实测：
+ * dispatch('lesson.stats') / dispatch('graph.addNode') 等恒抛
+ * `route 'lesson.stats' not allowed`，而 routes() 报表面有 Object.keys 兜底、
+ * 照广告这些路由 —— 门比广告窄，167 条已广告的路由在门口被拒。
+ *
+ * 模块注册表 src/core/module-registry.js 里一直有一份更完善的实现
+ * （METHOD_BLACKLIST 排除 EventEmitter 危险方法、`_` 前缀私有助手不计入、
+ * Object.keys(mod) 兜底对象字面量），却没有任何调用方。本函数改为采用同一
+ * 套口径，两套枚举合一。
+ *
+ * 不复用那份函数本身，只复用其 METHOD_BLACKLIST：它内部用 `_boundedPush`
+ * 收集结果，上限 500 且是 `arr.shift()` 挤出——超过 500 条后最早注册的
+ * 模块路由会被后面的模块挤掉（实测直接复用时 ALLOWED_ROUTES 从 1804 掉到
+ * 519，`lesson.stats` 这类中段模块恰好在被挤掉的那半边）。这里自行收集，
+ * 不限长。
  */
 function generateAllowedRoutes(modules) {
+  if (!modules || typeof modules !== 'object') return [];
   const routes = [];
   for (const [name, mod] of Object.entries(modules)) {
-    if (!mod || typeof mod !== 'object') continue;
-    for (const key of Object.getOwnPropertyNames(Object.getPrototypeOf(mod))) {
-      if (typeof mod[key] === 'function') routes.push(`${name}.${key}`);
+    if (!mod) continue;
+    let methods = [];
+    try {
+      const proto = Object.getPrototypeOf(mod);
+      if (proto && proto !== Object.prototype) {
+        methods = Object.getOwnPropertyNames(proto).filter(m =>
+          m !== 'constructor' && !METHOD_BLACKLIST.has(m) && typeof mod[m] === 'function' && !m.startsWith('_'));
+      }
+    } catch (e) { /* fall through */ }
+    if (!methods.length) {
+      methods = Object.keys(mod).filter(k =>
+        !METHOD_BLACKLIST.has(k) && !k.startsWith('_') && typeof mod[k] === 'function');
     }
+    for (const method of methods) routes.push(`${name}.${method}`);
   }
   return routes;
 }
