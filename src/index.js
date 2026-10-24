@@ -1385,6 +1385,18 @@ const EM_MANIPULATION_PATTERNS = {
     [/别人都能[^。]*?(你就不能|你为什么不行)/i, 'comparison_shame', 0.5],
     [/你看看(人家|别人|他|她)/i, 'comparison_shame', 0.5],
     [/连[^。]*?都能[^。]*?你却/i, 'comparison_shame', 0.5],
+
+    // [死表接线] 下面 5 条原先住在 EMOTIONAL_MANIPULATION_PATTERNS 里 —— 那张表
+    // 全仓零处读取，18 条正则一次都没执行过。这里只并入本表尚未覆盖的条目
+    // (「你忍心…吗」「难道你忍心…吗」「你对得起…吗」「不…就会后悔/错过」
+    // 「如果你不…你一定会后悔」)，与本表重复的 10 条已随死表删除。
+    // 其中「如果你不…你一定会后悔」原写法用 [^，。] 拦住逗号，导致「如果你不
+    // 按时完成，你一定会后悔」这类带逗号的句子恒不命中，改为 [^。]。
+    [/你不[^，。]*?就会[^，。]*?(后悔|错过|损失|失去)/i, 'fear_marketing', 0.5],
+    [/如果你不[^。]*?你一定会[^。]*?(后悔|遗憾)/i, 'guilt_induction', 0.5],
+    [/难道你忍心[^。]*?[吗？]/i, 'moral_coercion', 0.6],
+    [/你忍心[^。]*?[吗？]/i, 'moral_coercion', 0.6],
+    [/你对得起[^。]*?[吗？]/i, 'guilt_induction', 0.6],
   ],
   en: [
     [/if you (don'?t|do not)[^.]*?(regret|let (?:me|us) down|disappoint)/i, 'guilt_induction', 0.5],
@@ -1413,6 +1425,13 @@ const EM_MANIPULATION_PATTERNS = {
     [/after (?:all|everything) i (?:did|did for|gave|sacrificed)[^.]*?(?:this is how you|you (?:repay|treat|thank))\b/i, 'victim_stance', 0.6],
     [/\b(?:everyone|everybody|all my friends|people) (?:else )?[^.]{0,30}?(?:already|all|did)[^.]{0,10}?(?:why (?:haven'?t|have not|didn'?t|did not) you)\b/i, 'comparison_shame', 0.5],
     [/\bif you were (?:a |an |my )?(?:real|true|good) (?:friend|partner|parent|son|daughter|colleague)\b[^.]*?you (?:would|should|could)\b/i, 'moral_guilt', 0.55],
+
+    // [死表接线] 同上: EMOTIONAL_MANIPULATION_PATTERNS 的 en 侧同样从未接线。
+    // 这 3 条在本表没有对应覆盖: "you will regret it if…" / "don't you care…" /
+    // "how could you… after…"。其余 6 条与本表重复, 已随死表删除。
+    [/\byou('ll| will)[^.]*?regret it if\b/i, 'guilt_induction', 0.5],
+    [/\bdon't you (care|love|want)[^.]*?\b/i, 'moral_coercion', 0.6],
+    [/\bhow could you[^.]*?after\b/i, 'moral_guilt', 0.6],
   ],
 };
 
@@ -1882,31 +1901,12 @@ function checkPresupposition(text) {
   return { count, presuppositions, score: Math.min(1, count * 0.3) };
 }
 
-// ─── 情绪操纵检测 ──────────────────────────────────────────────
-const EMOTIONAL_MANIPULATION_PATTERNS = {
-  zh: [
-    /你不[^，。]*?就会[^，。]*?(后悔|错过|损失|失去)/i,
-    /如果你不[^，。]*?你一定会[^。]*?(后悔|遗憾)/i,
-    /不[^，。]*?就会[^。]*?后悔/i,
-    /难道你忍心[^。]*?[吗？]/i,
-    /你到底[^。]*?难道你/i,
-    /你忍心[^。]*?[吗？]/i,
-    /你对得起[^。]*?[吗？]/i,
-    /如果你(?:真的)?[^。，]{0,8}你就(?:会|应该|必须|一定)[^。，]{0,12}/i,
-    /你要是[^。，]{0,6}就[^。，]{0,6}(?:证明|说明|表示)你/i,
-  ],
-  en: [
-    /\bif you (don't|do not)[^.]*?you('ll| will)[^.]*?regret\b/i,
-    /\byou('ll| will)[^.]*?regret it if\b/i,
-    /\bdon't you (care|love|want)[^.]*?\b/i,
-    /\bhow could you[^.]*?after\b/i,
-    /\bif you really (cared|loved|wanted)[^.]*?you would\b/i,
-    /\bif you were (?:a |an |my )?(?:real|true|good) (?:friend|partner|parent|son|daughter|colleague)\b[^.]*?you would\b/i,
-    /\b(?:everyone|everybody|all my friends|people) (?:else )?(?:has|have|is|are|did|already)[^.]*?(?:why (?:haven't|have not|didn't|did not) you)\b/i,
-    /\bafter (?:all|everything) i (?:did|did for|gave|sacrificed)[^.]*?(?:this is how you|you (?:repay|treat|thank))\b/i,
-    /\bif you (?:really|truly) (?:cared|loved|respected|valued) me[^.]*?you (?:would|wouldn't|would not)\b/i,
-  ],
-};
+// ─── 情绪操纵检测（emotional manipulation）─────────────────────────
+// [死表删除] 此处原有一张 EMOTIONAL_MANIPULATION_PATTERNS（zh 9 条 + en 9 条），
+// 全仓零处读取：checkEmotionalManipulation() 从头到尾只读上面的
+// EM_MANIPULATION_PATTERNS，那 18 条正则一次都没执行过。其中未被本表覆盖的 8 条
+// 已并入上方两张数组（zh 5 条 / en 3 条），其余 10 条与本表重复或恒不命中，随本表
+// 一并删除 —— 不再留一张名字像活的死表在文件里。
 
 // 双重束缚检测模式
 const DOUBLE_BIND_PATTERNS = {
