@@ -146,7 +146,14 @@ class SelfBenchmark {
    *      不再伪装成 0。
    */
   _computeStats() {
-    const loopStats = { triggerRate: 0, closureRate: 0, reuseRate: 0 };
+    // reuseRate 在全仓没有任何产出侧: lesson-bank.stats() 只出
+    // total/byType/mostFrequent/avgImportance, evolution.getStats 只出
+    // cycleCount/convergenceRate 等, 两边都不含复用率。所以这里记 null = 未上报,
+    // 不记 0 —— 记 0 等于伪造一次测量, 而 _score() 又给它 0.25 权重, 后果是
+    // 分数结构性封顶在 75 分(那 25 分永远不可能拿到), 且 _details() 里报一个
+    // 从来没人测过的 "0%"。这与本函数头承诺的"读不到的明确记为未上报,
+    // 不再伪装成 0"是同一件事, 上一次只兑现了另外三个字段。
+    const loopStats = { triggerRate: 0, closureRate: 0, reuseRate: null };
     const lessonStats = { total: 0, recent: 0, avgConfidence: 0 };
     const healingStats = { successRate: 0, total: 0 };
     const coverageStats = { modulesUsed: 0, totalModules: 0, ratio: 0 };
@@ -198,16 +205,27 @@ class SelfBenchmark {
     };
 
     const closure = Math.min(100, stats.loopStats.closureRate || 0) / 100;
-    const reuse = Math.min(100, stats.loopStats.reuseRate || 0) / 100;
+    // null/undefined = 该读数无产出侧, 是"未上报"而非"测出来是 0"
+    const reuse = (stats.loopStats.reuseRate === null || stats.loopStats.reuseRate === undefined)
+      ? null
+      : Math.min(100, stats.loopStats.reuseRate || 0) / 100;
     const coverage = Math.min(1, stats.coverageStats.ratio || 0);
     const lessons = Math.min(1, (stats.lessonStats.total || 0) / 100);
 
-    const raw = weights.closureRate * closure
-      + weights.reuseRate * reuse
-      + weights.coverageRatio * coverage
-      + weights.lessonCount * lessons;
+    const readings = { closureRate: closure, reuseRate: reuse, coverageRatio: coverage, lessonCount: lessons };
 
-    return Number((raw * 100).toFixed(2));
+    // 缺哪一路读数, 就把它的权重按比例摊给其余各路 —— 而不是按 0 计入。
+    // 按 0 计等于"没测的那部分判 0 分", 分数上限被一个不存在的读数锁死。
+    let weightSum = 0;
+    let raw = 0;
+    for (const [key, value] of Object.entries(readings)) {
+      if (value === null || value === undefined) continue;
+      weightSum += weights[key];
+      raw += weights[key] * value;
+    }
+
+    if (weightSum <= 0) return 0;
+    return Number(((raw / weightSum) * 100).toFixed(2));
   }
 
   _label(score) {
@@ -219,9 +237,11 @@ class SelfBenchmark {
   }
 
   _details(stats) {
+    // 无产出侧的读数报"未上报", 不报一个伪造的 "0%"
+    const reuse = stats.loopStats.reuseRate;
     return {
       closureRatePct: `${stats.loopStats.closureRate}%`,
-      reuseRatePct: `${stats.loopStats.reuseRate}%`,
+      reuseRatePct: (reuse === null || reuse === undefined) ? '未上报' : `${reuse}%`,
       coverageRatio: `${Number((stats.coverageStats.ratio * 100).toFixed(2))}%`,
       lessonCount: stats.lessonStats.total,
     };
