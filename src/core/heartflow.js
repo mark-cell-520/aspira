@@ -4488,6 +4488,23 @@ class Aspira {
     if (typeof fn !== 'function') {
       throw new Error(`${subsystem}.${method} is not a function on ${subsystem}`);
     }
+
+    // [N1 自愈闸门] 健康检查把模块标记 __disabled 后，dispatch 必须 fail-closed 拒绝路由。
+    //
+    // 这条闸门此前只写在 src/core/engine-dispatcher.js 的 dispatch() 里，而那个函数
+    // 没有任何调用方 —— heartflow.js:62 导入的 _dispatch 是死绑定，全仓零处调用
+    // （实测 grep: 除导入行外无 `_dispatch(`）。实际生效的一直是下面这个原型方法,
+    // 而它没有这道检查。后果不是崩溃, 是**假自愈**:
+    //   · ModuleHealthChecker.check() 把 failed 模块打上 mod.__disabled = true
+    //     并记进 disabledModules 集合（模块健康检查器 84-85 行）;
+    //   · bin/cli.js:560 与 mcp-server.js:2312 真调 check(), 报告里 disabled 非空,
+    //     日志写 module_disabled —— 读起来"已经禁掉了";
+    //   · 但下一条 dispatch 照样 fn.call(mod) 把活干完, 禁用标记从未被任何地方读过
+    //     （实测: 除打标处外, src/ 内 __disabled 零处读取, isDisabled() 零调用方）。
+    // 即"记账了、报告了、没生效"。例外: 诊断/恢复类方法穿透, 以便观测和重新启用。
+    if (mod.__disabled === true && !['healthCheck', 'getStats', 'stats', 'init', 'reset'].includes(method)) {
+      return { _disabled: true, route, reason: `模块 ${subsystem} 已被健康检查禁用（自愈闸门拦截），仅诊断/恢复方法可调用` };
+    }
     return fn.call(mod, ...args);
   }
 
