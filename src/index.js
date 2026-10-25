@@ -4536,22 +4536,6 @@ const CLICKBAIT_PATTERNS = {
     { pattern: /will (leave|have) you (speechless|in tears|breathless|shocked)/i, type: 'en_emotional_reaction', severity: 0.6 },
   ]
 };
-const CLICKBAIT_SEVERITY = {
-  zh_shock: 0.6, zh_alarm: 0.7, zh_false_urgency: 0.6, zh_urgency: 0.5, zh_fomo: 0.8,
-  zh_emotional_blackmail: 0.8, zh_secret_knowledge: 0.6, zh_fear_mongering: 0.6,
-  zh_emotional_manipulation: 0.5, zh_disbelief: 0.5, zh_secret_reveal: 0.7,
-  zh_result_shock: 0.5, zh_end_reveal: 0.6, zh_mass_reaction: 0.5,
-  zh_reverse_psychology: 0.6, zh_cause_reveal: 0.5, zh_fear_of_missing_out: 0.5,
-  zh_breaking_news: 0.5, zh_obligation: 0.5, zh_chain: 0.5, zh_targeted_alarm: 0.6,
-  zh_story_manipulation: 0.5,
-  en_incredulity: 0.7, en_shock: 0.6, en_teaser: 0.7, en_secret_knowledge: 0.8,
-  en_secret_reveal: 0.7, en_professional_secret: 0.7, en_conspiracy: 0.7,
-  en_exaggeration: 0.6, en_miracle_solution: 0.8, en_urgency: 0.5,
-  en_dramatic_reveal: 0.6, en_curiosity_gap: 0.6, en_visual_bait: 0.5,
-  en_list_bait: 0.6, en_dramatic_change: 0.6, en_hidden_reveal: 0.6,
-  en_emotional_reaction: 0.6,
-};
-
 /**
  * 点击诱饵/标题党检测 — 识别夸大、误导性标题和震惊体内容
  * @param {string} text - 待检测文本

@@ -18,50 +18,9 @@ const path = require('path');
 
 
 
-// 拼音声母到韵母的简单映射（用于音近回退）
-
-const PINYIN_INITIALS = [
-
-  'b','p','m','f','d','t','n','l','g','k','h','j','q','x',
-
-  'zh','ch','sh','r','z','c','s','y','w'
-
-];
-
-
-
-// 简单韵母分组（同韵母组内的词视为音近）
-
-const RHYME_GROUPS = {
-
-  'ang': ['ang','iang','uang'],
-
-  'eng': ['eng','ing','ong','iong','ueng'],
-
-  'an': ['an','ian','uan','üan'],
-
-  'en': ['en','in','un','ün'],
-
-  'ao': ['ao','iao'],
-
-  'ou': ['ou','iu'],
-
-  'ai': ['ai','uai'],
-
-  'ei': ['ei','ui'],
-
-  'a': ['a','ia','ua'],
-
-  'e': ['e','ie','üe','er'],
-
-  'i': ['i'],
-
-  'u': ['u'],
-
-  'ü': ['ü']
-
-};
-
+// [本轮删除] PINYIN_INITIALS（声母表）与 RHYME_GROUPS（韵母分组）在全仓
+// 零引用：真正的音近回退在 _emergentAssociate() 里现算的 rhymePatterns（约845行）
+// 和 generatePinyinFallbacks()（约1019行，读的是下面的 COMMON_CHAR_PINYIN）。
 
 
 // 中文常用字→拼音的迷你字典（用于语义回退）

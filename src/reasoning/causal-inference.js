@@ -29,12 +29,10 @@ const CAUSAL_SIGNALS = {
        '于是', '致使', '缘于', '基于此', '由此', '进而', '触发', '诱发']
 };
 
-// 反事实信号词
-const COUNTERFACTUAL_SIGNALS = {
-  en: ['if', 'would have', 'could have', 'might have', 'suppose', 'imagine if',
-       'what if', 'had it not', 'otherwise', 'alternatively'],
-  zh: ['如果', '假如', '要是', '假设', '倘若', '若非', '否则', '取而代之']
-};
+// [本轮删除] COUNTERFACTUAL_SIGNALS（反事实信号词表）在全仓零引用：
+// counterfactual() 只回显 query，从不用它判定查询是否为反事实句式；
+// searchByCausal() 走的是 _detectCausalSignals()，用的是上面的
+// CAUSAL_SIGNALS。留着它会让人以为反事实查询是按词表匹配的。
 
 const { getFormulaSafe } = require('../formula/formula-safe.js');
 const _formulaSafe = getFormulaSafe();

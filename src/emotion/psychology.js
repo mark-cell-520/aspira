@@ -44,32 +44,13 @@ function calculatePADState(pleasure, arousal, dominance) {
   };
 }
 
-/**
- * PAD情绪状态组合表
- */
-// PAD情绪状态组合表（精细化版本）
-// P=愉悦度(+正/-负), A=唤醒度(+高/-低), D=支配度(+高/-低)
-const PAD_EMOTION_MAP = {
-  // 高愉悦 + 高唤醒 + 高支配 = 警觉/兴奋
-  'P+A+D+': { name: 'alert', zh: '警觉/兴奋' },
-  // 高愉悦 + 高唤醒 + 低支配 = 快乐/满意
-  'P+A+D-': { name: 'happy', zh: '快乐/满意' },
-  // 高愉悦 + 低唤醒 + 高支配 = 平静/满足
-  'P+A-D+': { name: 'content', zh: '平静/满足' },
-  // 高愉悦 + 低唤醒 + 低支配 = 放松/自在
-  'P+A-D-': { name: 'relaxed', zh: '放松/自在' },
-  // 低愉悦 + 高唤醒 + 高支配 = 愤怒/敌意
-  'P-A+D+': { name: 'angry', zh: '愤怒/敌意' },
-  // 低愉悦 + 高唤醒 + 低支配 = 焦虑/不安
-  'P-A+D-': { name: 'anxious', zh: '焦虑/不安' },
-  // 低愉悦 + 高唤醒 + 低支配 = 害怕/恐惧
-  'P-A+D-': { name: 'fearful', zh: '害怕/恐惧' },  // [修复] 合并到D-键（原P-A+A- typo）
-  // 低愉悦 + 低唤醒 + 高支配 = 被动/依赖
-  'P-A-D+': { name: 'dependent', zh: '被动/依赖' },
-  // 低愉悦 + 低唤醒 + 高支配 = 抑郁/悲伤
-  'P-A-D+': { name: 'depressed', zh: '抑郁/悲伤' }, // [修复] 合并到D+键（原P-A+D+重复）
-  'P-A-D-': { name: 'apathetic', zh: '冷漠/麻木' },
-};
+// [本轮删除] PAD_EMOTION_MAP（11 条 "P/A/D 符号键" → 情绪名）在全仓
+// （src/ test/ scripts/）零引用：情绪标签由下方 getEmotionFromPAD() 的连续值
+// 判断产出。留着它不只是死代码 —— 表里 'P-A+D-' 与 'P-A-D+' 各出现两次
+// （anxious/fearful 撞同一键，dependent/depressed 撞同一键），靠后的值会
+// 静默覆盖靠前的值；而它从未被读过，所以这两处覆盖一直没人发现。
+// 原先挂在这张表上的 JSDoc「PAD情绪状态组合表」一并删除，它现在已经
+// 不描述任何东西了。
 
 /**
  * 根据PAD值获取情绪标签
