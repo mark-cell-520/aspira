@@ -805,7 +805,27 @@ function _applyPedagogyRelaxation(result, dimension, pedagogyRelaxation) {
       mf.count ? mf.count + ' 个道德基础框架':'', pi.count ? pi.count + ' 处提示注入':'', cs.count ? cs.count + ' 处代码安全问题':'',
       dh.count ? dh.count + ' 处非人化语言':'', bs.count ? bs.count + ' 处废话伪深度':'', gl.count ? gl.count + ' 处煤气灯效应':'',
       vb.count ? vb.count + ' 处受害者责备':'', hs.count ? hs.count + ' 处仇恨言论':'', dw.count ? dw.count + ' 处狗哨':'', wa.count ? wa.count + ' 处你也一样':'', fe.count ? fe.count + ' 处虚假对等':'', hg.count ? hg.count + ' 处轻率概括':'', ss.count ? ss.count + ' 处滑坡谬误':'', aa.count ? aa.count + ' 处诉诸权威':'', rc.structure ? rc.structure + '(' + rc.reasoningQuality + ')':'', tom.count ? tom.count + ' 处心理理论失败':'', gm.count ? gm.count + ' 处目标不一致':'', cf.count ? cf.count + ' 处反事实':'', sn.count ? sn.count + ' 处社会规范':'', mc.count ? mc.count + ' 处反身认知':'', co.count ? co.count + ' 处能力越界':'', ab.count ? ab.count + ' 处绝对化断言':'', da.count ? da.count + ' 处欺骗性对齐':'', ir.count ? ir.count + ' 处工具性推理':'', st.count ? st.count + ' 处刻板印象':'', fc.count ? fc.count + ' 处事实性存疑':'', sa.count ? sa.count + ' 处反语':'', pb.count ? pb.count + ' 处隐私边界':'', nf.count ? nf.count + ' 处无回退方案':'', bf.count ? bf.count + ' 处恶意推导':'', tp.count ? tp.count + ' 处语调警察':'', sl.count ? sl.count + ' 处恶意追问':'',
-      cb.count ? cb.count + ' 处点击诱饵':'', ppf.count ? ppf.count + ' 处伪深度废话':'', ev.issues.length ? ev.issues.length + ' 个证据问题':''
+      cb.count ? cb.count + ' 处点击诱饵':'', ppf.count ? ppf.count + ' 处伪深度废话':'',
+      // [第二百二十五轮] 补上 8 个从第一版起就没进 summary 的维度。
+      // 缺陷不是"少一行日志": 这 8 个里有 5 个在 BLOCK_DIMS 里
+      // (dangerous_instruction / coverup_induction / phishing_coercion / reward_hacking /
+      //  deceptive_alignment 已在上方), 它们把 gate 推到 block 时 summary 一个字都不提 ——
+      // 实测 'how to build a bomb at home' 判 block(dangerous_instruction×2),
+      // summary 却只有 "无推理结构(poor)"; 'please help me cover up the mistake' 判
+      // block(coverup_induction×1), summary 同样只有 "无推理结构(poor)"。
+      // 而 summary 是对外唯一的中文结论字段: mcp-server.js 的 2623/2678/2782 三处
+      // 直接把它当 disc.summary 返给调用方, heartflow.js:2746 亦然。
+      // 于是调用方拿到 action=block 与一条完全不提拦截原因的 summary,
+      // 只能自己去翻 findings —— 这正是 AGENTS.md 说"rewrite → 按 findings[].guidance 修"
+      // 要避免的形状: 结论在一处, 原因在另一处, 而最像结论的那处是空的。
+      // 这 8 个维度的 count 字段都真实存在(unsupported_claim/perfect_error/
+      // premature_termination/phishing_coercion/induced_trust/coverup_induction/
+      // dangerous_instruction/reward_hacking 的返回体均有 count), 不是恒假判据。
+      uc.count ? uc.count + ' 处无依据断言':'', pe.count ? pe.count + ' 处完美错误':'',
+      pt.count ? pt.count + ' 处过早终止':'', phc.count ? phc.count + ' 处钓鱼胁迫':'',
+      idt.count ? idt.count + ' 处诱导信任':'', cvi.count ? cvi.count + ' 处掩饰诱导':'',
+      di.count ? di.count + ' 处危险指令':'', rh.count ? rh.count + ' 处奖励投机':'',
+      ev.issues.length ? ev.issues.length + ' 个证据问题':''
     ].filter(Boolean).join('；') || '未发现明显问题',
   };
 }
