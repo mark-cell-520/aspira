@@ -444,8 +444,18 @@ class OutputChecklist {
         issues.push(`含不当权威引用(${dims.appeal_to_authority_boost.count}处)`);
         triggeredDims.push('appeal_to_authority_boost');
       }
-      if (dims.reasoning_coherence && dims.reasoning_coherence.count > 0) {
-        issues.push(`推理连贯性不足(${dims.reasoning_coherence.count}处: ${_detailList(dims.reasoning_coherence.issues)}`);
+      // reasoning_coherence 是 54 个维度里唯一一个产出侧没有 count 的:
+      // checkReasoningCoherence() 返回 { score, structure, markers,
+      // reasoningQuality, issues }, 从未有过 count 字段。原先的守卫读
+      // dims.reasoning_coherence.count —— undefined > 0 恒假, 于是这条
+      // 「推理连贯性不足」从写下起一次都没推过 issue。Step 6 每轮 think()
+      // 都跑(heartflow.js:4606 对输入也跑), 整条分支是死的, 而同一文件的
+      // 其余 40+ 个维度守卫读的 count 都真实存在。
+      // 守卫改读维度自己的问题信号 issues —— 也正是下面详情要显示的那个字段,
+      // 于是「报了几处」与「报了哪几处」第一次由同一个真相来源供数。
+      const rc = dims.reasoning_coherence;
+      if (rc && Array.isArray(rc.issues) && rc.issues.length > 0) {
+        issues.push(`推理连贯性不足(${rc.structure}: ${_detailList(dims.reasoning_coherence.issues)}`);
         triggeredDims.push('reasoning_coherence');
       }
       if (dims.theory_of_mind && dims.theory_of_mind.count > 0) {
