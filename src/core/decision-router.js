@@ -2062,6 +2062,9 @@ class DecisionRouter {
       }
       this._lastCedStrategy = strategy;
       this._lastComplexity = complexity;
+      // 记账：不调这一句，CED 的 totalDispatched / avgComplexity 恒为 0，
+      // 而上面 cedFilteredCount 一直在涨 —— 观测层与派发层读数相反。
+      this._ced.recordDispatch(complexity, strategy, activeRules.length, cedFiltered.length);
     } else {
       this._activeRulesForEval = activeRules;
     }
@@ -2825,6 +2828,11 @@ class DecisionRouter {
       fieldWindow: FLIP_THRESHOLDS.historyWindow,
 
       fieldWeights: { ...FIELD_WEIGHTS },
+
+      // [修复] cedStats 原先在这里算出来就被丢掉：getStats() 的返回值里从来没有
+      // ced 键，于是条件专家路由的全部统计（派发次数、各模式输入数、平均复杂度、
+      // 累计跳过的规则数）没有任何一个出口。现在随 getStats() 一起返回。
+      ced: cedStats,
 
     };
 

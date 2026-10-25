@@ -39,8 +39,12 @@ class ConditionalExpertDispatch {
     this._stats = {
       totalDispatched: 0,
       simpleInputs: 0,
+      moderateInputs: 0,
       complexInputs: 0,
       rulesSkipped: 0,
+      // 真实复杂度累加器：recordDispatch 收下的 complexity 必须落到这里，
+      // 否则 avgComplexity 只能拿 mode 当代理值编一个数（见 getStats 注释）。
+      complexitySum: 0,
     };
   }
 
@@ -138,21 +142,45 @@ class ConditionalExpertDispatch {
 
   /**
    * 记录路由决策统计
+   *
+   * [修复] 本方法此前在全仓没有任何调用方：decision-router 的 CED 分支只调
+   * assessComplexity/decideStrategy/filterRules，从不回头记账。于是
+   * totalDispatched / simpleInputs / complexInputs 三个计数器从写下起恒为 0，
+   * avgComplexity 恒为 0 —— 而 CED 本身是活的（实测 cedFilteredCount 随每次
+   * evaluate() 增长，规则真的被筛掉了）。观测层说"一次都没派发过"，
+   * 派发层每轮都在筛规则，两边的读数对不上。
+   *
+   * 同时修掉 avgComplexity 的口径：它原先按 mode 编一个代理值
+   * （simple→0.2、complex→0.8），而 moderate 分支既不进分子也不进分母 ——
+   * 一个走 moderate 路由的输入会把平均值往下拽，且越跑越偏。改为累加
+   * 调用方传进来的真实 complexity。
+   *
+   * @param {number} complexity - 本轮实测复杂度（0-1）
+   * @param {object} strategy - decideStrategy() 的返回值
+   * @param {number} [rulesTotal] - 过滤前规则总数
+   * @param {number} [rulesActivated] - 过滤后激活的规则数
    */
   recordDispatch(complexity, strategy, rulesTotal, rulesActivated) {
     this._stats.totalDispatched++;
     if (strategy.mode === 'simple') this._stats.simpleInputs++;
+    else if (strategy.mode === 'moderate') this._stats.moderateInputs++;
     else if (strategy.mode === 'complex') this._stats.complexInputs++;
+    if (typeof complexity === 'number' && Number.isFinite(complexity)) {
+      this._stats.complexitySum += complexity;
+    }
   }
 
   /**
    * 获取统计摘要
+   *
+   * avgComplexity = 真实复杂度累加值 / 派发次数。没有调用方记账时它恒为 0，
+   * 这正是本类曾被锁死的形状；调用方现在每次派发都会记一笔。
    */
   getStats() {
     return {
       ...this._stats,
       avgComplexity: this._stats.totalDispatched > 0
-        ? (this._stats.simpleInputs * 0.2 + this._stats.complexInputs * 0.8) / this._stats.totalDispatched
+        ? this._stats.complexitySum / this._stats.totalDispatched
         : 0,
     };
   }
