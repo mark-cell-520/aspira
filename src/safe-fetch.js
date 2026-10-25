@@ -69,11 +69,19 @@ async function preflightCheck(text, opts = {}) {
           text: undefined,
         };
       }
+      // [契约修复] gate-outbound.js 的 checkOutbound() 返回的脱敏字段叫
+      // **sanitized**（第 248 行），从来没有什么 redacted。原先这里读
+      // result.redacted，实测恒为 undefined，于是 `|| text` 恒定取到
+      // **未脱敏的原文** —— 出域闸门判了 rewrite、reason 写着"命中 PII
+      // 规则 (N 处)"，而交给调用方的 text 一个字节都没被掩掉。
+      // aspira_safe_fetch MCP 工具直接把这个 text 回给调用方，
+      // safeFetch() 也用它覆盖 options.body，等于 PII 照原样出域。
+      // 这与仓库反复记载的"产出侧不存在的字段 → 读数恒定"同型。
       if (result.action === 'rewrite') {
         return {
           allowed: true,
           action: 'rewrite',
-          text: result.redacted || text,
+          text: result.sanitized || text,
           reason: result.reason,
         };
       }

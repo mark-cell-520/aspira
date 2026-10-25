@@ -140,6 +140,16 @@ function scanPII(text) {
 }
 
 // ── 脱敏 ──────────────────────────────────────────────
+// [契约修复] masks 表原本只有 7 项，而 PII_RULES 有 8 条规则 ——
+// CONTRACT_CLAUSE（合同条款特征）没有对应脱敏函数。maskPII 对未登记的
+// ruleId 直接 `return text`（原样返回），于是纯合同文本实测:
+//   action='rewrite'、reason='命中 PII 规则 (4 处)'，而 sanitized
+//   与原文逐字节相同。checkOutbound 对外承诺"已脱敏"，实际一个字节
+//   都没掩掉 —— 调用方按 sanitized 外发就是把原文外发。
+// 这与上一轮修的 safe-fetch 读 result.redacted 是同一形状的缺陷:
+// 产出侧没有对应读数，消费侧拿到恒等于原文的值。
+// 正则从规则自身的 source 现取并加 /g，规则改词时脱敏表自动跟随，
+// 不会退化成第二真相来源。
 function maskPII(text, ruleId) {
   const masks = {
     ID_CARD:    (t) => t.replace(PII_RULES.ID_CARD.pattern,    '***身份证***'),
@@ -149,6 +159,8 @@ function maskPII(text, ruleId) {
     PASSPORT:  (t) => t.replace(PII_RULES.PASSPORT.pattern,    '***护照***'),
     API_KEY:   (t) => t.replace(PII_RULES.API_KEY.pattern,     '***KEY***'),
     PASSWORD:  (t) => t.replace(PII_RULES.PASSWORD.pattern,    '***PASS***'),
+    CONTRACT_CLAUSE: (t) => t.replace(
+      new RegExp(PII_RULES.CONTRACT_CLAUSE.pattern.source, 'g'), '***合同条款***'),
   };
   const fn = masks[ruleId];
   return fn ? fn(text) : text;
