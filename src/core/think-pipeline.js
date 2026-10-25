@@ -44,6 +44,21 @@ let _deepEmotionInstance = null;
  * @returns {Promise<object>} 增强后的 result
  */
 async function runThinkPipeline(result, input, engine) {
+  // [本轮] 第一百七十一轮修好了同文件里 getFormulaBridge 的 ReferenceError
+  // (那次是被 try 吞掉的"整段从未执行"), 但漏了同一形状的第二处:
+  // 下面 AREX 段的 `record`/`vResult` 都是 **循环体内** 的 const, 而本文件末尾的
+  // DecisionFeedback 学习闭环写在**兄弟 try 块**里 —— 两个名字在那里都不在作用域内,
+  // 于是每次 think() 都在 `engine.decisionFeedback && vResult` 上抛一次
+  // ReferenceError, 被 `catch (_) { /* 非关键 */ }` 吞掉。
+  // 实测(修复前): 同一输入下 result._verification 正常写入(证明 AREX 段跑通、
+  // vResult 有值), 而 decisionFeedback.recordOutcome 调用次数为 0 ——
+  // "把 think 决策结果反馈给规则权重调整"这个闭环从写下起一次都没执行过。
+  // 修法: 提到函数作用域, 由循环内每次 verify 成功后赋值; 未跑 verify 时保持 null,
+  // 闭环自然跳过(不拿空数据伪造一次学习信号)。
+  // 回归锁: test/think-pipeline-decision-feedback-wiring.test.js
+  let lastRecord = null;
+  let lastVerify = null;
+
   // ─── 后置钩子（不依赖 engine-reasoner 提前 return 分支，保证100%触发）─────
   try { if (engine.continuousLearner && engine.lesson && result && input) { engine.continuousLearner.reflect(result, input, engine.lesson); } } catch (_) { /* 非关键 */ }
 
@@ -132,6 +147,11 @@ async function runThinkPipeline(result, input, engine) {
           confidence: meta.confidence ?? result.confidence ?? 0.5,
         };
         const vResult = engine.decisionVerifier.verify(record);
+        // 提到函数作用域的两个副本: 文件末尾的学习闭环在兄弟 try 块里读它们。
+        // 放在 if (issues) 判断**之前** —— 无 issue 时闭环记的是 'verified',
+        // 不能因为没 issues 就把这次验证从学习信号里漏掉。
+        lastRecord = record;
+        lastVerify = vResult;
         if (vResult.issues?.length > 0) {
           result._verification = {
             score: vResult.score,
@@ -168,14 +188,16 @@ async function runThinkPipeline(result, input, engine) {
   } catch (_) { /* 非关键 */ }
 
   // [v6.7.8] DecisionFeedback 学习闭环：把 think 决策结果反馈给规则权重调整
+  // lastVerify/lastRecord 为 null = 本轮 decisionVerifier 没跑(未接线/verify 抛错),
+  // 此时不记录, 不伪造学习信号。
   try {
-    if (engine.decisionFeedback && vResult) {
+    if (engine.decisionFeedback && lastVerify) {
       engine.decisionFeedback.recordOutcome({
         type: 'thought-chain-synthesis',
         ruleId: 'thought-chain-synthesis',
-        confidence: record.confidence,
+        confidence: lastRecord.confidence,
         context: { source: 'think-pipeline', input: typeof input === 'string' ? input.substring(0, 50) : '' }
-      }, vResult.score >= 0.6, vResult.issues?.length > 0 ? `verify issues: ${vResult.issues.length}` : 'verified');
+      }, lastVerify.score >= 0.6, lastVerify.issues?.length > 0 ? `verify issues: ${lastVerify.issues.length}` : 'verified');
     }
   } catch (_) { /* 非关键 */ }
   try { if (engine.learningPulse) { engine.learningPulse.beat(result || {}); } } catch (_) { /* 非关键 */ }
