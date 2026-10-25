@@ -299,7 +299,17 @@ class UncertaintyQuantifier {
     
     let phrase = '';
     
-    if (hallucination.risk > 0.3) {
+    // 注意 decomposition.hallucination 是**标量**（evaluate() 第 88 行存的是
+    // hallucination.risk），不是 _detectHallucination() 返回的那个对象。
+    // 原先这里写的是 hallucination.risk —— 对标量取 .risk 得 undefined，
+    // undefined > 0.3 恒为 false，于是整个幻觉分支从写下起不可达：
+    // 实测 risk=0.65(level HIGH) 的输入，calibratedPhrase 走的是下面较温和的
+    // 「○ 基于现有信息…」，而同一份 decomposition 喂给
+    // _generateRecommendations()（第 331 行读标量）却能正确吐出
+    // 「警告：检测到可能的幻觉信号」。两个消费者对同一字段的形状理解不一致，
+    // 结论是最严重的告警类别在用户可见的校准语上被静默丢掉。
+    // 与 _generateRecommendations() 保持同一种读法。
+    if (hallucination > 0.3) {
       phrase = '⚠️ 这个回答可能包含不准确信息，请验证关键事实';
     } else if (epistemic > 0.6 && aleatoric < 0.2) {
       phrase = '✓ 我对这个话题有较多了解，但仍有认知局限';
