@@ -228,10 +228,32 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
   // ─── Layer 4: Gate — 门禁判定 ─────────
   // 若 adversarial-variant 已判高危 rewrite（对抗变体绕过），优先保留，不被普通 gate 覆盖
   if (!(data.adversarial && data.adversarial.risk === 'high')) {
-    const upstreamBlocked = ['dao-decision', 'uncertainty', 'priority-guardian', 'progress-judgment'].some(layer => {
-      const entry = checked_by.find(c => c.layer === layer);
-      return entry && entry.action && ['block', 'rewrite'].includes(entry.action);
-    });
+    // [第二百二十五轮] upstreamBlocked 原先读 entry.action —— 而这四个层的
+    // checked_by 条目**从来没有 action 字段**：dao-decision 推的是
+    // {daoScore,passed,flags}(178 行)，uncertainty 推
+    // {confidence,level,hallucinationRisk}(191 行)，priority-guardian 推
+    // {allowed,path,conflicts}(204 行)，progress-judgment 推
+    // {isProgress,confidence,pseudo}(219 行)。实测四条的键里都没有 action。
+    // 于是 entry.action 恒为 undefined，`.some()` 恒为 false，下面"上游监督保留"
+    // 分支**从写下起就不可达** —— 一个读不存在字段的恒假判据。
+    //
+    // 改读产出侧真实存在的字段。同时把范围收紧到判据自己的语义: 原判据是
+    // `['block','rewrite'].includes(entry.action)`, 而这四个层里只有
+    // priority-guardian 能产出 block/rewrite(critical 冲突 → allowed:false →
+    // resolveWithGuardianPriority 的 REFUSE_WITH_GUARDIAN)；另外三个层
+    // 只把 currentGate 抬到 verify(180/193/221 行)，verify 本就不在原判据的
+    // 动作集里，所以不纳入。
+    //
+    // 为什么**不**顺手把 verify 也纳入保留: 实测会被打穿的是两个上游误报 ——
+    //   · priority-guardian 收到的 action 是 currentGate.reason(即字面量"通过",
+    //     203 行)，_isToolifiedBehavior 拿它和 userIntent 比: "今天天气真好"含
+    //      compliance 词"好"而"通过"不含判断词 → 判工具化行为 → CONDITIONAL_ALLOW；
+    //   · progress-judgment 对空输入同样判 standGround。
+    // 两者都会把良性句抬成 verify。在修掉这两个上游误报之前放宽 Layer 4，
+    // 等于把误报直接升成最终裁决(test/pipeline.test.js 的 benign→pass 会红)。
+    // 本轮只修恒假判据，不扩大到行为变更。
+    const pgEntry = checked_by.find(c => c.layer === 'priority-guardian');
+    const upstreamBlocked = !!(pgEntry && pgEntry.allowed === false);
     if (!upstreamBlocked) {
       currentGate = discResult.gate;
       checked_by.push({ layer: 'gate', action: currentGate.action, reason: currentGate.reason });
