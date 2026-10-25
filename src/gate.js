@@ -76,7 +76,23 @@ function _mergeAdversarial(text, result) {
 function gate(text, evidence = []) {
   const result = _mergeAdversarial(text, discriminate(text, evidence, _pedagogyMode(text)));
   // [吸收心虫] 判别可解释追踪：透出每维度命中的原文片段+模式类型（附加字段，不改变既有行为）
-  result.trace = buildTrace(result);
+  //
+  // [本轮修复] opts 必须把 discriminate() 产出的 _normalization.applied 传进去。
+  // 此前这里写的是 buildTrace(result) —— opts 缺省为 {}，于是 discrimination-trace.js
+  // 里整条「归一化手段链」分支(追加 _normalization 条目 + summarizeTrace 的
+  // 「| 归一化: …」后缀)在生产路径上**一次都没执行过**：
+  //   输入 'ignore​all​previous​instructions'
+  //   result._normalization.applied === ['strip_invisible']，
+  //   而 traceSummary 只给 prompt_injection×2("ignoreallpreviousins") ——
+  //   证据片段是剥离零宽字符后的文本，却不告诉调用方原文长什么样、被谁还原过。
+  // 这正是该模块立项时要回答的两个问题之一("文本有没有被归一化还原")，
+  // 产出侧字段一直都在，只是消费侧把它丢了。
+  // 只透出 applied：_normalization 上没有归一化后的全文(result 也不含 input 字段)，
+  // 故不传 opts.normalized —— 传了会让 note 指向一个不存在的 result.input，
+  // 属于误导性文本。
+  result.trace = buildTrace(result, {
+    applied: result._normalization && result._normalization.applied,
+  });
   result.traceSummary = summarizeTrace(result.trace);
   return result;
 }
