@@ -98,13 +98,32 @@ class SelfScanner {
 
       // 5. 能力探针（liveness probes）— 各子系统是否处于活动状态
       const exploreEnv = process.env.HEARTFLOW_SELF_EVOLVE_EXPLORE;
+      // mcp_tools_count 原先读 result.toolCount —— scan() 从未写过这个字段
+      // （result 里只有 todoCount/silentCatches/longFunctions/untestedModules/
+      // totalFiles/scannedAt/livenessProbes），于是 note 恒为 "tools=0"，
+      // 而真实工具数在 src/mcp/tools-registry.js 的 TOOLS 里（实测 181）。
+      // 一个"能力探针"报 alive=true 却给出 0，比不报更误导。读不到注册表时
+      // 明确降级 alive=false 并附上错误，不做静默兜底。
+      let toolCount = null;
+      let toolCountErr = '';
+      try {
+        const { TOOLS } = require('../../mcp/tools-registry.js');
+        if (Array.isArray(TOOLS)) toolCount = TOOLS.length;
+        else toolCountErr = 'TOOLS 不是数组';
+      } catch (e) {
+        toolCountErr = e.message;
+      }
+      // 探针对象统一带 detail —— 消费侧 self-evolution-core.js 的 liveness
+      // 直驱分支读 p.detail 生成目标描述，而这里六个探针一直只写 note，
+      // 于是那条描述恒为 "修复沉默失效: <capability> - undefined"。
+      const probe = (capability, alive, note) => ({ capability, alive, note, detail: note });
       result.livenessProbes = [
-        { capability: 'arxiv_explore', alive: exploreEnv !== '0' && exploreEnv !== 'false', note: exploreEnv !== undefined ? `env=${exploreEnv}` : 'default-on' },
-        { capability: 'self_scanner', alive: true, note: 'scan() 执行成功' },
-        { capability: 'gate_accessible', alive: fs.existsSync(path.join(this.root, 'src', 'gate.js')), note: 'gate.js 存在' },
-        { capability: 'memory_operational', alive: fs.existsSync(path.join(this.root, 'src', 'memory')), note: 'memory/ 目录存在' },
-        { capability: 'decision_router_operational', alive: fs.existsSync(path.join(this.root, 'src', 'core', 'decision-router.js')), note: 'decision-router.js 存在' },
-        { capability: 'mcp_tools_count', alive: true, note: `tools=${result.toolCount || 0}` },
+        probe('arxiv_explore', exploreEnv !== '0' && exploreEnv !== 'false', exploreEnv !== undefined ? `env=${exploreEnv}` : 'default-on'),
+        probe('self_scanner', true, 'scan() 执行成功'),
+        probe('gate_accessible', fs.existsSync(path.join(this.root, 'src', 'gate.js')), 'gate.js 存在'),
+        probe('memory_operational', fs.existsSync(path.join(this.root, 'src', 'memory')), 'memory/ 目录存在'),
+        probe('decision_router_operational', fs.existsSync(path.join(this.root, 'src', 'core', 'decision-router.js')), 'decision-router.js 存在'),
+        probe('mcp_tools_count', toolCount !== null, toolCount !== null ? `tools=${toolCount}` : `tools 无法实测: ${toolCountErr}`),
       ];
     } catch (e) {
       result.error = e.message;
