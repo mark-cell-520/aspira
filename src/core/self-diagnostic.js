@@ -10,7 +10,7 @@
 
  * - ROOT 路径用 path.resolve(__dirname, '../..') 正确指向项目根
 
- * - 动态扫描60个JS模块，不依赖静态列表
+ * - 动态扫描 src/core 下全部 JS 模块，不依赖静态列表
 
  * - q-table 路径修正为 memory/q-table.json
 
@@ -102,6 +102,30 @@ function getCoreModules() {
     .filter(f => f.endsWith('.js') && f !== 'self-diagnostic.js')
 
     .sort();
+
+}
+
+
+
+// 把模块列表等分成 batchCount 批（供 step 6-9 使用）
+
+//
+
+// 原先四步各写死 slice(0,15) / slice(15,30) / slice(30,45) / slice(45,60)，
+
+// 于是只有前 60 个模块会进自检: src/core 早就超过 60 个文件，
+
+// 60 号以后的模块**一次都没被扫过**——空文件、截断文件全都静默通过。
+
+// 这里改成按 modules.length 动态等分，四批合并恰好覆盖全表，无重叠无遗漏。
+
+function moduleBatch(modules, batchIndex, batchCount = 4) {
+
+  const list = Array.isArray(modules) ? modules : [];
+
+  const size = Math.ceil(list.length / batchCount);
+
+  return list.slice(batchIndex * size, (batchIndex + 1) * size);
 
 }
 
@@ -387,7 +411,7 @@ async function step06_moduleBatch1(result) {
 
   const modules = getCoreModules();
 
-  const batch1 = modules.slice(0, 15);
+  const batch1 = moduleBatch(modules, 0);
 
   const errors = [], passed = [];
 
@@ -417,7 +441,7 @@ async function step07_moduleBatch2(result) {
 
   const modules = getCoreModules();
 
-  const batch2 = modules.slice(15, 30);
+  const batch2 = moduleBatch(modules, 1);
 
   const errors = [], passed = [];
 
@@ -447,7 +471,7 @@ async function step08_moduleBatch3(result) {
 
   const modules = getCoreModules();
 
-  const batch3 = modules.slice(30, 45);
+  const batch3 = moduleBatch(modules, 2);
 
   const errors = [], passed = [];
 
@@ -477,7 +501,7 @@ async function step09_moduleBatch4(result) {
 
   const modules = getCoreModules();
 
-  const batch4 = modules.slice(45, 60);
+  const batch4 = moduleBatch(modules, 3);
 
   const errors = [], passed = [];
 
@@ -1138,4 +1162,4 @@ if (require.main === module) {
 
 
 
-module.exports = { runDiagnostic, DiagnosticResult };
+module.exports = { runDiagnostic, DiagnosticResult, moduleBatch };
