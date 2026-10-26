@@ -167,14 +167,43 @@ function _evaluate() {
     _trippedAt = Date.now();
     return STATE.OPEN;
   }
-  
+
   // Warning threshold
   if (failRate >= FAIL_RATE_WARN || mem.level === 'warning' || cpu.level === 'warning') {
+    // [缺陷修复] 这里原先只 return STATE.HALF_OPEN, 不落 _state —— 见函数尾注。
+    _state = STATE.HALF_OPEN;
     return STATE.HALF_OPEN;
   }
-  
+
+  // [缺陷修复] 同上: 恢复路径原先只 return STATE.CLOSED, _state 一直是上次
+  // 熔断时留下的 OPEN。
+  _state = STATE.CLOSED;
   return STATE.CLOSED;
 }
+// ── 关于 _state 为什么必须在每条非熔断路径上都落一次 ──
+//
+// 缺陷: 原先 _state 只有两处会写 —— trip()(写 TRIPPED)和失败率 OPEN 分支。
+// 告警档 HALF_OPEN 和恢复档 CLOSED 只作为 _evaluate() 的返回值给出, 从不
+// 写回 _state。而 getState() 读的是 _state, guard() 读的是 _evaluate() 的
+// 返回值 —— 于是两个面对同一时刻的接口可以给出互相矛盾的答案, 且故障是
+// 单向闩死的: 一次失败率熔断把 _state 钉在 OPEN 之后, 即使滑动窗口翻页、
+// 失败率掉回 0, getState() 永远报 OPEN, 只有手动 reset() 能解。
+//
+// 实测(修前):
+//   recordOutcome(false) x10        → getState().state = 'OPEN', guard() 拦
+//   recordOutcome(true) x40         → failRate 0.20 < 0.30
+//   getState().state = 'OPEN'  ← 对外状态面: 仍熔断
+//   guard()            = {allowed:true, state:'CLOSED'}  ← 执行面: 已放行
+//   isTripped()        = false
+//
+// 后果不是日志不好看: aspira_circuit_breaker 这个 MCP 工具的默认 action 是
+// 'status', 返回的就是 getState()。运维看到的是"熔断器永久 OPEN", 而同一
+// 进程里每个请求都在正常放行 —— 状态面完全失去指示意义, 且没有自愈路径。
+//
+// 修法: _evaluate() 在告警档/恢复档也把结论写回 _state, 使 getState() 与
+// guard() 对同一时刻必然给出一致答案。trip() 路径不变(它自己写 TRIPPED)。
+// 本轮不改 checkCPU 的采样方法学(它在 _maybeAutoReset 与 _evaluate 里被
+// 连着调两次, 第二次的 elapsedMs 接近 0), 那是另一处独立问题。
 
 // ── Kill Switch ──────────────────────────────────────
 function trip(reason) {
