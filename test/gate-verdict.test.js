@@ -103,6 +103,32 @@ module.exports = function ({ test, assertEqual, assertTrue, assertFalse, assertD
     assertEqual(v.signals.length, 2, '两个信号都记录');
   });
 
+  test('buildGateVerdict: _epistemicSafety 通过时不得算命中', () => {
+    // 回归：epistemicCheck() 通过时返回 {passed:true, violations:[], total, checked,
+    // summary, timestamp} 六键对象，曾被 Object.keys().length>0 判成命中，
+    // 产出 reason「认知安全检查未通过：认知安全检查通过 (9 项全部通过)」。
+    const passing = {
+      passed: true, violations: [], total: 9, checked: 9,
+      summary: '认知安全检查通过 (9 项全部通过)', timestamp: new Date().toISOString(),
+    };
+    const v = buildGateVerdict({ _epistemicSafety: passing });
+    assertEqual(v.action, 'pass', '检查通过不应触发 verify');
+    assertEqual(v.signals.length, 0, 'signals 不应含「认知安全」');
+    assertFalse(v.reason.includes('认知安全'), 'reason 不应出现认知安全信号');
+
+    // 对照组：真的未通过仍必须触发
+    const failing = { ...passing, passed: false, violations: [{ id: 'EVIDENCE', label: '证据门槛', reason: '有结论无证据' }], checked: 8 };
+    const v2 = buildGateVerdict({ _epistemicSafety: failing });
+    assertEqual(v2.action, 'verify', '检查未通过必须触发');
+    assertEqual(v2.signals[0], '认知安全');
+  });
+
+  test('buildGateVerdict: 整体通过但带 warnings 仍算命中', () => {
+    // 钉住修复未改坏的旧行为：passed===true 不否决 warnings/issues
+    const v = buildGateVerdict({ _inputCheck: { passed: true, warnings: ['含诱导话术'] } });
+    assertEqual(v.action, 'verify', 'warnings 非空仍应触发');
+  });
+
   test('isAllowed: pass/verify 放行, block/rewrite 拦截', () => {
     assertTrue(isAllowed({ action: 'pass' }), 'pass 放行');
     assertTrue(isAllowed({ action: 'verify' }), 'verify 放行(需证据但不拦)');

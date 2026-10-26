@@ -64,6 +64,22 @@ function _isTriggered(value, spec) {
     if (value.passed === false) return true;
     if (Array.isArray(value.warnings)) return value.warnings.length > 0;
     if (Array.isArray(value.issues)) return value.issues.length > 0;
+    // 自带 passed 布尔的结果对象：passed===true 就是"这项检查通过"，
+    // 不能因为"对象非空"就算命中。
+    //   epistemicCheck() 通过时返回
+    //   { passed:true, violations:[], total, checked, summary, timestamp } —— 六个键，
+    //   前面的 passed===false / warnings / issues 三条全部不满足，于是落到
+    //   Object.keys().length>0 被判成命中。后果：think-pipeline.js:759 只要产出过
+    //   非空结论就无条件写上 result._epistemicSafety，于是每次 think() 的
+    //   gateVerdict 都凭空多一条自相矛盾的信号——
+    //     signals += ['认知安全']
+    //     reason  += '认知安全检查未通过：认知安全检查通过 (9 项全部通过)'
+    //   （实测两条良性输入均如此）。该 reason 由 mcp-server.js:745-756 原样透出给
+    //   调用方，人读到的是"未通过：通过"。若某次输入只有这一条信号命中，
+    //   action 还会被从 pass 误抬成 verify。
+    // 放在 warnings/issues 之后：{passed:true, warnings:[…]} 这类"整体通过但带
+    // 警告"的形状仍由上面两条接管，行为不变。
+    if (typeof value.passed === 'boolean') return value.passed === false;
     return Object.keys(value).length > 0;
   }
   // 标量 truthy
