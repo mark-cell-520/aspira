@@ -554,7 +554,72 @@ const _AIHumanIntegration = _lazy('aiHumanIntegration', () => _stubFactory('AIHu
 const _BeingMode = _lazy('beingMode', () => require('../identity/being-mode.js'));
 const _ConsciousnessBridge = _lazy('consciousnessBridge', () => { try { return require('../identity/consciousness-bridge.js'); } catch(e) { return _stubFactory('ConsciousnessBridge'); } });
 const _GapExecutor = _lazy('gapExecutor', () => _stubFactory('GapExecutor'));
-const _LearningOrchestrator = _lazy('learningOrchestrator', () => _stubFactory('LearningOrchestrator'));
+// [v6.2.2 修复] LearningOrchestrator 原先挂的是 _stubFactory 桩，桩上只有
+// healthCheck/getStats，而两个消费方调的是 .status()：what-learned.js:113 的
+// `hf.learningOrchestrator.status()`、self-diagnosis.js:67 的同一表达式。
+// 桩没有这个方法 → 两处调用从写下起就抛 TypeError，又分别被 what-learned 的
+// try/catch 和 self-diagnosis 的 get() 兜底吞掉：whatLearned 的「学习循环」整段
+// 从未渲染过，self-diagnosis 的 linkage / healthScore / learningLoop 三项读数
+// 恒取空对象兜底，于是「学习模块可能未完全联通」从写下起就是唯一可能的输出。
+// 这里换成把四个学习模块的真实统计聚合出来的实现，返回形状与
+// test/what-learned.test.js 里 mock 的契约一致（learningLoop / linkage / healthScore）。
+const _LearningOrchestrator = _lazy('learningOrchestrator', () => ({
+  LearningOrchestrator: class {
+    constructor(hf) {
+      this.hf = hf || null;
+      this.name = 'learningOrchestrator';
+      this.version = '1.0.0';
+    }
+    // 单个模块的统计安全读取：模块缺失 / 没有 getStats / getStats 抛错都退成 fallback
+    _stat(mod, fallback) {
+      try {
+        const s = mod && typeof mod.getStats === 'function' ? mod.getStats() : null;
+        return s && typeof s === 'object' ? s : fallback;
+      } catch (e) { return fallback; }
+    }
+    status() {
+      const hf = this.hf;
+      const empty = { name: this.name, healthScore: null, learningLoop: {}, linkage: {}, moduleCount: 0, learningModules: {} };
+      if (!hf) return empty;
+      const cl = this._stat(hf.continuousLearner, null);
+      const ke = this._stat(hf.knowledgeExplorer, null);
+      const ex = this._stat(hf.experienceDistiller, null);
+      const sr = this._stat(hf.strategicRestraint, null);
+      const learningLoop = {
+        detect: (cl && (cl.totalReflections || cl.reflectionCount || 0)) || 0,
+        explore: (ke && (ke.totalExplorationsCompleted || 0)) || 0,
+        absorb: (ex && (ex.totalStored || ex.totalAbstractions || 0)) || 0,
+        restrain: (sr && (sr.restrained || 0)) || 0,
+      };
+      const linkage = {
+        learnerToExplorer: !!(hf.continuousLearner && hf.knowledgeExplorer),
+        distillerToThink: !!(hf.experienceDistiller && hf.lesson),
+        restraintToLoop: !!hf.strategicRestraint,
+      };
+      const moduleCount = [hf.continuousLearner, hf.knowledgeExplorer, hf.experienceDistiller, hf.strategicRestraint]
+        .filter(Boolean).length;
+      const linked = Object.values(linkage).filter(Boolean).length;
+      return {
+        name: this.name,
+        healthScore: moduleCount === 0 ? null : +(linked / 3).toFixed(2),
+        learningLoop,
+        linkage,
+        moduleCount,
+        // self-diagnosis.js:84 读的是 learningModules.knowledgeExplorer.topPending，
+        // 而 knowledgeExplorer.getStats() 产出侧给的字段名是 topPriority —— 这里做一次
+        // 字段名对齐，否则那一路 topPriority 同样恒为空数组。
+        learningModules: {
+          knowledgeExplorer: { topPending: (ke && (ke.topPending || ke.topPriority)) || [] },
+        },
+      };
+    }
+    healthCheck() {
+      const s = this.status();
+      return { ok: true, name: this.name, healthScore: s.healthScore, moduleCount: s.moduleCount };
+    }
+    getStats() { return this.status(); }
+  },
+}));
 const _LearningPulse = _lazy('learningPulse', () => _stubFactory('LearningPulse'));
 const _TaskUrgency = _lazy('taskUrgency', () => _stubFactory('TaskUrgencyEstimator'));
 const _HypothesisDriver = _lazy('hypothesisDriver', () => { try { return require('../cortex/hypothesis-tester.js'); } catch(e) { return _stubFactory('HypothesisDriver'); } });
