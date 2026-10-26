@@ -19,6 +19,22 @@ let gate = null;
 try { gate = require('../gate.js'); } catch (e) { /* gate 不可用时降级，不影响形式分 */ }
 
 /**
+ * 把 acceptance-checker 的 blocks 归一成 { key: 字符数 }。
+ *
+ * 产出侧的形状是 { key: 字符数 }（acceptance-checker 的 return 里已经
+ * `map(([k, v]) => [k, v.length])` 折算过一次）。所以这里对数字原样透传，
+ * 只对字符串/null 兜底 —— 而不是无条件再取一次 .length，那会得到 undefined。
+ */
+function _blockLengths(blocks) {
+  const out = {};
+  for (const [k, v] of Object.entries(blocks || {})) {
+    if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
+    else out[k] = String(v == null ? '' : v).length;
+  }
+  return out;
+}
+
+/**
  * @param {string} answer
  * @param {object} task 扁平契约（MCP handler 与 CLI 共用）：
  *   task.materials        string[]  允许数字来源的材料文本（建白名单）
@@ -98,7 +114,14 @@ function evaluate(answer, task = {}) {
     note: '形式分与 gate 分数分列，不可相加；verdict 仅代表形式层+红线是否过，不代表内容质量',
     detail: {
       formalChecks: formal.checks,
-      blocks: Object.fromEntries(Object.entries(formal.blocks || {}).map(([k, v]) => [k, (v || '').length])),
+      // [缺陷修复] acceptance-checker 的 blocks 早就是 { key: 字符数 }（它自己
+      // 在 return 里做过一次 v.length）。这里又取了一遍 .length：
+      //   (21 || '').length === undefined
+      // 六个值全部变成 undefined，而 undefined 在 JSON.stringify 里被整键丢掉
+      // —— 于是 detail.blocks 从写下起恒为 {}，MCP 工具与 CLI 的调用方拿不到
+      // 任何区块长度。与近几轮 output-checklist/memory-integrity 同族：消费侧
+      // 对产出侧已经折算过的值再折算一次，读数恒定且不报错。
+      blocks: _blockLengths(formal.blocks),
       deliverableRows: deliverable.rows || []
     }
   };
