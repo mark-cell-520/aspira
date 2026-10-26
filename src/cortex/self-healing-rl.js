@@ -480,6 +480,25 @@ class HealingMemoryRL {
 
     await atomicWrite(QTABLE_FILE, JSON.stringify(data, null, 2));
 
+    // [缺陷修复] _qMeta 此前只进不出：_saveQMeta() 从写下起零调用，
+    // memory/q-meta.json 从来没被创建过，而 _loadQMeta() 在 autoCleanupRL /
+    // _calcMemoryImportance / getMemoryImportance 三处被调用，永远读到 {}。
+    // 于是 _touchEntry() 写的 accessCount / lastAccessedAt、update 路径写的
+    // updateCount、清理与遗忘路径的 delete 全部只活在内存里，进程一退即归零。
+    // 沙箱探针实测（未写仓库）：连续 3 次 updateFromRepair 后 memory/ 下只有
+    // q-table.json；getMemoryImportance() 对唯一一条记忆返回
+    // accessCount:0 / accessScore:0 / recencyScore:1 → importance 恒等于 0；
+    // autoCleanupRL() 因 `if (!meta) continue` 恒真，cleaned 恒为 0。
+    // 也就是说两个依赖元数据的机制（Titans 重要性评分、"无所得故"清理）
+    // 都是死的，而它们各自都返回结构完整的成功外形。
+    // 收口放在 _saveQTable 而不是 _debouncedSave：_saveQTable 是唯一的持久化
+    // 漏斗，reflect() 也直接调它。元数据写失败不得阻断 Q-table 落盘。
+    try {
+      await _saveQMeta();
+    } catch (_) {
+      /* graceful degradation：元数据是派生索引，丢一次不影响 Q-table 本身 */
+    }
+
   }
 
 
