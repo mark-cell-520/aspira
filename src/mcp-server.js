@@ -1495,7 +1495,11 @@ function handleCognitiveCheck(args) {
 
   const ap = safeDispatch('agentPsychology.fullAssessment', {}) || {};
 
-  const checkin = safeDispatch('psychology.engineCheckIn', null) || {};
+  // [第二百四十一轮] 第二个参数原先是 null —— engineCheckIn 里 `agentPsychology || {}`
+  // 于是 assessment 恒为 {}, 7 个维度全部走兜底值, checkin.flags 恒为
+  // ['✅ 所有维度正常']。上面刚算好的 ap 就是 fullAssessment() 的返回值,
+  // emotionalCheckIn.engineCheckIn 的 else 分支正好吃这个形态, 传下去即可。
+  const checkin = safeDispatch('psychology.engineCheckIn', ap) || {};
 
   const distortion = safeDispatch('psychology.diagnoseCognitiveDistortion', ap) || {};
 
