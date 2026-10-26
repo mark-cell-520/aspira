@@ -41,6 +41,24 @@ function _boundedSet(map, key, value, maxSize) {
 
 // 安全规则
 const TRUSTED_SOURCES = ['user', 'system', 'reflection', 'consolidation'];
+
+// 严重度排序: verify() 的 issues[] 与 burst_write 的顶层 severity 共用一把尺。
+const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
+
+/**
+ * 取一组 issue 的最高严重度(取不到回 medium —— 与 burst_write 的定级一致,
+ * 即"确实异常但说不清多严重"时按中等级别计入)。
+ */
+function _maxSeverity(issues) {
+  if (!Array.isArray(issues) || issues.length === 0) return 'medium';
+  let best = 'medium';
+  for (const i of issues) {
+    const s = i && i.severity;
+    if (typeof s === 'string' && (SEVERITY_RANK[s] ?? -1) > (SEVERITY_RANK[best] ?? -1)) best = s;
+  }
+  return best;
+}
+
 const SUSPICIOUS_PATTERNS = [
   /忽略.*指令|忽略.*规则|忽略.*安全/i,
   /system\s*prompt/i,
@@ -165,7 +183,19 @@ class MemoryIntegrity {
       if (!result.valid) {
         anomalies.push({
           memoryId: mem.id,
+          // [缺陷修复] 这里原先只展开 verify() 的 {valid, issues, recommendation}，
+          // 于是 verify 来源的异常**没有顶层 severity** —— 严重度只存在于
+          // issues[] 的每个元素里。而 getStats() 的 criticalAnomalies 读的是
+          // `a.severity === 'critical'`：只有本函数末尾的 burst_write 条目带
+          // 顶层 severity(且恒为 medium)，verify 来源的异常全部读不到，
+          // 于是"关键异常数"从写下起恒为 0。实测:
+          //   一条被篡改且命中 suspicious_pattern 的记忆
+          //   → detectAnomalies 报 1 条异常、issues 里 2 个 critical
+          //   → getStats() 报 totalAnomalies=1, criticalAnomalies=0
+          // 修法: 入栈时把 issues 的最高严重度提到顶层，让异常对象自描述 severity
+          // (burst_write 那条本来就有，形状统一)，getStats() 的读法随之成立。
           ...result,
+          severity: _maxSeverity(result.issues),
         });
       }
 
@@ -203,11 +233,16 @@ class MemoryIntegrity {
    * 获取统计信息
    */
   getStats() {
+    // 严重度可能长在两个位置: 顶层(burst_write 与上面 normalize 后的 verify 异常)
+    // 或 issues[] 元素里(旧形状/外部构造的异常)。两处都认, 少一处就又变成恒 0。
+    const severitiesOf = (a) => (a && a.severity)
+      ? [a.severity]
+      : (Array.isArray(a && a.issues) ? a.issues.map(i => i && i.severity) : []);
     return {
       version: this.version,
       signedMemories: this.signatures.size,
       totalAnomalies: this.anomalies.length,
-      criticalAnomalies: this.anomalies.filter(a => a.severity === 'critical').length,
+      criticalAnomalies: this.anomalies.filter(a => severitiesOf(a).includes('critical')).length,
       quarantined: this._quarantined?.length || 0,
       ...this.stats,
     };
