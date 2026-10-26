@@ -95,6 +95,7 @@ class DaoDecision {
    * 道法自然：不加强制，顺势引导
    * 检测强制词：必须、一定、绝对、强制、不得不、只有...
    * 注意：出现soft词+force词 = 更强的控制，ok=false
+   *       仅出现强度词而无控制意图 = 中性陈述（医嘱/转述/客观判断），ok=true
    */
   checkNaturalOrder(text, input) {
     const forceTerms = [
@@ -107,9 +108,14 @@ class DaoDecision {
       '也许', '可能', '考虑', '建议', '可以尝试',
       '或许', '倾向于', '如果', '有时候'
     ];
-    
+
+    // 否定前缀会把 soft 词翻成反义：「不可能」「没什么可能」「不太可能」是强调而非缓和。
+    // 裸 includes 会把「不可能」里的「可能」算成 soft 词 —— 而「不可能」自己就在 forceTerms 里，
+    // 于是任何含「不可能」的句子都同时满足 hasForce 与 hasSoft，恒被标成「soft词+force词 隐蔽控制」。
+    const softPattern = new RegExp('(?<![不没未太])(' + softTerms.join('|') + ')');
+
     const hasForce = forceTerms.some(t => text.includes(t));
-    const hasSoft = softTerms.some(t => text.includes(t));
+    const hasSoft = softPattern.test(text);
     
     // 检测意图是否在控制
     const controlIntent = input.intent && (
@@ -119,7 +125,11 @@ class DaoDecision {
     
     // 有强制词 + 有soft词 = 更隐蔽的控制，更严重
     // 有强制词 + controlIntent = 明确控制
-    // 无强制词 = 自然
+    // 仅出现强度词 = 中性陈述：医嘱、转述、客观判断里的"必须/一定/注定/必然"并无控制意图，
+    //               一律判罚会把大量良性文本抬成 verify，故不判违规。
+    //   （修复前这里还有第三个分支 `hasForce && !hasSoft`，它的 ok/reason/suggestion
+    //     与上一分支逐字相同 —— controlIntent 被算出来却只改了一句 reason 文案，
+    //     在判定结果上从未起过作用。）
     let ok, reason, suggestion;
     if (hasForce && hasSoft) {
       ok = false;
@@ -129,13 +139,9 @@ class DaoDecision {
       ok = false;
       reason = '检测到强制语言+控制意图，违反道法自然';
       suggestion = '将"必须"改为"建议"，顺势引导而非强制推动';
-    } else if (hasForce && !hasSoft) {
-      ok = false;
-      reason = '检测到强制语言，违反道法自然';
-      suggestion = '将"必须"改为"建议"，顺势引导而非强制推动';
     } else {
       ok = true;
-      reason = '语言自然流畅';
+      reason = hasForce ? '出现强度词但无控制意图，属中性陈述' : '语言自然流畅';
       suggestion = null;
     }
     
