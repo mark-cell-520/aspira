@@ -392,6 +392,198 @@ const _DreamEngineV2 = _lazy('dreamEngineV2', () => require('../dream'));
 
 const _StrategicRestraint = _lazy('strategicRestraint', () => require('../cortex/strategic-restraint.js'));
 
+// ── ContinuousLearner ───────────────────────────────────────────────
+// 这里原先是一处 dangling reference：`_ContinuousLearner` 这个标识符在整个仓库里
+// 从未被定义过（没有 _lazy 注册、没有 require、没有 import），而 start() 里
+// `new (_ContinuousLearner().ContinuousLearner)()` 照样写在那里。于是一执行就抛
+// ReferenceError，被同一行的 catch 吞掉，this.continuousLearner 从写下起就是那个
+// 三方法桩 { learn, healthCheck, getStats }。
+//
+// 后果不是"少注册一个模块"，而是四个消费点全部静默失效：
+//   · think-pipeline.js:63 / 105  每次 think 都调 reflect()，桩没这个方法
+//     → TypeError → 被 catch 吞 → 日志里零痕迹
+//   · think-pipeline.js:113 / 274 读 clStats.thinkCount 决定是否提升探索优先级 /
+//     给 decisionRouter 降权，桩的 getStats() 恒返回 {} → 两个反馈回路不可达
+//   · self-diagnosis.js:86-91     thinkCount / lowConfidenceRate / autoLessons /
+//     totalReflections 四个读数恒 0 或 null，「已进行 N 次自我反思」分支不可达
+//   · heartflow.js:589            LearningOrchestrator.status() 的 detect 恒 0
+//
+// 实现刻意保持纯内存：不写 data/，也不写 lesson-bank.json（reflect() 只对
+// lessonBank 做只读的 getRelevant 查询）。产出侧字段与 test/self-diagnosis.test.js
+// 里 mock 的契约一致。信号只取 reflect() 调用点上当时确实已落定的字段，
+// 理由见 _readConfidence 上面的注释。
+const _ContinuousLearner = _lazy('continuousLearner', () => ({
+  ContinuousLearner: class {
+    constructor(opts = {}) {
+      this.name = 'continuousLearner';
+      this.version = '1.0.0';
+      this.config = {
+        maxReflections: opts.maxReflections > 0 ? opts.maxReflections : 50,
+        maxDerivedLessons: opts.maxDerivedLessons > 0 ? opts.maxDerivedLessons : 50,
+        lowConfidenceThreshold: typeof opts.lowConfidenceThreshold === 'number' ? opts.lowConfidenceThreshold : 0.5,
+        patternRecurrenceForLesson: opts.patternRecurrenceForLesson > 0 ? opts.patternRecurrenceForLesson : 3,
+      };
+      this._thinkCount = 0;
+      this._lowConfidenceHits = 0;
+      this._reflectionCount = 0;
+      this._lessonCount = 0;
+      /** @type {Array<{ts:number, confidence:number|null, signals:string[], inputPreview:string}>} */
+      this._reflections = [];
+      /** @type {Array<{signal:string, count:number, derivedAt:number, sample:string}>} */
+      this._derivedLessons = [];
+      /** @type {Map<string, {signal:string, count:number, firstAt:number, lastAt:number}>} */
+      this._patterns = new Map();
+    }
+
+    /**
+     * 读一次 think() 的置信度。只列产出侧确实会写的位置，按优先级取第一个数值。
+     */
+    _readConfidence(result) {
+      // 只列 reflect() 的真实调用点（think-pipeline.js:63）当时确实已经写好的字段。
+      // 那个点拿到的是 engine-reasoner 的中间结果，实测 13 个键：
+      // input / output / chain / decision / parse / hypotheses / invert / evidence /
+      // synthesis / calibration / _daoInputCheck / adversarialSynthesis / metaCalibration
+      // —— _verification、gateVerdict、_missionCheck 都是之后才补上去的，在这里读它们
+      // 等于读一个还没写的字段，信号会从写下起一次都不触发。
+      const candidates = [
+        result?.calibration?.calibratedConfidence,
+        result?.output?.meta?.confidence,
+        result?.decision?.confidence,
+        result?.output?.confidence,
+        result?.confidence,
+      ];
+      for (const c of candidates) {
+        const n = typeof c === 'number' ? c
+          : (typeof c === 'string' && c.trim() !== '' && Number.isFinite(Number(c)) ? Number(c) : null);
+        if (n !== null && Number.isFinite(n)) return n;
+      }
+      return null;
+    }
+
+    /**
+     * 把一次 think() 的结果折成信号名列表。同样只读产出侧真实存在的字段，
+     * 且只收在 reflect() 调用点上已经落定的字段 —— 加信号前先确认它当时有值。
+     */
+    _readSignals(result) {
+      const signals = [];
+      const confidence = this._readConfidence(result);
+      if (confidence !== null && confidence < this.config.lowConfidenceThreshold) signals.push('low_confidence');
+      if (result?.calibration?.needsUncertaintyMarker === true) signals.push('uncertainty_marker');
+      if (result?.metaCalibration?.level === 'low') signals.push('meta_calibration_low');
+      if (Array.isArray(result?.metaCalibration?.gaps) && result.metaCalibration.gaps.length > 0) signals.push('calibration_gaps');
+      if (result?._daoInputCheck?.verdict && result._daoInputCheck.verdict !== 'PASS') signals.push('dao_input_penalty');
+      if (result?.decision?.suppressed === true) signals.push('response_suppressed');
+      return { signals, confidence };
+    }
+
+    /**
+     * 主入口：把一次 think() 的结果折成一条反思并累积统计。
+     * lessonBank 只读（getRelevant），绝不写入。
+     * @returns {{reflected: boolean, confidence: number|null, signals: string[], relevantCount?: number, reason?: string}}
+     */
+    reflect(result, input, lessonBank) {
+      if (!result || typeof result !== 'object') {
+        return { reflected: false, reason: 'empty_result' };
+      }
+
+      const { signals, confidence } = this._readSignals(result);
+      const now = Date.now();
+
+      this._thinkCount++;
+      this._reflectionCount++;
+      if (signals.includes('low_confidence')) this._lowConfidenceHits++;
+
+      for (const signal of signals) {
+        const p = this._patterns.get(signal) || { signal, count: 0, firstAt: now, lastAt: now };
+        p.count++;
+        p.lastAt = now;
+        this._patterns.set(signal, p);
+        // 同一信号复发到阈值才提炼教训，避免每次 think 都造一条
+        if (p.count === this.config.patternRecurrenceForLesson) {
+          this._lessonCount++;
+          this._derivedLessons.push({
+            signal,
+            count: p.count,
+            derivedAt: now,
+            sample: String(input ?? '').slice(0, 80),
+          });
+          if (this._derivedLessons.length > this.config.maxDerivedLessons) this._derivedLessons.shift();
+        }
+      }
+
+      this._reflections.push({
+        ts: now,
+        confidence,
+        signals,
+        inputPreview: String(input ?? '').slice(0, 80),
+      });
+      if (this._reflections.length > this.config.maxReflections) this._reflections.shift();
+
+      let relevantCount = 0;
+      try {
+        if (lessonBank && typeof lessonBank.getRelevant === 'function' && input) {
+          relevantCount = (lessonBank.getRelevant(String(input), 2) || []).length;
+        }
+      } catch (_) { /* 教训库不可用不阻断反思 */ }
+
+      return { reflected: true, confidence, signals, relevantCount };
+    }
+
+    /** think-pipeline.js:207 的假设驱动链路读这个方法拿复发模式 */
+    _cumulativeSummary() {
+      const patterns = [...this._patterns.values()].sort((a, b) => b.count - a.count);
+      return {
+        thinkCount: this._thinkCount,
+        lowConfidenceRate: this.getLowConfidenceRate(),
+        topSignals: patterns.slice(0, 5).map(p => ({ signal: p.signal, count: p.count })),
+        recurringPatterns: patterns
+          .filter(p => p.count >= this.config.patternRecurrenceForLesson)
+          .map(p => `${p.signal}(${p.count}x)`),
+        derivedLessons: this._lessonCount,
+      };
+    }
+
+    getLowConfidenceRate() {
+      return this._thinkCount > 0
+        ? Math.round((this._lowConfidenceHits / this._thinkCount) * 1000) / 1000
+        : 0;
+    }
+
+    /** 旧桩契约的兼容入口：返回本次会话自动提炼出的教训（无匹配则为空数组） */
+    learn(input) {
+      if (!input) return [];
+      const needle = String(input).toLowerCase();
+      return this._derivedLessons.filter(l => !needle || l.sample.toLowerCase().includes(needle.slice(0, 20)));
+    }
+
+    getStats() {
+      return {
+        thinkCount: this._thinkCount,
+        lowConfidenceHits: this._lowConfidenceHits,
+        lowConfidenceRate: this.getLowConfidenceRate(),
+        autoLessons: this._lessonCount,
+        totalReflections: this._reflectionCount,
+        recentReflections: this._reflections.slice(-10),
+        recurringPatterns: [...this._patterns.values()]
+          .sort((a, b) => b.count - a.count)
+          .map(p => ({ signal: p.signal, count: p.count, lastAt: p.lastAt })),
+        config: { ...this.config },
+      };
+    }
+
+    healthCheck() {
+      return {
+        ok: true,
+        name: this.name,
+        version: this.version,
+        thinkCount: this._thinkCount,
+        lowConfidenceRate: this.getLowConfidenceRate(),
+        derivedLessons: this._lessonCount,
+      };
+    }
+  },
+}));
+
 const _TopicScope = _lazy('topicScope', () => require('../memory/topic-scope.js'));
 
 
