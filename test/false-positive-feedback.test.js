@@ -140,6 +140,55 @@ module.exports = function ({ test, assertEqual, assertTrue, assertDefined }) {
     assertTrue(/idx\.falsePositiveSuggestions/.test(m[1]), 'handler 应支持 suggest');
   });
 
+  test('confirm 分支端到端可达：report 返回 id，按 id 确认进 confirmed 池', async () => {
+    // [缺陷回归] MCP 侧 aspira_false_positive 的 confirm 分支曾 100% 死掉：
+    // handler 只透传 schema 广告的 id（`{ id: args?.id }`），而 confirm() 读的是
+    // text+dimension，记录里又没有 id 字段 —— 两侧读写的字段没有一个是对方写的，
+    // 调用必然得到 { success:false, error:'text 不能为空' }。整条"误报→确认→
+    // 回归样本"闭环的最后一步从写下起没通过一次，且不抛异常。
+    // 现在 report() 生成并返回 id，confirm() 优先按 id 定位。
+    const { HANDLERS } = require('../src/mcp-server.js');
+
+    await HANDLERS.aspira_false_positive({ action: 'clear' });
+    const rep = await HANDLERS.aspira_false_positive({
+      action: 'report',
+      text: 'confirm branch reachability regression sample text',
+      gateAction: 'block',
+      dimension: 'code_security',
+      reason: 'benign_usage',
+    });
+    assertTrue(rep && rep.success === true, `report 必须成功, 实测 ${JSON.stringify(rep)}`);
+    assertTrue(typeof rep.id === 'string' && rep.id.length > 0,
+      `report() 必须返回可供 confirm 定位的 id, 实测 ${JSON.stringify(rep)}`);
+
+    // 按 id 确认必须真的成功（修复前这里恒为 error:'text 不能为空'）
+    const ok = await HANDLERS.aspira_false_positive({ action: 'confirm', id: rep.id });
+    assertTrue(ok && ok.success === true, `confirm(id) 必须成功, 实测 ${JSON.stringify(ok)}`);
+    assertEqual(ok.dimension, 'code_security', '确认结果必须带回维度');
+
+    // 幂等：同一条再确认一次必须被拒，不是静默重复入池
+    const again = await HANDLERS.aspira_false_positive({ action: 'confirm', id: rep.id });
+    assertTrue(again && again.success === false && again.alreadyConfirmed === true,
+      `重复确认必须被幂等保护拒绝, 实测 ${JSON.stringify(again)}`);
+
+    // 不存在的 id 必须点名该 id，而不是笼统的"text 不能为空"
+    const bad = await HANDLERS.aspira_false_positive({ action: 'confirm', id: 'fp-not-a-real-id' });
+    assertTrue(bad && bad.success === false && /fp-not-a-real-id/.test(bad.error || ''),
+      `不存在的 id 必须点名该 id, 实测 ${JSON.stringify(bad)}`);
+
+    // stats 必须反映确认结果：从未确认池移除、进 confirmed 池
+    const stats = await HANDLERS.aspira_false_positive({ action: 'stats' });
+    assertEqual(stats.confirmed, 1, '确认后 confirmed 必须为 1');
+    assertEqual(stats.total, 0, '确认后未确认池必须为 0');
+
+    // 隐私铁律不被修复破坏：调用方没回传原文，confirmed 记录不得凭空落全文
+    const confirmedRaw = fs.readFileSync(path.join(TMP_DIR, 'false-positives-confirmed.jsonl'), 'utf8');
+    assertTrue(!/"fullText"/.test(confirmedRaw),
+      `按 id 确认不得凭空补全文(隐私铁律), 实测 ${confirmedRaw.trim().slice(0, 120)}`);
+
+    await HANDLERS.aspira_false_positive({ action: 'clear' });
+  });
+
   test('清理临时目录', () => {
     try { fs.rmSync(TMP_DIR, { recursive: true, force: true }); } catch (_) {}
     assertTrue(true, 'cleanup done');

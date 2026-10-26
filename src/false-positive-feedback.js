@@ -43,6 +43,16 @@ function _ensureDir() {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (_) {}
 }
 
+/**
+ * 记录 id。命名沿用仓库里 data/feedback/feedback-<ts>-<rand6>.json 的既有形态。
+ * 为什么需要它：confirm() 原本只认 text+dimension，而 report() 按隐私铁律
+ * 默认不落全文（只存 80 字摘要），调用方要把原文一字不差地回传才能定位——
+ * 这条路从写下起没有任何调用方走过。见 confirm() 的说明。
+ */
+function _newId() {
+  return `fp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function _summarize(text, max = 80) {
   if (typeof text !== 'string') return '';
   const clean = text.replace(/\s+/g, ' ').trim();
@@ -78,6 +88,7 @@ function _readLines(file) {
  *   reason     误报标注（REASONS 之一）
  *   note       补充说明（可选，≤200 字）
  *   fullText   是否存原文全文（默认 false）
+ * @returns {{success:boolean, id:string, ...}} id 供 confirm() 定位本条记录
  */
 function report(p = {}) {
   const { text, action, dimension, trace, reason, note, fullText } = p;
@@ -95,6 +106,7 @@ function report(p = {}) {
   }
 
   const entry = {
+    id: _newId(),
     ts: Date.now(),
     action,
     dimension,
@@ -107,7 +119,7 @@ function report(p = {}) {
     ...(fullText === true ? { fullText: text.slice(0, 2000) } : {}),
   };
   _append(FP_FILE, entry);
-  return { success: true, reason, dimension, textLen: entry.textLen };
+  return { success: true, id: entry.id, reason, dimension, textLen: entry.textLen };
 }
 
 /**
@@ -196,26 +208,54 @@ function _reasonAdvice(reason) {
   }
 }
 
-/** 运维确认一条误报（移入 confirmed 文件，供回归样本用） */
+/**
+ * 运维确认一条误报（移入 confirmed 文件，供回归样本用）。
+ *
+ * [缺陷修复] 本函数原先只认 text+dimension，而 MCP 侧 aspira_false_positive 的
+ * confirm 分支只透传 schema 广告的 id（handler 里是 `{ id: args?.id }`）——
+ * 两侧读写的字段没有一个是对方写的：confirm() 读 text，调用方从来没传过；
+ * schema 广告 id，而产出侧的记录里根本没有 id 字段。结果 confirm 从写下起
+ * 100% 返回 { success:false, error:'text 不能为空' }，整条"误报→确认→回归
+ * 样本"闭环的最后一步是死的，且不抛异常、不进任何报错路径。
+ *
+ * 修法：给记录一个真实 id（report() 现在生成并返回它），confirm() 优先按 id
+ * 定位。这不只是补一个字段——按原文匹配本就是退化路径：report() 按隐私铁律
+ * 默认不落全文，调用方要把原文一字不差回传才能命中，而原文匹配恰好又是唯一
+ * 一条曾经"存在"的路。text+dimension 保留为无 id 的历史记录的退化路径。
+ */
 function confirm(p = {}) {
-  const { text, dimension } = p;
-  if (typeof text !== 'string' || text.trim() === '') {
-    return { success: false, error: 'text 不能为空' };
-  }
+  const { id, text, dimension } = p;
   const entries = _readLines(FP_FILE);
-  const hit = entries.find(e => e.dimension === dimension
-    && (e.fullText === text || e.textSample.includes(_summarize(text, 40))));
-  if (!hit) {
-    return { success: false, error: '未找到匹配的未确认误报记录' };
+
+  let hit = null;
+  if (typeof id === 'string' && id.trim() !== '') {
+    hit = entries.find(e => e.id === id) || null;
+    if (!hit) {
+      return { success: false, error: `未找到 id 为 ${id} 的未确认误报记录` };
+    }
+  } else {
+    if (typeof text !== 'string' || text.trim() === '') {
+      return { success: false, error: 'text 不能为空（或用 report() 返回的 id 定位）' };
+    }
+    hit = entries.find(e => e.dimension === dimension
+      && (e.fullText === text || e.textSample.includes(_summarize(text, 40))));
+    if (!hit) {
+      return { success: false, error: '未找到匹配的未确认误报记录' };
+    }
   }
+
   // 幂等：已在 confirmed 文件里的不再重复写入
   const already = _readLines(FP_CONFIRMED_FILE)
-    .some(e => e.ts === hit.ts && e.dimension === dimension);
+    .some(e => e.ts === hit.ts && e.dimension === hit.dimension);
   if (already) {
     return { success: false, error: '该误报已确认过（幂等保护）', alreadyConfirmed: true };
   }
-  _append(FP_CONFIRMED_FILE, { ...hit, confirmedTs: Date.now(), fullText: text.slice(0, 2000) });
-  return { success: true, dimension, ts: hit.ts };
+  // 只有调用方真的回传了原文才落全文；按 id 确认时不凭空补一份全文
+  // （隐私铁律：调用方没给的，不替它落）。
+  const confirmedEntry = { ...hit, confirmedTs: Date.now() };
+  if (typeof text === 'string' && text.trim() !== '') confirmedEntry.fullText = text.slice(0, 2000);
+  _append(FP_CONFIRMED_FILE, confirmedEntry);
+  return { success: true, dimension: hit.dimension, ts: hit.ts, id: hit.id || null };
 }
 
 /** 清理（测试用） */

@@ -119,7 +119,11 @@ const TOOLS = [
         note: { type: 'string', description: 'report 用：补充说明(最多200字)' },
         trace: { type: 'string', description: 'report 用：判定链路标识(最多200字)，用于回溯是哪次判罚被误报' },
         fullText: { type: 'boolean', description: 'report 用：是否存全文(默认false，隐私铁律)' },
-        id: { type: 'string', description: 'confirm 用：要确认的记录 id' }
+        // [缺陷修复] 这个字段一度是空头承诺：schema 广告它，handler 也确实只
+        // 透传它，但 report() 落盘的记录里没有 id、confirm() 也不读 id ——
+        // 于是 confirm 分支 100% 返回 {success:false,error:'text 不能为空'}。
+        // 现在 report() 真的生成并返回 id，confirm() 优先按它定位。
+        id: { type: 'string', description: 'confirm 用：report() 返回的记录 id' }
       },
       required: ['action'],
       // [MCP 工具增强·第一百三十三轮] 条件 required: 原 schema 只 required
@@ -134,6 +138,12 @@ const TOOLS = [
       allOf: [{
         if: { properties: { action: { const: 'report' } }, required: ['action'] },
         then: { required: ['text', 'gateAction', 'dimension', 'reason'] },
+      }, {
+        // confirm 必须带 id。不带 id 时 confirm() 退化到"回传原文匹配"，而
+        // report() 按隐私铁律默认不落全文，调用方要把原文一字不差回传才能命中
+        // —— 那条路事实上走不通，所以它是必须字段而不是可选字段。
+        if: { properties: { action: { const: 'confirm' } }, required: ['action'] },
+        then: { required: ['id'] },
       }],
     },
   },
