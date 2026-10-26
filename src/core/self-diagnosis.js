@@ -66,6 +66,17 @@ class SelfDiagnosis {
     const pulseStats = get(() => hf.learningPulse?.getStats());
     const orchestratorStatus = get(() => hf.learningOrchestrator?.status());
 
+    // StrategicRestraint.getStats() 的产出形状是 `{...this._stats}`，字段名是
+    // evaluations / restrained / approved / challenges 这一族。evaluationsTotal 这个
+    // 名字只存在于 evaluate() 返回值的 stats 子对象里，是另一个对象、另一条路径，
+    // getStats() 从来不写它。
+    // 原先这里读 evaluationsTotal：`undefined === 0` 为假 → 「尚无克制决策记录」
+    // 这个分支从写下起不可达；`undefined > 0` 为假 → restraintRate 结构性恒 0，
+    // 于是 _diagnoseRestraint 永远只能输出「克制力度 0% —— 拦得很少」，
+    // 而真实数据（实测 evaluations=177279、restrained=562）一次都没被读出来过。
+    // 这里两个名字都认，以产出侧真实的 evaluations 优先。
+    const restraintEvaluations = (restraintStats?.evaluations ?? restraintStats?.evaluationsTotal) || 0;
+
     return {
       version: get(() => hf.constructor?.VERSION || '未知'),
       uptime: get(() => {
@@ -86,9 +97,9 @@ class SelfDiagnosis {
       abstractions: distillerStats?.totalStored || 0,
       lessonCount,
       restrainedCount: restraintStats?.restrained || 0,
-      evaluationsTotal: restraintStats?.evaluationsTotal || 0,
-      restraintRate: restraintStats?.evaluationsTotal > 0
-        ? +(restraintStats.restrained / restraintStats.evaluationsTotal).toFixed(3)
+      evaluationsTotal: restraintEvaluations,
+      restraintRate: restraintEvaluations > 0
+        ? +(restraintStats.restrained / restraintEvaluations).toFixed(3)
         : 0,
       pulseTicks: pulseStats?.ticksTriggered || 0,
       pulseExplores: pulseStats?.exploresTriggered || 0,
