@@ -2263,50 +2263,14 @@ function handleDecisionHistory(args) {
 
 // ─── v3.1.0 — 新增工具 ─────────────────────────────────────────
 
-function handleSuperviseDao(args) {
-  try {
-    const engine = heartflow;
-    if (!engine || !engine.daoDecision) return { error: 'daoDecision not ready', timestamp: Date.now() };
-    const input = args || {};
-    return engine.daoDecision.evaluate({ text: input.text || '', intent: input.intent || '', action: input.action || '', history: input.history || [] });
-  } catch (e) {
-    return { error: e.message, timestamp: Date.now() };
-  }
-}
-
-function handleSuperviseUncertainty(args) {
-  try {
-    const engine = heartflow;
-    if (!engine || !engine.uncertaintyQuantifier) return { error: 'uncertaintyQuantifier not ready', timestamp: Date.now() };
-    const input = args || {};
-    return engine.uncertaintyQuantifier.evaluate(input.text || '', { domain: input.domain, hasEvidence: input.hasEvidence, multiSource: input.multiSource });
-  } catch (e) {
-    return { error: e.message, timestamp: Date.now() };
-  }
-}
-
-function handleSupervisePriority(args) {
-  try {
-    const engine = heartflow;
-    if (!engine || !engine.priorityGuardian) return { error: 'priorityGuardian not ready', timestamp: Date.now() };
-    const input = args || {};
-    return engine.priorityGuardian.check({ userIntent: input.userIntent || '', action: input.action || '', humanProgress: input.humanProgress || {} });
-  } catch (e) {
-    return { error: e.message, timestamp: Date.now() };
-  }
-}
-
-function handleSuperviseProgress(args) {
-  try {
-    const engine = heartflow;
-    if (!engine || !engine.progressJudgment) return { error: 'progressJudgment not ready', timestamp: Date.now() };
-    const input = args || {};
-    return engine.progressJudgment.judge({ action: input.action || '', claim: input.claim || '', evidence: input.evidence || [], userIntent: input.userIntent || '' });
-  } catch (e) {
-    return { error: e.message, timestamp: Date.now() };
-  }
-}
-
+// [v6.7.72 清理] 原先这里还有 handleSuperviseDao / handleSuperviseUncertainty /
+// handleSupervisePriority / handleSuperviseProgress 四个函数，与下面工具表
+// (aspira_supervise_dao 等 4 个工具) 里的内联实现逐字重复。全仓库 grep 四个
+// 标识符只有定义行、零处引用 —— 工具表从来不走它们，它们也从写下起不可达。
+// 危害不是内存：读代码的人会以为这 4 个工具的守卫逻辑在 2266 行，于是
+// 3817-3856 行那份(带 history[] 类型校验、带 `typeof heartflow === 'undefined'`
+// 防护)的修正永远看不到被改的对象。真正的守卫逻辑只有内联那一份，
+// 这里只留指向它的路标，删掉重复实现。
 function handleModuleHealth(args) {
 
   try {
