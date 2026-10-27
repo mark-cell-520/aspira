@@ -16,6 +16,17 @@ const { load: loadConfig } = require('./config');
 
 
 
+// 有界数组 push — 与 module-registry.js / engine-initializer.js 里的同名helper一致。
+// 本文件的 _runSelfImprovementHealthCheck 从写下起一直在调用这个名字, 但它是在
+// heartflow.js 里定义的, 提取成独立模块时没有被带过来 —— 于是健康检查第一行就抛
+// ReferenceError, 被 heartflow.js:4374 的 try/catch 静默吞掉, hf._siHealth 永远不写。
+function _boundedPush(arr, item, maxSize = 500) {
+  if (arr.length >= maxSize) arr.shift();
+  arr.push(item);
+}
+
+
+
 // ★ 全局配置单例（惰性加载，首次访问时初始化）
 
 let _globalConfig = null;

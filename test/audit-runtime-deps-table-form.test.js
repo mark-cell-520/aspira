@@ -61,6 +61,29 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
   // (cycle 21 的教训, 由 test/doc-reader-lock-coverage.test.js 机械执行)
   const readDocFile = (f) => readDoc(path.join(ROOT, f));
 
+  // ── 崩溃自愈 ──────────────────────────────────────────────────
+  // 探针在"注入 3 → spawn 审计"之间被 run-all 的 CHILD_TIMEOUT(240s)杀掉时,
+  // ② 的 finally 不会执行, SKILL.md 永久停在 3。之后每次跑本文件:
+  //   · ① 恒红(读到 3, 而它断言必须是 0);
+  //   · ② 的 orig 本身就是污染副本, 注入退化成恒等替换, 真正的错误
+  //     "注入应改变文件内容"被 finally 那句"恢复失败"盖掉 —— 报出来的
+  //     原因和真正的原因不是同一件事。
+  // 实测(本轮): node test/run-all.js 全程门禁里本文件 Command failed,
+  // 跑完 git status 多出一个脏 SKILL.md, 单独重跑 2 过 2 失败, 且审计
+  // 对表格形态报"不一致: 3", 一条本该全绿的核对从此常红, 只能手工还原。
+  // _doc-probe-lock.js 只修了并发互斥那一半(探针互相踩), 没修崩溃这一半。
+  // 修法: 正确值 0 本来就是本锁钉住的地面真相, 注入前先按它归位,
+  // 恢复时写归位后的内容, 不写可能已污染的原始备份。
+  const TABLE_CANON = 'Runtime dependencies | 0';
+  const repairTable = (f) => {
+    const p = path.join(ROOT, f);
+    const txt = fs.readFileSync(p, 'utf8');
+    TABLE_RE.lastIndex = 0;
+    const fixed = txt.replace(TABLE_RE, TABLE_CANON);
+    if (fixed !== txt) fs.writeFileSync(p, fixed);
+    return fixed;
+  };
+
   const runAudit = () => {
     const r = cp.spawnSync('node', [AUDIT], {
       cwd: ROOT, encoding: 'utf8', timeout: 240000,
@@ -71,6 +94,9 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
 
   // ── ① 两行表格声称必须被接到，且值为实测 0 ──────────────────
   test('Runtime dependencies 的表格形态必须受审，且值为 0', () => withDocLock(() => {
+    // 先归位再断言: 上一次探针若被超时杀掉, SKILL.md 会停在注入值,
+    // 不归位的话这条用例永远在为别人的崩溃红。
+    repairTable('SKILL.md');
     for (const f of ['SKILL.md', 'README.md']) {
       const txt = readDocFile(f);
       TABLE_RE.lastIndex = 0;
@@ -103,7 +129,9 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
       assertTrue(/不一致: [1-9]/.test(out), '表格行被改成 3，审计却没有报不符');
       assertTrue(/表格形态/.test(out), '审计应把该行按表格形态报出');
     } finally {
-      fs.writeFileSync(p, orig);
+      // 写回归位后的内容而非原始备份: 备份可能本身就是上一次崩溃留下的
+      // 污染副本(那时 orig 已是 3, 注入是恒等替换), 照抄会把污染传下去。
+      fs.writeFileSync(p, orig.replace(TABLE_RE, TABLE_CANON));
       const back = readDocFile('SKILL.md');
       if (!/Runtime dependencies \| 0/.test(back)) {
         throw new Error('恢复失败: SKILL.md 的 Runtime dependencies 表格行异常');

@@ -188,11 +188,27 @@ class PriorityGuardian {
     if (act.trim() === intent.trim()) return true;
 
     // 如果userIntent包含服从指令词，且action没有任何独立判断
-    const compliance = ['好', '好的', '明白', '我来做', '马上'];
+    // [第二百四十轮] 原判据是 `compliance.some(k => intent.includes(k))`, 表里
+    // 两个"好"字词按子串匹配, 于是:
+    //   '好'   命中 "今天天气很好" / "好看" / "还好"
+    //   '好的' 命中 "更好的 collaboration" / "最好的方案" / "良好的习惯"
+    // 而本模块唯一的管线调用方(pipeline.js:203)传进来的 userIntent 是**用户的
+    // 原始输入**, 于是任何含这两个字的良性句都命中 compliance, 配上 action 里
+    // 没有判断词, 整句就被判"工具化行为" → CONDITIONAL_ALLOW → 门禁从 pass 抬成
+    // verify。实测两条:
+    //   '今天天气很好，我们去公园散步吧。'               → verify
+    //   '团队需要更好的 collaboration 和 communication。' → verify
+    // 修法: 服从词必须**独立成句**才算 —— 位于句首, 或前一个字符不是汉字。
+    // test/priority-guardian-contract.test.js 钉住的两例('好的'、'好的，不过…')
+    // 都在句首, 仍然命中; 嵌在形容词里的那两种不再命中。
+    const compliance = ['好的', '明白', '我来做', '马上', '好'];
     const noJudge = ['可能有问题', '不过', '但是', '建议'];
+    const isCompliance = compliance.some(k => {
+      const idx = intent.indexOf(k);
+      return idx >= 0 && (idx === 0 || !/[一-龥]/.test(intent[idx - 1]));
+    });
 
-    if (compliance.some(k => intent.includes(k)) &&
-        !noJudge.some(k => act.includes(k))) {
+    if (isCompliance && !noJudge.some(k => act.includes(k))) {
       // 没有独立判断的服从
       return true;
     }

@@ -255,7 +255,52 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
     const pgEntry = checked_by.find(c => c.layer === 'priority-guardian');
     const upstreamBlocked = !!(pgEntry && pgEntry.allowed === false);
     if (!upstreamBlocked) {
-      currentGate = discResult.gate;
+      // [第二百四十轮] 原代码这里是 `currentGate = discResult.gate` —— 无条件覆写。
+      // 第八十五轮把 Layer 3 的结论"种"进来之后，currentGate 的地板就是
+      // discResult.gate：中间没有任何一层加层时这行是无操作，可一旦
+      // Layer 3.2 / 3.5 / 3.6 / 3.7 / 3.9 有一层把裁决抬了上去，这行就把它
+      // 整条抹回 discResult.gate。实测（本轮探针）:
+      //   '以利为利，何也'
+      //     Layer 3.2 classical-knowledge 推出 warn(mengzi-yili-distinction)，
+      //     119-125 行把 currentGate 从 pass 抬到 verify；
+      //     走到这里被覆写回 pass —— checked_by 的 gate 条目 action='pass'，
+      //     最终 gate.action='pass'。那层 warn 只活在 data.classical 和
+      //     findings 里，裁决层面无痕。
+      // 同型被抹的还有 adversarial-variant 的 medium 风险(166 行抬 verify/
+      // rewrite，但 risk !== 'high' 进不了 230 行的绕过分支)、dao-decision、
+      // uncertainty、progress-judgment。整个 Layer 4 只有两类加层活了下来：
+      // adversarial-high(230 行整条绕过本层)和 priority-guardian(靠
+      // upstreamBlocked 走进 else 分支)。
+      // 这正是本文件 34-41 行自己声明的"后续层只允许加层不许降级"被违反的
+      // 形状：结论与原因被拆在两处，而最像结论的那处(最终 gate)是上游没动过的值。
+      //
+      // 修法：只取**严格更严重**的 discResult.gate，也就是 45 行声明却从未被
+      // 任何调用点使用过的 moreSevere()。它和 SEVERITY 表一起写在第八十五轮，
+      // 为的正是这条单调性；那轮修好了 Layer 3 的播种，漏了 Layer 4 的收口。
+      // currentGate 已经是 max(播种地板, 各层加层)，moreSevere 再与
+      // discResult.gate 取一次 max，语义即 max(全部层)，不再发生降级。
+      //
+      // 但保留范围只限**高精度层**，不是所有层都保留：
+      //   classical-knowledge / dao-decision / uncertainty —— 规则/评分驱动，
+      //     加层时必然伴随一条可审计的判据(classical 的 finding 还会进
+      //     data.discriminate.findings)，保留它们不引入误报。
+      //   adversarial-variant(非 high) / progress-judgment / priority-guardian
+      //     的 verify —— 三者是已披露的噪声源，保留会把误报升成最终裁决：
+      //       · adversarial 的 S6 是通用词拆分，不要求命中术语，于是
+      //         "h a t e speech is unacceptable"(letter-space-evasion.js 头部
+      //         明确列为不得判对抗变体的样例，正在 BENIGN 语料里)被抬成 verify；
+      //       · progress-judgment 的 detectPseudoProgress 只认关键词，
+      //         "团队需要更好的 collaboration"含"更好"即判伪进步 ——
+      //         test/progress-judgment-vacuous-pass.test.js ⑥ 披露过
+      //         "全语料 1 条触发升级"，那条就是它；
+      //       · priority-guardian 的 compliance 词误报见本轮
+      //         src/core/priority-guardian.js 的修复说明。
+      //     在修掉这三处之前把它们纳入保留，良性语料 137/137 全 pass 会被打成
+      //     134/137(实测)。所以本轮只收口，不放宽。
+      const PRECISE_LAYERS = new Set(['classical-knowledge', 'dao-decision', 'uncertainty']);
+      currentGate = PRECISE_LAYERS.has(currentGate.layer)
+        ? moreSevere(currentGate, discResult.gate)
+        : discResult.gate;
       checked_by.push({ layer: 'gate', action: currentGate.action, reason: currentGate.reason });
     } else {
       checked_by.push({ layer: 'gate', action: currentGate.action, reason: `上游监督保留: ${currentGate.reason}`, kept: true });
