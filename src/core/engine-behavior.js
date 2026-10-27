@@ -13,11 +13,34 @@
 const debugLog = require('../utils/debug-log');
 
 
+/**
+ * 会喂给 SustainedDriftDetector 的 dispatch 路由白名单。
+ *
+ * [缺陷修复] 这个名字此前**全仓库只有一处引用, 就是下面第 20 行的读取**:
+ * `hf._DRIFT_ROUTES.has(route)` —— 从未被赋值过。于是每次调用都抛
+ * `TypeError: Cannot read properties of undefined (reading 'has')`,
+ * 而调用方 engine-dispatcher.js:125 的 `catch (e) { /* non-fatal *\/ }`
+ * 把它静默吞掉。结果是 `_feedDriftResult` 从写下起**一次都没成功执行过**,
+ * 下面整张 route→state 映射表和 `recordState` 全是死代码,
+ * F3 持续漂移检测(sustainedDriftDetector)永远收不到任何观测,
+ * `detectDrift()` 恒报 `hasSustainedDrift: false, window: []`。
+ *
+ * 保留 `hf._DRIFT_ROUTES ||` 这一层: 引擎实例若想收窄/改写这份名单仍然可以。
+ * 名单取本函数真正分支处理的路由 —— 白名单漏一个, 那条分支就是死的。
+ */
+const _DRIFT_ROUTES = new Set([
+  'selfModel.detectDrift',
+  'decisionRouter.evaluate',
+  'metacognitiveFeedback.diagnoseCognitiveDistortion',
+  'psychology.detectIdentityDrift',
+  'agentPsychology.fullAssessment',
+  'stability.diagnose',
+]);
 
 
 function _feedDriftResult(hf,route, rawResult) {
 
-    if (!hf._DRIFT_ROUTES.has(route)) return;
+    if (!(hf._DRIFT_ROUTES || _DRIFT_ROUTES).has(route)) return;
 
 
 
@@ -59,11 +82,31 @@ function _feedDriftResult(hf,route, rawResult) {
 
       const id = dims.identityDrift || {};
 
-      state.driftScore = id.drift ?? id.score ?? 0;
+      // [字段对账] 产出侧 src/identity/agent-psychology.js:507 detectIdentityDrift()
+      // 返回的是 { drifted, delta, details } —— 从来没有 drift / score / identityCoherence。
+      // 原代码读 id.drift ?? id.score，三个全是 undefined，driftScore 恒 0、
+      // identityCoherence 恒 1，这一维从写下起就是死的。
+      state.driftScore = id.delta ?? id.drift ?? id.score ?? 0;
 
-      state.identityCoherence = id.identityCoherence ?? (1 - (id.drift ?? 0));
+      state.identityCoherence = id.identityCoherence ?? (1 - (id.delta ?? 0));
 
-      state.dissonance = dims.cognitiveDissonance?.score ?? dims.dissonance ?? 0;
+      // 产出侧写的是 { count, dissonances, hasDissonance }，从来没有 .score。
+      // dissonances[] 里每项带 severity(0-1)，取最大值与 _normalize 的保守口径一致。
+      const dissonances = dims.cognitiveDissonance?.dissonances;
+
+      state.dissonance = (Array.isArray(dissonances) && dissonances.length)
+
+        ? Math.min(1, Math.max(...dissonances.map(d => Number(d?.severity) || 0)))
+
+        : (dims.cognitiveDissonance?.score ?? dims.dissonance ?? 0);
+
+      // 第三维 decay 必须显式给。_normalize 的兜底是 1-(quality??0.5)=0.5，
+      // 而本分支从不设 quality —— 于是 decay 恒为 0.5，rawScore=Math.max(...) 恒 >= 0.5，
+      // 直接击穿 driftThreshold=0.3：每一条观测都会被判成漂移，持续漂移警报永久常亮。
+      // 产出侧 decisionDecay = { decaying, trend }，trend 是决策质量的回归斜率。
+      const dd = dims.decisionDecay || {};
+
+      state.decay = dd.decaying === true ? Math.min(1, Math.abs(Number(dd.trend) || 0)) : 0;
 
     } else if (route === 'stability.diagnose') {
 

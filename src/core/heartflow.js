@@ -4762,7 +4762,19 @@ class Aspira {
     if (mod.__disabled === true && !['healthCheck', 'getStats', 'stats', 'init', 'reset'].includes(method)) {
       return { _disabled: true, route, reason: `模块 ${subsystem} 已被健康检查禁用（自愈闸门拦截），仅诊断/恢复方法可调用` };
     }
-    return fn.call(mod, ...args);
+    const rawResult = fn.call(mod, ...args);
+
+    // [接线修复] F3 持续漂移检测的喂料点此前只接在 src/core/engine-dispatcher.js:125 的
+    // dispatch() 上，而那个函数**全仓零调用方**（heartflow.js:62 导入的 _dispatch 是死绑定，
+    // 与本文件 4751 行注释里记载的 __disabled 闸门同一族）。真正生效的一直是下面这个原型
+    // 方法，它没有这道接线 —— 于是 sustainedDriftDetector 从接线起就没收到过任何观测，
+    // detectDrift() 恒报 hasSustainedDrift=false、window 恒为空数组。
+    // 喂的是未经 decisionRouter 包装的原始返回值（_feedDriftResult 读的是 dimensions 这类
+    // 业务字段，不该看到注入进来的 _field* 场域数据）。
+    if (this.sustainedDriftDetector && rawResult && typeof rawResult === 'object' && !Array.isArray(rawResult)) {
+      try { require('./engine-behavior')._feedDriftResult(this, route, rawResult); } catch (e) { /* non-fatal */ }
+    }
+    return rawResult;
   }
 
   // [v6.0.71] 恢复 routes() 路由表
