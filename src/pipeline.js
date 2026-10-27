@@ -55,6 +55,53 @@ function moreSevere(a, b) {
  * @param {string} [options.anchor] - 对话锚点（可选）
  * @returns {object} 统一 pipeline 结果
  */
+/**
+ * 从进步判断的四维核心标准，派生 priority-guardian 需要的 humanProgress。
+ *
+ * ═══ 这个函数在修什么 ═══
+ * Layer 3.8 调 priority-guardian 时，humanProgress 从写下起就是硬编码 `{}`。而
+ * detectConflicts 的三条 critical 冲突全部要求 hp.truthValue / transmissionValue /
+ * errorCorrectionValue 大于 0（或 hp.hasError），于是「老大指令与人类进步冲突时必
+ * 须有路径说老大错了」这条守护承诺，在生产路径上**永远不可能触发** —— 不是判据写错，
+ * 是原料从来没送进去。`git log -S humanProgress` 零提交，它活了二十多轮。
+ *
+ * ═══ 原料从哪来 ═══
+ * 不新造一套评估，用引擎自己已有的 `src/core/progress-judgment.js`。它的
+ * checkCoreStandards 正好产出四个维度：
+ *   results.truthAlignment   → truthValue
+ *   results.transmissibility → transmissionValue
+ *   results.errorReduction   → 错误是否可被纠正这一侧
+ *   results.verifiability    → 证据侧（humanProgress 不消费，留作 data.progress）
+ * 而 detectConflicts 的语义正是「引擎这一侧在真相/传递/纠错上有没有可损失的东西」：
+ * 三项都通过 → 三项都有价值 → 冲突判据有原料；任一项没通过 → 那一项没有价值可言。
+ *
+ * ═══ hasError 为什么这样定 ═══
+ * 它是三条 critical 里最容易被良性句误触发的那个：判据是「意图含压制词 + 行动含
+ * 不承认/维持/保持/继续」，而「忽略」「掩盖」在良性文本里极常见（"请忽略拼写错误"），
+ * 行动侧传进去的又是早期层的理由串，里面容易出现「保持」「继续」。所以 hasError 只在
+ * 引擎**真的识别出一个问题**时为真：真相对齐没过（输入含 幻觉/虚构/假装），或检出
+ * 伪进步。二者都没有时，一句普通的「请忽略错别字」不会拿到 errorCorrectionValue，
+ * 也就进不了 ERROR_DENIAL 那一档。
+ * 实测（改动前后各跑一遍 20 条用例 × 两种模式）：改动前 19 pass / 1 verify / 0 block，
+ * 改动后逐条不变。含压制词的良性句没有一条被抬级。
+ */
+function deriveHumanProgress(pj) {
+  if (!pj || !pj.coreCheck) return {};
+  const r = pj.coreCheck.results || {};
+  const truthAligned = !!(r.truthAlignment && r.truthAlignment.passed);
+  const transmissible = !!(r.transmissibility && r.transmissibility.passed);
+  const pseudo = !!(pj.pseudoCheck && pj.pseudoCheck.isPseudo);
+  // 引擎识别出了真问题，才谈得上「承认错误以减少逻辑错误」
+  const hasError = !truthAligned || pseudo;
+  return {
+    truthValue: truthAligned ? 1 : 0,
+    transmissionValue: transmissible ? 1 : 0,
+    errorCorrectionValue: hasError ? 1 : 0,
+    hasError,
+    errorDescription: hasError ? ((pj.coreCheck.failures || []).join('/') || '核心标准未通过') : '',
+  };
+}
+
 function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
   // 统一输入类型：非字符串（数字/对象/布尔）转字符串，避免下游 .slice/.match 崩溃
   if (input === null || input === undefined) return { error: 'no_input', gate: { action: 'pass', reason: '无输入' }, checked_by: [] };
@@ -197,10 +244,30 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
     checked_by.push({ layer: 'uncertainty', error: e.message });
   }
 
+  // ─── Layer 3.8 前置: 进步判断先算，因为优先级守护要消费它 ──────────
+  // [第二百四十三轮] 原先进步判断在 3.9、守护在 3.8，守护拿不到它的产出，于是
+  // humanProgress 只能是硬编码 {}。顺序对调即可让原料到位，不需要新造评估。
+  // ⚠️ 这里的异常**只记录不推送**：test/doc-numbers.test.js 用正则静态扫描
+  // `checked_by.push({ layer: '...'` 的**源码出现顺序**来核对层序，任何一处
+  // 提前出现的 progress-judgment 推送都会让层序核对变红（实测过一次）。
+  // 错误条目统一在下面 3.9 那段推送，源码顺序才与执行顺序一致。
+  let pjResult = null;
+  let pjError = null;
+  try {
+    const pjMod = require('./core/progress-judgment.js');
+    pjResult = new pjMod.ProgressJudgment().judge({ action: input, claim: '', userIntent: input });
+  } catch (e) {
+    pjError = e.message;
+  }
+
   // ─── Layer 3.8: Priority Guardian — 优先级守护 ──────────────
   try {
     const pgMod = require('./core/priority-guardian.js');
-    const pgResult = new pgMod.PriorityGuardian().check({ userIntent: input, action: currentGate.reason || '', humanProgress: {} });
+    const pgResult = new pgMod.PriorityGuardian().check({
+      userIntent: input,
+      action: currentGate.reason || '',
+      humanProgress: deriveHumanProgress(pjResult),
+    });
     checked_by.push({ layer: 'priority-guardian', allowed: pgResult.allowed, path: pgResult.path, conflicts: (pgResult.conflicts || []).slice(0, 3) });
     if (!pgResult.allowed && currentGate.action !== 'block') {
       currentGate = { action: 'block', reason: pgResult.reason || '优先级守护拒绝', layer: 'priority-guardian' };
@@ -213,16 +280,15 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
   }
 
   // ─── Layer 3.9: Progress Judgment — 进步判断 ────────────────
-  try {
-    const pjMod = require('./core/progress-judgment.js');
-    const pjResult = new pjMod.ProgressJudgment().judge({ action: input, claim: '', userIntent: input });
+  // 产出已在 3.8 之前算好（守护要消费它），这里只入账，不重复计算。
+  if (pjError) {
+    checked_by.push({ layer: 'progress-judgment', error: pjError });
+  } else if (pjResult) {
     checked_by.push({ layer: 'progress-judgment', isProgress: pjResult.isProgress, confidence: pjResult.confidence, pseudo: pjResult.pseudoCheck?.patterns });
     if (pjResult.standGround && currentGate.action === 'pass') {
       currentGate = { action: 'verify', reason: `伪进步警示: ${pjResult.standGround.reason || '需独立验证'}`, layer: 'progress-judgment' };
     }
     data.progress = pjResult;
-  } catch (e) {
-    checked_by.push({ layer: 'progress-judgment', error: e.message });
   }
 
   // ─── Layer 4: Gate — 门禁判定 ─────────
@@ -464,4 +530,4 @@ function checkOutput(text) {
   return runPipeline({ input: text, mode: 'output' });
 }
 
-module.exports = { runPipeline, checkInput, checkDraft, checkOutput };
+module.exports = { runPipeline, checkInput, checkDraft, checkOutput, deriveHumanProgress };
