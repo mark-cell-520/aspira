@@ -148,3 +148,10 @@ formulas/math/
 # 把 1344 个已跟踪的运行时文件移出版本控制是另一个决定，本轮不做。
 src/data/debates/
 memory/autonomous-upgrades/
+
+# ─── 文档探针的崩溃安全快照 ───
+# test/_doc-probe-restore.js 在探针写入受跟踪文档之前，把当时的内容落到这里，
+# 供「子进程被 kill、finally 来不及跑」时还原。是纯运行期产物，不是源码；
+# 里面的 *.bak 本就命中上面的 *.bak 规则，这条补上目录本身与 index.json。
+.probe-restore/
+

@@ -13,6 +13,10 @@
 
 const M = require('./helpers/mini-expect.js');
 
+// 文档探针的崩溃安全还原。jest 风格的文件不走 _harness.js，所以在这里另装一份；
+// 机制与覆盖范围判据完全相同，见 test/_doc-probe-restore.js。
+require('./_doc-probe-restore.js').installWriteGuard();
+
 global.describe = M.describe;
 global.it = M.it;
 global.test = M.it;

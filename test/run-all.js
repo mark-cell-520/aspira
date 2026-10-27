@@ -48,6 +48,9 @@ const { parseChildSummary } = require('./_child-summary.js');
 // 已修的 git PATH 依赖的同族新形态, 且从"1/6 间歇"恶化成"100% 失败"。
 // 解析逻辑与三条锁都在 test/_node-bin.js / node-binary-path-independence.test.js。
 const { NODE_BIN } = require('./_node-bin.js');
+// 文档探针的崩溃安全还原。跑套件之前先恢复上一次被 kill 的探针留下的注入态 ——
+// 否则那一轮会从污染态起步，而探针测试会因此把「自己的污染」报成产品的回归。
+const probeRestore = require('./_doc-probe-restore.js');
 
 const TEST_DIR = __dirname;
 const ROOT = path.join(__dirname, '..');
@@ -179,6 +182,13 @@ async function runJobs(jobs) {
       const i = nextIdx++;
       if (i >= jobs.length) return;
       results[i] = await runChildCapture(jobs[i].label, jobs[i].cmd, jobs[i].timeout);
+      // 子进程被 kill（CHILD_TIMEOUT 或 OOM）时它的 finally 来不及跑，探针会留在
+      // 注入态。这里就地恢复：登记里这个 pid 刚刚死掉，而并发的兄弟探针 pid 还活着，
+      // 会被 recoverOrphans 的存活判据跳过。失败（非 kill）也调一次，代价是一次
+      // 读 index + 逐项比对，且正常退出的子进程已在 exit 钩子里撤掉登记。
+      if (results[i] && results[i].err) {
+        probeRestore.recoverOrphans({ quiet: true });
+      }
       doneCount++;
       // 进度提示走 stderr，避免污染 stdout 的汇总行解析
       process.stderr.write(`\r  进度 ${doneCount}/${jobs.length}`);
@@ -249,6 +259,14 @@ function pickJob(label, rel, timeout) {
 
 // === MAIN ===
 async function runAllTests() {
+  // 预检：恢复上一次运行中被 kill 的探针留下的注入态。
+  // 放在 spawn 任何子进程之前，此刻所有登记的 pid 都属于已死的旧进程；
+  // 并发的兄弟探针由 recoverOrphans 内部的 pid 存活判据挡掉，不会误还原。
+  const pre = probeRestore.recoverOrphans();
+  if (pre.recovered.length) {
+    console.log(`[probe-restore] 套件启动前恢复了 ${pre.recovered.length} 个被探针写入后未还原的文件`);
+  }
+
   console.log('\n=== Aspira module tests ===\n');
 
   // 1-4. 已清理模块，保留占位说明历史

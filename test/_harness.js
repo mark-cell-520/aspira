@@ -12,6 +12,16 @@
  */
 'use strict';
 
+// 文档探针的崩溃安全还原：写「探针目标」（根目录 *.md / VERSION /
+// scripts/audit-doc-numbers.js）之前自动登记一份快照。装在这里是覆盖面的选择点：
+// _mount.js require 本文件，jest 风格走 _jest-globals.js（那里另装了一份），
+// 于是 run-all 的三种运行方式都拿到守护。
+// 为什么需要它：探针的还原一直靠各自的 finally，而 run-all 的每个测试文件跑在
+// 独立子进程里、CHILD_TIMEOUT 240 秒，被 kill 的进程没有 finally —— README /
+// AGENTS / SKILL / audit-doc-numbers.js 就会留在注入态。详见
+// test/_doc-probe-restore.js 头部与 test/doc-probe-crash-recovery.test.js。
+require('./_doc-probe-restore.js').installWriteGuard();
+
 let passed = 0;
 let failed = 0;
 const failures = [];
