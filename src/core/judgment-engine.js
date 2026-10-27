@@ -275,15 +275,28 @@ class JudgmentEngine {
 
     // 对每个时间窗口计算预测 vs 实际匹配度
 
-    for (const window of Object.values(TIME_WINDOWS)) {
+    // [2026-10-27] 这里原有两处字段名对不上，都是"消费侧读产出侧不写的键"——不抛错，
+    // 只让整段恒空（recordOutcome 返回 {ok:true, matchScore:null}，看似成功）：
+    //   ① record.chosenId 从未被写过（_recordJudgment 只写 record.chosen），老记录
+    //      还要能兜底，所以两种来源都认；
+    //   ② outcomes 的键。原来只按 window.label（"短期（1-7天）"）取，而唯一的真实
+    //      调用方 self-play.js:_recordJudgmentOutcome 传的是 short/medium/long。
+    //      三种写法都认，否则 actual 恒 undefined，循环依旧一条都不落。
+    for (const [windowKey, window] of Object.entries(TIME_WINDOWS)) {
+
+      const chosenId = record.chosenId || record.chosen?.id;
 
       const predicted = record.paths
 
-        .find(p => p.id === record.chosenId)
+        .find(p => p.id === chosenId)
 
         ?.consequences?.[window.label];
 
-      const actual = outcomes[window.label];
+      const actual = [window.label, windowKey, windowKey.toLowerCase()]
+
+        .map(k => outcomes[k])
+
+        .find(v => v !== undefined && v !== null && v !== '');
 
 
 
@@ -1367,6 +1380,75 @@ class JudgmentEngine {
 
 
 
+  /**
+
+   * 组装"经验复用"分支的判断结果 —— 与 _synthesizeJudgment 同一套输出形状。
+
+   * [2026-10-27] judge() 的 RL 复用分支（第 2 步）从写下起一直在调用这个方法，
+   * 但它在本文件里从未被定义过：全仓库搜不到 _buildJudgmentResult 的任何定义。
+   * 于是一旦 RL 表里出现 confidence > 0.7 且 _validatePath 复核通过的经验，
+   * judge() 就在这里抛 TypeError: this._buildJudgmentResult is not a function，
+   * 整次判断直接失败（而非退化成正常多路径判断）。实测可复现。
+   * 该分支此前从未被执行到，是因为 recordOutcome 的后果匹配恒空（见其修复说明），
+   * RL 表永远填不进高置信经验；两处修好后分支才真正可达，所以这个桩必须补上。
+   */
+
+  _buildJudgmentResult(input, paths, chosen, confidence, meta = {}) {
+
+    const id = `judg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const context = meta.context || {};
+
+    return {
+
+      id,
+
+      judgment: this._buildAction(chosen, input, context),
+
+      paths: paths.map(p => ({
+
+        label: p.label,
+
+        direction: p.direction,
+
+        score: p.totalScore,
+
+        scores: p.scores,
+
+      })),
+
+      chosenPath: {
+
+        label: chosen.label,
+
+        direction: chosen.direction,
+
+        score: chosen.totalScore,
+
+        scores: chosen.scores,
+
+        consequences: chosen.consequences,
+
+        whyChosen: chosen.whyChosen || '历史同类场景下该路径表现最好',
+
+      },
+
+      confidence: Math.round(confidence * 100) / 100,
+
+      reasoning: this._buildReasoning(chosen, paths, context),
+
+      direction: chosen.direction,
+
+      timestamp: Date.now(),
+
+      ...meta,
+
+    };
+
+  }
+
+
+
   _buildReasoning(chosen, allPaths, context) {
 
     const parts = [];
@@ -1594,6 +1676,13 @@ class JudgmentEngine {
       record.id = record.judgment.id;
 
     }
+
+    // [2026-10-27] 把选中路径的 id 显式落到记录上。recordOutcome() 从写下起读的就是
+    // record.chosenId，而这里只写过 record.chosen（整个路径对象）。这不是报错，是
+    // 静默恒空：find(p => p.id === undefined) 永远匹配不上 → predicted 恒 undefined
+    // → "预测 vs 实际"整个匹配循环一条都不落。线上数据实测：200 条 history、
+    // 0 条 consequences、0 条 RL 经验。
+    record.chosenId = record.chosenId || record.chosen?.id || null;
 
     this.history.push(record);
 
