@@ -193,6 +193,37 @@ class LessonRetrievalEngine {
   }
 
   /**
+   * 把 lastSeen / createdAt 归一成毫秒时间戳。
+   *
+   * [本轮修复] lesson-bank.js 的**每一个**写入点(add 的新建与查重更新、
+   * markAccessed、importLegacy、addProceduralLesson 的新建与更新)写的都是
+   * `new Date().toISOString()` —— 字符串；bank 自己的 decayImportance()
+   * 第 136 行也是 `new Date(l.lastSeen).getTime()` 先转再用，即产出侧自己
+   * 知道这个字段是字符串。只有本文件把它当数字用：
+   *   `const lastSeenA = a.lastSeen || a.createdAt || now;`
+   *   `const ageA = Math.min(1, (now - lastSeenA) / WEEK_MS);`
+   * `now - "2026-10-28T20:13:16.267Z"` 得 NaN，于是 ageA/ageB 为 NaN，
+   * decayA/decayB 为 NaN，scoreA/scoreB 为 NaN，比较器对每一对都返回
+   * NaN —— V8 把 NaN 当作 0，**整个排序退化成无操作**。
+   * 实测(形状严格照 lessonBank.add() 的产出)：两条 importance 9/frequency 9
+   * 但 40 天前的 与 importance 1/frequency 1 但 1 秒前的，prioritySort
+   * 原序返回，recency 这一维从未参与过排序。
+   * retrieve() / getTopN() / filterBy() 三条公开路径都走 prioritySort，
+   * 所以「近期教训优先」这条从写下起就没生效过。
+   * (本文件 findSimilar() 写的 `lastSeen = Date.now()` 是唯一的数字写入点，
+   *  与 bank 的字符串不一致；这里两种形状都收，不再要求调用方统一。)
+   */
+  _toTimestamp(value, fallback = Date.now()) {
+    if (typeof value === 'number' && isFinite(value)) return value;
+    if (value instanceof Date) { const t = value.getTime(); return isFinite(t) ? t : fallback; }
+    if (typeof value === 'string' && value) {
+      const t = new Date(value).getTime();
+      if (isFinite(t)) return t;
+    }
+    return fallback;
+  }
+
+  /**
    * 优先级排序：importance × frequency × recency_decay
    */
   prioritySort(lessons) {
@@ -206,8 +237,8 @@ class LessonRetrievalEngine {
 
       // 时间衰减因子：lastSeen 越近，衰减越小
       // 使用 Ebbinghaus 遗忘曲线 R = exp(-t/S)，S 默认 1 天（86400000ms）
-      const lastSeenA = a.lastSeen || a.createdAt || now;
-      const lastSeenB = b.lastSeen || b.createdAt || now;
+      const lastSeenA = this._toTimestamp(a.lastSeen, this._toTimestamp(a.createdAt, now));
+      const lastSeenB = this._toTimestamp(b.lastSeen, this._toTimestamp(b.createdAt, now));
       const ageA = Math.min(1, (now - lastSeenA) / WEEK_MS);
       const ageB = Math.min(1, (now - lastSeenB) / WEEK_MS);
       const tA = ageA * WEEK_MS;
