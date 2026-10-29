@@ -40,7 +40,18 @@ let MeaningfulMemory = null;
 
 try {
 
-  const MM = require('../memory/memory-adapter.js');
+  // [缺陷修复] 原先从 memory-adapter.js 取 MeaningfulMemory，而那个文件只导出
+  // { MemoryAdapter }（heartflow.js:1852 用的就是 MemoryAdapter）——
+  // MeaningfulMemory 在这里恒为 undefined，于是 _getMemoryInstance() 恒返回
+  // null，analyzeMemoryHealth / getMemoryStats / suggestPruning 三个公开方法
+  // 从写下起全走文件兜底；而兜底读的 data.lastAnalysis / data.lastStats 两个键，
+  // 唯一的写者 _saveReflection 从来不写（它只写 accessPatterns /
+  // reflectionHistory / lastReflection / savedAt），于是 MCP 工具
+  // aspira_meta_memory 从接线起只会返回 { error: 'No meta-memory data
+  // available' }。改指 meaningful-memory.js —— MeaningfulMemory 的真正定义处，
+  // 它构造出的实例带 layers.core/learned/ephemeral 三个数组，正是这三个方法
+  // 要的形状。
+  const MM = require('../memory/meaningful-memory.js');
 
   MeaningfulMemory = MM.MeaningfulMemory;
 
