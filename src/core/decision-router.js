@@ -980,13 +980,43 @@ class DecisionRouter {
 
 
 
+  /**
+   * 场域取值兜底：把非有限数（undefined / NaN / Infinity / 非数字）折成默认值，
+   * 合法数按原语义夹到 [0,1]。
+   *
+   * 原来这里直接写 Math.max(0, Math.min(1, x))，而 Math.min(1, undefined)
+   * 与 Math.min(1, NaN) 都是 NaN 且不抛异常 —— 于是单个畸形字段就能让
+   * U/D/A 三轴全变 NaN，H 跟着 NaN，所有阈值类场域规则静默失效。
+   */
+  static _field01(value, fallback) {
+
+    if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+
+    return Math.max(0, Math.min(1, value));
+
+  }
+
+
+
   static _extractField(result, fieldKey, defaultValue) {
 
     for (const extractor of DecisionRouter._FIELD_EXTRACTORS[fieldKey]) {
 
       if (result[extractor.field] !== undefined) {
 
-        return extractor.transform(result[extractor.field]);
+        // A 轴后三个 extractor（goalValid / valid / ok）写成
+        //   `v => v === false ? <值> : undefined`
+        // 语义是「只在负面信号上取值，否则当这一条不存在，继续往后扫」。
+        // 原实现直接 return 这个 undefined，而调用方
+        //   Math.max(0, Math.min(1, undefined)) === NaN
+        // 于是任何产出侧带 goalValid:true / valid:true / ok:true 的结果
+        // （heart-logic.goalReview 的 goalValid 恒为 true 就是这条），
+        // 都会让 A 变 NaN，H = λU·U + λD·D − λA·A 跟着 NaN，
+        // 所有「H < 阈值」类场域规则从此永不命中，且读数结构合法、不报错。
+        // 这里把 undefined 落成「本条不适用」：继续扫下一条，扫完才用默认值。
+        const value = extractor.transform(result[extractor.field]);
+
+        if (value !== undefined) return value;
 
       }
 
@@ -1044,13 +1074,16 @@ class DecisionRouter {
 
 
 
-    // v5.8.0 优化：使用优先级表提取字段值（O(1) 平均）
+    // v5.8.0 优化：使用优先级表提取字段值（O(1) 平均）。
+    // 一律过 _field01：产出侧写进来的字段值不受本仓控制（任意模块的返回值），
+    // 字符串 / null / NaN 都会让 Math.min/Math.max 静默产出 NaN，
+    // 再经 _lastKnownField 和 _updateFieldTracking 写回的 _fieldU/_fieldD/_fieldA
+    // 把 NaN 传染给后续每一轮。非有限值折成对应默认值，而不是折成 NaN。
+    const U = DecisionRouter._field01(DecisionRouter._extractField(result, 'U', 0.3), 0.3);
 
-    const U = Math.max(0, Math.min(1, DecisionRouter._extractField(result, 'U', 0.3)));
+    const D = DecisionRouter._field01(DecisionRouter._extractField(result, 'D', 0.3), 0.3);
 
-    const D = Math.max(0, Math.min(1, DecisionRouter._extractField(result, 'D', 0.3)));
-
-    const A = Math.max(0, Math.min(1, DecisionRouter._extractField(result, 'A', 0)));
+    const A = DecisionRouter._field01(DecisionRouter._extractField(result, 'A', 0), 0);
 
 
 
