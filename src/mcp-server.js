@@ -1443,13 +1443,19 @@ function handleEnginePacing(args) {
 
   const ap = safeDispatch('agentPsychology.fullAssessment', {}) || {};
 
-  const load = ap?.cognitiveLoad?.load ?? stats?.cognitiveLoad ?? 0;
+  // fullAssessment() 的产出形态是 { timestamp, version, healthScore, dimensions, status, summary }
+  // —— 维度全部在 dimensions 里, 顶层没有 cognitiveLoad / goalConflicts(顶层那两个同名字段
+  // 属于 getStats(), 形态是 { currentCount, totalDetected }, 也没有 .load / .count)。
+  // 原先读 ap.cognitiveLoad.load / ap.goalConflicts.count 恒为 undefined, 于是 load 与
+  // goalConflicts 恒为 0, 下游 diagnoseCognitiveRhythm / generateEnginePacing /
+  // diagnoseNeedForPause 拿到的是常量, 整套 enginePacing 仪器空转。
+  const load = ap?.dimensions?.cognitiveLoad?.load ?? stats?.cognitiveLoad ?? 0;
 
   const context = {
 
     cognitiveLoad: load,
 
-    goalConflicts: ap?.goalConflicts?.count ?? 0,
+    goalConflicts: ap?.dimensions?.goalConflicts?.count ?? 0,
 
     recentErrors: stats?.recentErrors ?? 0
 
@@ -1559,7 +1565,7 @@ function handlePhilosophyDecision(args) {
 
       healthScore: ap?.healthScore ?? 1,
 
-      cognitiveLoad: ap?.cognitiveLoad?.load ?? 0,
+      cognitiveLoad: ap?.dimensions?.cognitiveLoad?.load ?? 0,
 
       status: ap?.status ?? 'unknown'
 
