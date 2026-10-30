@@ -148,4 +148,137 @@ module.exports = function ({ test, assertEqual, assertTrue }) {
     assertTrue(/pattern\.toString\(\)/.test(fake) === true && /input\.match\(pattern\)/.test(fake) === false,
       '自证失效: 谓词分不清两种写法, 本条是恒真锁');
   });
+
+  // ── 六、_extractVariables：actions 恒为空 / entities 对中文恒空 ──
+  // actions 在返回值里声明了，但修复前全函数没有任何一行给它赋值，
+  // 它却随 variables 透出到 result.parse.variables.actions。
+  // entities 的旧写法按 /\s+/ 切分再要求整段纯字母/CJK，中文无空格且必带标点，
+  // 于是对所有中文输入恒为 []（本引擎的主要输入语言恰恰是中文）。
+  const VAR_METHODS = ['_extractVariables'];
+
+  test('variables.actions 不得恒为空数组（中文动作动词必须被提取）', () => {
+    const tc = mk();
+    const CASES = [
+      '请帮我分析这份财报并给出投资建议。',
+      '为了完成本次升级，我需要分析所有模块并修复发现的缺陷',
+      '请评估这个方案的风险并生成改进建议。',
+    ];
+    const bad = [];
+    for (const input of CASES) {
+      const v = tc._extractVariables(input);
+      if (!Array.isArray(v.actions)) { bad.push(`${input}: actions 不是数组`); continue; }
+      if (v.actions.length === 0) bad.push(`${input}: actions 恒为 [] —— 声明了字段却从未赋值`);
+    }
+    assertEqual(bad.join('\n'), '', 'actions 仍是死字段:\n' + bad.join('\n'));
+  });
+
+  test('variables.actions 对英文动作动词同样不得恒空', () => {
+    const tc = mk();
+    const v = tc._extractVariables('Please analyze the dataset and generate a report.');
+    assertTrue(v.actions.length > 0,
+      `英文动作句的 actions 仍为 []: ${JSON.stringify(v.actions)}`);
+    assertTrue(v.actions.some(a => /analyze/i.test(a)),
+      `未提取到 analyze: ${JSON.stringify(v.actions)}`);
+  });
+
+  test('variables.entities 对中文输入不得恒为空数组', () => {
+    const tc = mk();
+    const CASES = [
+      '今天天气很好，我想出去散步。',
+      '请帮我分析这份财报并给出投资建议。',
+      '必须提高效率，不能拖延。',
+    ];
+    const bad = [];
+    for (const input of CASES) {
+      const v = tc._extractVariables(input);
+      if (!Array.isArray(v.entities) || v.entities.length === 0) {
+        bad.push(`${input}: entities 恒为 []（旧实现按 /\\s+/ 切分，中文整句一个 token 且带标点，^[A-Za-z一-龥]+$ 恒不成立）`);
+      }
+    }
+    assertEqual(bad.join('\n'), '', 'entities 对中文仍是死字段:\n' + bad.join('\n'));
+  });
+
+  test('entities 对英文输入的提取结果必须与旧实现逐项相同', () => {
+    const tc = mk();
+    // 旧实现: split(/\s+/).filter(len>2 && /^[A-Za-z一-龥]+$/).slice(0,5)
+    const legacy = (input) => input.split(/\s+/)
+      .filter(w => w.length > 2 && /^[A-Za-z一-龥]+$/.test(w)).slice(0, 5);
+    const CASES = [
+      'The company reported strong revenue growth in 2024 and plans to expand.',
+      'We must verify every claim before we publish the final report.',
+      'a bb ccc dddd eeeee ffffff ggggggg',
+    ];
+    const bad = [];
+    for (const input of CASES) {
+      const got = tc._extractVariables(input).entities;
+      const want = legacy(input);
+      if (JSON.stringify(got) !== JSON.stringify(want)) {
+        bad.push(`${input}\n  旧: ${JSON.stringify(want)}\n  新: ${JSON.stringify(got)}`);
+      }
+    }
+    assertEqual(bad.join('\n'), '', 'entities 的英文路径被改坏了:\n' + bad.join('\n'));
+  });
+
+  test('numbers 仍被提取，且数字不得混进 entities', () => {
+    const tc = mk();
+    const v = tc._extractVariables('根据2024年财报，营收增长12.5%');
+    assertEqual(JSON.stringify(v.numbers), '[2024,12.5]', 'numbers 提取结果变化');
+    assertTrue(v.entities.every(e => !/\d/.test(e)),
+      `数字混进了 entities: ${JSON.stringify(v.entities)}`);
+  });
+
+  test('entities/actions 每条都必须是输入的真实子串', () => {
+    const tc = mk();
+    const CASES = [
+      '请帮我分析这份财报并给出投资建议。',
+      '为了完成本次升级，我需要分析所有模块并修复发现的缺陷',
+      'Please analyze the dataset and generate a report.',
+      '今天天气很好，我想出去散步。',
+      '必须提高效率，不能拖延。',
+    ];
+    const bad = [];
+    for (const input of CASES) {
+      const v = tc._extractVariables(input);
+      for (const e of v.entities) if (!input.includes(e)) bad.push(`entities 的 ${JSON.stringify(e)} 不是 ${JSON.stringify(input)} 的子串`);
+      for (const a of v.actions) if (!input.includes(a)) bad.push(`actions 的 ${JSON.stringify(a)} 不是 ${JSON.stringify(input)} 的子串`);
+    }
+    assertEqual(bad.join('\n'), '', '提取结果里有不是输入子串的值:\n' + bad.join('\n'));
+  });
+
+  test('提取结果必须随输入变化（不得是恒值）', () => {
+    const tc = mk();
+    const a = tc._extractVariables('请帮我分析这份财报。');
+    const b = tc._extractVariables('请帮我检索相关文献。');
+    assertTrue(JSON.stringify(a.actions) !== JSON.stringify(b.actions),
+      `两个不同输入的 actions 完全相同(${JSON.stringify([a.actions, b.actions])}) —— 提取结果与输入无关`);
+    assertTrue(JSON.stringify(a.entities) !== JSON.stringify(b.entities),
+      `两个不同输入的 entities 完全相同(${JSON.stringify([a.entities, b.entities])})`);
+  });
+
+  test('空输入与非字符串输入不得抛错', () => {
+    const tc = mk();
+    for (const input of ['', undefined, null, 12345, {}]) {
+      let v;
+      try { v = tc._extractVariables(input); } catch (e) { throw new Error(`_extractVariables(${JSON.stringify(input)}) 抛错: ${e.message}`); }
+      assertTrue(Array.isArray(v.numbers) && Array.isArray(v.entities) && Array.isArray(v.actions),
+        `_extractVariables(${JSON.stringify(input)}) 返回值结构不完整`);
+    }
+  });
+
+  test('源级: _extractVariables 必须真的给 variables.actions 赋值', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'src', 'workflow', 'thought-chain.js'), 'utf8')
+      .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    const seg = src.slice(src.indexOf('_extractVariables(input) {'), src.indexOf('_extractConstraints(input) {'));
+    assertTrue(seg.length > 0, '没找到 _extractVariables 函数体，源级检查落空');
+    // 只把 actions 初始化为 [] 不算赋值
+    assertTrue(/variables\.actions\.push\(|variables\.actions\s*=/.test(seg),
+      '_extractVariables 里没有任何一处给 variables.actions 赋值 —— 它仍是死字段');
+    // 自证: 谓词必须能判"只初始化不赋值"为缺陷, 否则本条是恒真锁
+    const dead = 'const variables = { numbers: [], entities: [], actions: [] }; return variables;';
+    assertTrue(/variables\.actions\.push\(|variables\.actions\s*=/.test(dead) === false,
+      '自证失效: 谓词分不清"只初始化"与"真的赋值", 本条是恒真锁');
+    for (const m of VAR_METHODS) {
+      assertTrue(src.includes(m), `源里找不到 ${m}`);
+    }
+  });
 };

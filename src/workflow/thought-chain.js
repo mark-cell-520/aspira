@@ -955,15 +955,47 @@ class ThoughtChain {
       actions: []
     };
 
+    if (typeof input !== 'string' || input.length === 0) return variables;
+
     // 提取数字
     const numMatches = input.match(/\d+\.?\d*/g);
     if (numMatches) {
       variables.numbers = numMatches.map(n => parseFloat(n));
     }
 
-    // 提取实体（简单实现）
-    const words = input.split(/\s+/);
-    variables.entities = words.filter(w => w.length > 2 && /^[A-Za-z一-龥]+$/.test(w)).slice(0, 5);
+    // 提取实体
+    // [修复] 旧写法是先 input.split(/\s+/)、再要求整段匹配 /^[A-Za-z一-龥]+$/。
+    // 中文没有空格，整句会落进同一个 token，而中文句子几乎必带标点（，。！？；、），
+    // 于是那个 ^...$ 恒不成立 —— 实测四种中文输入 entities 全为 []，
+    // 只有自带空格的英文句子才非空。本引擎的主要输入语言是中文，
+    // 等于这条提取从写下起就没产出过一个实体。
+    // 改为直接按「字母/CJK 连续段」切分，中英文都能量到；长度门槛沿用旧的 >=3，
+    // 英文输入的提取结果与修复前逐项相同（数字仍不进 entities）。
+    variables.entities = (input.match(/[A-Za-z一-龥]{3,}/g) || []).slice(0, 5);
+
+    // 提取动作
+    // [修复] actions 在返回值里声明了，但上面只填 numbers 与 entities，
+    // 全函数没有任何一行给 variables.actions 赋值 —— 它却随 variables 一起
+    // 透出到 result.parse.variables.actions，是一个从写下起恒为空数组的公开字段，
+    // 且零测试断言过它，所以一直没人发现。按中英文动作动词提取真实片段，
+    // 去重、最多 5 条；每条都必须是输入的子串（与 _extractConstraints 同一纪律）。
+    const ACTION_PATTERNS = [
+      /[一-龥]{0,6}(?:分析|提取|计算|生成|创建|编写|实现|检测|评估|检查|验证|比较|对比|预测|推荐|总结|概括|解释|翻译|搜索|检索|优化|修复|改进|设计|规划|执行|处理|转换|合并|排序|统计|判断|识别|定位|排查)[一-龥]{0,4}/g,
+      /\b(?:analyze|analyse|extract|calculate|generate|create|write|implement|detect|evaluate|check|verify|compare|predict|recommend|summarize|explain|translate|search|retrieve|optimize|fix|improve|design|plan|execute|process|convert|merge|sort|count|identify|locate)\b[^.!?。！？\n]{0,40}/gi,
+    ];
+    const seenActions = new Set();
+    for (const re of ACTION_PATTERNS) {
+      let m;
+      while ((m = re.exec(input)) !== null) {
+        const frag = m[0].trim();
+        if (frag.length >= 2 && !seenActions.has(frag)) {
+          seenActions.add(frag);
+          variables.actions.push(frag);
+        }
+        if (variables.actions.length >= 5) break;
+      }
+      if (variables.actions.length >= 5) break;
+    }
 
     return variables;
   }
