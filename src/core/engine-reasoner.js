@@ -1308,7 +1308,20 @@ try { hf._saveAllMemories(tcResult, input); } catch(e) { /* ignore */ }
 
     const result = hf.psychology.analyzePsychology(input);
 
-    if (opts.autoRemember !== false && result.emotion?.intensity === 'high') {
+    // [情绪字段形状修复] 原判据 result.emotion?.intensity === 'high' 恒假:
+    // 产出侧 analyzePsychology 的 intensity 是 PAD 模长归一后的**数字**(0..1),
+    // 不是 'high' 字符串, 数字与字符串 === 恒 false —— _psychBridge 从写下起
+    // 从未被本路径调用过。改读 classifyEmotionIntensity 的 level 分级。
+    // (result.emotion 本身也一直是 undefined: 产出侧只写了 pad, 见
+    //  src/emotion/psychology.js 的同轮修复, 那里已把 emotion 别名补上。)
+    // [情绪强度判据修复] 原判据 result.emotion?.intensity === 'high' 恒假:
+    // 产出侧 emotion 是 psychology.js 的 pad 直拷, 它的 intensity 是 PAD 向量模长
+    // 归一后的**数字**(0..0.5), 不存在 'high' 这个字符串值 —— 数字与字符串用 ===
+    // 比较恒为 false。于是 _psychBridge 从写下起从未被本路径调用过, "高强度情绪
+    // → 提升为 LEARNED 永久记忆"这条从未发生。改读 emotionIntensity.level, 那是
+    // classifyEmotionIntensity 自己的分级, 本次已由 src/emotion/engine.js 透传下来
+    // (此前这层映射把它丢了, 下游拿不到)。
+    if (opts.autoRemember !== false && result.emotionIntensity?.level === 'high') {
 
       hf._psychBridge(input, result);
 

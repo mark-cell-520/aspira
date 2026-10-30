@@ -332,6 +332,15 @@ class PsychologyEngine {
         const mappedResult = {
             intention: result.intent || { category: 'unknown', confidence: 0 },
             emotion: result.pad || { pleasure: 0, arousal: 0, dominance: 0, emotion: 'neutral' },
+            // [情绪强度分级透传] psychology.js 的 analyzePsychology 一直算并返回
+            // emotionIntensity(level: 'low'|'medium'|'high' + signals), 但这层映射
+            // 把它丢了, 于是 mappedResult 上只有 emotion.intensity —— 那是 PAD 向量
+            // 模长归一后的**数字**(范围 0..0.5, 因为 sqrt(3*25)/17.32=0.5), 从来没有
+            // 'high' 这个字符串值。下游 engine-reasoner.js:1308 与
+            // engine-behavior.js 的 _psychBridge 都把 emotion.intensity 和 'high'
+            // 用 === 比, 数字与字符串恒不相等, 两处的"高强度情绪"分支从写下起
+            // 一次都没进过。这里把模块自己的分级透传下去, 下游才有可判的值。
+            emotionIntensity: result.emotionIntensity || { level: 'low', signals: [] },
             needs: Array.isArray(result.needs) ? result.needs : [],
             defense: Array.isArray(result.defenses) ? result.defenses : [],
             crisis: result.crisis || { level: 'none', score: 0 },

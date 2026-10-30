@@ -142,7 +142,17 @@ function _psychBridge(hf,input, result) {
 
     // High-intensity emotion + specific topic → autoRecord to LEARNED
 
-    if (result.emotion?.intensity === 'high') {
+    // [情绪强度判据修复] 原判据 result.emotion?.intensity === 'high' 恒假。
+    // 产出侧 emotion 是 psychology.js 的 pad 直拷, intensity 是 PAD 向量模长归一后
+    // 的**数字**(0..0.5), 从来没有 'high' 字符串值 —— 数字与字符串 === 恒 false,
+    // 于是这段 autoRecord 从写下起一次都没执行过。改读 emotionIntensity.level
+    // (classifyEmotionIntensity 自己的分级, 已由 src/emotion/engine.js 透传)。
+    // topic/direction 两列原先读 .category/.valence, 这两个键在 pad 上从来不存在,
+    // 于是恒取 'general'/'unknown' 兜底 —— 那正是"产出侧不写、消费侧读数恒定"的
+    // 形状。改读 pad 上真实存在的 emotionZh 与按 P(pleasure) 符号推出的效价。
+    if (result.emotionIntensity?.level === 'high') {
+
+      const pad = result.emotion || {};
 
       hf.memory.autoRecord({
 
@@ -152,19 +162,19 @@ function _psychBridge(hf,input, result) {
 
         emotion: {
 
-          topic: result.emotion?.category || 'general',
+          topic: pad.emotionZh || pad.emotion || 'general',
 
-          intensity: result.emotion?.intensity,
+          intensity: pad.intensity,
 
-          direction: result.emotion?.valence || 'unknown'
+          direction: (pad.pleasure || 0) > 0 ? 'positive'
+
+            : (pad.pleasure || 0) < 0 ? 'negative' : 'neutral'
 
         }
 
       });
 
     }
-
-
 
     // Also keep lightweight ephemeral signal for session context
 
