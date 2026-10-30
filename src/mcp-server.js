@@ -2978,7 +2978,11 @@ function handleGate(args) {
     return {
       text,
       gate: result.gate,
-      score: result.score,
+      // [读数修复] 原为 result.score —— gate.gate() 的产出侧从来不写 score，
+      // 它写的是 overallScore（同文件 check() 就是 score: result.overallScore）。
+      // 于是本工具返回的 score 恒为 undefined，JSON 序列化后整个键消失，
+      // 调用方看到的是 { text, gate, overallScore, verdict }，没有 score。
+      score: result.overallScore,
       overallScore: result.overallScore,
       verdict: result.verdict,
       timestamp: Date.now()
@@ -3971,19 +3975,22 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  aspira_desire_system: (args) => {
+  aspira_desire_system: async (args) => {
     try {
       const { DesireSystem } = require('./emotion/desire-system.js');
       const ds = new DesireSystem({ silent: true });
       // [契约修复] 此前声明了 text/action 却只读 text，action 从未使用。
       // DesireSystem 有 process(input, context) 与 getStatus()，按 action 分支。
+      // [await 修复] process() 是 async：本 handler 原为非 async，直接把 Promise
+      // 塞进返回值，中央 dispatch 只 await 顶层 thenable，嵌套的 Promise 被
+      // JSON.stringify 成 {} —— desire 字段从写下起就是空对象。
       const action = args?.action || 'process';
       const text = typeof args?.text === 'string' ? args.text.trim() : '';
       let r;
       if (action === 'status') {
         r = ds.getStatus ? ds.getStatus() : { error: 'getStatus 不可用' };
       } else if (action === 'process') {
-        r = text ? (ds.process ? ds.process(text, {}) : { error: 'process 不可用' })
+        r = text ? (ds.process ? await ds.process(text, {}) : { error: 'process 不可用' })
                  : { error: 'process 需要 text 传入输入' };
       } else {
         r = { error: `未知 action: ${action}(可用 process/status)` };
@@ -3992,18 +3999,20 @@ const HANDLERS = {
     } catch (e) { return { error: e.message }; }
   },
 
-  aspira_emotional_growth: (args) => {
+  aspira_emotional_growth: async (args) => {
     try {
       const { EmotionalGrowth } = require('./emotion/emotional-growth.js');
       const eg = new EmotionalGrowth({ silent: true });
       // [契约修复] 同 desire_system: action 声明未读。按 action 分支。
+      // [await 修复] 同 desire_system：process() 是 async，非 async handler
+      // 会把 Promise 原样返回，JSON 序列化后 growth 恒为 {}。
       const action = args?.action || 'process';
       const text = typeof args?.text === 'string' ? args.text.trim() : '';
       let r;
       if (action === 'status') {
         r = eg.getStatus ? eg.getStatus() : { error: 'getStatus 不可用' };
       } else if (action === 'process') {
-        r = text ? (eg.process ? eg.process(text, {}) : { error: 'process 不可用' })
+        r = text ? (eg.process ? await eg.process(text, {}) : { error: 'process 不可用' })
                  : { error: 'process 需要 text 传入输入' };
       } else {
         r = { error: `未知 action: ${action}(可用 process/status)` };
@@ -4214,11 +4223,14 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  aspira_autonomous_emotion: (args) => {
+  aspira_autonomous_emotion: async (args) => {
     try {
       const { AutonomousEmotion } = require('./emotion/autonomous-emotion.js');
       const inst = new AutonomousEmotion({ silent: true, rootPath: HF_DIR });
-      const r = inst.process ? inst.process(args?.text || '') : {};
+      // [await 修复] process(input, context) 是 async。本 handler 原为非 async，
+      // Promise 原样进返回值，JSON 序列化后 result 恒为 {} —— 调用方拿到空对象，
+      // 分不出"处理完了没结果"和"从未处理"。
+      const r = inst.process ? await inst.process(args?.text || '') : { error: 'process 不可用' };
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
@@ -4372,11 +4384,17 @@ const HANDLERS = {
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },
-  aspira_meta_prompt: (args) => {
+  aspira_meta_prompt: async (args) => {
     try {
       const { MetaPromptEngine } = require('./core/meta-prompt-engine.js');
       const inst = new MetaPromptEngine({ silent: true, rootPath: HF_DIR });
-      const r = inst.optimize ? inst.optimize(args?.text || '') : {};
+      // [双缺陷修复] ① optimize() 是 async，本 handler 原为非 async，Promise 被
+      //    JSON.stringify 成 {} —— result 恒为空对象；
+      // ② optimize({ prompt, task, context, options }) 解构的是**对象**，
+      //    原代码传的是 schema 声明的 text 字符串，prompt 于是恒为 undefined。
+      const text = typeof args?.text === 'string' ? args.text.trim() : '';
+      if (!text) return { error: 'text 是必填参数' };
+      const r = inst.optimize ? await inst.optimize({ prompt: text }) : { error: 'optimize 不可用' };
       return { result: r, timestamp: Date.now() };
     } catch (e) { return { error: e.message }; }
   },

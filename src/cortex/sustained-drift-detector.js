@@ -150,6 +150,25 @@ class SustainedDriftDetector {
 
     this._load();
 
+    // [读数修复] 此前 load() 只重置+重载，什么都不返回。唯一消费方
+    // MCP aspira_drift_detect 写的是 `const r = sd.load()` 然后
+    // `return { drift: r, ... }` —— 于是 drift 恒为 undefined，JSON 序列化后
+    // 整个键消失，工具只回一个 timestamp。与同段 save() 返回 true/false 也不成对。
+    // 现在把本次载入的快照交回去，调用方拿得到真实漂移状态。
+    return {
+
+      history: this._history,
+
+      currentEma: this._currentEma,
+
+      driftEvents: this._driftEvents,
+
+      totalRecorded: this._totalRecorded,
+
+      stats: this.getStats(),
+
+    };
+
   }
 
 
