@@ -22,6 +22,11 @@ const FRAMEWORK = {
   CARE: 'care'
 };
 
+// 四个框架的 recommendation 取值表。只有这里定义一次，产出侧（四个 _xxx 方法）
+// 与消费侧（evaluate 的共识计数）都引用它 —— 否则两侧各写各的字面量，
+// 一边改了另一边不知道，就会退化成「读一个产出侧从来不写的值」。
+const VERDICT = { APPROVE: 'APPROVE', REJECT: 'REJECT', REVIEW: 'REVIEW' };
+
 // ═════════════════════════════════════════════════════════════════════════
 // AI 存在方式 — 核心本体论分类（AI特有）
 // ═════════════════════════════════════════════════════════════════════════
@@ -495,8 +500,14 @@ class PhilosophyEngine {
         care.score
       ];
       const avg = scores.reduce((a, b) => a + b, 0) / 4;
+      // 缺陷修复：原来这里过滤 x.recommendation === '通过'，而 '通过' 在本文件里
+      // 只是正文措辞，从来不是任何框架的返回值 —— 四个框架只产出
+      // VERDICT.APPROVE / VERDICT.REJECT / VERDICT.REVIEW，出错路径是 '错误'。
+      // 于是 approvals 从写下起恒为 0，finalRecommendation 恒为 '停止'、
+      // unanimousApproval 恒为 false：四框架全票通过也读成「停止」。
+      // 现在引用同一个 VERDICT 表，两侧不可能再各写各的。
       const approvals = [utilitarian, deontological, virtue, care]
-        .filter(x => x.recommendation === '通过').length;
+        .filter(x => x.recommendation === VERDICT.APPROVE).length;
 
       return {
         utilitarian,
@@ -532,7 +543,7 @@ class PhilosophyEngine {
     return {
       framework: FRAMEWORK.UTILITARIAN,
       score,
-      recommendation: score > 0 ? 'APPROVE' : 'REJECT',
+      recommendation: score > 0 ? VERDICT.APPROVE : VERDICT.REJECT,
       rationale: score > 0 ? '最大化净正向收益' : '净负面结果'
     };
   }
@@ -545,7 +556,7 @@ class PhilosophyEngine {
     return {
       framework: FRAMEWORK.DEONTOLOGICAL,
       score,
-      recommendation: violations.length === 0 ? 'APPROVE' : 'REJECT',
+      recommendation: violations.length === 0 ? VERDICT.APPROVE : VERDICT.REJECT,
       rationale: violations.length === 0
         ? '义务得到维护'
         : `违反了 ${violations.length} 项义务`
@@ -563,13 +574,22 @@ class PhilosophyEngine {
     return {
       framework: FRAMEWORK.VIRTUE,
       score: this._clampScore(score),
-      recommendation: score > 0.3 ? 'APPROVE' : 'REJECT',
+      recommendation: score > 0.3 ? VERDICT.APPROVE : VERDICT.REJECT,
       rationale: score > 0.5 ? '培养美德' : '违背美德'
     };
   }
 
   _care(action, stakeholders) {
-    const affected = this._safeArray(stakeholders?.affected);
+    // 缺陷修复：原来读 stakeholders?.affected，而唯一调用方 evaluate() 把
+    // ctx.stakeholders 过 _safeArray() 归一成数组（同文件的 _utilitarian 用的
+    // 正是 stakeholders.length），数组上没有 .affected —— 于是 impact 恒为 0，
+    // _care 从公开入口调用起恒返回 { score: 0, recommendation: REVIEW }，
+    // 「关怀」这个框架从未真正参与过四框架共识。现在两种形状都归一成
+    // 「受影响的相关方」列表再读 careValue。
+    const related = Array.isArray(stakeholders)
+      ? stakeholders
+      : this._safeArray(stakeholders?.affected);
+    const affected = related.flatMap(s => (Array.isArray(s?.affected) ? s.affected : [s]));
     const impact = affected.reduce((s, r) => {
       const val = r?.careValue;
       return s + (typeof val === 'number' ? val : 0);
@@ -577,7 +597,7 @@ class PhilosophyEngine {
     return {
       framework: FRAMEWORK.CARE,
       score: this._clampScore(impact),
-      recommendation: impact > 0 ? 'APPROVE' : 'REVIEW',
+      recommendation: impact > 0 ? VERDICT.APPROVE : VERDICT.REVIEW,
       rationale: impact > 0 ? '维护关系纽带' : '可能伤害关系'
     };
   }
