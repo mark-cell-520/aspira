@@ -3,7 +3,8 @@
  *
  * 复用:
  *  - src/reasoning/fact-checker.js
- *  - src/reasoning/counterfactual-engine.js / counterfactual-verifier.js
+ *  - src/core/counterfactual-verifier.js(注意: 不在 src/reasoning/ 下,
+ *    同目录的 counterfactual-engine.js 是另一套 CounterfactualEngine)
  *
  * 职责:
  *  - 对跨域推理结论做可验证主张提取后的核验
@@ -14,13 +15,50 @@
 
 const { factChecker } = require('./fact-checker.js');
 
-function _tryRequire(p) {
-  try {
-    const m = require(p);
-    return typeof m === 'function' ? m() : m;
-  } catch (e) {
-    return null;
+/**
+ * 解析出一个可用的 CounterfactualVerifier 实例。
+ *
+ * [反事实验证接线修复] 原实现是:
+ *   const cfModule = _tryRequire('./counterfactual-verifier.js');
+ *   if (cfModule && cfModule.CounterfactualVerifier) { ... }
+ * 而 counterfactual-verifier.js 的导出形状是 module.exports = CounterfactualVerifier
+ * (class 本身, 不是命名导出), 于是这里连错两层:
+ *   ① _tryRequire 的 typeof m === 'function' ? m() 分支把 class 当零参工厂调用,
+ *      抛 "Class constructor cannot be invoked without 'new'", 被自己的 catch 吞成 null;
+ *   ② 即便不抛, cfModule.CounterfactualVerifier 也恒为 undefined —— 消费侧读的是
+ *      产出侧根本不写的属性。
+ * 净效果: this.counterfactualVerifier 从写下起恒为 null, verifyCrossDomainConclusion
+ * 第 3 步(反事实验证)整段不可达, counterfactualResult 恒为 null,
+ * counterfactual_margin_low 这条 issue 一次都没推出来过。
+ *
+ * 另外: 构造器 JSDoc 声明的 options.counterfactualVerifier 原先也没被读取,
+ * 调用方显式注入实例同样被无视, 一并在此修掉。
+ *
+ * 还有第三层: 原 require 路径 './counterfactual-verifier.js' 指向 src/reasoning/,
+ * 而该模块实际在 src/core/counterfactual-verifier.js(src/reasoning/ 下只有
+ * counterfactual-engine.js, 导出的是另一套 CounterfactualEngine)——
+ * 路径本身就从写下起解析不到, MODULE_NOT_FOUND 被 catch 吞成 null。
+ *
+ * @param {*} injected - options.counterfactualVerifier, 可为实例 / class / 模块 / null
+ * @returns {object|null}
+ */
+function _resolveCounterfactualVerifier(injected) {
+  const asCtor = (m) => (m && (m.CounterfactualVerifier
+    || (typeof m === 'function' ? m : null))) || null;
+
+  // 1. 调用方显式注入的优先
+  if (injected && typeof injected.verify === 'function') return injected;
+  const InjectedCtor = asCtor(injected);
+  if (InjectedCtor) {
+    try { return new InjectedCtor(); } catch (e) { /* 落到默认路径 */ }
   }
+
+  // 2. 默认路径: require 本仓库模块
+  let mod = null;
+  try { mod = require('../core/counterfactual-verifier.js'); } catch (e) { return null; }
+  const Ctor = asCtor(mod);
+  if (!Ctor) return null;
+  try { return new Ctor(); } catch (e) { return null; }
 }
 
 class Verifier {
@@ -39,10 +77,7 @@ class Verifier {
       intercepted: 0,
     };
 
-    const cfModule = _tryRequire('./counterfactual-verifier.js');
-    if (cfModule && cfModule.CounterfactualVerifier) {
-      this.counterfactualVerifier = new cfModule.CounterfactualVerifier();
-    }
+    this.counterfactualVerifier = _resolveCounterfactualVerifier(options.counterfactualVerifier);
 
     // 懒初始化 counterfactualVerifier 的 init
     if (this.counterfactualVerifier && typeof this.counterfactualVerifier.init === 'function') {
