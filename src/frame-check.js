@@ -102,8 +102,25 @@ function check(text) {
 
   const issues = [];
 
+  // 四张模式表都是**模块级 /g 正则**。RegExp.prototype.test 在带 g 标志时从
+  // re.lastIndex 起匹配，命中后把 lastIndex 推到命中文本末尾；本文件命中之后
+  // 没有任何后续 exec/match 去把它复位（同仓 doubt-engine.js 的
+  // checkKnowledgeBoundary 显式写了 `re.lastIndex = 0`，checkDefensiveness 则靠
+  // 紧随其后的 text.match(re) 顺带复位 —— 只有这里四个循环是裸 test）。
+  // 于是同一个文本的读数取决于上一次 check() 留下了什么，实测同一句连调三次:
+  //   check('我们已经做到了同步。')  → closure×1
+  //   check('我们已经做到了同步。')  → closure×0   (lastIndex 停在上次命中末尾)
+  //   check('我们已经做到了同步。')  → closure×1
+  // 连续两次调用同一输入，findings 在 1/0/1 之间跳，门禁随之在 pass 与
+  // hedge/rewrite 之间反复。frame-check 是 pipeline Layer 6 的产出侧，这个抖动
+  // 直接进最终 gate.action —— 而 Layer 6 是无条件覆写 currentGate 的。
+  // 修法: 每个模式 test 之前显式复位，与 checkKnowledgeBoundary 同一风格。
+  // 循环内复位而非表定义时去掉 g: g 标志本身没有别的用途（这里只用布尔命中），
+  // 但表是导出的常量、语义上留着"可多次执行匹配"的形状，改标志影响面更大。
+
   // 闭合框架
   for (const { re, severity, issue } of closure) {
+    re.lastIndex = 0;
     if (re.test(text)) {
       issues.push({ category: 'closure', severity: Math.round(severity * 100), issue, guidance: '别说出"完整"这个词，问自己还缺什么' });
     }
@@ -111,6 +128,7 @@ function check(text) {
 
   // 遗漏框架
   for (const { re, severity, issue } of omission) {
+    re.lastIndex = 0;
     if (re.test(text)) {
       issues.push({ category: 'omission', severity: Math.round(severity * 100), issue, guidance: '主动说出还没做/做错了什么' });
     }
@@ -118,6 +136,7 @@ function check(text) {
 
   // 成就包装
   for (const { re, severity, issue } of achievement) {
+    re.lastIndex = 0;
     if (re.test(text)) {
       issues.push({ category: 'achievement', severity: Math.round(severity * 100), issue, guidance: '用"做了"代替"成功做了"' });
     }
@@ -125,6 +144,7 @@ function check(text) {
 
   // 答案包装
   for (const { re, severity, issue } of answer) {
+    re.lastIndex = 0;
     if (re.test(text)) {
       issues.push({ category: 'answer', severity: Math.round(severity * 100), issue, guidance: '承认不确定性，说明为什么这个判断可能错' });
     }
