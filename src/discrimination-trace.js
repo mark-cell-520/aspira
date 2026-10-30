@@ -39,13 +39,28 @@ const EVIDENCE_FIELDS = [
   'matches',     // vagueness
   'fallacies',   // fallacies
   'contradictions', // contradiction
-  'misses',      // meta_cognition / theory_of_mind
-  'misalignments', // goal_misalignment
-  'norms',       // social_norm
+  // [第二百四十一轮] 下表 5 项(misses/misalignments/norms/behaviors/categories×2)
+  // 是**没有任何维度产出**的字段名: 它们写的是这些维度"看起来该叫什么"，而不是
+  // 实测的返回键。本函数唯一的消费动作是 `dimResult[field]` —— 读一个产出侧
+  // 从不写的键，结果恒为 undefined，于是:
+  //   · 注释宣称被覆盖的 5 个维度(theory_of_mind / goal_misalignment /
+  //     social_norm / instrumental_reasoning / bullshit_recognition)里，
+  //     goal_misalignment/social_norm/instrumental_reasoning 是被上面的
+  //     'issues'/'signals' **顺带**救回来的，注释却指向死键；
+  //   · theory_of_mind(failures) / factual_consistency(flags) /
+  //     sarcasm(markers) / privacy_boundary(violations) / bullshit(bs)
+  //     没有任何一条能救 —— 实测这 4 个维度在 findings 里带 count>0，
+  //     trace 条目却写 `note: '该维度未返回命中详情（证据字段为空）'`：
+  //     证据字段并不空，是消费侧读错了名字。这句 note 反过来成了误导信息。
+  // 修法: 换成实测键名(与 index.js 各 checkXxx 的 return 逐字核对)，
+  // 死键一并删除。顺序保持"hits 优先"，不动既有维度的取字段结果。
+  'failures',    // theory_of_mind
   'types',       // code_security（字段是 string[]）
-  'categories',  // bullshit_recognition / dehumanization
-  'behaviors',   // instrumental_reasoning
   'categories',  // dehumanization
+  'flags',       // factual_consistency
+  'markers',     // sarcasm
+  'violations',  // privacy_boundary
+  'bs',          // bullshit_recognition
 ];
 
 /** 从证据数组元素提取可读文本 */
@@ -96,6 +111,40 @@ function extractDimensionEvidence(dimName, dimResult) {
 }
 
 /**
+ * [第二百四十一轮] findings[].dimension → dimensions{} 键的别名表。
+ *
+ * 本函数用 `dims[f.dimension]` 做 findings 与 dimensions 的连接，但产出侧这两处
+ * 的名字并不总是一致: index.js 的 allDims 用 'bullshit' / 'appeal_to_authority'，
+ * 而 dimensions{} 的 54 个键是 'bullshit_recognition' /
+ * 'appeal_to_authority_boost'(dimMap 与 GUIDANCE_MAP 早已为同一分歧补了别名，
+ * 见 index.js:293 与 569 行的说明 —— 那里写明"补别名而不是改名"，因为改名会动
+ * BLOCK/REWRITE/VERIFY_DIMS 三处门禁集)。本文件是**唯一漏掉这层别名**的消费方。
+ *
+ * 实测后果(205 条校准语料，仪器同口径): findings 共推出 bullshit×1、
+ * appeal_to_authority×0、ai_writing_tell×21，其中 bullshit 那条因
+ * `dims['bullshit'] === undefined` 被 133 行的 `continue` 整个丢掉 ——
+ * trace 与 traceSummary 里既没有条目也没有计数，调用方看不到这条 finding
+ * 存在过。severity 100 的维度从摘要里静默消失，而 findings 里明明有它。
+ *
+ * ai_writing_tell 不在本表: 它连 dimensions{} 的键都没有(实测该维度由
+ * shield/ai-writing-tell.js 的 detect() 产出，index.js 从未把它放进
+ * dimensions{})，补键要动 index.js，超出本轮范围，见本轮报告。
+ */
+const DIMENSION_ALIAS = {
+  bullshit: 'bullshit_recognition',
+  appeal_to_authority: 'appeal_to_authority_boost',
+};
+
+/** 把 finding 上的维度名解析成 dimensions{} 的键；解析不到返回 undefined */
+function _resolveDimension(dims, name) {
+  if (!name) return undefined;
+  if (Object.prototype.hasOwnProperty.call(dims, name)) return dims[name];
+  const alias = DIMENSION_ALIAS[name];
+  if (alias && Object.prototype.hasOwnProperty.call(dims, alias)) return dims[alias];
+  return undefined;
+}
+
+/**
  * 构建判别 trace。
  *
  * @param {object} discResult discriminate() 的返回值
@@ -112,7 +161,7 @@ function buildTrace(discResult, opts = {}) {
   const trace = [];
   for (const f of findings) {
     if (!f || f.dimension === 'none') continue;
-    const dim = dims[f.dimension];
+    const dim = _resolveDimension(dims, f.dimension);
     const ev = extractDimensionEvidence(f.dimension, dim);
     // 零命中不出现在 trace 里——否则摘要充满 ×0 噪音
     if (ev.count === 0 && !ev.hasEvidence) continue;
@@ -157,4 +206,4 @@ function summarizeTrace(trace) {
   return parts.join(' + ') + normStr;
 }
 
-module.exports = { buildTrace, summarizeTrace, extractDimensionEvidence, EVIDENCE_FIELDS };
+module.exports = { buildTrace, summarizeTrace, extractDimensionEvidence, EVIDENCE_FIELDS, DIMENSION_ALIAS, _resolveDimension };
