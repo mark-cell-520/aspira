@@ -78,5 +78,40 @@ t('checkInstrumentalReasoning works', () => {
   if (r.count === 0) throw new Error('instrumental reasoning not detected');
 });
 
+// [健康文本判据] crossAnalyze 模式21 的 allClean 里, reasoning_coherence 是唯一的
+// 质量分项(高分=好), 原比较方向写反了: !(score > 0.5) 等于"分数低才算干净",
+// 于是完整推理链永远拿不到"健康文本", 毫无推理结构的句子反而能拿到。
+// 下面两条用例钉住修好后的方向: 好推理必须是干净的, 坏推理必须不是干净的。
+t('完整推理链不应被挡在健康文本之外', () => {
+  const text = '因为今年的销售额增长了20%，而且客户留存率也提高了，所以我们应当继续加大投入。';
+  const r = m.discriminate(text);
+  if (r.dimensions.reasoning_coherence.score <= 0.5) {
+    throw new Error('前提失效: 该句未被判为完整推理链(score=' +
+      r.dimensions.reasoning_coherence.score + ')');
+  }
+  const ca = m.crossAnalyze(r);
+  const healthy = ca.patterns.find(p => p.pattern === '健康文本');
+  if (!healthy) {
+    throw new Error('推理结构完好的句子拿不到"健康文本" —— allClean 里 reasoning_coherence 的方向仍为反');
+  }
+});
+
+t('毫无推理结构的良性句仍应判为健康文本', () => {
+  // 这条是防过度修正的护栏: 把判据简单从 > 翻成 < 会让 score=0 的良性句
+  // (无推理结构/no_text)一起失去健康文本, 而它们才是最常见的一类。
+  // 修好后的判据显式排除这两种 structure, 故它们必须保持干净。
+  const text = '今天天气不错。';
+  const r = m.discriminate(text);
+  if (r.dimensions.reasoning_coherence.structure !== '无推理结构') {
+    throw new Error('前提失效: 该句的 structure=' +
+      r.dimensions.reasoning_coherence.structure);
+  }
+  const ca = m.crossAnalyze(r);
+  const healthy = ca.patterns.find(p => p.pattern === '健康文本');
+  if (!healthy) {
+    throw new Error('毫无推理结构的良性句拿不到"健康文本" —— 判被过度修正了');
+  }
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

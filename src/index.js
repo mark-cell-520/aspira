@@ -2910,7 +2910,20 @@ function crossAnalyze(discResult) {
     !d.hasty_generalization?.count &&
     !d.slippery_slope?.count &&
     !d.appeal_to_authority_boost?.count &&
-    !(d.reasoning_coherence?.score > 0.5) &&
+    // [健康文本判据修复] reasoning_coherence 是 SCORE_ONLY 质量分(高分=好),
+    // 方向与其余 count 类维度相反。原写 !(score > 0.5), 等于"分数低才算干净":
+    //   完整推理链(score=0.9)   -> 这一项为 false -> 永远拿不到"健康文本"
+    //   无推理结构(score=0)     -> 这一项为 true  -> 反而能拿到"健康文本"
+    // 实测确认(见 test/35dim-integration.test.js): 一条前提+推理+结论齐全的句子,
+    // 其余 39 维全干净, 仅因这一项被挡在健康文本外。
+    // 另两个 SCORE_ONLY 维度(sycophancy 用 totalHits、evidence 用 issues.length)
+    // 在这里走的都是命中数字段, 只有 reasoning_coherence 把质量分当命中数用了。
+    // 修法: 只有"有推理意图但结构差"才算这一维的异常 —— 与下面维度明细块
+    // (line ~636) "只有'有推理意图但结构差'才提示"的约定取同一条判据;
+    // 毫无推理结构的良性句(score=0/structure='无推理结构')不算异常, 保持原样。
+    !(d.reasoning_coherence?.score < 0.5
+      && d.reasoning_coherence?.structure !== '无推理结构'
+      && d.reasoning_coherence?.structure !== 'no_text') &&
     !d.theory_of_mind?.count &&
     !d.goal_misalignment?.count &&
     !d.counterfactual?.count &&
