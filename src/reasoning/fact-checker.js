@@ -14,7 +14,26 @@
  *   - 保留原有 number/percentage/date 检测能力（不删）
  */
 
-let OpenAlexClient; try { OpenAlexClient = require('../core/openalex-client'); } catch(e) { OpenAlexClient = class { constructor() {} }; }
+// [审计修复 2026-11-02] 原代码是
+//     let OpenAlexClient; try { OpenAlexClient = require('../core/openalex-client'); } catch(e) { OpenAlexClient = class {...}; }
+//     ... await openalexClient.searchPaper(claim, 3) ...
+// 三个错叠在一起:
+//   ① 大写 OpenAlexClient 拿到的是整个 module.exports 对象({openalexClient, LRUCache}),
+//      不是类, new 不出来也调不出 searchPaper;
+//   ② 调用点写的是小写 openalexClient, 而本模块从未声明过这个标识符 ——
+//      eval('openalexClient') 抛 ReferenceError;
+//   ③ 那个 ReferenceError 被本方法的 try/catch 接住, 转成
+//      {checked:true, confidence:'low', error:'openalexClient is not defined'}。
+// 实测(修复前): checkAcademicClaim('transformers are all you attention') 恒返回
+//    {"checked":true,"confidence":"low","error":"openalexClient is not defined"}
+// 而调用方 heartflow.js:2150 的 truth.checkSources 读到的是「检测过了、只是没找到
+// 证据」—— 一条从写下起 100% 失败的学术核查链路, 失败形态是静默的低置信度。
+// openalex-client.js 导出的是**单例对象** {openalexClient, LRUCache}(:518), 不是类。
+let openalexClient = null;
+try {
+  const _oa = require('../core/openalex-client.js');
+  openalexClient = _oa && _oa.openalexClient ? _oa.openalexClient : null;
+} catch (e) { openalexClient = null; }
 
 /**
  * 绝对化/不可证伪模式（引擎层硬编码）
@@ -364,10 +383,17 @@ const factChecker = {
 
   // 验证学术声明（调用 OpenAlex）
   async checkAcademicClaim(claim) {
+    // [审计修复 2026-11-02] 客户端不可用时必须与「查过了没找到」可区分。
+    // 原代码两条分支都写 checked:true，调用方无法分辨「没有相关论文」与
+    // 「根本没有核查能力」——前者是结论，后者是没测。checked:true + 低置信度
+    // 正是让一条 100% 失败的链路看起来像正常工作的形状。
+    if (!openalexClient || typeof openalexClient.searchPaper !== 'function') {
+      return { checked: false, confidence: 'low', note: 'OpenAlex 客户端不可用，未能核查' };
+    }
     try {
       const result = await openalexClient.searchPaper(claim, 3);
       if (!result.ok) {
-        return { checked: true, confidence: 'low', note: '无法验证学术声明' };
+        return { checked: false, confidence: 'low', note: '无法验证学术声明' };
       }
       return {
         checked: true,
@@ -376,7 +402,7 @@ const factChecker = {
         note: `找到${result.works.length}篇相关论文`,
       };
     } catch (e) {
-      return { checked: true, confidence: 'low', error: e.message };
+      return { checked: false, confidence: 'low', error: e.message };
     }
   },
 };

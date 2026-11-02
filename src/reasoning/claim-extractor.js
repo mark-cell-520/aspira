@@ -174,9 +174,18 @@ const claimExtractor = {
 
   // 提取学术引用（带元数据）
   extractCitations(text, opts = {}) {
+    // [审计修复 2026-11-02] 第二条正则里的 \\s 与 \\. 是**双反斜杠**。
+    // 正则字面量中 \\ 表示"一个字面反斜杠"，所以 \\s 匹配的是"反斜杠加 s"这两个
+    // 字符，而不是空白 —— 只有文本里真出现 \ 才可能命中。
+    // 实测（修复前）：'(Smith et al., 2024)' / '(Smith & Jones, 2024)' /
+    // '(Smith, 2024)' 全部 false；真实文本
+    //   '见 (Smith et al., 2024)、[@wang2024] 与 (Li & Zhao, 2019)。'
+    // 只返回 ["[@wang2024]"]。
+    // 后果：所有非 pandoc 格式的学术引用被静默漏抽，confidence-annotator 的
+    // RISK_WEIGHTS.citation=8 对这类引用完全不生效。
     const patterns = [
       /\[@\w+.*?\]/g,
-      /\([A-Z][a-z]+(?:\\s+(?:et\\s+al\\.|&\\s+[A-Z][a-z]+))?,?\\s*\d{4}\)/g
+      /\([A-Z][a-z]+(?:\s+(?:et\s+al\.|&\s+[A-Z][a-z]+))?,?\s*\d{4}\)/g
     ];
     const seen = new Map();
     for (const p of patterns) {

@@ -313,7 +313,17 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
   } else if (pjResult) {
     checked_by.push({ layer: 'progress-judgment', isProgress: pjResult.isProgress, confidence: pjResult.confidence, pseudo: pjResult.pseudoCheck?.patterns });
     if (pjResult.standGround && currentGate.action === 'pass') {
-      currentGate = { action: 'verify', reason: `伪进步警示: ${pjResult.standGround.reason || '需独立验证'}`, layer: 'progress-judgment' };
+      // [审计修复 2026-11-02] 原代码读 pjResult.standGround.reason，而产出侧
+      // buildStandGround 只写 reasons（数组），从不写 reason —— 于是模板
+      // `伪进步警示: ${...reason || '需独立验证'}` 冒号后恒为兜底文案，
+      // 真正的失败原因（coreCheck.failures / pseudoCheck.patterns）从不进
+      // gate.reason。实测（修复前）：
+      //   Object.keys(standGround) = [myPosition, reasons, framing, guardianNote]
+      //   standGround.reason === undefined
+      //   standGround.reasons === ["伪进步检测：装饰升级、幻觉进步模式"]
+      currentGate = { action: 'verify',
+        reason: `伪进步警示: ${(pjResult.standGround.reasons || []).join('; ') || pjResult.standGround.reason || '需独立验证'}`,
+        layer: 'progress-judgment' };
     }
     data.progress = pjResult;
   }
