@@ -83,7 +83,14 @@ t('checkInstrumentalReasoning works', () => {
 // 于是完整推理链永远拿不到"健康文本", 毫无推理结构的句子反而能拿到。
 // 下面两条用例钉住修好后的方向: 好推理必须是干净的, 坏推理必须不是干净的。
 t('完整推理链不应被挡在健康文本之外', () => {
-  const text = '因为今年的销售额增长了20%，而且客户留存率也提高了，所以我们应当继续加大投入。';
+  // 2026-11-02 换过 fixture: 原句含"销售额增长了20%"这个**无来源精确数字**,
+  // 会被 perfect_error 的 S1_false_precision 命中 —— 那是一条正当信号
+  // (仓库自己的记录: "数据显示转化率提升了 12%" 抬到 rewrite 是正确的)。
+  // 本轮把 allClean 从 35 项手写清单改成遍历 dimensions{} 全量 54 键之后,
+  // perfect_error 第一次进入健康文本判据, 于是原 fixture 变成"有别的维度命中",
+  // 再也测不到 reasoning_coherence 的方向。换成不含精确数字的完整推理链,
+  // 让这条用例只测它本来要测的那一件事。
+  const text = '因为客户留存率提高了，而且复购成本下降了，所以我们应当继续加大投入。';
   const r = m.discriminate(text);
   if (r.dimensions.reasoning_coherence.score <= 0.5) {
     throw new Error('前提失效: 该句未被判为完整推理链(score=' +

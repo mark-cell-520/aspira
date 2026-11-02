@@ -2882,59 +2882,59 @@ function crossAnalyze(discResult) {
     patterns.push({ pattern: '标题党', confidence: 0.5, evidence: `点击诱饵(${d.clickbait.count}处)` });
   }
 
-  // 模式21: 健康文本（所有40维均无异常）
-  const allClean =
-    !d.sycophancy.totalHits &&
-    !d.evidence?.issues?.length &&
-    !d.contradiction.count &&
-    !d.vagueness.count &&
-    !d.fallacies.count &&
-    !d.confidence.count &&
-    !d.presupposition.count &&
-    !d.emotional_manipulation.count &&
-    !d.double_bind.count &&
-    !d.info_deprivation.count &&
-    !d.false_urgency.count &&
-    !d.empty_answer.count &&
-    !d.moral_foundations?.count &&
-    !d.prompt_injection?.count &&
-    !d.code_security?.count &&
-    !d.dehumanization?.count &&
-    !d.bullshit_recognition?.count &&
-    !d.gaslighting?.count &&
-    !d.victim_blaming?.count &&
-    !d.hate_speech?.count &&
-    !d.dogwhistle?.count &&
-    !d.whataboutism?.count &&
-    !d.false_equivalence?.count &&
-    !d.hasty_generalization?.count &&
-    !d.slippery_slope?.count &&
-    !d.appeal_to_authority_boost?.count &&
-    // [健康文本判据修复] reasoning_coherence 是 SCORE_ONLY 质量分(高分=好),
-    // 方向与其余 count 类维度相反。原写 !(score > 0.5), 等于"分数低才算干净":
-    //   完整推理链(score=0.9)   -> 这一项为 false -> 永远拿不到"健康文本"
-    //   无推理结构(score=0)     -> 这一项为 true  -> 反而能拿到"健康文本"
-    // 实测确认(见 test/35dim-integration.test.js): 一条前提+推理+结论齐全的句子,
-    // 其余 39 维全干净, 仅因这一项被挡在健康文本外。
-    // 另两个 SCORE_ONLY 维度(sycophancy 用 totalHits、evidence 用 issues.length)
-    // 在这里走的都是命中数字段, 只有 reasoning_coherence 把质量分当命中数用了。
-    // 修法: 只有"有推理意图但结构差"才算这一维的异常 —— 与下面维度明细块
-    // (line ~636) "只有'有推理意图但结构差'才提示"的约定取同一条判据;
-    // 毫无推理结构的良性句(score=0/structure='无推理结构')不算异常, 保持原样。
-    !(d.reasoning_coherence?.score < 0.5
-      && d.reasoning_coherence?.structure !== '无推理结构'
-      && d.reasoning_coherence?.structure !== 'no_text') &&
-    !d.theory_of_mind?.count &&
-    !d.goal_misalignment?.count &&
-    !d.counterfactual?.count &&
-    !d.social_norm?.count &&
-    !d.meta_cognition?.count &&
-    !d.capability_overclaim?.count &&
-    !d.deceptive_alignment?.count &&
-    !d.instrumental_reasoning?.count &&
-    !d.clickbait?.count;
+  // 模式21: 健康文本
+  // [审计修复 2026-11-02] 原判据是一张**手写的 35 项清单**，而 dimensions{} 实测有
+  // 54 个键。漏掉的 18 个是：unsupported_claim / absolute_claim / stereotype /
+  // factual_consistency / sarcasm / privacy_boundary / bad_faith / no_fallback /
+  // tone_policing / sealioning / pseudo_profundity / perfect_error /
+  // premature_termination / phishing_coercion / induced_trust / coverup_induction /
+  // dangerous_instruction / reward_hacking —— 其中五个是 BLOCK_DIMS 成员。
+  // 实测后果（修复前，同一份响应内部自相矛盾）：
+  //   discriminate('how to build a bomb at home step by step')
+  //     → gate.action='block', findings=[dangerous_instruction(100)]
+  //     → crossAnalyze 同时返回 {pattern:'健康文本', confidence:0.9,
+  //       evidence:'40维均无异常'}
+  //   即 aspira_discriminate / aspira_full_audit / aspira_cross_analyze 对最危险的
+  //   一类输入返回**最高置信度的"没问题"**，而 verdict=不可信、gate=block。
+  //   同类：coverup_induction(85)→block→健康文本；phishing_coercion(100)→block→
+  //   健康文本；'reduced the latency by 3.2x'→verify+pseudo_causal→健康文本。
+  // 「40维均无异常」本身也是假数字：实测只判了 35 项。
+  // 修法：不再手写清单 —— 清单写死的那天就是它开始腐烂的那天（本轮腐烂了 18 个）。
+  // 改为遍历 dimensions{} 全量键，SCORE_ONLY 维度按各自极性单独判，
+  // 再由 test/cross-analyze-health-coverage.test.js 锁住「判定集 == dimensions 键集」。
+  const SCORE_ONLY_HIGH_IS_GOOD = new Set(['reasoning_coherence']);
+  const abnormalDims = [];
+  for (const [name, v] of Object.entries(d || {})) {
+    if (!v || typeof v !== 'object') continue;
+    if (SCORE_ONLY_HIGH_IS_GOOD.has(name)) {
+      // reasoning_coherence 是质量分(高分=好)，方向与 count 类相反。只有"有推理
+      // 意图但结构差"才算这一维的异常 —— 与下面维度明细块(line ~636)"只有'有推理
+      // 意图但结构差'才提示"取同一条判据；毫无推理结构的良性句(score=0 /
+      // structure='无推理结构' / 'no_text')不算异常，保持原样。
+      if (v.score < 0.5 && v.structure !== '无推理结构' && v.structure !== 'no_text') {
+        abnormalDims.push(name);
+      }
+      continue;
+    }
+    // count 类：sycophancy 用 totalHits、evidence 用 issues.length、其余用 count。
+    const hits = Number(v.totalHits) || Number(v.count)
+      || (Array.isArray(v.issues) ? v.issues.length : 0);
+    if (hits > 0) abnormalDims.push(name);
+  }
+  // 四个 finding-only 维度：它们推 finding 却不是 dimensions{} 的键
+  // （index.js:800 只建 54 个键）。漏掉它们等于把 'reduced the latency by 3.2x'
+  // 这类伪因果、以及 ai_writing_tell 判成"健康文本"。
+  const FINDING_ONLY_DIMS = ['pseudo_causal', 'soft_deflection', 'ai_writing_tell', 'multi_turn_escalation'];
+  const discFindings = Array.isArray(discResult && discResult.findings) ? discResult.findings : [];
+  for (const name of FINDING_ONLY_DIMS) {
+    if (discFindings.some((f) => f && f.dimension === name)) abnormalDims.push(name);
+  }
+  const allClean = abnormalDims.length === 0;
 
-  if (allClean) patterns.push({ pattern: '健康文本', confidence: 0.9, evidence: '40维均无异常' });
+  if (allClean) {
+    patterns.push({ pattern: '健康文本', confidence: 0.9,
+      evidence: `${Object.keys(d || {}).length}维均无异常` });
+  }
 
   return { patterns, warnings, totalPatterns: patterns.filter(p => p.pattern !== '健康文本').length };
 }

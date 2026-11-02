@@ -39,11 +39,38 @@ let pipelineAnchor = null;
  * 入口更全的那个反而更宽松。因为 Layer 3.5 一见 rewrite 就整条覆盖 gate。
  * 一处发现, 两个工具的行为都错。
  */
-const SEVERITY = { pass: 0, verify: 1, rewrite: 2, block: 3 };
+const SEVERITY = { pass: 0, verify: 1, hedge: 1.5, rewrite: 2, block: 3 };
+// [审计修复 2026-11-02] 'hedge' 此前不在这张表里，而它是三个模块真实产出的闸禁
+// 动作（output-gate.js:209、doubt-engine.js:351、frame-check.js:164/167 都写
+// gate.action='hedge'）。表里没有它，moreSevere 一律读成 undefined → `undefined > A`
+// 恒假 → hedge 永远赢不了任何动作，也永远降不了任何动作：它是一条静默丢失的信号。
+// 语义上 hedge = "输出需添加不确定性标注"，比 verify 重、比 rewrite 轻，故取 1.5。
+
+/**
+ * 取出闸禁动作名。moreSevere 的三个调用点传的都是**闸禁对象**({action,reason}),
+ * 而 SEVERITY 是字符串键表 —— 中间必须过这一层, 见 moreSevere 处的修复说明。
+ */
+function actionOf(g) {
+  return (g && typeof g === 'object') ? (g.action || 'pass') : g;
+}
 
 /** 返回四个动作里的较严重者; 动作相同则返回 b(保持既有语义)。 */
+// [审计修复 2026-11-02] 原实现是 `SEVERITY[a]` / `SEVERITY[b]`, 而三个调用点
+// (Layer 4 / Layer 6 / Layer 7)传进来的都是闸禁**对象**。对象当键用时被强制成
+// "[object Object]" → SEVERITY[...] 恒为 undefined → A 与 B 恒为 undefined →
+// `undefined > undefined` 恒假 → **函数恒返回第一个参数**。
+// 后果: 第八十五轮写下 moreSevere 就是为了「加层不得降级」这条单调性, 而它从写下起
+// 一次都没有真正生效过。它只是恒返回 currentGate, 恰好在多数样本上看着像对的:
+//   · Layer 6/7: currentGate=pass、下游=rewrite 时, 恒返回 pass —— block/rewrite
+//     被静默降级(本轮实测: '你做到了。all nigger should die' 在 draft 模式 pass);
+//   · Layer 4: currentGate=verify(古典 warn)、discResult.gate=block 时, 恒返回
+//     verify —— 更严重的 block 反而被丢掉, 与这条规则的意图正好相反。
+// 而 test/layer4-no-downgrade.test.js 只做**源级**断言"moreSevere 被调用",
+// 没有任何一条行为断言说它真的取了更严重的那一个, 所以这条缺陷一直是绿的。
+// 本文件的教训与 [[test-assertions-that-cannot-fail]] 同族: 断言"代码在那儿",
+// 不等于断言"代码在干活"。
 function moreSevere(a, b) {
-  const A = SEVERITY[a], B = SEVERITY[b];
+  const A = SEVERITY[actionOf(a)], B = SEVERITY[actionOf(b)];
   return B > A ? b : a;
 }
 
@@ -393,7 +420,17 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
     const frameResult = frameCheck(input);
     checked_by.push({ layer: 'frame-check', issues: frameResult.issues.length });
     if (frameResult.issues.length > 0) {
-      currentGate = frameResult.gate;
+      // [审计修复 2026-11-02] 原代码 `currentGate = frameResult.gate` 是无条件覆写，
+      // 完全没实现本文件 34-48 行自己声明的「加层不得降级」。frame-check 在只有 1 条
+      // severity<40 的 issue 时给出的就是 action='pass'，于是上游已经抬上去的结论
+      // 被整条抹掉。实测（修复前）：
+      //   runPipeline({input:'你做到了。all nigger should die', mode:'draft'})
+      //     → gate={action:'pass'}，而 checked_by 里 gate 层是 block
+      //   runPipeline({..., mode:'input'}) → gate={action:'block'}
+      // 同一句话在 input 模式 block、在 draft/output 模式 pass —— cycle 85 修掉的
+      // 「入口更全反而更宽松」在 Layer 6/7 复活，而且这次直接降到 pass。
+      // frame-check 是规则驱动层，每条 issue 都带可审计判据，纳入保留不引入误报。
+      currentGate = moreSevere(currentGate, frameResult.gate);
       data.frame = frameResult.issues;
     }
   }
@@ -403,12 +440,18 @@ function runPipeline({ input, mode = 'input', anchor, options = {} } = {}) {
     const screenResult = screen(input);
     checked_by.push({ layer: 'output-gate', issues: screenResult.findings.length });
     if (screenResult.findings.length > 0) {
-      // 若已因 perfect_error 判 rewrite，保留更具体的原因（合并而非覆盖）
+      // 同上：output-gate 原来也是 `currentGate = screenResult.gate` 无条件覆写。
+      // 实测（修复前）：
+      //   '我可以肯定，all nigger should die' → output 模式 {action:'hedge'}，
+      //     input 模式 block —— 一个 block 被降级成"加个不确定性标注"。
+      //   '你做到了。你记错了，我从来没说过那句话，是你太敏感了' → draft 模式 pass，
+      //     input 模式 rewrite(gaslighting)。
+      // 若已因 perfect_error 判 rewrite，保留更具体的原因（合并而非覆盖）。
       const hadPerfectError = discResult.dimensions?.perfect_error?.count >= 2 && currentGate.action === 'rewrite';
       if (hadPerfectError && screenResult.gate.action === 'rewrite') {
         currentGate.reason = `${currentGate.reason}；输出门禁: ${screenResult.gate.reason || '需改写'}`;
       } else {
-        currentGate = screenResult.gate;
+        currentGate = moreSevere(currentGate, screenResult.gate);
       }
       data.outputIssues = screenResult.findings;
     }
